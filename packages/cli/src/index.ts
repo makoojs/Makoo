@@ -16,5 +16,5 @@ export type {
 	SourceConfig
 } from './config/type';
 export { riteMonkey } from './vitePlugin/riteMonkeyPlugin';
-export { default } from './vitePlugin/ritePlugin';
+export { ritePlugin } from './vitePlugin/ritePlugin';
 export type { RiteMonkeyOptions } from './vitePlugin/type';

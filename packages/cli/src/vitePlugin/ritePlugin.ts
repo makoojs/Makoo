@@ -6,7 +6,7 @@ import { invalidateVirtualModule, sendScanError, triggerModuleHmr } from './hmrC
 import { buildVirtualMouduleCode } from './virtualModule';
 import { getWatchTargets, isStructuralChange } from './watchList';
 
-export default function ritePlugin(): Plugin {
+export function ritePlugin(): Plugin {
 	let scanResult: ScannerResult | null = null;
 	let riteConfigFile: string | null = null;
 	let isDev: boolean = false;

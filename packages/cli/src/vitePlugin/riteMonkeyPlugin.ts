@@ -2,7 +2,7 @@ import { resolveConfig, resolveMonkeyPluginOptions } from 'src/config/resolve';
 import { loadConfig } from 'src/scanner/load/loadConfig';
 import type { Plugin, UserConfig } from 'vite';
 import monkey from 'vite-plugin-monkey';
-import ritePlugin from './ritePlugin';
+import { ritePlugin } from './ritePlugin';
 import type { RiteMonkeyOptions } from './type';
 
 export function riteMonkey(options: RiteMonkeyOptions = {}): Plugin {

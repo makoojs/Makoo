@@ -7,10 +7,6 @@ settings:
 importers:
 
   .:
-    dependencies:
-      jiti:
-        specifier: ^2.6.1
-        version: 2.6.1
     devDependencies:
       '@biomejs/biome':
         specifier: ^2.4.6
@@ -30,9 +26,6 @@ importers:
       '@vitest/coverage-v8':
         specifier: ^4.0.18
         version: 4.1.4(vitest@4.1.4)
-      cac:
-        specifier: ^7.0.0
-        version: 7.0.0
       jsdom:
         specifier: ^28.1.0
         version: 28.1.0
@@ -69,12 +62,18 @@ importers:
       '@rite/core':
         specifier: workspace:*
         version: link:../core
+      cac:
+        specifier: ^7.0.0
+        version: 7.0.0
       jiti:
         specifier: ^2.6.1
         version: 2.6.1
       picomatch:
         specifier: ^4.0.4
         version: 4.0.4
+      vite:
+        specifier: '>=5'
+        version: 8.0.8(@types/node@25.6.0)(jiti@2.6.1)
       vite-plugin-monkey:
         specifier: ^7.1.9
         version: 7.1.9(postcss@8.5.10)(vite@8.0.8(@types/node@25.6.0)(jiti@2.6.1))
@@ -90,12 +89,21 @@ importers:
       '@rite/core':
         specifier: workspace:*
         version: link:../core
+      react:
+        specifier: '>=18'
+        version: 19.2.5
+      react-dom:
+        specifier: '>=18'
+        version: 19.2.5(react@19.2.5)
 
   packages/vue:
     dependencies:
       '@rite/core':
         specifier: workspace:*
         version: link:../core
+      vue:
+        specifier: '>=3'
+        version: 3.5.32(typescript@5.9.3)
 
 packages:
 

@@ -19,11 +19,15 @@
   },
   "dependencies": {
     "@rite/core": "workspace:*",
+    "cac": "^7.0.0",
     "jiti": "^2.6.1",
     "picomatch": "^4.0.4",
     "vite-plugin-monkey": "^7.1.9"
   },
   "devDependencies": {
     "@types/picomatch": "^4.0.3"
+  },
+  "peerDependencies": {
+    "vite": ">=5"
   }
 }
