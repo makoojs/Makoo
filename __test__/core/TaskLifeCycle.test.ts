@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ObserverHub } from '../packages/core/src/hooks/ObserverHub';
-import type { ObserveEvent } from '../packages/core/src/hooks/type';
-import { createObserveEmitter } from '../packages/core/src/hooks/util';
-import { Logger } from '../packages/core/src/logger/Logger';
-import { TaskContext } from '../packages/core/src/Task/TaskContext';
-import { TaskLifeCycle } from '../packages/core/src/Task/TaskLifeCycle';
-import type { ArtifactTask } from '../packages/core/src/Task/types';
-import { DOMWatcher } from '../packages/core/src/watcher/DomWatcher';
+import { ObserverHub } from '../../packages/core/src/hooks/ObserverHub';
+import type { ObserveEvent } from '../../packages/core/src/hooks/type';
+import { createObserveEmitter } from '../../packages/core/src/hooks/util';
+import { Logger } from '../../packages/core/src/logger/Logger';
+import { TaskContext } from '../../packages/core/src/Task/TaskContext';
+import { TaskLifeCycle } from '../../packages/core/src/Task/TaskLifeCycle';
+import type { ArtifactTask } from '../../packages/core/src/Task/types';
+import { DOMWatcher } from '../../packages/core/src/watcher/DomWatcher';
 import { createArtifactTask, createListenerTask, createVueComponent } from './factory/TaskFactor';
 
 describe('TaskLifeCycle', () => {

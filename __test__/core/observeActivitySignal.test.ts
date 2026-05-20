@@ -3,7 +3,8 @@ import {
 	createActivityStore,
 	observeActivitySignal,
 	stopActivitySignal
-} from '../packages/core/src/signal/observeActivitySignal';
+} from '../../packages/core/src/signal/observeActivitySignal';
+import type { ActivitySignalSource } from '../../packages/core/src/signal/types';
 
 describe('observeActivitySignal', () => {
 	it('should observe protocol stores via get and subscribe', () => {
@@ -42,7 +43,9 @@ describe('observeActivitySignal', () => {
 	it('should reject invalid signal sources', () => {
 		const listener = vi.fn();
 
-		expect(() => observeActivitySignal({ value: false }, listener)).toThrow(TypeError);
+		expect(() =>
+			observeActivitySignal({ value: false } as unknown as ActivitySignalSource, listener)
+		).toThrow(TypeError);
 		expect(listener).not.toHaveBeenCalled();
 	});
 });

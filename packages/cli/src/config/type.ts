@@ -29,8 +29,8 @@ export type MonkeyBuildConfig = {
 		| ((
 				version: string,
 				packageName: string,
-				importName: string,
-				resolveName: string
+				importName?: string,
+				resolveName?: string
 		  ) => string);
 	cssSideEffects?: string | ((css: string) => void);
 };

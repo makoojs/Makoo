@@ -1,6 +1,9 @@
 import process from 'node:process';
 import type { InjectorConfig, MonkeyBuildConfig, MonkeyConfig, MonkeyServerConfig } from './type';
 
+export const VIRTUAL_MODULE_ID = 'virtual:rite/entry';
+export const RESOLVED_ID = '\0virtual:rite/entry';
+
 // default path
 export const DEFAULT_SOURCE_DIR = 'injections';
 

@@ -1,8 +1,9 @@
+import { RESOLVED_ID, VIRTUAL_MODULE_ID } from 'src/config/defaults';
 import { scanner } from 'src/scanner/scanner';
 import type { ScannerResult } from 'src/scanner/type';
 import type { ConfigEnv, Plugin, ViteDevServer } from 'vite';
 import { invalidateVirtualModule, sendScanError, triggerModuleHmr } from './hmrController';
-import { buildVirtualMouduleCode, RESOLVED_ID, VIRTUAL_MODULE_ID } from './virtualModule';
+import { buildVirtualMouduleCode } from './virtualModule';
 import { getWatchTargets, isStructuralChange } from './watchList';
 
 export default function ritePlugin(): Plugin {

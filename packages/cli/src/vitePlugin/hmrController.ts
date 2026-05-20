@@ -1,5 +1,5 @@
 import type { ViteDevServer } from 'vite';
-import { RESOLVED_ID } from './virtualModule';
+import { RESOLVED_ID } from '../config/defaults';
 
 export function invalidateVirtualModule(server: ViteDevServer): void {
 	const mod = server.moduleGraph.getModuleById(RESOLVED_ID);

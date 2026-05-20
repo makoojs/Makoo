@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ObserverHub } from '../packages/core/src/hooks/ObserverHub';
-import type { ObserveEvent } from '../packages/core/src/hooks/type';
-import { createObserveEmitter } from '../packages/core/src/hooks/util';
-import { Logger } from '../packages/core/src/logger/Logger';
-import { createActivityStore } from '../packages/core/src/signal/observeActivitySignal';
-import { TaskContext } from '../packages/core/src/Task/TaskContext';
-import { TaskRegister } from '../packages/core/src/Task/TaskRegister';
-import type { ArtifactTask } from '../packages/core/src/Task/types';
-import { createVueAdapter } from '../packages/vue/src/VueAdapter';
+import { ObserverHub } from '../../packages/core/src/hooks/ObserverHub';
+import type { ObserveEvent } from '../../packages/core/src/hooks/type';
+import { createObserveEmitter } from '../../packages/core/src/hooks/util';
+import { Logger } from '../../packages/core/src/logger/Logger';
+import { createActivityStore } from '../../packages/core/src/signal/observeActivitySignal';
+import { TaskContext } from '../../packages/core/src/Task/TaskContext';
+import { TaskRegister } from '../../packages/core/src/Task/TaskRegister';
+import type { ArtifactTask } from '../../packages/core/src/Task/types';
+import { createVueAdapter } from '../../packages/vue/src/VueAdapter';
 import { createTask, createVueComponent } from './factory/TaskFactor';
 
 describe('TaskRegister', () => {

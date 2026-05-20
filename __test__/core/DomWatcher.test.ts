@@ -1,8 +1,8 @@
 /// <reference types="vitest/config" />
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ObserveEventName } from '../packages/core/src/hooks/type';
-import { DOMWatcher } from '../packages/core/src/watcher/DomWatcher';
-import type { InjectCallback } from '../packages/core/src/watcher/types';
+import type { ObserveEventName } from '../../packages/core/src/hooks/type';
+import { DOMWatcher } from '../../packages/core/src/watcher/DomWatcher';
+import type { InjectCallback } from '../../packages/core/src/watcher/types';
 
 describe('DOMWatcher', () => {
 	beforeEach(() => {

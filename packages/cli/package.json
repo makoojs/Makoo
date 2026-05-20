@@ -20,7 +20,8 @@
   "dependencies": {
     "@rite/core": "workspace:*",
     "jiti": "^2.6.1",
-    "picomatch": "^4.0.4"
+    "picomatch": "^4.0.4",
+    "vite-plugin-monkey": "^7.1.9"
   },
   "devDependencies": {
     "@types/picomatch": "^4.0.3"

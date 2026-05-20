@@ -7,6 +7,7 @@ import {
 	resolve as resolvePath
 } from 'node:path';
 import process from 'node:process';
+import type { MonkeyOption } from 'vite-plugin-monkey';
 import {
 	DEFAULT_FILE_NAME_SUFFIX,
 	DEFAULT_INJECTOR_CONFIG,
@@ -14,7 +15,8 @@ import {
 	DEFAULT_MONKEY_CONFIG,
 	DEFAULT_MONKEY_SERVER_CONFIG,
 	DEFAULT_SOURCE_CONFIG,
-	META_FILE_NAME
+	META_FILE_NAME,
+	VIRTUAL_MODULE_ID
 } from './defaults';
 import type {
 	AppConfig,
@@ -358,3 +360,38 @@ export const resolveConfig = (config: CliConfig, root: string = process.cwd()): 
 		injector
 	};
 };
+
+export function resolveMonkeyPluginOptions(
+	config: ResolvedConfig,
+	override?: Partial<MonkeyOption>
+): MonkeyOption {
+	const resolved: MonkeyOption = {
+		...config.monkey,
+		entry: VIRTUAL_MODULE_ID,
+		userscript: config.monkey.userscript,
+		align: config.monkey.align,
+		generate: config.monkey.generate,
+		clientAlias: config.monkey.clientAlias,
+		styleImport: config.monkey.styleImport,
+		server: config.monkey.server,
+		build: config.monkey.build
+	};
+
+	return {
+		...resolved,
+		...override,
+		userscript: {
+			...resolved.userscript,
+			...override?.userscript
+		},
+		server: {
+			...resolved.server,
+			...override?.server
+		},
+		build: {
+			...resolved.build,
+			...override?.build
+		},
+		entry: VIRTUAL_MODULE_ID
+	};
+}

@@ -75,6 +75,9 @@ importers:
       picomatch:
         specifier: ^4.0.4
         version: 4.0.4
+      vite-plugin-monkey:
+        specifier: ^7.1.9
+        version: 7.1.9(postcss@8.5.10)(vite@8.0.8(@types/node@25.6.0)(jiti@2.6.1))
     devDependencies:
       '@types/picomatch':
         specifier: ^4.0.3

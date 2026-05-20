@@ -24,5 +24,6 @@ export async function loadMeta(root: string): Promise<LoadMetaResult | null> {
 			};
 		}
 	}
+
 	return null;
 }
