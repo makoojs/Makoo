@@ -1,5 +1,6 @@
 import type { ArtifactOptions } from '@rite/core';
 import type { Component, RenderInitResult } from 'src/generator/type';
+import { renderInlineValue } from '../util/value';
 
 export function renderRegisterComponent(
 	instanceName: string,
@@ -13,7 +14,7 @@ export function renderRegisterComponent(
 			on: item.componentMeta.on,
 			hooks: item.componentMeta.hooks
 		};
-		return `${instanceName}.register('${item.componentMeta.injectAt}', ${item.componentName}, ${JSON.stringify(config)})`;
+		return `${instanceName}.register(${JSON.stringify(item.componentMeta.injectAt)}, ${item.componentName}, ${renderInlineValue(config)});`;
 	});
 
 	return {

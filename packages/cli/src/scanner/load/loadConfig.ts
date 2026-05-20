@@ -34,9 +34,7 @@ export async function loadConfig(): Promise<LoadedConfig> {
 
 	return {
 		config,
-		configFile,
+		riteConfigFile: configFile,
 		root: projectRoot
 	};
 }
-
-export const load = loadConfig;

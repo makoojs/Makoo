@@ -1,4 +1,8 @@
-import type { ArtifactOptions, InjectionConfig as RuntimeInjectionConfig } from '@rite/core';
+import type {
+	ArtifactOptions,
+	LifecycleHookMap,
+	InjectionConfig as RuntimeInjectionConfig
+} from '@rite/core';
 import type { MonkeyUserScript } from 'vite-plugin-monkey';
 
 export type Thenable<T> = T | Promise<T>;
@@ -31,13 +35,7 @@ export type MonkeyBuildConfig = {
 	cssSideEffects?: string | ((css: string) => void);
 };
 
-export type MonkeyLegacyFormatConfig = {
-	align?: unknown;
-	generate?: unknown;
-};
-
 export type MonkeyConfig = {
-	entry?: string;
 	userscript?: MonkeyUserScript;
 	align?: number | false;
 	generate?: (options: MonkeyGenerateContext) => Thenable<string>;
@@ -45,7 +43,6 @@ export type MonkeyConfig = {
 	styleImport?: boolean;
 	server?: MonkeyServerConfig;
 	build?: MonkeyBuildConfig;
-	format?: MonkeyLegacyFormatConfig;
 };
 
 export type AppConfig = {
@@ -55,30 +52,27 @@ export type AppConfig = {
 };
 
 export type SourceConfig = {
-	root?: string;
 	dir?: string;
 	include?: string[];
 	exclude?: string[];
-	manifest?: string;
-	moduleEntry?: string | string[];
-	moduleOverride?: string | string[];
 };
 
 export type ResolvedSourceConfig = {
-	root: string;
-	dir: string;
+	dir: string; // Injected Components Directory
 	include: string[];
 	exclude: string[];
-	manifest: string;
-	moduleEntry: string[];
-	moduleOverride: string[];
+	manifest: string; // manifest file basename (no extension), e.g. 'meta'
 };
 
-export type InjectorConfig = Partial<Pick<RuntimeInjectionConfig, 'alive' | 'scope' | 'timeout'>>;
+export type InjectorConfig = Partial<
+	Pick<RuntimeInjectionConfig, 'alive' | 'scope' | 'timeout' | 'hooks'>
+>;
 
-export type ResolvedInjectorConfig = Pick<RuntimeInjectionConfig, 'alive' | 'scope' | 'timeout'>;
+export type ResolvedInjectorConfig = Pick<RuntimeInjectionConfig, 'alive' | 'scope' | 'timeout'> & {
+	hooks?: LifecycleHookMap;
+};
 
-export type InjectionFramework = 'auto' | 'vue' | 'react';
+export type InjectionFramework = 'auto' | 'Vue' | 'React';
 
 export type ResolvedInjectionFramework = Exclude<InjectionFramework, 'auto'>;
 
@@ -88,10 +82,7 @@ export type InjectionModuleConfig = ArtifactOptions & {
 	component?: string;
 	framework?: InjectionFramework;
 	enabled?: boolean;
-	match?: string[];
-	include?: string[];
-	exclude?: string[];
-	excludeMatch?: string[];
+	//TODO url match alive component
 };
 
 export type InjectionManifestRecord = Record<string, Omit<InjectionModuleConfig, 'name'>>;
@@ -131,9 +122,8 @@ export type ResolvedMonkeyBuildConfig = {
 
 export type ResolvedMonkeyConfig = Omit<
 	MonkeyConfig,
-	'entry' | 'userscript' | 'align' | 'clientAlias' | 'styleImport' | 'server' | 'build'
+	'userscript' | 'align' | 'clientAlias' | 'styleImport' | 'server' | 'build'
 > & {
-	entry: string;
 	userscript: MonkeyUserScript;
 	align: number | false;
 	clientAlias: string;
@@ -152,9 +142,9 @@ export type CliConfig = {
 // CliConfig -> ResolvedConfig
 //resolved config type
 export type ResolvedConfig = {
-	root: string;
-	app: AppConfig;
-	monkey: ResolvedMonkeyConfig;
-	source: ResolvedSourceConfig;
-	injector: ResolvedInjectorConfig;
+	root: string; //project root path, default value is `Process.cwd()`
+	app: AppConfig; // user script meta message  app <=> Tampermonkey header
+	monkey: ResolvedMonkeyConfig; // vite-plugin-monkey build config
+	source: ResolvedSourceConfig; // tell cli where find the injection components
+	injector: ResolvedInjectorConfig; // global `Injector` runtime config
 };

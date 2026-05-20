@@ -1,24 +1,26 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createJiti } from 'jiti';
+import { META_FILE_NAME } from '../../config/defaults';
 import type { InjectionModuleConfig } from '../../config/type';
 import type { LoadMetaResult } from '../type';
 
 export async function loadMeta(root: string): Promise<LoadMetaResult | null> {
-	const folders = fs.readdirSync(root).filter((name) => {
+	const files = fs.readdirSync(root).filter((name) => {
 		const fullPath = path.join(root, name);
-		return fs.statSync(fullPath).isDirectory();
+		return fs.statSync(fullPath).isFile();
 	});
-	if (folders.length === 0) {
+	if (files.length === 0) {
 		return null;
 	}
 	const jiti = createJiti(root);
-	for (const f of folders) {
-		const fileName: string = f.split('.')[0];
-		if (fileName === 'meta') {
+	for (const f of files) {
+		const fileName: string = path.basename(f, path.extname(f));
+		if (fileName === META_FILE_NAME) {
+			const fullPath = path.join(root, f);
 			return {
-				overridePath: f,
-				moduleConfig: await jiti.import<InjectionModuleConfig>(f, { default: true })
+				overridePath: fullPath,
+				moduleConfig: await jiti.import<InjectionModuleConfig>(fullPath, { default: true })
 			};
 		}
 	}

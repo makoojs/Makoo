@@ -9,13 +9,12 @@ import {
 import process from 'node:process';
 import {
 	DEFAULT_FILE_NAME_SUFFIX,
-	DEFAULT_GENERATED_ENTRY_DIR,
-	DEFAULT_GENERATED_ENTRY_FILE,
 	DEFAULT_INJECTOR_CONFIG,
 	DEFAULT_MONKEY_BUILD_CONFIG,
 	DEFAULT_MONKEY_CONFIG,
 	DEFAULT_MONKEY_SERVER_CONFIG,
-	DEFAULT_SOURCE_CONFIG
+	DEFAULT_SOURCE_CONFIG,
+	META_FILE_NAME
 } from './defaults';
 import type {
 	AppConfig,
@@ -82,10 +81,10 @@ const inferFrameworkFromPath = (componentPath: string): ResolvedInjectionFramewo
 	const extension = extname(componentPath).toLowerCase();
 
 	if (extension === '.tsx' || extension === '.jsx') {
-		return 'react';
+		return 'React';
 	}
 
-	return 'vue';
+	return 'Vue';
 };
 
 const resolveFramework = (
@@ -175,19 +174,11 @@ export const resolveSourceConfig = (
 	config: SourceConfig | undefined,
 	root: string
 ): ResolvedSourceConfig => {
-	const sourceRoot = resolveFileSystemPath(root, config?.root ?? root);
-
 	return {
-		root: sourceRoot,
-		dir: resolveFileSystemPath(sourceRoot, config?.dir ?? DEFAULT_SOURCE_CONFIG.dir),
+		dir: resolveFileSystemPath(root, config?.dir ?? DEFAULT_SOURCE_CONFIG.dir),
 		include: toStringArray(config?.include, DEFAULT_SOURCE_CONFIG.include),
 		exclude: toStringArray(config?.exclude, DEFAULT_SOURCE_CONFIG.exclude),
-		manifest: resolveFileSystemPath(
-			resolveFileSystemPath(sourceRoot, config?.dir ?? DEFAULT_SOURCE_CONFIG.dir),
-			config?.manifest ?? DEFAULT_SOURCE_CONFIG.manifest
-		),
-		moduleEntry: toStringArray(config?.moduleEntry, DEFAULT_SOURCE_CONFIG.moduleEntry),
-		moduleOverride: toStringArray(config?.moduleOverride, DEFAULT_SOURCE_CONFIG.moduleOverride)
+		manifest: META_FILE_NAME
 	};
 };
 
@@ -197,7 +188,8 @@ export const resolveInjectorConfig = (
 	return {
 		alive: config?.alive ?? DEFAULT_INJECTOR_CONFIG.alive,
 		scope: config?.scope ?? DEFAULT_INJECTOR_CONFIG.scope,
-		timeout: config?.timeout ?? DEFAULT_INJECTOR_CONFIG.timeout
+		timeout: config?.timeout ?? DEFAULT_INJECTOR_CONFIG.timeout,
+		hooks: config?.hooks
 	};
 };
 
@@ -231,11 +223,9 @@ export const resolveMonkeyBuildConfig = (
 
 export const resolveMonkeyConfig = (
 	app: AppConfig,
-	config: MonkeyConfig | undefined,
-	root: string
+	config: MonkeyConfig | undefined
 ): ResolvedMonkeyConfig => {
 	const {
-		entry,
 		userscript,
 		align,
 		clientAlias,
@@ -249,10 +239,6 @@ export const resolveMonkeyConfig = (
 
 	return {
 		...rest,
-		entry: resolveFileSystemPath(
-			root,
-			entry ?? resolvePath(DEFAULT_GENERATED_ENTRY_DIR, DEFAULT_GENERATED_ENTRY_FILE)
-		),
 		userscript: {
 			name: app.name,
 			version: app.version,
@@ -362,7 +348,7 @@ export const resolveConfig = (config: CliConfig, root: string = process.cwd()): 
 	const app = resolveAppConfig(config.app);
 	const source = resolveSourceConfig(config.source, root);
 	const injector = resolveInjectorConfig(config.injector);
-	const monkey = resolveMonkeyConfig(app, config.monkey, root);
+	const monkey = resolveMonkeyConfig(app, config.monkey);
 
 	return {
 		root: projectRoot,

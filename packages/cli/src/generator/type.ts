@@ -16,3 +16,7 @@ export type RenderInitResult = {
 	code: string;
 	instanceName: string;
 };
+export type GeneratorResult = {
+	code: string;
+	instanceName: string;
+};

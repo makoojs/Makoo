@@ -1,31 +1,30 @@
 import process from 'node:process';
-import type {
-	InjectorConfig,
-	MonkeyBuildConfig,
-	MonkeyConfig,
-	MonkeyServerConfig,
-	ResolvedSourceConfig
-} from './type';
+import type { InjectorConfig, MonkeyBuildConfig, MonkeyConfig, MonkeyServerConfig } from './type';
 
 // default path
-export const DEFAULT_GENERATED_ENTRY_DIR = '.rite';
-export const DEFAULT_GENERATED_ENTRY_FILE = 'entry.ts';
-export const DEFAULT_SOURCE_DIR = 'src/injections';
+export const DEFAULT_SOURCE_DIR = 'injections';
 
-//default source config
-export const DEFAULT_SOURCE_CONFIG: Omit<ResolvedSourceConfig, 'root'> = {
+// The fixed filename (without extension) used for both:
+//   - the top-level manifest  (injections/meta.ts)
+//   - the per-module override (injections/foo/meta.ts)
+// Not user-configurable; centralised here so both load paths share one source of truth.
+export const META_FILE_NAME = 'meta';
+
+// default source config
+export const DEFAULT_SOURCE_CONFIG = {
 	dir: DEFAULT_SOURCE_DIR,
-	include: ['**/*'],
-	manifest: 'meta.ts',
-	exclude: [],
-	moduleEntry: ['index.vue', 'index.tsx', 'index.jsx'],
-	moduleOverride: ['meta.ts']
+	// '*' matches any single path segment (bare directory name).
+	// '**/*' would require a '/' and never match top-level folder names via picomatch.
+	include: ['*'],
+	exclude: [] as string[],
+	manifest: META_FILE_NAME
 };
 
 export const DEFAULT_INJECTOR_CONFIG: Required<InjectorConfig> = {
 	alive: false,
 	scope: 'local',
-	timeout: 5000
+	timeout: 5000,
+	hooks: {}
 };
 
 export const DEFAULT_MONKEY_SERVER_CONFIG: Required<MonkeyServerConfig> = {
