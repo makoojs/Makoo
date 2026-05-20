@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { WatchHandle } from 'vue';
-import { ObserverHub } from '../../packages/core/src/hooks/ObserverHub';
-import type { ObserveEvent } from '../../packages/core/src/hooks/type';
-import { TaskContext } from '../../packages/core/src/Task/TaskContext';
-import type { ArtifactTask, Task } from '../../packages/core/src/Task/types';
+import { ObserverHub } from '../src/hooks/ObserverHub';
+import type { ObserveEvent } from '../src/hooks/type';
+import { TaskContext } from '../src/Task/TaskContext';
+import type { ArtifactTask, Task } from '../src/Task/types';
 import {
 	createArtifactTask,
 	createListenerTask,

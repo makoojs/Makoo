@@ -17,6 +17,6 @@ export default defineConfig({
   test: {
     silent: true,
     environment: 'jsdom',
-    include: ['./__test__/**/*.test.ts'],
+    include: ['./packages/*/test/**/*.test.ts'],
   },
 })

@@ -3,8 +3,8 @@ import {
 	createActivityStore,
 	observeActivitySignal,
 	stopActivitySignal
-} from '../../packages/core/src/signal/observeActivitySignal';
-import type { ActivitySignalSource } from '../../packages/core/src/signal/types';
+} from '../src/signal/observeActivitySignal';
+import type { ActivitySignalSource } from '../src/signal/types';
 
 describe('observeActivitySignal', () => {
 	it('should observe protocol stores via get and subscribe', () => {

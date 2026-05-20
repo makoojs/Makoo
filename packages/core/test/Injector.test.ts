@@ -1,20 +1,20 @@
 ﻿import { createElement } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ObserverHub } from '../../packages/core/src/hooks/ObserverHub';
-import { Injector } from '../../packages/core/src/Injector/Injector';
-import { Action } from '../../packages/core/src/Injector/types';
-import { Logger } from '../../packages/core/src/logger/Logger';
-import { createActivityStore } from '../../packages/core/src/signal/observeActivitySignal';
-import { TaskContext } from '../../packages/core/src/Task/TaskContext';
-import type { TaskLifeCycle } from '../../packages/core/src/Task/TaskLifeCycle';
-import type { TaskRegister } from '../../packages/core/src/Task/TaskRegister';
-import type { TaskRunner } from '../../packages/core/src/Task/TaskRunner';
-import type { ArtifactTask } from '../../packages/core/src/Task/types';
-import { DOMWatcher } from '../../packages/core/src/watcher/DomWatcher';
-import { createReactAdapter } from '../../packages/react/src/ReactAdapter';
-import type { ReactMountArtifact } from '../../packages/react/src/type';
-import { createVueAdapter } from '../../packages/vue/src/VueAdapter';
-import { VuePlugin } from '../../packages/vue/src/VuePlugin';
+import { ObserverHub } from '../src/hooks/ObserverHub';
+import { Injector } from '../src/Injector/Injector';
+import { Action } from '../src/Injector/types';
+import { Logger } from '../src/logger/Logger';
+import { createActivityStore } from '../src/signal/observeActivitySignal';
+import { TaskContext } from '../src/Task/TaskContext';
+import type { TaskLifeCycle } from '../src/Task/TaskLifeCycle';
+import type { TaskRegister } from '../src/Task/TaskRegister';
+import type { TaskRunner } from '../src/Task/TaskRunner';
+import type { ArtifactTask } from '../src/Task/types';
+import { DOMWatcher } from '../src/watcher/DomWatcher';
+import { createReactAdapter } from '../../react/src/ReactAdapter';
+import type { ReactMountArtifact } from '../../react/src/type';
+import { createVueAdapter } from '../../vue/src/VueAdapter';
+import { VuePlugin } from '../../vue/src/VuePlugin';
 import { createVueComponent } from './factory/TaskFactor';
 
 const reactDomClientMock = vi.hoisted(() => {
