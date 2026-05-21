@@ -1,48 +1,45 @@
 import { readdirSync } from 'node:fs';
 import path from 'node:path';
 import picomatch from 'picomatch';
-import { resolveConfig, resolveInjection, resolveInjections } from '../config/resolve';
-import type { ResolvedInjectionModule } from '../config/type';
-import { loadConfig } from './load/loadConfig';
+import { resolveInjection, resolveInjections, resolveInjectorConfig } from '../config/resolve';
+import type { ResolvedConfig, ResolvedInjectionModule } from '../config/type';
 import { loadManifest } from './load/loadManifes';
 import { loadMeta } from './load/loadMeta';
 import type { ScannerResult } from './type';
 import { mergeMeta } from './util';
 
-export async function scanner(): Promise<ScannerResult> {
-	const { config, riteConfigFile } = await loadConfig();
-	const _resolveConfig = resolveConfig(config);
-
-	const manifest = await loadManifest(_resolveConfig.source);
-	if (!manifest) {
+export async function scanner(config: ResolvedConfig): Promise<ScannerResult> {
+	const loadedManifest = await loadManifest(config.source);
+	if (!loadedManifest) {
 		throw new Error('No manifest found');
 	}
-	const resolveManifest = resolveInjections(manifest, {
-		root: _resolveConfig.root,
-		source: _resolveConfig.source,
-		injector: _resolveConfig.injector
+	const resolveInjector = resolveInjectorConfig(loadedManifest.manifest.globalInjector);
+	const resolveManifest = resolveInjections(loadedManifest.manifest, {
+		root: config.root,
+		source: config.source,
+		injector: resolveInjector
 	});
 
-	const folder = readdirSync(_resolveConfig.source.dir, { withFileTypes: true })
+	const folder = readdirSync(config.source.dir, { withFileTypes: true })
 		.filter((entry) => entry.isDirectory())
 		.map((entry) => entry.name);
 
-	const isIncluded = picomatch(_resolveConfig.source.include);
-	const isExcluded = picomatch(_resolveConfig.source.exclude);
+	const isIncluded = picomatch(config.source.include);
+	const isExcluded = picomatch(config.source.exclude);
 	const filteredFolders = folder.filter((name) => isIncluded(name) && !isExcluded(name));
 
 	const injectionsMeta: ResolvedInjectionModule[] = [];
 	for (const module of filteredFolders) {
-		const modulePath = path.join(_resolveConfig.source.dir, module);
+		const modulePath = path.join(config.source.dir, module);
 		//check module level config
 		const meta = await loadMeta(modulePath);
 		if (!meta) {
 			continue;
 		}
 		const resolveMeta = resolveInjection(meta.moduleConfig, {
-			root: _resolveConfig.root,
-			source: _resolveConfig.source,
-			injector: _resolveConfig.injector,
+			root: config.root,
+			source: config.source,
+			injector: resolveInjector,
 			moduleDir: modulePath,
 			fallbackName: module,
 			overridePath: meta.overridePath
@@ -50,14 +47,16 @@ export async function scanner(): Promise<ScannerResult> {
 		injectionsMeta.push(resolveMeta);
 	}
 
-	const injections = mergeMeta(resolveManifest, injectionsMeta).filter((injection) => injection.enabled);
+	const injections = mergeMeta(resolveManifest, injectionsMeta).filter(
+		(injection) => injection.enabled
+	);
 	injections.sort((a, b) => a.moduleId.localeCompare(b.moduleId));
 
 	const frameworks = [...new Set(injections.map((m) => m.framework))];
 
 	return {
-		config: _resolveConfig,
-		riteConfigFile,
+		config: { ...config, injector: resolveInjector },
+		manifestFile: loadedManifest.manifestFile,
 		injections,
 		frameworks
 	};

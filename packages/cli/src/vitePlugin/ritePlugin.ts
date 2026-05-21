@@ -1,4 +1,5 @@
 import { RESOLVED_ID, VIRTUAL_MODULE_ID } from 'src/config/defaults';
+import type { ResolvedConfig } from 'src/config/type';
 import { scanner } from 'src/scanner/scanner';
 import type { ScannerResult } from 'src/scanner/type';
 import type { ConfigEnv, Plugin, ViteDevServer } from 'vite';
@@ -6,19 +7,17 @@ import { invalidateVirtualModule, sendScanError, triggerModuleHmr } from './hmrC
 import { buildVirtualMouduleCode } from './virtualModule';
 import { getWatchTargets, isStructuralChange } from './watchList';
 
-export function ritePlugin(): Plugin {
+export function ritePlugin(config: ResolvedConfig): Plugin {
 	let scanResult: ScannerResult | null = null;
-	let riteConfigFile: string | null = null;
 	let isDev: boolean = false;
 	let devServer: ViteDevServer | null = null;
 	let scanning: Promise<boolean> | null = null;
 
 	async function rescan(): Promise<boolean> {
 		if (!scanning) {
-			scanning = scanner()
+			scanning = scanner(config)
 				.then((result) => {
 					scanResult = result;
-					riteConfigFile = result.riteConfigFile;
 					return true;
 				})
 				.catch((err) => {
@@ -34,8 +33,8 @@ export function ritePlugin(): Plugin {
 	}
 
 	function syncWatchTargets(server: ViteDevServer): void {
-		if (!scanResult || !riteConfigFile) return;
-		const { files, dirs } = getWatchTargets(scanResult, riteConfigFile);
+		if (!scanResult) return;
+		const { files, dirs } = getWatchTargets(scanResult);
 
 		for (const f of files) {
 			server.watcher.add(f);
@@ -70,8 +69,8 @@ export function ritePlugin(): Plugin {
 			if (ok) syncWatchTargets(server);
 
 			const onChange = async (changedFile: string) => {
-				if (!scanResult || !riteConfigFile) return;
-				if (!isStructuralChange(changedFile, scanResult, riteConfigFile)) return;
+				if (!scanResult) return;
+				if (!isStructuralChange(changedFile, scanResult)) return;
 
 				const ok = await rescan();
 				if (!ok) return;
@@ -88,8 +87,8 @@ export function ritePlugin(): Plugin {
 			server.watcher.on('unlinkDir', onChange);
 		},
 		handleHotUpdate({ file, modules }) {
-			if (!scanResult || !riteConfigFile) return;
-			if (isStructuralChange(file, scanResult, riteConfigFile)) {
+			if (!scanResult) return;
+			if (isStructuralChange(file, scanResult)) {
 				return [];
 			}
 			return modules;

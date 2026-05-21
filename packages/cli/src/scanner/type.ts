@@ -1,22 +1,21 @@
 import type {
-	CliConfig,
+	InjectionManifest,
 	InjectionModuleConfig,
 	ResolvedConfig,
 	ResolvedInjectionFramework,
 	ResolvedInjectionModule
 } from '../config/type';
 
-export type LoadedConfig = {
-	config: CliConfig;
-	riteConfigFile: string;
-	root: string;
-};
-
 export type ScannerResult = {
-	riteConfigFile: string;
+	manifestFile: string;
 	config: ResolvedConfig;
 	injections: ResolvedInjectionModule[];
 	frameworks: ResolvedInjectionFramework[];
+};
+
+export type LoadManifestResult = {
+	manifest: InjectionManifest;
+	manifestFile: string;
 };
 
 export type LoadMetaResult = {

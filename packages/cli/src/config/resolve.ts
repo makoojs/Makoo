@@ -11,11 +11,11 @@ import type { MonkeyOption } from 'vite-plugin-monkey';
 import {
 	DEFAULT_FILE_NAME_SUFFIX,
 	DEFAULT_INJECTOR_CONFIG,
+	DEFAULT_MANIFEST_FILE_NAME,
 	DEFAULT_MONKEY_BUILD_CONFIG,
 	DEFAULT_MONKEY_CONFIG,
 	DEFAULT_MONKEY_SERVER_CONFIG,
 	DEFAULT_SOURCE_CONFIG,
-	META_FILE_NAME,
 	VIRTUAL_MODULE_ID
 } from './defaults';
 import type {
@@ -27,6 +27,7 @@ import type {
 	InjectorConfig,
 	MonkeyBuildConfig,
 	MonkeyConfig,
+	MonkeyUserscriptOption,
 	ResolvedConfig,
 	ResolvedInjectionFramework,
 	ResolvedInjectionManifest,
@@ -146,19 +147,32 @@ const resolveMetaFileName = (
 
 	return metaFileName;
 };
+const normalizeMonkeyLocaleValue = <T>(value: T): T | Record<string, string> => {
+	if (typeof value === 'string') {
+		return { '': value };
+	}
+	return value;
+};
+
+const normalizeMonkeyUserscript = (userscript: MonkeyUserscriptOption): MonkeyUserscriptOption => {
+	return {
+		...userscript,
+		name: normalizeMonkeyLocaleValue(userscript.name),
+		description: normalizeMonkeyLocaleValue(userscript.description)
+	} as MonkeyUserscriptOption;
+};
 
 export const normalizeInjectionManifest = (
 	injections: InjectionManifest | undefined
 ): ResolvedInjectionManifest => {
-	if (!injections) {
+	const items = injections?.injections;
+	if (!items) {
 		return [];
 	}
-
-	if (Array.isArray(injections)) {
-		return injections;
+	if (Array.isArray(items)) {
+		return items;
 	}
-
-	return Object.entries(injections).map(([name, config]) => ({
+	return Object.entries(items).map(([name, config]) => ({
 		name,
 		...config
 	}));
@@ -177,10 +191,10 @@ export const resolveSourceConfig = (
 	root: string
 ): ResolvedSourceConfig => {
 	return {
-		dir: resolveFileSystemPath(root, config?.dir ?? DEFAULT_SOURCE_CONFIG.dir),
+		dir: resolveFileSystemPath(root, DEFAULT_SOURCE_CONFIG.dir),
 		include: toStringArray(config?.include, DEFAULT_SOURCE_CONFIG.include),
 		exclude: toStringArray(config?.exclude, DEFAULT_SOURCE_CONFIG.exclude),
-		manifest: META_FILE_NAME
+		manifest: DEFAULT_MANIFEST_FILE_NAME
 	};
 };
 
@@ -257,18 +271,21 @@ export const resolveMonkeyConfig = (
 
 export const resolveInjection = (
 	config: InjectionModuleConfig,
-	options: ResolveInjectionOptions = {}
+	options: ResolveInjectionOptions
 ): ResolvedInjectionModule => {
 	const root = resolveProjectRoot(options.root);
 	const source = options.source ?? resolveSourceConfig(undefined, root);
 	const injector = options.injector ?? resolveInjectorConfig(undefined);
+	const componentBaseDir = options.moduleDir
+		? resolveFileSystemPath(root, options.moduleDir)
+		: source.dir;
 	const componentPath = options.componentPath
 		? resolveFileSystemPath(root, options.componentPath)
 		: config.component
-			? resolveFileSystemPath(source.dir, config.component)
+			? resolveFileSystemPath(componentBaseDir, config.component)
 			: '';
 	const moduleDir = options.moduleDir
-		? resolveFileSystemPath(root, options.moduleDir)
+		? componentBaseDir
 		: componentPath
 			? dirname(componentPath)
 			: source.dir;
@@ -326,9 +343,6 @@ export const resolveInjections = (
 	options: ResolveConfigOptions & {
 		source: ResolvedSourceConfig;
 		injector: ResolvedInjectorConfig;
-	} = {
-		source: resolveSourceConfig(undefined, resolveProjectRoot()),
-		injector: resolveInjectorConfig(undefined)
 	}
 ): ResolvedInjectionModule[] => {
 	const root = resolveProjectRoot(options.root);
@@ -380,10 +394,10 @@ export function resolveMonkeyPluginOptions(
 	return {
 		...resolved,
 		...override,
-		userscript: {
+		userscript: normalizeMonkeyUserscript({
 			...resolved.userscript,
 			...override?.userscript
-		},
+		}),
 		server: {
 			...resolved.server,
 			...override?.server

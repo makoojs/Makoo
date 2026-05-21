@@ -8,10 +8,10 @@ export const RESOLVED_ID = '\0virtual:rite/entry';
 export const DEFAULT_SOURCE_DIR = 'injections';
 
 // The fixed filename (without extension) used for both:
-//   - the top-level manifest  (injections/meta.ts)
-//   - the per-module override (injections/foo/meta.ts)
+//   - the top-level manifest  (injections/manifest.ts)
+//   - the per-module override (injections/foo/manifest.ts)
 // Not user-configurable; centralised here so both load paths share one source of truth.
-export const META_FILE_NAME = 'meta';
+export const DEFAULT_MANIFEST_FILE_NAME = 'manifest';
 
 // default source config
 export const DEFAULT_SOURCE_CONFIG = {
@@ -20,7 +20,7 @@ export const DEFAULT_SOURCE_CONFIG = {
 	// '**/*' would require a '/' and never match top-level folder names via picomatch.
 	include: ['*'],
 	exclude: [] as string[],
-	manifest: META_FILE_NAME
+	manifest: DEFAULT_MANIFEST_FILE_NAME
 };
 
 export const DEFAULT_INJECTOR_CONFIG: Required<InjectorConfig> = {

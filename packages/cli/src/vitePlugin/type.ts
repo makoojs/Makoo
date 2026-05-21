@@ -1,11 +1,10 @@
-import type { MonkeyOption } from 'vite-plugin-monkey';
+import type { CliConfig } from 'src/config/type';
 
 export type WatchTargets = {
 	files: string[];
 	dirs: string[];
 };
 
-export type RiteMonkeyOptions = {
+export type RiteMonkeyOptions = CliConfig & {
 	root?: string;
-	monkey?: Partial<MonkeyOption>;
 };

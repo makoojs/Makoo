@@ -1,5 +1,4 @@
 export {
-	defineConfig,
 	defineInjection,
 	defineInjections
 } from './config/config';

@@ -3,8 +3,10 @@ import type {
 	LifecycleHookMap,
 	InjectionConfig as RuntimeInjectionConfig
 } from '@rite/core';
-import type { MonkeyUserScript } from 'vite-plugin-monkey';
+import type { MonkeyOption, MonkeyUserScript } from 'vite-plugin-monkey';
 
+export type StrictShape<Shape, Value extends Shape> = Value &
+	Record<Exclude<keyof Value, keyof Shape>, never>;
 export type Thenable<T> = T | Promise<T>;
 
 export type MonkeyMode = 'serve' | 'build' | 'meta';
@@ -51,8 +53,8 @@ export type AppConfig = {
 	description?: string;
 };
 
+// consider to how to move the other object inside
 export type SourceConfig = {
-	dir?: string;
 	include?: string[];
 	exclude?: string[];
 };
@@ -61,7 +63,7 @@ export type ResolvedSourceConfig = {
 	dir: string; // Injected Components Directory
 	include: string[];
 	exclude: string[];
-	manifest: string; // manifest file basename (no extension), e.g. 'meta'
+	manifest: string; // manifest file basename (no extension), e.g. 'manifest'
 };
 
 export type InjectorConfig = Partial<
@@ -86,8 +88,10 @@ export type InjectionModuleConfig = ArtifactOptions & {
 };
 
 export type InjectionManifestRecord = Record<string, Omit<InjectionModuleConfig, 'name'>>;
-
-export type InjectionManifest = InjectionModuleConfig[] | InjectionManifestRecord;
+export type InjectionManifest = {
+	globalInjector?: InjectorConfig;
+	injections: InjectionModuleConfig[] | InjectionManifestRecord;
+};
 
 export type ResolvedInjectionManifest = InjectionModuleConfig[];
 
@@ -148,3 +152,4 @@ export type ResolvedConfig = {
 	source: ResolvedSourceConfig; // tell cli where find the injection components
 	injector: ResolvedInjectorConfig; // global `Injector` runtime config
 };
+export type MonkeyUserscriptOption = NonNullable<MonkeyOption['userscript']>;
