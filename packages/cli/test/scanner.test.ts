@@ -35,7 +35,8 @@ describe('scanner', () => {
 					}
 				};
 			`,
-			'injections/fromManifest/index.tsx': 'export default function FromManifest() { return null; }',
+			'injections/fromManifest/index.tsx':
+				'export default function FromManifest() { return null; }',
 			'injections/overridden/manifest.ts': `
 				export default { injectAt: '#new', component: './index.tsx', framework: 'Vue', alive: true };
 			`,
@@ -43,7 +44,8 @@ describe('scanner', () => {
 			'injections/includedOnly/manifest.ts': `
 				export default { injectAt: '#included', component: './index.tsx', framework: 'React' };
 			`,
-			'injections/includedOnly/index.tsx': 'export default function IncludedOnly() { return null; }',
+			'injections/includedOnly/index.tsx':
+				'export default function IncludedOnly() { return null; }',
 			'injections/skipMe/manifest.ts': `
 				export default { injectAt: '#skip', component: './index.tsx', framework: 'React' };
 			`,

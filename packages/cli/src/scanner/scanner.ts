@@ -3,6 +3,7 @@ import path from 'node:path';
 import picomatch from 'picomatch';
 import { resolveInjection, resolveInjections, resolveInjectorConfig } from '../config/resolve';
 import type { ResolvedConfig, ResolvedInjectionModule } from '../config/type';
+import { RiteError } from './error';
 import { loadManifest } from './load/loadManifes';
 import { loadMeta } from './load/loadMeta';
 import type { ScannerResult } from './type';
@@ -11,7 +12,7 @@ import { mergeMeta } from './util';
 export async function scanner(config: ResolvedConfig): Promise<ScannerResult> {
 	const loadedManifest = await loadManifest(config.source);
 	if (!loadedManifest) {
-		throw new Error('No manifest found');
+		throw new RiteError(`No manifest found in source directory at ${config.source.dir}`);
 	}
 	const resolveInjector = resolveInjectorConfig(loadedManifest.manifest.globalInjector);
 	const resolveManifest = resolveInjections(loadedManifest.manifest, {
@@ -51,6 +52,10 @@ export async function scanner(config: ResolvedConfig): Promise<ScannerResult> {
 		(injection) => injection.enabled
 	);
 	injections.sort((a, b) => a.moduleId.localeCompare(b.moduleId));
+
+	if (injections.length === 0) {
+		throw new RiteError('No enabled injections — all injections are disabled or filtered out');
+	}
 
 	const frameworks = [...new Set(injections.map((m) => m.framework))];
 

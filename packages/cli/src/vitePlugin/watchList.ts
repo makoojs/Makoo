@@ -28,10 +28,7 @@ export function getWatchTargets(scanResult: ScannerResult): WatchTargets {
 	};
 }
 
-export function isStructuralChange(
-	changedFile: string,
-	scanResult: ScannerResult
-): boolean {
+export function isStructuralChange(changedFile: string, scanResult: ScannerResult): boolean {
 	const { config } = scanResult;
 	if (changedFile === scanResult.manifestFile) return true;
 

@@ -32,7 +32,7 @@ export const OBSERVE_EVENT_NAMES = [
 	'dom:targetRestored'
 ] as const;
 
-export type ObserveEventName = typeof OBSERVE_EVENT_NAMES[number];
+export type ObserveEventName = (typeof OBSERVE_EVENT_NAMES)[number];
 
 export type ObserveEvent = {
 	name: ObserveEventName;

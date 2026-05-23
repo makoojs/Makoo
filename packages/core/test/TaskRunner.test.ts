@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { WatchHandle } from 'vue';
+import { createVueAdapter } from '../../vue/src/VueAdapter';
+import { VuePlugin } from '../../vue/src/VuePlugin';
 import { ObserverHub } from '../src/hooks/ObserverHub';
 import type { ObserveEvent } from '../src/hooks/type';
 import { createObserveEmitter } from '../src/hooks/util';
@@ -10,8 +12,6 @@ import { TaskContext } from '../src/Task/TaskContext';
 import { TaskRunner } from '../src/Task/TaskRunner';
 import type { ArtifactTask, ListenerTask } from '../src/Task/types';
 import { DOMWatcher } from '../src/watcher/DomWatcher';
-import { createVueAdapter } from '../../vue/src/VueAdapter';
-import { VuePlugin } from '../../vue/src/VuePlugin';
 import { createArtifactTask, createListenerTask, createVueComponent } from './factory/TaskFactor';
 
 describe('TaskRunner', () => {

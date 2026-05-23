@@ -12,7 +12,7 @@ export function sendScanError(server: ViteDevServer, error: unknown): void {
 	server.hot.send({
 		type: 'error',
 		err: {
-			message: `[rite] Scanner failed: ${err.message}`,
+			message: err.message,
 			stack: err.stack ?? '',
 			id: RESOLVED_ID,
 			frame: '',

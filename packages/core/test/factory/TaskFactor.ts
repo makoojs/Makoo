@@ -1,4 +1,5 @@
 import type { Component } from 'vue';
+import { createVueAdapter } from '../../../vue/src/VueAdapter';
 import type { ActivitySignalSource } from '../../src/signal/types';
 import type {
 	ArtifactTask,
@@ -8,7 +9,6 @@ import type {
 	TaskStatus,
 	TaskWatcherFeature
 } from '../../src/Task/types';
-import { createVueAdapter } from '../../../vue/src/VueAdapter';
 
 type TaskBaseInput = {
 	taskId: string;

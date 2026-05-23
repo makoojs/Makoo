@@ -1,5 +1,6 @@
 import { OBSERVE_EVENT_NAMES } from '@rite/core';
 import { z } from 'zod';
+import { ManifestValidationError } from './error';
 
 // --- Hook validation ---
 
@@ -44,18 +45,6 @@ export const InjectionManifestSchema = z.object({
 		z.record(z.string(), InjectionModuleSchema.omit({ name: true }))
 	])
 });
-
-// --- Error type ---
-
-export class ManifestValidationError extends Error {
-	constructor(
-		public file: string,
-		public issues: z.ZodIssue[]
-	) {
-		const summary = issues.map((i) => `${i.path.join('.') || 'root'}: ${i.message}`).join('; ');
-		super(`Invalid manifest at "${file}" => ${summary}`);
-	}
-}
 
 // --- Validate helpers ---
 

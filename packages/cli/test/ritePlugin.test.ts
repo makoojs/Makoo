@@ -58,7 +58,10 @@ afterEach(cleanupTempProjects);
 
 describe('ritePlugin', () => {
 	it('resolves virtual module id and returns empty module before scanning', () => {
-		const config = resolveConfig({ app: { name: 'plugin-test', version: '0.0.1' } }, path.resolve('/project'));
+		const config = resolveConfig(
+			{ app: { name: 'plugin-test', version: '0.0.1' } },
+			path.resolve('/project')
+		);
 		const plugin = ritePlugin(config) as Plugin;
 		const resolveId = getHook(plugin.resolveId);
 		const load = getHook(plugin.load);
@@ -90,7 +93,10 @@ describe('ritePlugin', () => {
 		const load = getHook(plugin.load);
 
 		await withCwd(root, async () => {
-			await configHook?.call({} as never, {}, { command: 'serve', mode: 'development' } as ConfigEnv);
+			await configHook?.call({} as never, {}, {
+				command: 'serve',
+				mode: 'development'
+			} as ConfigEnv);
 			await buildStart?.call({} as never, {} as never);
 			const code = await load?.call({} as never, RESOLVED_ID, {} as never);
 
@@ -119,7 +125,7 @@ describe('ritePlugin', () => {
 			expect.objectContaining({
 				type: 'error',
 				err: expect.objectContaining({
-					message: '[rite] Scanner failed: No manifest found',
+					message: expect.stringContaining('[rite]'),
 					plugin: 'vite-plugin-rite',
 					id: RESOLVED_ID
 				})

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createVueAdapter } from '../../vue/src/VueAdapter';
 import { ObserverHub } from '../src/hooks/ObserverHub';
 import type { ObserveEvent } from '../src/hooks/type';
 import { createObserveEmitter } from '../src/hooks/util';
@@ -7,7 +8,6 @@ import { createActivityStore } from '../src/signal/observeActivitySignal';
 import { TaskContext } from '../src/Task/TaskContext';
 import { TaskRegister } from '../src/Task/TaskRegister';
 import type { ArtifactTask } from '../src/Task/types';
-import { createVueAdapter } from '../../vue/src/VueAdapter';
 import { createTask, createVueComponent } from './factory/TaskFactor';
 
 describe('TaskRegister', () => {

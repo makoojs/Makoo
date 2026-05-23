@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { ManifestValidationError, RiteError } from '../src/scanner/error';
 import {
 	InjectionManifestSchema,
 	InjectionModuleSchema,
 	InjectorConfigSchema,
 	LifecycleHookMapSchema,
-	ManifestValidationError,
 	ObserveEventNameSchema,
 	validateManifest,
 	validateModuleMeta
@@ -179,6 +179,52 @@ describe('InjectionManifestSchema', () => {
 	});
 });
 
+describe('RiteError', () => {
+	it('formats message with issues', () => {
+		const err = new RiteError('Something went wrong', [
+			{ path: 'foo.bar', message: 'is required' },
+			{ path: 'baz', message: 'must be one of "a", "b"' }
+		]);
+		expect(err.message).toContain('[rite] Something went wrong');
+		expect(err.message).toContain('- foo.bar: is required');
+		expect(err.message).toContain('- baz: must be one of "a", "b"');
+		expect(err).toBeInstanceOf(Error);
+	});
+
+	it('formats message without issues', () => {
+		const err = new RiteError('Something went wrong');
+		expect(err.message).toBe('[rite] Something went wrong');
+	});
+
+	it('exposes issues for programmatic access', () => {
+		const issues = [{ path: 'x', message: 'bad' }];
+		const err = new RiteError('msg', issues);
+		expect(err.issues).toBe(issues);
+	});
+});
+
+describe('ManifestValidationError', () => {
+	it('extends RiteError', () => {
+		const err = new ManifestValidationError('/project/injections/manifest.ts', []);
+		expect(err).toBeInstanceOf(RiteError);
+		expect(err).toBeInstanceOf(ManifestValidationError);
+	});
+
+	it('formats human-readable message from Zod issues', () => {
+		const result = InjectionModuleSchema.safeParse({});
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			const err = new ManifestValidationError(
+				'/project/injections/widget/manifest.ts',
+				result.error.issues
+			);
+			expect(err.message).toContain('[rite] Invalid manifest at');
+			expect(err.message).toContain('injectAt: is required');
+			expect(err.message).toContain('component: is required');
+		}
+	});
+});
+
 describe('validateManifest', () => {
 	it('returns parsed data on success', () => {
 		const data = validateManifest(
@@ -188,19 +234,15 @@ describe('validateManifest', () => {
 		expect(data.injections).toBeInstanceOf(Array);
 	});
 
-	it('throws ManifestValidationError with file path on failure', () => {
-		expect(() =>
-			validateManifest({}, '/project/injections/manifest.ts')
-		).toThrow(ManifestValidationError);
-
+	it('throws ManifestValidationError with formatted message on failure', () => {
 		try {
 			validateManifest({}, '/project/injections/manifest.ts');
+			expect.unreachable('should have thrown');
 		} catch (err) {
 			expect(err).toBeInstanceOf(ManifestValidationError);
 			const e = err as ManifestValidationError;
-			expect(e.file).toBe('/project/injections/manifest.ts');
-			expect(e.message).toContain('Invalid manifest');
-			expect(e.message).toContain('/project/injections/manifest.ts');
+			expect(e.message).toContain('[rite] Invalid manifest at');
+			expect(e.message).toContain('injections');
 		}
 	});
 });
@@ -214,18 +256,15 @@ describe('validateModuleMeta', () => {
 		expect(data.injectAt).toBe('#app');
 	});
 
-	it('throws ManifestValidationError with file path on failure', () => {
-		expect(() =>
-			validateModuleMeta({}, '/project/injections/widget/manifest.ts')
-		).toThrow(ManifestValidationError);
-
+	it('throws ManifestValidationError with formatted message on failure', () => {
 		try {
 			validateModuleMeta({}, '/project/injections/widget/manifest.ts');
+			expect.unreachable('should have thrown');
 		} catch (err) {
 			expect(err).toBeInstanceOf(ManifestValidationError);
 			const e = err as ManifestValidationError;
-			expect(e.file).toBe('/project/injections/widget/manifest.ts');
-			expect(e.message).toContain('Invalid manifest');
+			expect(e.message).toContain('[rite] Invalid manifest at');
+			expect(e.message).toContain('injectAt: is required');
 		}
 	});
 });

@@ -51,7 +51,9 @@ describe('generate', () => {
 		const result = generate(scanResult);
 
 		expect(result.instanceName).toBe('injector');
-		expect(result.code).toContain(`import Injection_hello_card from '${path.join(root, 'injections/hello/index.tsx').replace(/\\/g, '/')}';`);
+		expect(result.code).toContain(
+			`import Injection_hello_card from '${path.join(root, 'injections/hello/index.tsx').replace(/\\/g, '/')}';`
+		);
 		expect(result.code).toContain("import { Injector } from '@rite/core';");
 		expect(result.code).toContain('import { createReactAdapter } from "@rite/react";');
 		expect(result.code).toContain('const injector = new Injector(');

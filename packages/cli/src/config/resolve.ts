@@ -8,6 +8,7 @@ import {
 } from 'node:path';
 import process from 'node:process';
 import type { MonkeyOption } from 'vite-plugin-monkey';
+import { RiteError } from '../scanner/error';
 import {
 	DEFAULT_FILE_NAME_SUFFIX,
 	DEFAULT_INJECTOR_CONFIG,
@@ -289,7 +290,10 @@ export const resolveInjection = (
 			: source.dir;
 
 	if (!componentPath) {
-		throw new Error(`Injection "${config.name ?? config.injectAt}" is missing component path`);
+		throw new RiteError(
+			`Missing component path for injection "${config.name ?? config.injectAt}"`,
+			[{ path: 'component', message: 'could not resolve component path' }]
+		);
 	}
 
 	const {

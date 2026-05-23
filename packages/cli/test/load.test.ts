@@ -16,10 +16,10 @@ const sourceFor = (root: string): ResolvedSourceConfig => ({
 afterEach(cleanupTempProjects);
 
 describe('loadManifest', () => {
-	it('returns null when source directory does not exist', async () => {
+	it('throws RiteError when source directory does not exist', async () => {
 		const root = await trackProject({ 'package.json': '{}' });
 
-		await expect(loadManifest(sourceFor(root))).resolves.toBeNull();
+		await expect(loadManifest(sourceFor(root))).rejects.toThrow('Source directory not found');
 	});
 
 	it('loads manifest file and reads fresh content on repeated loads', async () => {
