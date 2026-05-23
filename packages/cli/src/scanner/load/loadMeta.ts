@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { ErrorCode } from '@rite/core';
 import { createJiti } from 'jiti';
 import { DEFAULT_MANIFEST_FILE_NAME } from '../../config/defaults';
 import { RiteError } from '../error';
@@ -24,9 +25,12 @@ export async function loadMeta(root: string): Promise<LoadMetaResult | null> {
 			try {
 				raw = await jiti.import(fullPath, { default: true });
 			} catch (err) {
-				throw new RiteError(`Failed to load module manifest at ${fullPath}`, [
-					{ path: '(load)', message: err instanceof Error ? err.message : String(err) }
-				]);
+				throw new RiteError(
+					`Failed to load module manifest at ${fullPath}`,
+					[{ path: '(load)', message: err instanceof Error ? err.message : String(err) }],
+					ErrorCode.CLI_MODULE_LOAD_FAIL,
+					err instanceof Error ? err : undefined
+				);
 			}
 
 			return {

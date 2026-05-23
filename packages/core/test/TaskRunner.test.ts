@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { WatchHandle } from 'vue';
 import { createVueAdapter } from '../../vue/src/VueAdapter';
 import { VuePlugin } from '../../vue/src/VuePlugin';
+import { ErrorCode } from '../src/error/ErrorCode';
+import { TaskError } from '../src/error/TaskError';
 import { ObserverHub } from '../src/hooks/ObserverHub';
 import type { ObserveEvent } from '../src/hooks/type';
 import { createObserveEmitter } from '../src/hooks/util';
@@ -44,7 +46,16 @@ describe('TaskRunner', () => {
 	});
 
 	it('should throw when no task exists on run', () => {
-		expect(() => taskRunner.run()).toThrow('No registered tasks found');
+		expect(() => taskRunner.run()).toThrow(TaskError);
+		try {
+			taskRunner.run();
+		} catch (err) {
+			expect(err).toBeInstanceOf(TaskError);
+			const e = err as TaskError;
+			expect(e.code).toBe(ErrorCode.TASK_NO_REGISTERED);
+			expect(e.message).toContain('[rite]');
+			expect(e.message).toContain('No registered tasks found');
+		}
 	});
 
 	it('should emit normalized run payloads for start, skipped and scheduled', () => {

@@ -7,6 +7,12 @@ export type {
 	MountAdapter,
 	ResolvableMountAdapter
 } from './adapter/types';
+export { AdapterError } from './error/AdapterError';
+export type { ErrorCodeValue } from './error/ErrorCode';
+export { ErrorCode } from './error/ErrorCode';
+export type { RiteIssue } from './error/RiteError';
+export { RiteError } from './error/RiteError';
+export { TaskError } from './error/TaskError';
 export { ObserverHub } from './hooks/ObserverHub';
 export type {
 	LifecycleHookMap,

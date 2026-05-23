@@ -7,6 +7,7 @@ import {
 	resolve as resolvePath
 } from 'node:path';
 import process from 'node:process';
+import { ErrorCode } from '@rite/core';
 import type { MonkeyOption } from 'vite-plugin-monkey';
 import { RiteError } from '../scanner/error';
 import {
@@ -292,7 +293,8 @@ export const resolveInjection = (
 	if (!componentPath) {
 		throw new RiteError(
 			`Missing component path for injection "${config.name ?? config.injectAt}"`,
-			[{ path: 'component', message: 'could not resolve component path' }]
+			[{ path: 'component', message: 'could not resolve component path' }],
+			ErrorCode.CLI_RESOLVE_FAIL
 		);
 	}
 

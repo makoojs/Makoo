@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { ErrorCode } from '@rite/core';
 import { createJiti } from 'jiti';
 import type { ResolvedSourceConfig } from '../../config/type';
 import { RiteError } from '../error';
@@ -10,7 +11,11 @@ export async function loadManifest(
 	source: ResolvedSourceConfig
 ): Promise<LoadManifestResult | null> {
 	if (!existsSync(source.dir)) {
-		throw new RiteError(`Source directory not found at ${source.dir}`);
+		throw new RiteError(
+			`Source directory not found at ${source.dir}`,
+			undefined,
+			ErrorCode.CLI_SOURCE_DIR_NOT_FOUND
+		);
 	}
 
 	const manifestName = source.manifest;
@@ -26,9 +31,12 @@ export async function loadManifest(
 			try {
 				raw = await jiti.import(fullPath, { default: true });
 			} catch (err) {
-				throw new RiteError(`Failed to load manifest at ${fullPath}`, [
-					{ path: '(load)', message: err instanceof Error ? err.message : String(err) }
-				]);
+				throw new RiteError(
+					`Failed to load manifest at ${fullPath}`,
+					[{ path: '(load)', message: err instanceof Error ? err.message : String(err) }],
+					ErrorCode.CLI_MANIFEST_LOAD_FAIL,
+					err instanceof Error ? err : undefined
+				);
 			}
 
 			return {

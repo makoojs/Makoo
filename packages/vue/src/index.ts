@@ -1,3 +1,4 @@
+export { VueAdapterError } from './error';
 export type {
 	VueMountArtifact,
 	VueMountHandle,

@@ -1,28 +1,12 @@
 import { relative } from 'node:path';
 import process from 'node:process';
+import { RiteError, type RiteIssue } from '@rite/core';
 import type { z } from 'zod';
 
-// --- Types ---
+export type { RiteIssue };
+export { RiteError };
 
-export type RiteIssue = {
-	path: string;
-	message: string;
-};
-
-// --- Error classes ---
-
-export class RiteError extends Error {
-	readonly issues: RiteIssue[];
-
-	constructor(message: string, issues?: RiteIssue[]) {
-		const formatted = issues?.length
-			? `[rite] ${message}\n${issues.map((i) => `  - ${i.path}: ${i.message}`).join('\n')}`
-			: `[rite] ${message}`;
-		super(formatted);
-		this.name = 'RiteError';
-		this.issues = issues ?? [];
-	}
-}
+// --- Manifest validation error (CLI-specific) ---
 
 export class ManifestValidationError extends RiteError {
 	constructor(file: string, zodIssues: z.ZodIssue[]) {

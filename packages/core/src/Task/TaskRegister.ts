@@ -1,4 +1,6 @@
 import type { AdapterResolver } from '../adapter/types';
+import { AdapterError } from '../error/AdapterError';
+import { ErrorCode } from '../error/ErrorCode';
 import type { ObserveEmitter } from '../hooks/type';
 import { registerHooks } from '../hooks/util';
 import type { ArtifactOptions, InjectionConfig } from '../Injector/types';
@@ -148,9 +150,12 @@ export class TaskRegister {
 		const timeout = option?.timeout ?? this.injectConfig.timeout;
 		const mountAdapter = this.resolveMountAdapter(artifact);
 		if (!mountAdapter) {
-			throw new Error(`No adapter found for artifact: ${artifactName}`);
+			throw new AdapterError(
+				`No adapter found for artifact: ${artifactName}`,
+				[{ path: 'artifact', message: artifactName }],
+				ErrorCode.ADAPTER_NOT_FOUND
+			);
 		}
-
 		this.emit(
 			'register:start',
 			buildRegisterObservePayload('register:start', {

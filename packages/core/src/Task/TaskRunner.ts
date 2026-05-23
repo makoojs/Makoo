@@ -1,3 +1,5 @@
+import { ErrorCode } from '../error/ErrorCode';
+import { TaskError } from '../error/TaskError';
 import type { ObserveEmitter } from '../hooks/type';
 import { Action, type ActionEvent, type InjectionConfig } from '../Injector/types';
 import { Logger } from '../logger/Logger';
@@ -51,7 +53,11 @@ export class TaskRunner {
 
 		this.emit('run:start', buildRunObservePayload('run:start', runStats));
 		if (this.taskContext.taskRecords.length === 0) {
-			throw new Error('No registered tasks found, call register() before run()');
+			throw new TaskError(
+				'No registered tasks found, call register() before run()',
+				[],
+				ErrorCode.TASK_NO_REGISTERED
+			);
 		}
 		this.taskContext.taskRecords.forEach(({ taskId: id, injectAt }) => {
 			const status: 'idle' | 'pending' | 'active' | undefined =

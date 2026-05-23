@@ -1,5 +1,6 @@
 import { readdirSync } from 'node:fs';
 import path from 'node:path';
+import { ErrorCode } from '@rite/core';
 import picomatch from 'picomatch';
 import { resolveInjection, resolveInjections, resolveInjectorConfig } from '../config/resolve';
 import type { ResolvedConfig, ResolvedInjectionModule } from '../config/type';
@@ -12,7 +13,11 @@ import { mergeMeta } from './util';
 export async function scanner(config: ResolvedConfig): Promise<ScannerResult> {
 	const loadedManifest = await loadManifest(config.source);
 	if (!loadedManifest) {
-		throw new RiteError(`No manifest found in source directory at ${config.source.dir}`);
+		throw new RiteError(
+			`No manifest found in source directory at ${config.source.dir}`,
+			undefined,
+			ErrorCode.CLI_MANIFEST_NOT_FOUND
+		);
 	}
 	const resolveInjector = resolveInjectorConfig(loadedManifest.manifest.globalInjector);
 	const resolveManifest = resolveInjections(loadedManifest.manifest, {
@@ -51,11 +56,16 @@ export async function scanner(config: ResolvedConfig): Promise<ScannerResult> {
 	const injections = mergeMeta(resolveManifest, injectionsMeta).filter(
 		(injection) => injection.enabled
 	);
-	injections.sort((a, b) => a.moduleId.localeCompare(b.moduleId));
 
 	if (injections.length === 0) {
-		throw new RiteError('No enabled injections — all injections are disabled or filtered out');
+		throw new RiteError(
+			'No enabled injections — all injections are disabled or filtered out',
+			undefined,
+			ErrorCode.CLI_NO_ENABLED_INJECTIONS
+		);
 	}
+
+	injections.sort((a, b) => a.moduleId.localeCompare(b.moduleId));
 
 	const frameworks = [...new Set(injections.map((m) => m.framework))];
 
