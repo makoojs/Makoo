@@ -22,7 +22,8 @@
     "cac": "^7.0.0",
     "jiti": "^2.6.1",
     "picomatch": "^4.0.4",
-    "vite-plugin-monkey": "^7.1.9"
+    "vite-plugin-monkey": "^7.1.9",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/picomatch": "^4.0.3"

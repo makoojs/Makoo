@@ -3,6 +3,7 @@ import path from 'node:path';
 import { createJiti } from 'jiti';
 import type { ResolvedSourceConfig } from '../../config/type';
 import type { LoadManifestResult } from '../type';
+import { validateManifest } from '../validation';
 
 export async function loadManifest(
 	source: ResolvedSourceConfig
@@ -18,8 +19,9 @@ export async function loadManifest(
 			statSync(fullPath).isFile() &&
 			path.basename(entry, path.extname(entry)) === manifestName
 		) {
+			const raw = await jiti.import(fullPath, { default: true });
 			return {
-				manifest: await jiti.import(fullPath, { default: true }),
+				manifest: validateManifest(raw, fullPath),
 				manifestFile: fullPath
 			};
 		}

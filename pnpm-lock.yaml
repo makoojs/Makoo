@@ -77,6 +77,9 @@ importers:
       vite-plugin-monkey:
         specifier: ^7.1.9
         version: 7.1.9(postcss@8.5.10)(vite@8.0.8(@types/node@25.6.0)(jiti@2.6.1))
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
       '@types/picomatch':
         specifier: ^4.0.3
@@ -1397,6 +1400,9 @@ packages:
   yallist@4.0.0:
     resolution: {integrity: sha512-3wdGidZyq5PB084XLES5TpOSRA3wjXAlIWMhum2kRcv/41Sn2emQ0dycQW4uZXLejwKvg6EsvbdlVL+FYEct7A==}
 
+  zod@4.4.3:
+    resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
+
 snapshots:
 
   '@acemir/cssom@0.9.31': {}
@@ -2586,3 +2592,5 @@ snapshots:
       cuint: 0.2.2
 
   yallist@4.0.0: {}
+
+  zod@4.4.3: {}

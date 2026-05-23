@@ -81,7 +81,7 @@ export type ResolvedInjectionFramework = Exclude<InjectionFramework, 'auto'>;
 export type InjectionModuleConfig = ArtifactOptions & {
 	name?: string;
 	injectAt: string;
-	component?: string;
+	component: string;
 	framework?: InjectionFramework;
 	enabled?: boolean;
 	//TODO url match alive component

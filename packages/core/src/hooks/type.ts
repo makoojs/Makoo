@@ -1,35 +1,38 @@
 import type { TaskKind, TaskStatus } from '../Task/types';
-export type ObserveEventName =
-	| 'register:start'
-	| 'register:success'
-	| 'register:duplicate'
-	| 'register:error'
-	| 'run:start'
-	| 'run:taskScheduled'
-	| 'run:taskSkipped'
-	| 'artifact:mountStart'
-	| 'artifact:mountSuccess'
-	| 'artifact:mountFail'
-	| 'listener:attached'
-	| 'listener:detached'
-	| 'listener:attachFail'
-	| 'alive:enabled'
-	| 'alive:disabled'
-	| 'alive:observerStarted'
-	| 'alive:observerStopped'
-	| 'task:targetReady'
-	| 'task:statusChange'
-	| 'task:beforeReset'
-	| 'task:afterReset'
-	| 'task:beforeDestroy'
-	| 'task:afterDestroy'
-	| 'signal:watcherReleased'
-	| 'resource:listenerReleased'
-	| 'artifact:unmounted'
-	| 'dom:targetFound'
-	| 'dom:targetTimeout'
-	| 'dom:targetRemoved'
-	| 'dom:targetRestored';
+export const OBSERVE_EVENT_NAMES = [
+	'register:start',
+	'register:success',
+	'register:duplicate',
+	'register:error',
+	'run:start',
+	'run:taskScheduled',
+	'run:taskSkipped',
+	'artifact:mountStart',
+	'artifact:mountSuccess',
+	'artifact:mountFail',
+	'listener:attached',
+	'listener:detached',
+	'listener:attachFail',
+	'alive:enabled',
+	'alive:disabled',
+	'alive:observerStarted',
+	'alive:observerStopped',
+	'task:targetReady',
+	'task:statusChange',
+	'task:beforeReset',
+	'task:afterReset',
+	'task:beforeDestroy',
+	'task:afterDestroy',
+	'signal:watcherReleased',
+	'resource:listenerReleased',
+	'artifact:unmounted',
+	'dom:targetFound',
+	'dom:targetTimeout',
+	'dom:targetRemoved',
+	'dom:targetRestored'
+] as const;
+
+export type ObserveEventName = typeof OBSERVE_EVENT_NAMES[number];
 
 export type ObserveEvent = {
 	name: ObserveEventName;

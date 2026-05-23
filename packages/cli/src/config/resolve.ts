@@ -281,9 +281,7 @@ export const resolveInjection = (
 		: source.dir;
 	const componentPath = options.componentPath
 		? resolveFileSystemPath(root, options.componentPath)
-		: config.component
-			? resolveFileSystemPath(componentBaseDir, config.component)
-			: '';
+		: resolveFileSystemPath(componentBaseDir, config.component);
 	const moduleDir = options.moduleDir
 		? componentBaseDir
 		: componentPath
