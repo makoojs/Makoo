@@ -1,3 +1,3 @@
 export function renderImportInjector(): string {
-	return "import { Injector } from '@rite/core'; \n";
+	return "import { Injector } from '@makoo/core'; \n";
 }

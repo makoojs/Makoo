@@ -1,4 +1,4 @@
-import type { ResolvableMountAdapter } from '@rite/core';
+import type { ResolvableMountAdapter } from '@makoo/core';
 import type { ReactElement } from 'react';
 import type { Root } from 'react-dom/client';
 

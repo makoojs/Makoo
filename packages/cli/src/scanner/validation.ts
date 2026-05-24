@@ -1,4 +1,4 @@
-import { OBSERVE_EVENT_NAMES } from '@rite/core';
+import { OBSERVE_EVENT_NAMES } from '@makoo/core';
 import { z } from 'zod';
 import { ManifestValidationError } from './error';
 

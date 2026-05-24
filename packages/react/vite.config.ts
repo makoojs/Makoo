@@ -12,7 +12,7 @@ export default defineConfig({
 			fileName: 'index'
 		},
 		rollupOptions: {
-			external: ['@rite/core', 'react', 'react-dom', 'react-dom/client']
+			external: ['@makoo/core', 'react', 'react-dom', 'react-dom/client']
 		}
 	},
 	plugins: [

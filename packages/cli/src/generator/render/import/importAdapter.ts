@@ -10,9 +10,9 @@ export function renderImportAdapter(injections: ResolvedInjectionModule[]): Rend
 	const adapterImports = Array.from(frameworkSet).map((adapter) => {
 		switch (adapter) {
 			case 'React':
-				return 'import { createReactAdapter } from "@rite/react";';
+				return 'import { createReactAdapter } from "@makoo/react";';
 			case 'Vue':
-				return 'import { createVueAdapter } from "@rite/vue";';
+				return 'import { createVueAdapter } from "@makoo/vue";';
 			default:
 				return null;
 		}

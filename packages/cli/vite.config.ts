@@ -13,7 +13,7 @@ export default defineConfig({
 		},
 		rollupOptions: {
 			external: [
-				'@rite/core',
+				'@makoo/core',
 				'jiti',
 				'vite-plugin-monkey',
 				'node:fs',

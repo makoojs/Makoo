@@ -10,8 +10,8 @@ export type {
 export { AdapterError } from './error/AdapterError';
 export type { ErrorCodeValue } from './error/ErrorCode';
 export { ErrorCode } from './error/ErrorCode';
-export type { RiteIssue } from './error/RiteError';
-export { RiteError } from './error/RiteError';
+export type { MakooIssue } from './error/MakooError';
+export { MakooError } from './error/MakooError';
 export { TaskError } from './error/TaskError';
 export { ObserverHub } from './hooks/ObserverHub';
 export type {

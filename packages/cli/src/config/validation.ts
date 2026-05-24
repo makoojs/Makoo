@@ -1,6 +1,6 @@
-import { ErrorCode, RiteError } from '@rite/core';
+import { ErrorCode, MakooError } from '@makoo/core';
 import { z } from 'zod';
-import { toRiteIssue } from '../scanner/error';
+import { toMakooIssue } from '../scanner/error';
 
 const AppConfigSchema = z.object({
 	name: z.string().min(1, 'app.name is required'),
@@ -18,9 +18,9 @@ export const CliConfigSchema = z.object({
 export function validateCliConfig(data: unknown): asserts data is z.infer<typeof CliConfigSchema> {
 	const result = CliConfigSchema.safeParse(data);
 	if (!result.success) {
-		throw new RiteError(
+		throw new MakooError(
 			'Invalid CliConfig',
-			result.error.issues.map(toRiteIssue),
+			result.error.issues.map(toMakooIssue),
 			ErrorCode.CLI_CONFIG_INVALID
 		);
 	}

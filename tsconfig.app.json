@@ -26,16 +26,16 @@
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
-      "@rite/core": [
+      "@makoo/core": [
         "packages/core/src/index.ts"
       ],
-      "@rite/vue": [
+      "@makoo/vue": [
         "packages/vue/src/index.ts"
       ],
-      "@rite/react": [
+      "@makoo/react": [
         "packages/react/src/index.ts"
       ],
-      "@rite/cli": [
+      "@makoo/cli": [
         "packages/cli/src/index.ts"
       ]
     }

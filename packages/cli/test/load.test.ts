@@ -16,7 +16,7 @@ const sourceFor = (root: string): ResolvedSourceConfig => ({
 afterEach(cleanupTempProjects);
 
 describe('loadManifest', () => {
-	it('throws RiteError when source directory does not exist', async () => {
+	it('throws MakooError when source directory does not exist', async () => {
 		const root = await trackProject({ 'package.json': '{}' });
 
 		await expect(loadManifest(sourceFor(root))).rejects.toThrow('Source directory not found');

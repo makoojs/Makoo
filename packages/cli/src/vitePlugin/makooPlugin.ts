@@ -7,7 +7,7 @@ import { invalidateVirtualModule, sendScanError, triggerModuleHmr } from './hmrC
 import { buildVirtualMouduleCode } from './virtualModule';
 import { getWatchTargets, isStructuralChange } from './watchList';
 
-export function ritePlugin(config: ResolvedConfig): Plugin {
+export function makooPlugin(config: ResolvedConfig): Plugin {
 	let scanResult: ScannerResult | null = null;
 	let isDev: boolean = false;
 	let devServer: ViteDevServer | null = null;
@@ -22,7 +22,7 @@ export function ritePlugin(config: ResolvedConfig): Plugin {
 				})
 				.catch((err) => {
 					if (devServer) sendScanError(devServer, err);
-					else console.error('[rite]', err);
+					else console.error('[makoo]', err);
 					return false;
 				})
 				.finally(() => {
@@ -45,7 +45,7 @@ export function ritePlugin(config: ResolvedConfig): Plugin {
 	}
 
 	return {
-		name: 'vite-plugin-rite',
+		name: 'vite-plugin-makoo',
 		enforce: 'pre',
 		config(_, env: ConfigEnv) {
 			isDev = env.command === 'serve';

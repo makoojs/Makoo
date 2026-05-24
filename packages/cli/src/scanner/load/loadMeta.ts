@@ -1,9 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { ErrorCode } from '@rite/core';
+import { ErrorCode } from '@makoo/core';
 import { createJiti } from 'jiti';
 import { DEFAULT_MANIFEST_FILE_NAME } from '../../config/defaults';
-import { RiteError } from '../error';
+import { MakooError } from '../error';
 import type { LoadMetaResult } from '../type';
 import { validateModuleMeta } from '../validation';
 
@@ -25,7 +25,7 @@ export async function loadMeta(root: string): Promise<LoadMetaResult | null> {
 			try {
 				raw = await jiti.import(fullPath, { default: true });
 			} catch (err) {
-				throw new RiteError(
+				throw new MakooError(
 					`Failed to load module manifest at ${fullPath}`,
 					[{ path: '(load)', message: err instanceof Error ? err.message : String(err) }],
 					ErrorCode.CLI_MODULE_LOAD_FAIL,

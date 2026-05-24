@@ -49,7 +49,7 @@ describe('resolveConfig', () => {
 });
 
 describe('resolveMonkeyPluginOptions', () => {
-	it('maps resolved rite config to vite-plugin-monkey options and protects virtual entry', () => {
+	it('maps resolved makoo config to vite-plugin-monkey options and protects virtual entry', () => {
 		const config = resolveConfig(
 			{
 				app: {
@@ -58,7 +58,7 @@ describe('resolveMonkeyPluginOptions', () => {
 				},
 				monkey: {
 					userscript: {
-						namespace: 'https://rite.test',
+						namespace: 'https://makoo.test',
 						match: ['https://example.com/*']
 					},
 					server: {
@@ -89,7 +89,7 @@ describe('resolveMonkeyPluginOptions', () => {
 		expect(options.userscript).toMatchObject({
 			name: { '': 'demo-script' },
 			version: '1.2.3',
-			namespace: 'https://rite.test',
+			namespace: 'https://makoo.test',
 			match: ['https://override.test/*']
 		});
 		expect(options.server).toMatchObject({

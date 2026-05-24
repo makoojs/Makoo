@@ -14,6 +14,6 @@ export type {
 	MonkeyServerConfig,
 	SourceConfig
 } from './config/type';
-export { riteMonkey } from './vitePlugin/riteMonkeyPlugin';
-export { ritePlugin } from './vitePlugin/ritePlugin';
-export type { RiteMonkeyOptions } from './vitePlugin/type';
+export { makooMonkey } from './vitePlugin/makooMonkeyPlugin';
+export { makooPlugin } from './vitePlugin/makooPlugin';
+export type { MakooMonkeyOptions } from './vitePlugin/type';

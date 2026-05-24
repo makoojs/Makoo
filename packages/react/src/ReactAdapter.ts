@@ -1,4 +1,4 @@
-import { ErrorCode } from '@rite/core';
+import { ErrorCode } from '@makoo/core';
 import { createRoot } from 'react-dom/client';
 import { ReactAdapterError } from './error';
 import type { ReactMountAdapter } from './type';

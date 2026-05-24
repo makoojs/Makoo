@@ -8,7 +8,7 @@
     "tsBuildInfoFile": "../../node_modules/.tmp/tsconfig.package-react.tsbuildinfo",
     "baseUrl": ".",
     "paths": {
-      "@rite/core": ["../core"]
+      "@makoo/core": ["../core"]
     }
   },
   "include": [

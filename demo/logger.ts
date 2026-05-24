@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 
 const logs = ref<string[]>([])
-const LOGGER_PREFIX = '[Rite]'
+const LOGGER_PREFIX = '[Makoo]'
 
 export function addLog(msg: string) {
     logs.value.unshift(`[${new Date().toLocaleTimeString()}] ${msg}`)

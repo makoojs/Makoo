@@ -8,7 +8,7 @@
         "tsBuildInfoFile": "../../node_modules/.tmp/tsconfig.package-vue.tsbuildinfo",
         "baseUrl": ".",
         "paths": {
-            "@rite/core": [
+            "@makoo/core": [
                 "../core"
             ]
         }

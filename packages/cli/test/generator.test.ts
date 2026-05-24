@@ -54,8 +54,8 @@ describe('generate', () => {
 		expect(result.code).toContain(
 			`import Injection_hello_card from '${path.join(root, 'injections/hello/index.tsx').replace(/\\/g, '/')}';`
 		);
-		expect(result.code).toContain("import { Injector } from '@rite/core';");
-		expect(result.code).toContain('import { createReactAdapter } from "@rite/react";');
+		expect(result.code).toContain("import { Injector } from '@makoo/core';");
+		expect(result.code).toContain('import { createReactAdapter } from "@makoo/react";');
 		expect(result.code).toContain('const injector = new Injector(');
 		expect(result.code).toContain('"run:start":(() => "run-start")');
 		expect(result.code).toContain('injector.applyAdapter(createReactAdapter());');

@@ -3,7 +3,7 @@ import type { ConfigEnv, Plugin, ViteDevServer } from 'vite';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RESOLVED_ID, VIRTUAL_MODULE_ID } from '../src/config/defaults';
 import { resolveConfig } from '../src/config/resolve';
-import { ritePlugin } from '../src/vitePlugin/ritePlugin';
+import { makooPlugin } from '../src/vitePlugin/makooPlugin';
 import { cleanupTempProjects, trackProject, withCwd } from './utils/tempProject';
 
 type Hook = (...args: unknown[]) => unknown;
@@ -36,7 +36,7 @@ const createProject = async (files: Record<string, string> = {}) => {
 		},
 		root
 	);
-	return { root, plugin: ritePlugin(config) as Plugin };
+	return { root, plugin: makooPlugin(config) as Plugin };
 };
 
 const createDevServer = () =>
@@ -56,13 +56,13 @@ const createDevServer = () =>
 
 afterEach(cleanupTempProjects);
 
-describe('ritePlugin', () => {
+describe('makooPlugin', () => {
 	it('resolves virtual module id and returns empty module before scanning', () => {
 		const config = resolveConfig(
 			{ app: { name: 'plugin-test', version: '0.0.1' } },
 			path.resolve('/project')
 		);
-		const plugin = ritePlugin(config) as Plugin;
+		const plugin = makooPlugin(config) as Plugin;
 		const resolveId = getHook(plugin.resolveId);
 		const load = getHook(plugin.load);
 
@@ -113,7 +113,7 @@ describe('ritePlugin', () => {
 			},
 			root
 		);
-		const plugin = ritePlugin(config) as Plugin;
+		const plugin = makooPlugin(config) as Plugin;
 		const configureServer = getHook(plugin.configureServer);
 		const server = createDevServer();
 
@@ -125,8 +125,8 @@ describe('ritePlugin', () => {
 			expect.objectContaining({
 				type: 'error',
 				err: expect.objectContaining({
-					message: expect.stringContaining('[rite]'),
-					plugin: 'vite-plugin-rite',
+					message: expect.stringContaining('[makoo]'),
+					plugin: 'vite-plugin-makoo',
 					id: RESOLVED_ID
 				})
 			})

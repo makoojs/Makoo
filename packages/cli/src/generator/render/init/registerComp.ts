@@ -1,4 +1,4 @@
-import type { ArtifactOptions } from '@rite/core';
+import type { ArtifactOptions } from '@makoo/core';
 import type { Component, RenderInitResult } from 'src/generator/type';
 import { renderInlineValue } from '../util/value';
 

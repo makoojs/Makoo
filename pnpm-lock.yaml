@@ -59,7 +59,7 @@ importers:
 
   packages/cli:
     dependencies:
-      '@rite/core':
+      '@makoo/core':
         specifier: workspace:*
         version: link:../core
       cac:
@@ -89,7 +89,7 @@ importers:
 
   packages/react:
     dependencies:
-      '@rite/core':
+      '@makoo/core':
         specifier: workspace:*
         version: link:../core
       react:
@@ -101,7 +101,7 @@ importers:
 
   packages/vue:
     dependencies:
-      '@rite/core':
+      '@makoo/core':
         specifier: workspace:*
         version: link:../core
       vue:

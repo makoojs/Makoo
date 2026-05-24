@@ -3,9 +3,9 @@ defineOptions({ name: 'DemoPage' })
 
 import React from 'react'
 import { onMounted, onUnmounted, provide, ref, watch } from 'vue'
-import { createActivityStore, Injector } from '@rite/core'
-import { createReactAdapter } from '@rite/react'
-import { createVueAdapter } from '@rite/vue'
+import { createActivityStore, Injector } from '@makoo/core'
+import { createReactAdapter } from '@makoo/react'
+import { createVueAdapter } from '@makoo/vue'
 
 import { InjectedBadge, InjectedCounter, InjectedTooltip } from './injectedWidgets'
 import { InjectedReactBadge } from './injectedWidgets/InjectedReactBadge'
@@ -221,4 +221,3 @@ onUnmounted(() => {
     }
 }
 </style>
-

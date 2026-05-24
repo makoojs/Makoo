@@ -5,6 +5,6 @@ export type WatchTargets = {
 	dirs: string[];
 };
 
-export type RiteMonkeyOptions = CliConfig & {
+export type MakooMonkeyOptions = CliConfig & {
 	root?: string;
 };

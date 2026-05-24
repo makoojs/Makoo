@@ -2,7 +2,7 @@ import type {
 	ArtifactOptions,
 	LifecycleHookMap,
 	InjectionConfig as RuntimeInjectionConfig
-} from '@rite/core';
+} from '@makoo/core';
 import type { MonkeyOption, MonkeyUserScript } from 'vite-plugin-monkey';
 
 export type StrictShape<Shape, Value extends Shape> = Value &

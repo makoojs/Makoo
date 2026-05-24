@@ -7,9 +7,9 @@ import {
 	resolve as resolvePath
 } from 'node:path';
 import process from 'node:process';
-import { ErrorCode } from '@rite/core';
+import { ErrorCode } from '@makoo/core';
 import type { MonkeyOption } from 'vite-plugin-monkey';
-import { RiteError } from '../scanner/error';
+import { MakooError } from '../scanner/error';
 import {
 	DEFAULT_FILE_NAME_SUFFIX,
 	DEFAULT_INJECTOR_CONFIG,
@@ -292,7 +292,7 @@ export const resolveInjection = (
 			: source.dir;
 
 	if (!componentPath) {
-		throw new RiteError(
+		throw new MakooError(
 			`Missing component path for injection "${config.name ?? config.injectAt}"`,
 			[{ path: 'component', message: 'could not resolve component path' }],
 			ErrorCode.CLI_RESOLVE_FAIL

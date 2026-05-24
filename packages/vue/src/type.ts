@@ -1,4 +1,4 @@
-import type { ResolvableMountAdapter } from '@rite/core';
+import type { ResolvableMountAdapter } from '@makoo/core';
 import type { App, Component, ComponentPublicInstance } from 'vue';
 
 export type VueMountHandle = App<Element>;

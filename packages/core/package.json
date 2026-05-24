@@ -1,7 +1,7 @@
 ﻿{
-  "name": "@rite/core",
+  "name": "@makoo/core",
   "version": "1.3.1",
-  "description": "Framework-agnostic runtime core for rite",
+  "description": "Framework-agnostic runtime core for makoo",
   "type": "module",
   "license": "MIT",
   "sideEffects": false,

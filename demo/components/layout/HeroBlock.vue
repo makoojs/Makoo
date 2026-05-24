@@ -9,7 +9,7 @@ const props = defineProps<{
 
 <template>
     <header class="hero">
-        <img src="../../assets/rite-icon.png" alt="rite" width='120px' />
+        <img src="../../assets/makoo-icon.png" alt="rite" width='120px' />
         <h1 class="hero-title">{{ props.title }}</h1>
         <span class="hero-desc">{{ props.description }}</span>
     </header>

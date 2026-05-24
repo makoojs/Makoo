@@ -4,7 +4,7 @@ import { build } from 'vite';
 import { afterEach, describe, expect, it } from 'vitest';
 import { resolveConfig } from '../src/config/resolve';
 import { scanner } from '../src/scanner/scanner';
-import { riteMonkey } from '../src/vitePlugin/riteMonkeyPlugin';
+import { makooMonkey } from '../src/vitePlugin/makooMonkeyPlugin';
 import { cleanupTempProjects, trackProject, withCwd } from './utils/tempProject';
 
 afterEach(cleanupTempProjects);
@@ -108,8 +108,8 @@ describe('scanner integration', () => {
 	});
 });
 
-describe('riteMonkey build integration', () => {
-	it('injects ritePlugin and vite-plugin-monkey so Vite builds the generated virtual entry into a userscript', async () => {
+describe('makooMonkey build integration', () => {
+	it('injects makooPlugin and vite-plugin-monkey so Vite builds the generated virtual entry into a userscript', async () => {
 		const root = await trackProject({
 			'injections/manifest.ts': `
 				export default {
@@ -126,7 +126,7 @@ describe('riteMonkey build integration', () => {
 				root,
 				configFile: false,
 				logLevel: 'silent',
-				plugins: riteMonkey({
+				plugins: makooMonkey({
 					root,
 					app: {
 						name: 'build-script',
@@ -135,7 +135,7 @@ describe('riteMonkey build integration', () => {
 					},
 					monkey: {
 						userscript: {
-							namespace: 'https://rite.test',
+							namespace: 'https://makoo.test',
 							match: ['https://example.com/*']
 						},
 						build: {
@@ -146,9 +146,9 @@ describe('riteMonkey build integration', () => {
 				}),
 				resolve: {
 					alias: {
-						'@rite/core': path.resolve(__dirname, '../../core/src/index.ts'),
-						'@rite/react': path.resolve(__dirname, '../../react/src/index.ts'),
-						'@rite/vue': path.resolve(__dirname, '../../vue/src/index.ts')
+						'@makoo/core': path.resolve(__dirname, '../../core/src/index.ts'),
+						'@makoo/react': path.resolve(__dirname, '../../react/src/index.ts'),
+						'@makoo/vue': path.resolve(__dirname, '../../vue/src/index.ts')
 					}
 				},
 				build: {
@@ -166,7 +166,7 @@ describe('riteMonkey build integration', () => {
 		const userscript = await readFile(path.join(root, 'dist/build-script.user.js'), 'utf8');
 		const header = userscript.slice(0, 1000);
 		expect(header).toMatch(/\/\/ @name\s+build-script/);
-		expect(header).toMatch(/\/\/ @namespace\s+https:\/\/rite\.test/);
+		expect(header).toMatch(/\/\/ @namespace\s+https:\/\/makoo\.test/);
 		expect(header).toMatch(/\/\/ @version\s+0\.0\.7/);
 		expect(header).toMatch(/\/\/ @description\s+build integration test/);
 		expect(header).toMatch(/\/\/ @match\s+https:\/\/example\.com\/\*/);
@@ -174,6 +174,6 @@ describe('riteMonkey build integration', () => {
 		expect(userscript).toContain('createReactAdapter');
 		expect(userscript).toContain('register("body"');
 		expect(userscript).toContain('.run()');
-		expect(userscript).not.toContain('virtual:rite/entry');
+		expect(userscript).not.toContain('virtual:makoo/entry');
 	});
 });

@@ -13,7 +13,7 @@ export default defineConfig({
 			fileName: 'index'
 		},
 		rollupOptions: {
-			external: ['@rite/core', 'vue']
+			external: ['@makoo/core', 'vue']
 		}
 	},
 	plugins: [

@@ -16,7 +16,7 @@ export function sendScanError(server: ViteDevServer, error: unknown): void {
 			stack: err.stack ?? '',
 			id: RESOLVED_ID,
 			frame: '',
-			plugin: 'vite-plugin-rite',
+			plugin: 'vite-plugin-makoo',
 			loc: undefined
 		}
 	});

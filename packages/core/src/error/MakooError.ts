@@ -1,4 +1,4 @@
-export type RiteIssue = {
+export type MakooIssue = {
 	path: string;
 	message: string;
 };
@@ -13,13 +13,13 @@ function collectCauseChain(cause?: Error): string[] {
 	return lines;
 }
 
-export class RiteError extends Error {
+export class MakooError extends Error {
 	readonly code: string;
-	readonly issues: RiteIssue[];
+	readonly issues: MakooIssue[];
 	override readonly cause?: Error;
 
-	constructor(message: string, issues?: RiteIssue[], code?: string, cause?: Error) {
-		const parts: string[] = [`[rite] ${message}`];
+	constructor(message: string, issues?: MakooIssue[], code?: string, cause?: Error) {
+		const parts: string[] = [`[makoo] ${message}`];
 		if (issues?.length) {
 			for (const i of issues) {
 				parts.push(`  - ${i.path}: ${i.message}`);
@@ -29,7 +29,7 @@ export class RiteError extends Error {
 			parts.push(line);
 		}
 		super(parts.join('\n'));
-		this.name = 'RiteError';
+		this.name = 'MakooError';
 		this.code = code ?? '';
 		this.issues = issues ?? [];
 		if (cause) this.cause = cause;

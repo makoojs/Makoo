@@ -2,7 +2,7 @@ import { mkdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 const repoRoot = path.resolve(__dirname, '../../../..');
-const tempRoot = path.join(repoRoot, '.tmp', 'rite-tests');
+const tempRoot = path.join(repoRoot, '.tmp', 'makoo-tests');
 
 export const createdProjects: string[] = [];
 

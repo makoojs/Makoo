@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ManifestValidationError, RiteError } from '../src/scanner/error';
+import { ManifestValidationError, MakooError } from '../src/scanner/error';
 import {
 	InjectionManifestSchema,
 	InjectionModuleSchema,
@@ -179,34 +179,34 @@ describe('InjectionManifestSchema', () => {
 	});
 });
 
-describe('RiteError', () => {
+describe('MakooError', () => {
 	it('formats message with issues', () => {
-		const err = new RiteError('Something went wrong', [
+		const err = new MakooError('Something went wrong', [
 			{ path: 'foo.bar', message: 'is required' },
 			{ path: 'baz', message: 'must be one of "a", "b"' }
 		]);
-		expect(err.message).toContain('[rite] Something went wrong');
+		expect(err.message).toContain('[makoo] Something went wrong');
 		expect(err.message).toContain('- foo.bar: is required');
 		expect(err.message).toContain('- baz: must be one of "a", "b"');
 		expect(err).toBeInstanceOf(Error);
 	});
 
 	it('formats message without issues', () => {
-		const err = new RiteError('Something went wrong');
-		expect(err.message).toBe('[rite] Something went wrong');
+		const err = new MakooError('Something went wrong');
+		expect(err.message).toBe('[makoo] Something went wrong');
 	});
 
 	it('exposes issues for programmatic access', () => {
 		const issues = [{ path: 'x', message: 'bad' }];
-		const err = new RiteError('msg', issues);
+		const err = new MakooError('msg', issues);
 		expect(err.issues).toBe(issues);
 	});
 });
 
 describe('ManifestValidationError', () => {
-	it('extends RiteError', () => {
+	it('extends MakooError', () => {
 		const err = new ManifestValidationError('/project/injections/manifest.ts', []);
-		expect(err).toBeInstanceOf(RiteError);
+		expect(err).toBeInstanceOf(MakooError);
 		expect(err).toBeInstanceOf(ManifestValidationError);
 	});
 
@@ -218,7 +218,7 @@ describe('ManifestValidationError', () => {
 				'/project/injections/widget/manifest.ts',
 				result.error.issues
 			);
-			expect(err.message).toContain('[rite] Invalid manifest at');
+			expect(err.message).toContain('[makoo] Invalid manifest at');
 			expect(err.message).toContain('injectAt: is required');
 			expect(err.message).toContain('component: is required');
 		}
@@ -241,7 +241,7 @@ describe('validateManifest', () => {
 		} catch (err) {
 			expect(err).toBeInstanceOf(ManifestValidationError);
 			const e = err as ManifestValidationError;
-			expect(e.message).toContain('[rite] Invalid manifest at');
+			expect(e.message).toContain('[makoo] Invalid manifest at');
 			expect(e.message).toContain('injections');
 		}
 	});
@@ -263,7 +263,7 @@ describe('validateModuleMeta', () => {
 		} catch (err) {
 			expect(err).toBeInstanceOf(ManifestValidationError);
 			const e = err as ManifestValidationError;
-			expect(e.message).toContain('[rite] Invalid manifest at');
+			expect(e.message).toContain('[makoo] Invalid manifest at');
 			expect(e.message).toContain('injectAt: is required');
 		}
 	});

@@ -53,7 +53,7 @@ describe('TaskRunner', () => {
 			expect(err).toBeInstanceOf(TaskError);
 			const e = err as TaskError;
 			expect(e.code).toBe(ErrorCode.TASK_NO_REGISTERED);
-			expect(e.message).toContain('[rite]');
+			expect(e.message).toContain('[makoo]');
 			expect(e.message).toContain('No registered tasks found');
 		}
 	});
