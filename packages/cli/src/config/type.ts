@@ -10,6 +10,21 @@ export type StrictShape<Shape, Value extends Shape> = Value &
 export type Thenable<T> = T | Promise<T>;
 
 export type MonkeyMode = 'serve' | 'build' | 'meta';
+export type ResolveConfigOptions = {
+	root?: string;
+};
+
+export type ResolveInjectionOptions = {
+	root?: string;
+	source?: ResolvedSourceConfig;
+	injector?: ResolvedInjectorConfig;
+	moduleId?: string;
+	moduleDir?: string;
+	componentPath?: string;
+	overridePath?: string;
+	fallbackName?: string;
+	index?: number;
+};
 
 export type MonkeyGenerateContext = {
 	userscript: string;

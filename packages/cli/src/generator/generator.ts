@@ -32,8 +32,19 @@ export function generate(sannerResult: ScannerResult): GeneratorResult {
 	const initInjectorCode: string = initInjector.code;
 	const registerCode: string = initComponetnRegister.code;
 	const injectorRunCode: string = renderInjectorRun(initInjector.instanceName);
+
+	const body = [initInjectorCode, registerCode, injectorRunCode].join('\n');
+	const guardedBody = [
+		'try {',
+		...body.split('\n').map((l) => `  ${l}`),
+		'} catch (e) {',
+		'  console.error(\'[makoo] Injection startup failed:\', e);',
+		'  throw e;',
+		'}'
+	].join('\n');
+
 	return {
-		code: [importCode, initInjectorCode, registerCode, injectorRunCode].join('\n'),
+		code: [importCode, guardedBody].join('\n'),
 		instanceName: initInjector.instanceName
 	};
 }

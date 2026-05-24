@@ -339,14 +339,18 @@ export class TaskContext {
 
 		// unmount the subapp instance, to prevent memory leaks
 		if (isArtifactTask(context) && context.mountHandle && context.appRoot) {
-			context.adapter.unmount({
-				host: context.hostElement,
-				mountPoint: context.appRoot,
-				handle: context.mountHandle,
-				taskId: id,
-				injectAt: context.injectAt,
-				reason: 'reset'
-			});
+			try {
+				context.adapter.unmount({
+					host: context.hostElement,
+					mountPoint: context.appRoot,
+					handle: context.mountHandle,
+					taskId: id,
+					injectAt: context.injectAt,
+					reason: 'reset'
+				});
+			} catch (e) {
+				this.logger.warn(`Failed to unmount component for task "${id}" during reset:`, e);
+			}
 		}
 
 		this.setTaskStatus(id, 'idle');

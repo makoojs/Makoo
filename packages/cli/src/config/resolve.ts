@@ -18,7 +18,9 @@ import {
 	DEFAULT_MONKEY_CONFIG,
 	DEFAULT_MONKEY_SERVER_CONFIG,
 	DEFAULT_SOURCE_CONFIG,
-	VIRTUAL_MODULE_ID
+	REACT_EXTENSIONS,
+	VIRTUAL_MODULE_ID,
+	VUE_EXTENSIONS
 } from './defaults';
 import type {
 	AppConfig,
@@ -30,6 +32,7 @@ import type {
 	MonkeyBuildConfig,
 	MonkeyConfig,
 	MonkeyUserscriptOption,
+	ResolveConfigOptions,
 	ResolvedConfig,
 	ResolvedInjectionFramework,
 	ResolvedInjectionManifest,
@@ -39,25 +42,10 @@ import type {
 	ResolvedMonkeyConfig,
 	ResolvedMonkeyServerConfig,
 	ResolvedSourceConfig,
+	ResolveInjectionOptions,
 	SourceConfig
 } from './type';
 import { validateCliConfig } from './validation';
-
-export type ResolveConfigOptions = {
-	root?: string;
-};
-
-export type ResolveInjectionOptions = {
-	root?: string;
-	source?: ResolvedSourceConfig;
-	injector?: ResolvedInjectorConfig;
-	moduleId?: string;
-	moduleDir?: string;
-	componentPath?: string;
-	overridePath?: string;
-	fallbackName?: string;
-	index?: number;
-};
 
 const toStringArray = (value: string | string[] | undefined, fallback: string[]): string[] => {
 	if (Array.isArray(value)) {
@@ -86,11 +74,24 @@ const resolveProjectRoot = (root?: string): string => {
 const inferFrameworkFromPath = (componentPath: string): ResolvedInjectionFramework => {
 	const extension = extname(componentPath).toLowerCase();
 
-	if (extension === '.tsx' || extension === '.jsx') {
+	if (REACT_EXTENSIONS.has(extension)) {
 		return 'React';
 	}
 
-	return 'Vue';
+	if (VUE_EXTENSIONS.has(extension)) {
+		return 'Vue';
+	}
+
+	throw new MakooError(
+		`Cannot infer framework from "${componentPath}". Set "framework" explicitly ("Vue" or "React") in the module manifest.`,
+		[
+			{
+				path: 'framework',
+				message: `unable to infer framework from extension "${extension || '(none)'}"`
+			}
+		],
+		ErrorCode.CLI_UNKNOWN_FRAMEWORK
+	);
 };
 
 const resolveFramework = (
