@@ -31,7 +31,7 @@ export function createVueAdapter(): VueMountAdapter {
 							message: cause instanceof Error ? cause.message : String(cause)
 						}
 					],
-					ErrorCode.VUE_MOUNT_FAIL,
+					ErrorCode.ADAPTER_MOUNT_FAIL,
 					cause instanceof Error ? cause : undefined
 				);
 			}
@@ -48,7 +48,7 @@ export function createVueAdapter(): VueMountAdapter {
 							message: cause instanceof Error ? cause.message : String(cause)
 						}
 					],
-					ErrorCode.VUE_UNMOUNT_FAIL,
+					ErrorCode.ADAPTER_UNMOUNT_FAIL,
 					cause instanceof Error ? cause : undefined
 				);
 			}

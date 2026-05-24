@@ -1,6 +1,8 @@
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { ErrorCode } from '@makoo/core';
+import { MakooError } from '../src/scanner/error';
 import type { ResolvedSourceConfig } from '../src/config/type';
 import { loadManifest } from '../src/scanner/load/loadManifes';
 import { loadMeta } from '../src/scanner/load/loadMeta';
@@ -19,7 +21,21 @@ describe('loadManifest', () => {
 	it('throws MakooError when source directory does not exist', async () => {
 		const root = await trackProject({ 'package.json': '{}' });
 
-		await expect(loadManifest(sourceFor(root))).rejects.toThrow('Source directory not found');
+		const err = await loadManifest(sourceFor(root)).catch((e) => e);
+		expect(err).toBeInstanceOf(MakooError);
+		expect(err.code).toBe(ErrorCode.CLI_SOURCE_DIR_NOT_FOUND);
+		expect(err.message).toContain('Source directory not found');
+	});
+
+	it('throws MakooError with CLI_MANIFEST_LOAD_FAIL when manifest file throws on load', async () => {
+		const root = await trackProject({
+			'injections/manifest.ts': `throw new Error('forced manifest load failure');`
+		});
+
+		const err = await loadManifest(sourceFor(root)).catch((e) => e);
+		expect(err).toBeInstanceOf(MakooError);
+		expect(err.code).toBe(ErrorCode.CLI_MANIFEST_LOAD_FAIL);
+		expect(err.message).toContain('Failed to load manifest');
 	});
 
 	it('loads manifest file and reads fresh content on repeated loads', async () => {
@@ -54,6 +70,17 @@ describe('loadManifest', () => {
 });
 
 describe('loadMeta', () => {
+	it('throws MakooError with CLI_MODULE_MANIFEST_LOAD_FAIL when module manifest throws on load', async () => {
+		const root = await trackProject({
+			'injections/widget/manifest.ts': `throw new Error('forced module manifest failure');`
+		});
+
+		const err = await loadMeta(path.join(root, 'injections/widget')).catch((e) => e);
+		expect(err).toBeInstanceOf(MakooError);
+		expect(err.code).toBe(ErrorCode.CLI_MODULE_MANIFEST_LOAD_FAIL);
+		expect(err.message).toContain('Failed to load module manifest');
+	});
+
 	it('returns null when module directory has no manifest file', async () => {
 		const root = await trackProject({ 'injections/widget/index.tsx': 'export default null;' });
 

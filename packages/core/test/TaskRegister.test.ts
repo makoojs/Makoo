@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { AdapterError } from '../src/error/AdapterError';
+import { ErrorCode } from '../src/error/ErrorCode';
 import { createVueAdapter } from '../../vue/src/VueAdapter';
 import { ObserverHub } from '../src/hooks/ObserverHub';
 import type { ObserveEvent } from '../src/hooks/type';
@@ -32,6 +34,20 @@ describe('TaskRegister', () => {
 		);
 		document.body.innerHTML = '';
 		vi.restoreAllMocks();
+	});
+
+	it('should throw AdapterError with ADAPTER_NOT_FOUND when no adapter matches the artifact', () => {
+		function UnknownArtifact() {
+			return null;
+		}
+		expect(() => taskRegister.register('#target', UnknownArtifact)).toThrow(AdapterError);
+		try {
+			taskRegister.register('#target', UnknownArtifact);
+		} catch (err) {
+			const e = err as AdapterError;
+			expect(e.code).toBe(ErrorCode.ADAPTER_NOT_FOUND);
+			expect(e.message).toContain('No adapter found for artifact');
+		}
 	});
 
 	it('should match Vue component artifacts with explicit Vue features', () => {

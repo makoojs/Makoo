@@ -28,7 +28,7 @@ export async function loadMeta(root: string): Promise<LoadMetaResult | null> {
 				throw new MakooError(
 					`Failed to load module manifest at ${fullPath}`,
 					[{ path: '(load)', message: err instanceof Error ? err.message : String(err) }],
-					ErrorCode.CLI_MODULE_LOAD_FAIL,
+					ErrorCode.CLI_MODULE_MANIFEST_LOAD_FAIL,
 					err instanceof Error ? err : undefined
 				);
 			}

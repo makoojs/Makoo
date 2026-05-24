@@ -296,7 +296,7 @@ export const resolveInjection = (
 		throw new MakooError(
 			`Missing component path for injection "${config.name ?? config.injectAt}"`,
 			[{ path: 'component', message: 'could not resolve component path' }],
-			ErrorCode.CLI_RESOLVE_FAIL
+			ErrorCode.CLI_COMPONENT_NOT_FOUND
 		);
 	}
 

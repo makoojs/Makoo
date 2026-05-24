@@ -24,7 +24,7 @@ export function createReactAdapter(): ReactMountAdapter {
 							message: cause instanceof Error ? cause.message : String(cause)
 						}
 					],
-					ErrorCode.REACT_MOUNT_FAIL,
+					ErrorCode.ADAPTER_MOUNT_FAIL,
 					cause instanceof Error ? cause : undefined
 				);
 			}
@@ -41,7 +41,7 @@ export function createReactAdapter(): ReactMountAdapter {
 							message: cause instanceof Error ? cause.message : String(cause)
 						}
 					],
-					ErrorCode.REACT_UNMOUNT_FAIL,
+					ErrorCode.ADAPTER_UNMOUNT_FAIL,
 					cause instanceof Error ? cause : undefined
 				);
 			}

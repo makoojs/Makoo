@@ -1,3 +1,5 @@
+import { ErrorCode } from './ErrorCode';
+
 export type MakooIssue = {
 	path: string;
 	message: string;
@@ -30,7 +32,7 @@ export class MakooError extends Error {
 		}
 		super(parts.join('\n'));
 		this.name = 'MakooError';
-		this.code = code ?? '';
+		this.code = code ?? ErrorCode.UNKNOWN;
 		this.issues = issues ?? [];
 		if (cause) this.cause = cause;
 	}
