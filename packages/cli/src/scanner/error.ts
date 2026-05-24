@@ -9,10 +9,10 @@ export { RiteError };
 // --- Manifest validation error (CLI-specific) ---
 
 export class ManifestValidationError extends RiteError {
-	constructor(file: string, zodIssues: z.ZodIssue[]) {
+	constructor(file: string, zodIssues: z.ZodIssue[], code?: string) {
 		const issues = zodIssues.map(toRiteIssue);
 		const rel = relative(process.cwd(), file);
-		super(`Invalid manifest at ${rel}`, issues);
+		super(`Invalid manifest at ${rel}`, issues, code);
 		this.name = 'ManifestValidationError';
 	}
 }
@@ -34,7 +34,7 @@ function formatZodMessage(issue: z.ZodIssue): string {
 	return issue.message;
 }
 
-function toRiteIssue(issue: z.ZodIssue): RiteIssue {
+export function toRiteIssue(issue: z.ZodIssue): RiteIssue {
 	return {
 		path: formatZodPath(issue.path),
 		message: formatZodMessage(issue)

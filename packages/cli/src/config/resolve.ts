@@ -41,6 +41,7 @@ import type {
 	ResolvedSourceConfig,
 	SourceConfig
 } from './type';
+import { validateCliConfig } from './validation';
 
 export type ResolveConfigOptions = {
 	root?: string;
@@ -364,6 +365,8 @@ export const resolveInjections = (
 };
 
 export const resolveConfig = (config: CliConfig, root: string = process.cwd()): ResolvedConfig => {
+	validateCliConfig(config);
+
 	const projectRoot = resolveProjectRoot(root);
 	const app = resolveAppConfig(config.app);
 	const source = resolveSourceConfig(config.source, root);
