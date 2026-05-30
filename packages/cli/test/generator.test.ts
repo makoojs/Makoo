@@ -38,7 +38,8 @@ describe('generate', () => {
 			{
 				root,
 				source: config.source,
-				injector: config.injector
+				injector: config.injector,
+				componentPath: path.join(root, 'injections/hello/index.tsx')
 			}
 		);
 		const scanResult: ScannerResult = {

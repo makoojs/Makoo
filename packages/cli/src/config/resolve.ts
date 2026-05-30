@@ -7,8 +7,8 @@ import {
 	resolve as resolvePath
 } from 'node:path';
 import process from 'node:process';
-import { ComponentNotFoundError, UnknownFrameworkError } from '../error/error';
 import type { MonkeyOption } from 'vite-plugin-monkey';
+import { ComponentNotFoundError, UnknownFrameworkError } from '../error/error';
 import {
 	DEFAULT_FILE_NAME_SUFFIX,
 	DEFAULT_INJECTOR_CONFIG,
@@ -273,18 +273,15 @@ export const resolveInjection = (
 	const componentBaseDir = options.moduleDir
 		? resolveFileSystemPath(root, options.moduleDir)
 		: source.dir;
-	const componentPath = options.componentPath
-		? resolveFileSystemPath(root, options.componentPath)
-		: resolveFileSystemPath(componentBaseDir, config.component);
+	if (!options.componentPath) {
+		throw new ComponentNotFoundError(config.name ?? config.injectAt);
+	}
+	const componentPath = resolveFileSystemPath(root, options.componentPath);
 	const moduleDir = options.moduleDir
 		? componentBaseDir
 		: componentPath
 			? dirname(componentPath)
 			: source.dir;
-
-	if (!componentPath) {
-		throw new ComponentNotFoundError(config.name ?? config.injectAt);
-	}
 
 	const {
 		component,
@@ -345,6 +342,7 @@ export const resolveInjections = (
 			root,
 			source: options.source,
 			injector: options.injector,
+			componentPath: resolvePath(options.source.dir, injection.component),
 			// `index` was a name of element
 			index
 		})

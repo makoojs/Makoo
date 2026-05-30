@@ -1,9 +1,8 @@
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { ErrorCode } from '@makoo/core';
+import { ErrorCode, MakooError } from '@makoo/core';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { ResolvedSourceConfig } from '../src/config/type';
-import { MakooError } from '../src/error/error';
 import { loadManifest } from '../src/scanner/load/loadManifes';
 import { loadMeta } from '../src/scanner/load/loadMeta';
 import { cleanupTempProjects, trackProject } from './utils/tempProject';

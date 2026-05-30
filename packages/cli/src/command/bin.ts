@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { MakooError } from '@makoo/core';
 import cac from 'cac';
 import { addCommand } from './add';
 import { buildCommand } from './build';
@@ -29,7 +30,11 @@ cli.help();
 cli.version('1.3.1');
 
 process.on('unhandledRejection', (err) => {
-	console.error('[makoo]', err);
+	if (err instanceof MakooError) {
+		console.error(err);
+	} else {
+		console.error('[makoo]', err);
+	}
 	process.exit(1);
 });
 

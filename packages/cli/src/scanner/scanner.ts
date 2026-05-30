@@ -42,6 +42,7 @@ export async function scanner(config: ResolvedConfig): Promise<ScannerResult> {
 			source: config.source,
 			injector: resolveInjector,
 			moduleDir: modulePath,
+			componentPath: path.join(modulePath, meta.moduleConfig.component),
 			fallbackName: module,
 			overridePath: meta.overridePath
 		});

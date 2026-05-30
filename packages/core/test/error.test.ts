@@ -1,6 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { ReactAdapterError } from '../../react/src/error';
-import { VueAdapterError } from '../../vue/src/error';
 import { AdapterError } from '../src/error/AdapterError';
 import { ErrorCode } from '../src/error/ErrorCode';
 import { MakooError } from '../src/error/MakooError';
@@ -21,6 +19,28 @@ describe('MakooError', () => {
 		const root = new Error('root problem');
 		const err = new MakooError('outer error', undefined, undefined, root);
 		expect(err.message).toContain('cause: root problem');
+	});
+
+	it('formats message with issues', () => {
+		const err = new MakooError('Something went wrong', [
+			{ path: 'foo.bar', message: 'is required' },
+			{ path: 'baz', message: 'must be one of "a", "b"' }
+		]);
+		expect(err.message).toContain('[makoo] Something went wrong');
+		expect(err.message).toContain('- foo.bar: is required');
+		expect(err.message).toContain('- baz: must be one of "a", "b"');
+		expect(err).toBeInstanceOf(Error);
+	});
+
+	it('formats message without issues', () => {
+		const err = new MakooError('Something went wrong');
+		expect(err.message).toBe('[makoo] Something went wrong');
+	});
+
+	it('exposes issues for programmatic access', () => {
+		const issues = [{ path: 'x', message: 'bad' }];
+		const err = new MakooError('msg', issues);
+		expect(err.issues).toBe(issues);
 	});
 });
 
@@ -57,49 +77,5 @@ describe('TaskError', () => {
 		const err = new TaskError('msg', undefined, ErrorCode.TASK_NO_REGISTERED);
 		expect(err).toBeInstanceOf(MakooError);
 		expect(err).toBeInstanceOf(Error);
-	});
-});
-
-describe('VueAdapterError', () => {
-	it('defaults code to ADAPTER_MOUNT_FAIL when no code is provided', () => {
-		const err = new VueAdapterError('mount failed');
-		expect(err.code).toBe(ErrorCode.ADAPTER_MOUNT_FAIL);
-	});
-
-	it('accepts ADAPTER_UNMOUNT_FAIL as explicit code', () => {
-		const err = new VueAdapterError(
-			'unmount failed',
-			undefined,
-			ErrorCode.ADAPTER_UNMOUNT_FAIL
-		);
-		expect(err.code).toBe(ErrorCode.ADAPTER_UNMOUNT_FAIL);
-	});
-
-	it('is an instance of AdapterError and MakooError', () => {
-		const err = new VueAdapterError('msg');
-		expect(err).toBeInstanceOf(AdapterError);
-		expect(err).toBeInstanceOf(MakooError);
-	});
-});
-
-describe('ReactAdapterError', () => {
-	it('defaults code to ADAPTER_MOUNT_FAIL when no code is provided', () => {
-		const err = new ReactAdapterError('mount failed');
-		expect(err.code).toBe(ErrorCode.ADAPTER_MOUNT_FAIL);
-	});
-
-	it('accepts ADAPTER_UNMOUNT_FAIL as explicit code', () => {
-		const err = new ReactAdapterError(
-			'unmount failed',
-			undefined,
-			ErrorCode.ADAPTER_UNMOUNT_FAIL
-		);
-		expect(err.code).toBe(ErrorCode.ADAPTER_UNMOUNT_FAIL);
-	});
-
-	it('is an instance of AdapterError and MakooError', () => {
-		const err = new ReactAdapterError('msg');
-		expect(err).toBeInstanceOf(AdapterError);
-		expect(err).toBeInstanceOf(MakooError);
 	});
 });

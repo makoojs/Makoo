@@ -135,6 +135,28 @@ describe('DOMWatcher', () => {
 			expect(cb).toHaveBeenCalledOnce();
 			expect(cb.mock.calls[0][0]).toBe(el);
 		});
+
+		it('should not emit timeout after once mode has already disconnected', () => {
+			const emit = vi.fn<(name: ObserveEventName) => void>();
+			const cb = vi.fn<InjectCallback>();
+			const el = document.createElement('div');
+			el.id = 'no-timeout-after-found';
+			document.body.appendChild(el);
+
+			DOMWatcher.onDomReady(
+				'#no-timeout-after-found',
+				cb,
+				document,
+				{ once: true, timeout: 1000 },
+				{ logger: console, emit }
+			);
+
+			vi.advanceTimersByTime(1000);
+
+			expect(cb).toHaveBeenCalledOnce();
+			expect(emit).toHaveBeenCalledTimes(1);
+			expect(emit).toHaveBeenCalledWith('dom:targetFound');
+		});
 	});
 
 	describe('onDomAlive', () => {
@@ -221,6 +243,32 @@ describe('DOMWatcher', () => {
 			await new Promise((r) => setTimeout(r, 0));
 
 			expect(onRestore).not.toHaveBeenCalled();
+		});
+
+		it('should bail out cleanly when the observation root is detached', () => {
+			const target = document.createElement('div');
+			const root = document.createElement('section');
+			root.appendChild(target);
+			const logger = {
+				info: vi.fn(),
+				warn: vi.fn(),
+				error: vi.fn(),
+				debug: vi.fn(),
+				log: vi.fn(),
+				setLevel: vi.fn(),
+				getLevel: vi.fn(() => 'info')
+			};
+
+			const stop = DOMWatcher.onDomAlive(target, '#detached', vi.fn(), vi.fn(), root, { once: true }, {
+				logger,
+				emit: vi.fn()
+			});
+
+			expect(logger.error).toHaveBeenCalledWith(
+				'Failed to set up removal observer: observation target is detached from DOM'
+			);
+			expect(() => stop()).not.toThrow();
+			expect(logger.info).toHaveBeenCalledWith('Alive observer for "#detached" stopped');
 		});
 	});
 

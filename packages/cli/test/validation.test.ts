@@ -1,5 +1,6 @@
+import { MakooError } from '@makoo/core';
 import { describe, expect, it } from 'vitest';
-import { MakooError, ManifestValidationError } from '../src/error/error';
+import { ManifestValidationError } from '../src/error/error';
 import {
 	InjectionManifestSchema,
 	InjectionModuleSchema,
@@ -176,30 +177,6 @@ describe('InjectionManifestSchema', () => {
 			injections: [{ name: 'bad', component: './bad.tsx' }]
 		});
 		expect(result.success).toBe(false);
-	});
-});
-
-describe('MakooError', () => {
-	it('formats message with issues', () => {
-		const err = new MakooError('Something went wrong', [
-			{ path: 'foo.bar', message: 'is required' },
-			{ path: 'baz', message: 'must be one of "a", "b"' }
-		]);
-		expect(err.message).toContain('[makoo] Something went wrong');
-		expect(err.message).toContain('- foo.bar: is required');
-		expect(err.message).toContain('- baz: must be one of "a", "b"');
-		expect(err).toBeInstanceOf(Error);
-	});
-
-	it('formats message without issues', () => {
-		const err = new MakooError('Something went wrong');
-		expect(err.message).toBe('[makoo] Something went wrong');
-	});
-
-	it('exposes issues for programmatic access', () => {
-		const issues = [{ path: 'x', message: 'bad' }];
-		const err = new MakooError('msg', issues);
-		expect(err.issues).toBe(issues);
 	});
 });
 

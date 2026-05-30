@@ -6,10 +6,11 @@ import { DEFAULT_SOURCE_DIR } from '../config/defaults';
 import { UnsupportedFrameworkGenerationError } from '../error/error';
 
 export function getExtName(framework: string): string | null {
-	if (framework === 'Vue') {
+	const lowerFramework = framework.toLowerCase();
+	if (lowerFramework === 'vue') {
 		return '.vue';
 	}
-	if (framework === 'React') {
+	if (lowerFramework === 'react') {
 		if (existsSync(join(process.cwd(), 'tsconfig.json'))) {
 			return '.tsx';
 		}
@@ -18,7 +19,10 @@ export function getExtName(framework: string): string | null {
 	return null;
 }
 
-export async function updateManifest(moduleName: string, updateData: Record<string, unknown>) {
+export async function updateManifest(
+	moduleName: string,
+	updateData: Record<string, unknown>
+): Promise<void> {
 	const sourcePath = join(process.cwd(), DEFAULT_SOURCE_DIR);
 	const sourceFiles = await readdir(sourcePath);
 	let manifestName: string | null = null;
@@ -28,7 +32,17 @@ export async function updateManifest(moduleName: string, updateData: Record<stri
 			break;
 		}
 	}
-	if (!manifestName) return;
+	const merged: Record<string, unknown> = { injections: { [moduleName]: updateData } };
+	// when manifest does not exist, create a new one
+	if (!manifestName) {
+		const newManifestPath = join(sourcePath, 'manifest.ts');
+		await writeFile(
+			newManifestPath,
+			`import { defineInjections } from "@makoo/cli";\nexport default defineInjections(${JSON.stringify(merged, null, 2)})\n`,
+			'utf-8'
+		);
+		return;
+	}
 
 	const manifestPath = join(sourcePath, manifestName);
 	const manifestContent = await readFile(manifestPath, 'utf-8');
@@ -52,7 +66,7 @@ export async function updateManifest(moduleName: string, updateData: Record<stri
 		updatedInjections = { [moduleName]: updateData };
 	}
 
-	const merged = { ...existing, injections: updatedInjections };
+	Object.assign(merged, { ...existing, injections: updatedInjections });
 
 	const updated = manifestContent.replace(
 		/defineInjections\s*\(\s*([\s\S]*?)\s*\)\s*;?\s*$/,
