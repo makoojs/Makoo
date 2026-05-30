@@ -4,7 +4,7 @@ import type { ConfigEnv, Plugin, ViteDevServer } from 'vite';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RESOLVED_ID } from '../src/config/defaults';
 import { resolveConfig } from '../src/config/resolve';
-import { makooPlugin } from '../src/vitePlugin/makooPlugin';
+import { makooMonkey } from '../src/vitePlugin/makooMonkey';
 import { cleanupTempProjects, trackProject, withCwd } from './utils/tempProject';
 
 afterEach(cleanupTempProjects);
@@ -80,7 +80,7 @@ const createProject = async () => {
 		},
 		root
 	);
-	const plugin = makooPlugin(config) as Plugin;
+	const plugin = makooMonkey(config) as Plugin;
 	return { root, config, plugin };
 };
 
@@ -98,7 +98,7 @@ const configureDevPlugin = async (plugin: Plugin, server: ViteDevServer) => {
 	}
 };
 
-describe('makooPlugin dev HMR', () => {
+describe('makooMonkey dev HMR', () => {
 	it('rescans, invalidates virtual module and sends HMR update when manifest metadata changes', async () => {
 		const { root, plugin } = await createProject();
 		const dev = createDevServer();

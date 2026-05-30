@@ -1,13 +1,14 @@
-import { RESOLVED_ID, VIRTUAL_MODULE_ID } from 'src/config/defaults';
-import type { ResolvedConfig } from 'src/config/type';
-import { scanner } from 'src/scanner/scanner';
-import type { ScannerResult } from 'src/scanner/type';
-import type { ConfigEnv, Plugin, ViteDevServer } from 'vite';
+import type { ConfigEnv, ViteDevServer } from 'vite';
+import { FAKE_ENTRY, FAKE_RESOLVED_ID, RESOLVED_ID, VIRTUAL_MODULE_ID } from '../config/defaults';
+import type { ResolvedConfig } from '../config/type';
+import { scanner } from '../scanner/scanner';
+import type { ScannerResult } from '../scanner/type';
 import { invalidateVirtualModule, sendScanError, triggerModuleHmr } from './hmrController';
+import type { MakooMonkeyPlugin } from './type';
 import { buildVirtualMouduleCode } from './virtualModule';
 import { getWatchTargets, isStructuralChange } from './watchList';
 
-export function makooPlugin(config: ResolvedConfig): Plugin {
+export function makooMonkey(config: ResolvedConfig): MakooMonkeyPlugin {
 	let scanResult: ScannerResult | null = null;
 	let isDev: boolean = false;
 	let devServer: ViteDevServer | null = null;
@@ -46,6 +47,7 @@ export function makooPlugin(config: ResolvedConfig): Plugin {
 
 	return {
 		name: 'vite-plugin-makoo',
+		__makoo: config,
 		enforce: 'pre',
 		config(_, env: ConfigEnv) {
 			isDev = env.command === 'serve';
@@ -54,12 +56,15 @@ export function makooPlugin(config: ResolvedConfig): Plugin {
 			await rescan();
 		},
 		resolveId(id: string) {
-			if (id === VIRTUAL_MODULE_ID) {
+			if (id === VIRTUAL_MODULE_ID ) {
 				return RESOLVED_ID;
+			}
+			if (id === FAKE_ENTRY || id === `./${FAKE_ENTRY}` || id === `/${FAKE_ENTRY}`) {
+				return FAKE_RESOLVED_ID;
 			}
 		},
 		load(id: string) {
-			if (id !== RESOLVED_ID) return;
+			if (id !== RESOLVED_ID && id !== FAKE_RESOLVED_ID) return;
 			if (!scanResult) return 'export {}';
 			return buildVirtualMouduleCode(scanResult, isDev);
 		},

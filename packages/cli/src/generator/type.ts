@@ -1,4 +1,4 @@
-import type { ResolvedInjectionModule } from 'src/config/type';
+import type { ResolvedInjectionModule } from '../config/type';
 
 export type RenderImportResult = {
 	code: string;

@@ -20,7 +20,7 @@ export class MakooError extends Error {
 	readonly issues: MakooIssue[];
 	override readonly cause?: Error;
 
-	constructor(message: string, issues?: MakooIssue[], code?: string, cause?: Error) {
+	constructor(message: string, issues?: MakooIssue[], code: string = ErrorCode.UNKNOWN, cause?: Error) {
 		const parts: string[] = [`[makoo] ${message}`];
 		if (issues?.length) {
 			for (const i of issues) {
@@ -32,7 +32,7 @@ export class MakooError extends Error {
 		}
 		super(parts.join('\n'));
 		this.name = 'MakooError';
-		this.code = code ?? ErrorCode.UNKNOWN;
+		this.code = code;
 		this.issues = issues ?? [];
 		if (cause) this.cause = cause;
 	}

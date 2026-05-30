@@ -1,4 +1,4 @@
-import type { ResolvedInjectorConfig } from 'src/config/type';
+import type { ResolvedInjectorConfig } from '../../../config/type';
 import type { RenderInitResult } from '../../type';
 import { renderInlineValue } from '../util/value';
 

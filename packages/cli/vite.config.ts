@@ -12,9 +12,11 @@ export default defineConfig({
 			fileName: 'index'
 		},
 		rollupOptions: {
+			treeshake: true,
 			external: [
 				'@makoo/core',
 				'jiti',
+				'vite',
 				'vite-plugin-monkey',
 				'node:fs',
 				'node:path',

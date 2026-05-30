@@ -119,7 +119,7 @@ onUnmounted(() => {
 
 <template>
     <main class="page">
-        <HeroBlock class="hero-card" title="Rite"
+        <HeroBlock class="hero-card" title="Makoo"
             description="A breath of fresh air for legacy DOM — seamless Vue 3 integration for any website." />
 
         <section class="content-row">

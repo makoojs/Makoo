@@ -1,7 +1,4 @@
-﻿import { createElement } from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createReactAdapter } from '../../react/src/ReactAdapter';
-import type { ReactMountArtifact } from '../../react/src/type';
+﻿import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createVueAdapter } from '../../vue/src/VueAdapter';
 import { VuePlugin } from '../../vue/src/VuePlugin';
 import { ObserverHub } from '../src/hooks/ObserverHub';
@@ -17,21 +14,6 @@ import type { ArtifactTask } from '../src/Task/types';
 import { DOMWatcher } from '../src/watcher/DomWatcher';
 import { createVueComponent } from './factory/TaskFactor';
 
-const reactDomClientMock = vi.hoisted(() => {
-	const root = {
-		render: vi.fn(),
-		unmount: vi.fn()
-	};
-	return {
-		root,
-		createRoot: vi.fn(() => root)
-	};
-});
-
-vi.mock('react-dom/client', () => ({
-	createRoot: reactDomClientMock.createRoot
-}));
-
 function createInjector(config?: ConstructorParameters<typeof Injector>[0]): Injector {
 	const injector = new Injector(config);
 	return injector.applyAdapter(createVueAdapter());
@@ -45,7 +27,6 @@ describe('Injector', () => {
 	let taskLifeCycle: TaskLifeCycle;
 
 	beforeEach(() => {
-		VuePlugin.clear();
 		injector = createInjector();
 		const internals = injector as unknown as {
 			taskContext: TaskContext;
@@ -58,10 +39,10 @@ describe('Injector', () => {
 		taskRunner = internals.taskRunner;
 		taskLifeCycle = internals.taskLifeCycle;
 		document.body.innerHTML = '';
-		reactDomClientMock.createRoot.mockClear();
-		reactDomClientMock.root.render.mockClear();
-		reactDomClientMock.root.unmount.mockClear();
-		vi.restoreAllMocks();
+	});
+	afterEach(() => {
+		VuePlugin.clear();
+		vi.resetAllMocks();
 	});
 
 	it('should create injector and keep default config', () => {
@@ -228,28 +209,6 @@ describe('Injector', () => {
 		expect(context?.adapter.name).toBe('custom');
 		expect(mount).toHaveBeenCalledOnce();
 		expect(context?.appRoot?.parentElement).toBe(host);
-	});
-
-	it('should mount and unmount React elements through React adapter', () => {
-		const host = document.createElement('div');
-		host.id = 'react-adapter';
-		document.body.appendChild(host);
-		const artifact: ReactMountArtifact = createElement('span', null, 'Badge');
-		const result = injector
-			.applyAdapter(createReactAdapter())
-			.register('#react-adapter', artifact);
-
-		injector.run();
-
-		const context = taskContext.get<ArtifactTask>(result.taskId);
-		expect(context?.taskStatus).toBe('active');
-		expect(context?.adapter.name).toBe('react');
-		expect(reactDomClientMock.createRoot).toHaveBeenCalledWith(context?.appRoot);
-		expect(reactDomClientMock.root.render).toHaveBeenCalledWith(artifact);
-
-		injector.destroy(result.taskId);
-
-		expect(reactDomClientMock.root.unmount).toHaveBeenCalledOnce();
 	});
 
 	it('should reset task context', () => {

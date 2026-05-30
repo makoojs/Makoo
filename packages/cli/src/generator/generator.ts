@@ -1,4 +1,4 @@
-import type { ScannerResult } from 'src/scanner/type';
+import type { ScannerResult } from '../scanner/type';
 import { renderImportAdapter } from './render/import/importAdapter';
 import { renderImportComp } from './render/import/importComp';
 import { renderImportInjector } from './render/import/importInjector';
@@ -38,7 +38,7 @@ export function generate(sannerResult: ScannerResult): GeneratorResult {
 		'try {',
 		...body.split('\n').map((l) => `  ${l}`),
 		'} catch (e) {',
-		'  console.error(\'[makoo] Injection startup failed:\', e);',
+		"  console.error('[makoo] Injection startup failed:', e);",
 		'  throw e;',
 		'}'
 	].join('\n');

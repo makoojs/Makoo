@@ -21,6 +21,9 @@
   "dependencies": {
     "@makoo/core": "workspace:*"
   },
+  "devDependencies": {
+    "vue": "^3.5.35"
+  },
   "peerDependencies": {
     "vue": ">=3"
   }

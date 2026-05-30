@@ -7,9 +7,8 @@ import {
 	resolve as resolvePath
 } from 'node:path';
 import process from 'node:process';
-import { ErrorCode } from '@makoo/core';
+import { ComponentNotFoundError, UnknownFrameworkError } from '../error/error';
 import type { MonkeyOption } from 'vite-plugin-monkey';
-import { MakooError } from '../scanner/error';
 import {
 	DEFAULT_FILE_NAME_SUFFIX,
 	DEFAULT_INJECTOR_CONFIG,
@@ -18,8 +17,8 @@ import {
 	DEFAULT_MONKEY_CONFIG,
 	DEFAULT_MONKEY_SERVER_CONFIG,
 	DEFAULT_SOURCE_CONFIG,
+	FAKE_ENTRY,
 	REACT_EXTENSIONS,
-	VIRTUAL_MODULE_ID,
 	VUE_EXTENSIONS
 } from './defaults';
 import type {
@@ -82,16 +81,7 @@ const inferFrameworkFromPath = (componentPath: string): ResolvedInjectionFramewo
 		return 'Vue';
 	}
 
-	throw new MakooError(
-		`Cannot infer framework from "${componentPath}". Set "framework" explicitly ("Vue" or "React") in the module manifest.`,
-		[
-			{
-				path: 'framework',
-				message: `unable to infer framework from extension "${extension || '(none)'}"`
-			}
-		],
-		ErrorCode.CLI_UNKNOWN_FRAMEWORK
-	);
+	throw new UnknownFrameworkError(componentPath);
 };
 
 const resolveFramework = (
@@ -293,11 +283,7 @@ export const resolveInjection = (
 			: source.dir;
 
 	if (!componentPath) {
-		throw new MakooError(
-			`Missing component path for injection "${config.name ?? config.injectAt}"`,
-			[{ path: 'component', message: 'could not resolve component path' }],
-			ErrorCode.CLI_COMPONENT_NOT_FOUND
-		);
+		throw new ComponentNotFoundError(config.name ?? config.injectAt);
 	}
 
 	const {
@@ -389,7 +375,7 @@ export function resolveMonkeyPluginOptions(
 ): MonkeyOption {
 	const resolved: MonkeyOption = {
 		...config.monkey,
-		entry: VIRTUAL_MODULE_ID,
+		entry: `./${FAKE_ENTRY}`,
 		userscript: config.monkey.userscript,
 		align: config.monkey.align,
 		generate: config.monkey.generate,
@@ -402,6 +388,7 @@ export function resolveMonkeyPluginOptions(
 	return {
 		...resolved,
 		...override,
+		entry: `./${FAKE_ENTRY}`,
 		userscript: normalizeMonkeyUserscript({
 			...resolved.userscript,
 			...override?.userscript
@@ -413,7 +400,6 @@ export function resolveMonkeyPluginOptions(
 		build: {
 			...resolved.build,
 			...override?.build
-		},
-		entry: VIRTUAL_MODULE_ID
+		}
 	};
 }

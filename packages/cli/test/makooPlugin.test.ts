@@ -1,9 +1,14 @@
 import path from 'node:path';
 import type { ConfigEnv, Plugin, ViteDevServer } from 'vite';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { RESOLVED_ID, VIRTUAL_MODULE_ID } from '../src/config/defaults';
+import {
+	FAKE_ENTRY,
+	FAKE_RESOLVED_ID,
+	RESOLVED_ID,
+	VIRTUAL_MODULE_ID
+} from '../src/config/defaults';
 import { resolveConfig } from '../src/config/resolve';
-import { makooPlugin } from '../src/vitePlugin/makooPlugin';
+import { makooMonkey } from '../src/vitePlugin/makooMonkey';
 import { cleanupTempProjects, trackProject, withCwd } from './utils/tempProject';
 
 type Hook = (...args: unknown[]) => unknown;
@@ -36,7 +41,7 @@ const createProject = async (files: Record<string, string> = {}) => {
 		},
 		root
 	);
-	return { root, plugin: makooPlugin(config) as Plugin };
+	return { root, plugin: makooMonkey(config) as Plugin };
 };
 
 const createDevServer = () =>
@@ -56,19 +61,21 @@ const createDevServer = () =>
 
 afterEach(cleanupTempProjects);
 
-describe('makooPlugin', () => {
+describe('makooMonkey', () => {
 	it('resolves virtual module id and returns empty module before scanning', () => {
 		const config = resolveConfig(
 			{ app: { name: 'plugin-test', version: '0.0.1' } },
 			path.resolve('/project')
 		);
-		const plugin = makooPlugin(config) as Plugin;
+		const plugin = makooMonkey(config) as Plugin;
 		const resolveId = getHook(plugin.resolveId);
 		const load = getHook(plugin.load);
 
 		expect(resolveId?.call({} as never, VIRTUAL_MODULE_ID)).toBe(RESOLVED_ID);
+		expect(resolveId?.call({} as never, `./${FAKE_ENTRY}`)).toBe(FAKE_RESOLVED_ID);
 		expect(resolveId?.call({} as never, '/entry.ts')).toBeUndefined();
 		expect(load?.call({} as never, RESOLVED_ID, {} as never)).toBe('export {}');
+		expect(load?.call({} as never, FAKE_RESOLVED_ID, {} as never)).toBe('export {}');
 		expect(load?.call({} as never, '/entry.ts', {} as never)).toBeUndefined();
 	});
 
@@ -113,7 +120,7 @@ describe('makooPlugin', () => {
 			},
 			root
 		);
-		const plugin = makooPlugin(config) as Plugin;
+		const plugin = makooMonkey(config) as Plugin;
 		const configureServer = getHook(plugin.configureServer);
 		const server = createDevServer();
 

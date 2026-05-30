@@ -1,10 +1,9 @@
 import { readdirSync } from 'node:fs';
 import path from 'node:path';
-import { ErrorCode } from '@makoo/core';
 import picomatch from 'picomatch';
 import { resolveInjection, resolveInjections, resolveInjectorConfig } from '../config/resolve';
 import type { ResolvedConfig, ResolvedInjectionModule } from '../config/type';
-import { MakooError } from './error';
+import { ManifestNotFoundError, NoEnabledInjectionsError } from '../error/error';
 import { loadManifest } from './load/loadManifes';
 import { loadMeta } from './load/loadMeta';
 import type { ScannerResult } from './type';
@@ -13,11 +12,7 @@ import { mergeMeta } from './util';
 export async function scanner(config: ResolvedConfig): Promise<ScannerResult> {
 	const loadedManifest = await loadManifest(config.source);
 	if (!loadedManifest) {
-		throw new MakooError(
-			`No manifest found in source directory at ${config.source.dir}`,
-			undefined,
-			ErrorCode.CLI_MANIFEST_NOT_FOUND
-		);
+		throw new ManifestNotFoundError(config.source.dir);
 	}
 	const resolveInjector = resolveInjectorConfig(loadedManifest.manifest.globalInjector);
 	const resolveManifest = resolveInjections(loadedManifest.manifest, {
@@ -58,11 +53,7 @@ export async function scanner(config: ResolvedConfig): Promise<ScannerResult> {
 	);
 
 	if (injections.length === 0) {
-		throw new MakooError(
-			'No enabled injections — all injections are disabled or filtered out',
-			undefined,
-			ErrorCode.CLI_NO_ENABLED_INJECTIONS
-		);
+		throw new NoEnabledInjectionsError();
 	}
 
 	injections.sort((a, b) => a.moduleId.localeCompare(b.moduleId));

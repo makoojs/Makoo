@@ -25,9 +25,9 @@ describe('MakooError', () => {
 });
 
 describe('AdapterError', () => {
-	it('defaults code to UNKNOWN when no code is provided', () => {
+	it('defaults code to ADAPTER_NOT_FOUND when no code is provided', () => {
 		const err = new AdapterError('adapter failed');
-		expect(err.code).toBe(ErrorCode.UNKNOWN);
+		expect(err.code).toBe(ErrorCode.ADAPTER_NOT_FOUND);
 	});
 
 	it('uses provided code when explicitly specified', () => {
@@ -43,9 +43,9 @@ describe('AdapterError', () => {
 });
 
 describe('TaskError', () => {
-	it('defaults code to UNKNOWN when no code is provided', () => {
+	it('defaults code to TASK_NO_REGISTERED when no code is provided', () => {
 		const err = new TaskError('task failed');
-		expect(err.code).toBe(ErrorCode.UNKNOWN);
+		expect(err.code).toBe(ErrorCode.TASK_NO_REGISTERED);
 	});
 
 	it('uses provided code when explicitly specified', () => {
@@ -67,7 +67,11 @@ describe('VueAdapterError', () => {
 	});
 
 	it('accepts ADAPTER_UNMOUNT_FAIL as explicit code', () => {
-		const err = new VueAdapterError('unmount failed', undefined, ErrorCode.ADAPTER_UNMOUNT_FAIL);
+		const err = new VueAdapterError(
+			'unmount failed',
+			undefined,
+			ErrorCode.ADAPTER_UNMOUNT_FAIL
+		);
 		expect(err.code).toBe(ErrorCode.ADAPTER_UNMOUNT_FAIL);
 	});
 

@@ -1,8 +1,8 @@
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
 import { ErrorCode } from '@makoo/core';
+import { afterEach, describe, expect, it } from 'vitest';
 import { resolveConfig } from '../src/config/resolve';
-import { MakooError } from '../src/scanner/error';
+import { MakooError } from '../src/error/error';
 import { scanner } from '../src/scanner/scanner';
 import { cleanupTempProjects, trackProject, withCwd } from './utils/tempProject';
 

@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { VIRTUAL_MODULE_ID } from '../src/config/defaults';
+import { FAKE_ENTRY } from '../src/config/defaults';
 import { resolveConfig, resolveMonkeyPluginOptions } from '../src/config/resolve';
 
 const root = path.resolve('/project');
@@ -73,7 +73,6 @@ describe('resolveMonkeyPluginOptions', () => {
 		);
 
 		const options = resolveMonkeyPluginOptions(config, {
-			entry: '/should-not-win.ts',
 			userscript: {
 				match: ['https://override.test/*']
 			},
@@ -85,7 +84,7 @@ describe('resolveMonkeyPluginOptions', () => {
 			}
 		});
 
-		expect(options.entry).toBe(VIRTUAL_MODULE_ID);
+		expect(options.entry).toBe(`./${FAKE_ENTRY}`);
 		expect(options.userscript).toMatchObject({
 			name: { '': 'demo-script' },
 			version: '1.2.3',

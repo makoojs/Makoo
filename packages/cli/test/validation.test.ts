@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ManifestValidationError, MakooError } from '../src/scanner/error';
+import { MakooError, ManifestValidationError } from '../src/error/error';
 import {
 	InjectionManifestSchema,
 	InjectionModuleSchema,

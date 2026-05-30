@@ -1,6 +1,6 @@
 import { OBSERVE_EVENT_NAMES } from '@makoo/core';
 import { z } from 'zod';
-import { ManifestValidationError } from './error';
+import { ManifestValidationError } from '../error/error';
 
 // --- Hook validation ---
 

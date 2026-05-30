@@ -4,7 +4,7 @@ import { build } from 'vite';
 import { afterEach, describe, expect, it } from 'vitest';
 import { resolveConfig } from '../src/config/resolve';
 import { scanner } from '../src/scanner/scanner';
-import { makooMonkey } from '../src/vitePlugin/makooMonkeyPlugin';
+import { makoo } from '../src/vitePlugin/makoo';
 import { cleanupTempProjects, trackProject, withCwd } from './utils/tempProject';
 
 afterEach(cleanupTempProjects);
@@ -108,8 +108,8 @@ describe('scanner integration', () => {
 	});
 });
 
-describe('makooMonkey build integration', () => {
-	it('injects makooPlugin and vite-plugin-monkey so Vite builds the generated virtual entry into a userscript', async () => {
+describe('makoo build integration', () => {
+	it('injects makooMonkey and vite-plugin-monkey so Vite builds the generated virtual entry into a userscript', async () => {
 		const root = await trackProject({
 			'injections/manifest.ts': `
 				export default {
@@ -126,7 +126,7 @@ describe('makooMonkey build integration', () => {
 				root,
 				configFile: false,
 				logLevel: 'silent',
-				plugins: makooMonkey({
+				plugins: makoo({
 					root,
 					app: {
 						name: 'build-script',

@@ -4,6 +4,9 @@ import type { InjectorConfig, MonkeyBuildConfig, MonkeyConfig, MonkeyServerConfi
 export const VIRTUAL_MODULE_ID = 'virtual:makoo/entry';
 export const RESOLVED_ID = '\0virtual:makoo/entry';
 
+export const FAKE_ENTRY = 'makoo-entry.ts';
+export const FAKE_RESOLVED_ID = '\0makoo-entry.ts';
+
 // adapter extname
 export const REACT_EXTENSIONS = new Set(['.tsx', '.jsx']);
 export const VUE_EXTENSIONS = new Set(['.vue']);

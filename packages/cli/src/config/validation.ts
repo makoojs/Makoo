@@ -1,6 +1,5 @@
-import { ErrorCode, MakooError } from '@makoo/core';
 import { z } from 'zod';
-import { toMakooIssue } from '../scanner/error';
+import { ConfigValidationError, toMakooIssue } from '../error/error';
 
 const AppConfigSchema = z.object({
 	name: z.string().min(1, 'app.name is required'),
@@ -18,10 +17,6 @@ export const CliConfigSchema = z.object({
 export function validateCliConfig(data: unknown): asserts data is z.infer<typeof CliConfigSchema> {
 	const result = CliConfigSchema.safeParse(data);
 	if (!result.success) {
-		throw new MakooError(
-			'Invalid CliConfig',
-			result.error.issues.map(toMakooIssue),
-			ErrorCode.CLI_CONFIG_INVALID
-		);
+		throw new ConfigValidationError(result.error.issues.map(toMakooIssue));
 	}
 }

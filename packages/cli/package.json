@@ -7,6 +7,9 @@
   "files": [
     "dist"
   ],
+  "bin": {
+    "makoo": "./dist/bin.js"
+  },
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -19,16 +22,16 @@
   },
   "dependencies": {
     "@makoo/core": "workspace:*",
-    "cac": "^7.0.0",
     "jiti": "^2.6.1",
     "picomatch": "^4.0.4",
     "vite-plugin-monkey": "^7.1.9",
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@types/picomatch": "^4.0.3"
+    "@types/picomatch": "^4.0.3",
+    "cac": "^7.0.0"
   },
   "peerDependencies": {
-    "vite": ">=5"
+    "vite": ">=7"
   }
 }

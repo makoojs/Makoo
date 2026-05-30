@@ -1,5 +1,5 @@
 import type { ArtifactOptions } from '@makoo/core';
-import type { Component, RenderInitResult } from 'src/generator/type';
+import type { Component, RenderInitResult } from '../../../generator/type';
 import { renderInlineValue } from '../util/value';
 
 export function renderRegisterComponent(
