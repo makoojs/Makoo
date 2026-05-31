@@ -3,7 +3,12 @@ import type {
 	LifecycleHookMap,
 	InjectionConfig as RuntimeInjectionConfig
 } from '@makoo/core';
-import type { MonkeyOption, MonkeyUserScript } from 'vite-plugin-monkey';
+import type {
+	ExternalGlobals,
+	ExternalResource,
+	MonkeyOption,
+	MonkeyUserScript
+} from 'vite-plugin-monkey';
 
 export type StrictShape<Shape, Value extends Shape> = Value &
 	Record<Exclude<keyof Value, keyof Shape>, never>;
@@ -40,7 +45,9 @@ export type MonkeyServerConfig = {
 export type MonkeyBuildConfig = {
 	fileName?: string;
 	metaFileName?: string | boolean | ((fileName: string) => string);
+	externalGlobals?: ExternalGlobals;
 	autoGrant?: boolean;
+	externalResource?: ExternalResource;
 	systemjs?:
 		| 'inline'
 		| ((
@@ -93,13 +100,20 @@ export type InjectionFramework = 'auto' | 'Vue' | 'React';
 
 export type ResolvedInjectionFramework = Exclude<InjectionFramework, 'auto'>;
 
+export type InjectionMatchObject = {
+	include?: string[];
+	exclude?: string[];
+};
+
+export type InjectionMatchConfig = string[] | InjectionMatchObject;
+
 export type InjectionModuleConfig = ArtifactOptions & {
 	name?: string;
 	injectAt: string;
 	component: string;
 	framework?: InjectionFramework;
 	enabled?: boolean;
-	//TODO url match alive component
+	match?: InjectionMatchConfig;
 };
 
 export type InjectionManifestRecord = Record<string, Omit<InjectionModuleConfig, 'name'>>;
@@ -123,6 +137,7 @@ export type ResolvedInjectionModule = Omit<
 	alive: ResolvedInjectorConfig['alive'];
 	scope: ResolvedInjectorConfig['scope'];
 	timeout: ResolvedInjectorConfig['timeout'];
+	match?: InjectionMatchObject;
 };
 
 export type ResolvedMonkeyServerConfig = {
@@ -134,7 +149,9 @@ export type ResolvedMonkeyServerConfig = {
 export type ResolvedMonkeyBuildConfig = {
 	fileName: string;
 	metaFileName: string | false;
+	externalGlobals?: MonkeyBuildConfig['externalGlobals'];
 	autoGrant: boolean;
+	externalResource?: MonkeyBuildConfig['externalResource'];
 	systemjs?: MonkeyBuildConfig['systemjs'];
 	cssSideEffects?: MonkeyBuildConfig['cssSideEffects'];
 };

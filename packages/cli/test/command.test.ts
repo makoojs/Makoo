@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
 	getExtName,
 	moduleTemplate,
@@ -219,5 +219,55 @@ export default defineInjections({ injections: {} });`
 			expect(manifest).toContain('widget');
 			expect(manifest).toContain('./widget/app.vue');
 		});
+	});
+});
+
+describe('devCommand', () => {
+	it('prints makoo-style startup info and binds CLI shortcuts', async () => {
+		vi.resetModules();
+		const cliPackage = JSON.parse(
+			readFileSync(path.join(__dirname, '../package.json'), 'utf-8')
+		) as { version: string };
+		const listen = vi.fn().mockResolvedValue(undefined);
+		const bindCLIShortcuts = vi.fn();
+		const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+		const createServer = vi.fn().mockResolvedValue({
+			listen,
+			bindCLIShortcuts,
+			resolvedUrls: {
+				local: ['http://localhost:5173/'],
+				network: []
+			},
+			config: {}
+		});
+
+		vi.doMock('vite', () => ({ createServer }));
+		vi.doMock('../src/command/_util', () => ({
+			loadCliVersion: vi.fn().mockResolvedValue(cliPackage.version)
+		}));
+
+		try {
+			const { devCommand } = await import('../src/command/dev');
+			await devCommand();
+
+			expect(createServer).toHaveBeenCalled();
+			expect(listen).toHaveBeenCalled();
+			expect(log).toHaveBeenCalledWith(
+				`\n\x1B[1m\x1B[36mMakoo v${cliPackage.version}\x1B[0m\n`
+			);
+			expect(log).toHaveBeenCalledWith(
+				'  \x1B[32m➜\x1B[0m  \x1B[1mLocal:\x1B[0m   http://localhost:5173/'
+			);
+			expect(log).toHaveBeenCalledWith(
+				'  \x1B[32m➜\x1B[0m  \x1B[1mNetwork:\x1B[0m \x1B[2muse --host to expose\x1B[0m'
+			);
+			expect(bindCLIShortcuts).toHaveBeenCalledWith({ print: true });
+		} finally {
+			log.mockRestore();
+			vi.doUnmock('vite');
+			vi.doUnmock('../src/command/_util');
+			vi.resetModules();
+		}
 	});
 });

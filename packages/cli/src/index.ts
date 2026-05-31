@@ -1,3 +1,4 @@
+export { cdn } from 'vite-plugin-monkey';
 export {
 	defineInjection,
 	defineInjections

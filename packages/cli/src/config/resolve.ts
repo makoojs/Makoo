@@ -26,6 +26,8 @@ import type {
 	CliConfig,
 	InjectionFramework,
 	InjectionManifest,
+	InjectionMatchConfig,
+	InjectionMatchObject,
 	InjectionModuleConfig,
 	InjectorConfig,
 	MonkeyBuildConfig,
@@ -93,6 +95,25 @@ const resolveFramework = (
 	}
 
 	return inferFrameworkFromPath(componentPath);
+};
+
+const resolveMatchConfig = (
+	match: InjectionMatchConfig | undefined
+): InjectionMatchObject | undefined => {
+	if (!match) {
+		return undefined;
+	}
+
+	if (Array.isArray(match)) {
+		return {
+			include: match
+		};
+	}
+
+	return {
+		include: match.include,
+		exclude: match.exclude
+	};
 };
 
 const deriveInjectionModuleId = (
@@ -225,7 +246,9 @@ export const resolveMonkeyBuildConfig = (
 			fileName,
 			config?.build?.metaFileName ?? DEFAULT_MONKEY_BUILD_CONFIG.metaFileName
 		),
+		externalGlobals: config?.build?.externalGlobals,
 		autoGrant: config?.build?.autoGrant ?? DEFAULT_MONKEY_BUILD_CONFIG.autoGrant,
+		externalResource: config?.build?.externalResource,
 		systemjs: config?.build?.systemjs,
 		cssSideEffects: config?.build?.cssSideEffects
 	};
@@ -323,7 +346,8 @@ export const resolveInjection = (
 		enabled: config.enabled ?? true,
 		alive: config.alive ?? injector.alive,
 		scope: config.scope ?? injector.scope,
-		timeout: config.timeout ?? injector.timeout
+		timeout: config.timeout ?? injector.timeout,
+		match: resolveMatchConfig(config.match)
 	};
 };
 

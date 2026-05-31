@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { ManifestValidationError } from '../src/error/error';
 import {
 	InjectionManifestSchema,
+	InjectionMatchSchema,
 	InjectionModuleSchema,
 	InjectorConfigSchema,
 	LifecycleHookMapSchema,
@@ -75,6 +76,27 @@ describe('InjectorConfigSchema', () => {
 });
 
 describe('InjectionModuleSchema', () => {
+	it('accepts match as include array shorthand', () => {
+		const result = InjectionModuleSchema.safeParse({
+			injectAt: '#app',
+			component: './index.tsx',
+			match: ['https://example.com/*']
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('accepts match as include/exclude object', () => {
+		const result = InjectionModuleSchema.safeParse({
+			injectAt: '#app',
+			component: './index.tsx',
+			match: {
+				include: ['https://example.com/*'],
+				exclude: ['https://example.com/admin/*']
+			}
+		});
+		expect(result.success).toBe(true);
+	});
+
 	it('accepts valid module config', () => {
 		const result = InjectionModuleSchema.safeParse({
 			name: 'widget',
@@ -128,6 +150,36 @@ describe('InjectionModuleSchema', () => {
 			scope: 'remote'
 		});
 		expect(result.success).toBe(false);
+	});
+
+	it('rejects invalid match config', () => {
+		const result = InjectionModuleSchema.safeParse({
+			injectAt: '#app',
+			component: './test.tsx',
+			match: 123
+		});
+		expect(result.success).toBe(false);
+	});
+});
+
+describe('InjectionMatchSchema', () => {
+	it('accepts array and object forms', () => {
+		expect(InjectionMatchSchema.safeParse(['https://example.com/*']).success).toBe(true);
+		expect(
+			InjectionMatchSchema.safeParse({
+				include: ['https://example.com/*'],
+				exclude: ['https://example.com/admin/*']
+			}).success
+		).toBe(true);
+	});
+
+	it('rejects non-string patterns', () => {
+		expect(InjectionMatchSchema.safeParse([123]).success).toBe(false);
+		expect(
+			InjectionMatchSchema.safeParse({
+				include: [true]
+			}).success
+		).toBe(false);
 	});
 });
 

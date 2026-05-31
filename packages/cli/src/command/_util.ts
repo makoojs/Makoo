@@ -1,9 +1,77 @@
 import { existsSync } from 'node:fs';
 import { readdir, readFile, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { ErrorCode } from '@makoo/core';
 import { createJiti } from 'jiti';
+import { loadConfigFromFile } from 'vite';
 import { DEFAULT_SOURCE_DIR } from '../config/defaults';
-import { UnsupportedFrameworkGenerationError } from '../error/error';
+import type { ResolvedConfig } from '../config/type';
+import { LoadViteMakooConfigError, UnsupportedFrameworkGenerationError } from '../error/error';
+import type { MakooMonkeyPlugin } from '../vitePlugin/type';
+
+export async function loadCliVersion(cliVersionCache: string | null): Promise<string> {
+	if (cliVersionCache) {
+		return cliVersionCache;
+	}
+
+	let currentDir = dirname(fileURLToPath(import.meta.url));
+
+	while (true) {
+		const packagePath = join(currentDir, 'package.json');
+
+		try {
+			const content = await readFile(packagePath, 'utf-8');
+			const packageJson = JSON.parse(content) as { name?: string; version?: string };
+
+			if (packageJson.name === '@makoo/cli' && packageJson.version) {
+				cliVersionCache = packageJson.version;
+				return cliVersionCache;
+			}
+		} catch {}
+
+		const parentDir = dirname(currentDir);
+		if (parentDir === currentDir) {
+			break;
+		}
+		currentDir = parentDir;
+	}
+
+	return '0.0.0';
+}
+
+export async function loadMakooConfig(): Promise<ResolvedConfig> {
+	const root = process.cwd();
+	const result = await loadConfigFromFile(
+		{ command: 'build', mode: 'production' },
+		undefined,
+		root
+	);
+
+	if (!result) {
+		throw new LoadViteMakooConfigError(
+			`No vite config file found in "${root}". Make sure a vite.config.ts (or .js/.mts) exists.`,
+			ErrorCode.CLI_VITE_CONFIG_NOT_FOUND
+		);
+	}
+
+	const plugins = (result.config.plugins ?? [])
+		.flat()
+		.filter((p): p is NonNullable<typeof p> => p != null && p !== false);
+
+	const makooPlugin = plugins.find(
+		(p) => (p as { name?: string }).name === 'vite-plugin-makoo'
+	) as MakooMonkeyPlugin | undefined;
+
+	if (!makooPlugin) {
+		throw new LoadViteMakooConfigError(
+			`makoo plugin not found in vite config at "${result.path}". Make sure makoo() is included in your plugins array.`,
+			ErrorCode.CLI_PLUGIN_NOT_FOUND
+		);
+	}
+
+	return makooPlugin.__makoo;
+}
 
 export function getExtName(framework: string): string | null {
 	const lowerFramework = framework.toLowerCase();

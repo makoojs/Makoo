@@ -67,4 +67,64 @@ describe('generate', () => {
 		expect(result.code).toContain('"callback":(() => "clicked")');
 		expect(result.code).toContain('injector.run()');
 	});
+
+	it('wraps matched modules in runtime URL checks', () => {
+		const config = resolveConfig(
+			{
+				app: {
+					name: 'demo-script',
+					version: '1.0.0'
+				}
+			},
+			root
+		);
+		const matchedInjection = resolveInjection(
+			{
+				name: 'matched-card',
+				injectAt: '#app',
+				component: './hello/index.tsx',
+				framework: 'React',
+				match: {
+					include: ['https://example.com/*'],
+					exclude: ['https://example.com/admin/*']
+				}
+			},
+			{
+				root,
+				source: config.source,
+				injector: config.injector,
+				componentPath: path.join(root, 'injections/hello/index.tsx')
+			}
+		);
+		const plainInjection = resolveInjection(
+			{
+				name: 'plain-card',
+				injectAt: '#plain',
+				component: './plain/index.tsx',
+				framework: 'React'
+			},
+			{
+				root,
+				source: config.source,
+				injector: config.injector,
+				componentPath: path.join(root, 'injections/plain/index.tsx')
+			}
+		);
+		const scanResult: ScannerResult = {
+			config,
+			manifestFile: path.join(root, 'injections/manifest.ts'),
+			manifestDependencies: [],
+			injections: [matchedInjection, plainInjection],
+			frameworks: ['React']
+		};
+
+		const result = generate(scanResult);
+
+		expect(result.code).toContain('const matchUrl = (url, match) => {');
+		expect(result.code).toContain(
+			'if (matchUrl(location.href, {"include":["https://example.com/*"],"exclude":["https://example.com/admin/*"]})) {'
+		);
+		expect(result.code).toContain('injector.register("#app", Injection_matched_card,');
+		expect(result.code).toContain('injector.register("#plain", Injection_plain_card,');
+	});
 });

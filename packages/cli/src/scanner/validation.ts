@@ -25,12 +25,21 @@ export const InjectorConfigSchema = z.object({
 
 // --- Injection module config ---
 
+export const InjectionMatchSchema = z.union([
+	z.array(z.string()),
+	z.object({
+		include: z.array(z.string()).optional(),
+		exclude: z.array(z.string()).optional()
+	})
+]);
+
 export const InjectionModuleSchema = z.object({
 	name: z.string().optional(),
 	injectAt: z.string(),
 	component: z.string(),
 	framework: z.enum(['auto', 'Vue', 'React']).optional(),
 	enabled: z.boolean().optional(),
+	match: InjectionMatchSchema.optional(),
 	alive: z.boolean().optional(),
 	scope: z.enum(['local', 'global']).optional(),
 	timeout: z.number().optional()

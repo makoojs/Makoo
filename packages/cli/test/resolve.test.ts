@@ -72,7 +72,13 @@ describe('resolveMonkeyPluginOptions', () => {
 						open: false
 					},
 					build: {
-						fileName: 'demo.user.js'
+						fileName: 'demo.user.js',
+						externalGlobals: {
+							react: 'React'
+						},
+						externalResource: {
+							'element-plus/dist/index.css': ['element-plus-css', 'https://cdn.example.com/element-plus.css']
+						}
 					}
 				}
 			},
@@ -105,8 +111,14 @@ describe('resolveMonkeyPluginOptions', () => {
 		});
 		expect(options.build).toMatchObject({
 			fileName: 'demo.user.js',
+			externalGlobals: {
+				react: 'React'
+			},
 			metaFileName: false,
-			autoGrant: false
+			autoGrant: false,
+			externalResource: {
+				'element-plus/dist/index.css': ['element-plus-css', 'https://cdn.example.com/element-plus.css']
+			}
 		});
 	});
 });
@@ -140,7 +152,11 @@ describe('resolve helpers', () => {
 		const result = resolveInjection(
 			{
 				injectAt: '#root',
-				component: './widgets/Card.tsx'
+				component: './widgets/Card.tsx',
+				match: {
+					include: ['https://example.com/profile/*'],
+					exclude: ['https://example.com/profile/settings']
+				}
 			},
 			{
 				root,
@@ -162,9 +178,32 @@ describe('resolve helpers', () => {
 			alive: true,
 			scope: 'global',
 			timeout: 9000,
+			match: {
+				include: ['https://example.com/profile/*'],
+				exclude: ['https://example.com/profile/settings']
+			},
 			moduleDir: path.join(root, 'features/profile'),
 			componentPath: path.join(root, 'features/profile/widgets/Card.tsx'),
 			overridePath: path.join(root, 'overrides/card.css')
+		});
+	});
+
+	it('normalizes shorthand match arrays into include lists', () => {
+		const result = resolveInjection(
+			{
+				injectAt: '#hero',
+				component: './Hero.vue',
+				framework: 'Vue',
+				match: ['https://example.com/*']
+			},
+			{
+				root,
+				componentPath: 'features/hero/Hero.vue'
+			}
+		);
+
+		expect(result.match).toEqual({
+			include: ['https://example.com/*']
 		});
 	});
 
@@ -224,6 +263,37 @@ describe('resolve helpers', () => {
 				}
 			}).metaFileName
 		).toBe('custom.meta.js');
+	});
+
+	it('preserves externalGlobals and externalResource in resolved monkey build config', () => {
+		const app = {
+			name: 'demo-script',
+			version: '1.0.0'
+		};
+
+		const result = resolveMonkeyBuildConfig(app, {
+			build: {
+				externalGlobals: {
+					vue: 'Vue'
+				},
+				externalResource: {
+					'element-plus/dist/index.css': [
+						'element-plus-css',
+						'https://cdn.example.com/element-plus.css'
+					]
+				}
+			}
+		});
+
+		expect(result.externalGlobals).toEqual({
+			vue: 'Vue'
+		});
+		expect(result.externalResource).toEqual({
+			'element-plus/dist/index.css': [
+				'element-plus-css',
+				'https://cdn.example.com/element-plus.css'
+			]
+		});
 	});
 
 	it('throws an unknown framework error when component extension cannot be inferred', () => {
