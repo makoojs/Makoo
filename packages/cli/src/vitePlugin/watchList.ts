@@ -4,12 +4,15 @@ import type { ScannerResult } from '../scanner/type';
 import type { WatchTargets } from './type';
 
 export function getWatchTargets(scanResult: ScannerResult): WatchTargets {
-	const { config, injections } = scanResult;
+	const { config, injections, manifestDependencies } = scanResult;
 
 	const files = new Set<string>();
 	const dirs = new Set<string>();
 
 	files.add(scanResult.manifestFile);
+	for (const dependency of manifestDependencies) {
+		files.add(dependency);
+	}
 
 	// module level manifest file
 	for (const injection of injections) {
@@ -31,6 +34,7 @@ export function getWatchTargets(scanResult: ScannerResult): WatchTargets {
 export function isStructuralChange(changedFile: string, scanResult: ScannerResult): boolean {
 	const { config } = scanResult;
 	if (changedFile === scanResult.manifestFile) return true;
+	if (scanResult.manifestDependencies.includes(changedFile)) return true;
 
 	const rel = path.relative(config.source.dir, changedFile);
 	if (!rel.startsWith('..')) {

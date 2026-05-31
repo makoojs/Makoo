@@ -45,6 +45,7 @@ describe('generate', () => {
 		const scanResult: ScannerResult = {
 			config,
 			manifestFile: path.join(root, 'injections/manifest.ts'),
+			manifestDependencies: [],
 			injections: [injection],
 			frameworks: ['React']
 		};

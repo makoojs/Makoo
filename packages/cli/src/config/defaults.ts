@@ -1,6 +1,15 @@
 import process from 'node:process';
 import type { InjectorConfig, MonkeyBuildConfig, MonkeyConfig, MonkeyServerConfig } from './type';
 
+// collect all dependencies
+export const SOURCE_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mts', '.cts', '.mjs', '.cjs'];
+// esm
+export const ESM_IMPORT_RE =
+	/\bimport\s+(?:type\s+)?(?:[^'"]*?\s+from\s+)?['"]([^'"]+)['"]|\bexport\s+(?:type\s+)?(?:[^'"]*?\s+from\s+)?['"]([^'"]+)['"]/g;
+// cjs
+export const CJS_IMPORT_RE = /\brequire\s*\(['"]([^'"]+)['"]\)/g;
+
+// plugin
 export const VIRTUAL_MODULE_ID = 'virtual:makoo/entry';
 export const RESOLVED_ID = '\0virtual:makoo/entry';
 

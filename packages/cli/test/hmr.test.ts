@@ -184,4 +184,57 @@ describe('makooMonkey dev HMR', () => {
 			expect(dev.hotSend).not.toHaveBeenCalled();
 		});
 	});
+
+	it('rescans when a nested manifest dependency changes', async () => {
+		const root = await trackProject({
+			'injections/manifest.ts': `
+				import { hooks } from './hooks';
+				export default {
+					globalInjector: { hooks },
+					injections: {
+						widget: { injectAt: '#old', component: './widget/App.tsx', framework: 'React' }
+					}
+				};
+			`,
+			'injections/hooks.ts': `
+				import { helper } from './helper';
+				export const hooks = {
+					'run:start': () => helper()
+				};
+			`,
+			'injections/helper.ts': `export const helper = () => 'old-helper';`,
+			'injections/widget/App.tsx': 'export default function App() { return null; }'
+		});
+		const config = resolveConfig(
+			{
+				app: { name: 'hmr-script', version: '0.0.1' }
+			},
+			root
+		);
+		const plugin = makooMonkey(config) as Plugin;
+		const dev = createDevServer();
+
+		await withCwd(root, async () => {
+			await configureDevPlugin(plugin, dev.server);
+
+			const helperFile = path.join(root, 'injections/helper.ts');
+			expect(dev.watcherAdd).toHaveBeenCalledWith(helperFile);
+			await writeFile(helperFile, `export const helper = () => 'new-helper';`);
+			await dev.emit('change', helperFile);
+
+			expect(dev.invalidateModule).toHaveBeenCalledTimes(1);
+			expect(dev.hotSend).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'update',
+					updates: [
+						expect.objectContaining({
+							type: 'js-update',
+							path: RESOLVED_ID,
+							acceptedPath: RESOLVED_ID
+						})
+					]
+				})
+			);
+		});
+	});
 });

@@ -3,6 +3,7 @@ import path from 'node:path';
 import { createJiti } from 'jiti';
 import type { ResolvedSourceConfig } from '../../config/type';
 import { ManifestLoadError, SourceDirNotFoundError } from '../../error/error';
+import { collectDependencies } from '../collectDependenics';
 import type { LoadManifestResult } from '../type';
 import { validateManifest } from '../validation';
 
@@ -31,7 +32,10 @@ export async function loadManifest(
 
 			return {
 				manifest: validateManifest(raw, fullPath),
-				manifestFile: fullPath
+				manifestFile: fullPath,
+				dependencies: collectDependencies(fullPath, {
+					root: path.resolve(source.dir, '..')
+				})
 			};
 		}
 	}

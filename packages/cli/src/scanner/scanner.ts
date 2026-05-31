@@ -14,6 +14,7 @@ export async function scanner(config: ResolvedConfig): Promise<ScannerResult> {
 	if (!loadedManifest) {
 		throw new ManifestNotFoundError(config.source.dir);
 	}
+	const manifestDependencies = new Set<string>(loadedManifest.dependencies);
 	const resolveInjector = resolveInjectorConfig(loadedManifest.manifest.globalInjector);
 	const resolveManifest = resolveInjections(loadedManifest.manifest, {
 		root: config.root,
@@ -36,6 +37,9 @@ export async function scanner(config: ResolvedConfig): Promise<ScannerResult> {
 		const meta = await loadMeta(modulePath);
 		if (!meta) {
 			continue;
+		}
+		for (const dependency of meta.dependencies) {
+			manifestDependencies.add(dependency);
 		}
 		const resolveMeta = resolveInjection(meta.moduleConfig, {
 			root: config.root,
@@ -64,6 +68,7 @@ export async function scanner(config: ResolvedConfig): Promise<ScannerResult> {
 	return {
 		config: { ...config, injector: resolveInjector },
 		manifestFile: loadedManifest.manifestFile,
+		manifestDependencies: [...manifestDependencies].sort(),
 		injections,
 		frameworks
 	};

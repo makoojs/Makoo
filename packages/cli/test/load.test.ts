@@ -39,8 +39,13 @@ describe('loadManifest', () => {
 
 	it('loads manifest file and reads fresh content on repeated loads', async () => {
 		const root = await trackProject({
+			'injections/hooks.ts': `import { helper } from './helper';
+export const hooks = { 'run:start': () => helper() };`,
+			'injections/helper.ts': `export const helper = () => 'hooked';`,
 			'injections/manifest.ts': `
+				import { hooks } from './hooks';
 				export default {
+					globalInjector: { hooks },
 					injections: [{ name: 'widget', injectAt: '#old', component: './widget.tsx', framework: 'React' }]
 				};
 			`
@@ -52,11 +57,17 @@ describe('loadManifest', () => {
 		expect(first?.manifest).toMatchObject({
 			injections: [{ name: 'widget', injectAt: '#old' }]
 		});
+		expect(first?.dependencies).toEqual([
+			path.join(root, 'injections/hooks.ts'),
+			path.join(root, 'injections/helper.ts')
+		]);
 
 		await writeFile(
 			manifestFile,
 			`
+				import { hooks } from './hooks';
 				export default {
+					globalInjector: { hooks },
 					injections: [{ name: 'widget', injectAt: '#new', component: './widget.tsx', framework: 'React' }]
 				};
 			`
@@ -88,9 +99,18 @@ describe('loadMeta', () => {
 
 	it('loads module manifest and reads fresh content on repeated loads', async () => {
 		const root = await trackProject({
-			'injections/widget/other.ts': 'export const value = 1;',
+			'injections/widget/other.ts': `import { helper } from './helper';
+export const onMounted = () => helper();`,
+			'injections/widget/helper.ts': `export const helper = () => 1;`,
 			'injections/widget/manifest.ts': `
-				export default { name: 'widget', injectAt: '#old', component: './index.tsx', framework: 'React' };
+				import { onMounted } from './other';
+				export default {
+					name: 'widget',
+					injectAt: '#old',
+					component: './index.tsx',
+					framework: 'React',
+					onMounted
+				};
 			`
 		});
 		const moduleDir = path.join(root, 'injections/widget');
@@ -99,10 +119,15 @@ describe('loadMeta', () => {
 		const first = await loadMeta(moduleDir);
 		expect(first?.overridePath).toBe(manifestFile);
 		expect(first?.moduleConfig).toMatchObject({ name: 'widget', injectAt: '#old' });
+		expect(first?.dependencies).toEqual([
+			path.join(root, 'injections/widget/other.ts'),
+			path.join(root, 'injections/widget/helper.ts')
+		]);
 
 		await writeFile(
 			manifestFile,
-			`export default { name: 'widget', injectAt: '#new', component: './index.tsx', framework: 'React' };`
+			`import { onMounted } from './other';
+			export default { name: 'widget', injectAt: '#new', component: './index.tsx', framework: 'React', onMounted };`
 		);
 		const second = await loadMeta(moduleDir);
 		expect(second?.moduleConfig).toMatchObject({ name: 'widget', injectAt: '#new' });

@@ -19,6 +19,7 @@ const moduleManifestFile = path.join(sourceDir, 'widget/manifest.ts');
 const scanResult: ScannerResult = {
 	config,
 	manifestFile,
+	manifestDependencies: [path.join(sourceDir, 'hooks.ts')],
 	injections: [
 		{ overridePath: moduleManifestFile },
 		{ overridePath: moduleManifestFile },
@@ -31,13 +32,14 @@ describe('watchList', () => {
 	it('collects top-level manifest, module manifests and source directory as watch targets', () => {
 		const targets = getWatchTargets(scanResult);
 
-		expect(targets.files).toEqual([manifestFile, moduleManifestFile]);
+		expect(targets.files).toEqual([manifestFile, path.join(sourceDir, 'hooks.ts'), moduleManifestFile]);
 		expect(targets.dirs).toEqual([sourceDir]);
 	});
 
-	it('detects structural changes only for manifest files under source', () => {
+	it('detects structural changes for manifest files and manifest dependencies', () => {
 		expect(isStructuralChange(manifestFile, scanResult)).toBe(true);
 		expect(isStructuralChange(moduleManifestFile, scanResult)).toBe(true);
+		expect(isStructuralChange(path.join(sourceDir, 'hooks.ts'), scanResult)).toBe(true);
 		expect(isStructuralChange(path.join(sourceDir, 'widget/App.tsx'), scanResult)).toBe(false);
 		expect(isStructuralChange(path.join(root, 'outside/manifest.ts'), scanResult)).toBe(false);
 	});

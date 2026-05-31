@@ -3,6 +3,7 @@ import path from 'node:path';
 import { createJiti } from 'jiti';
 import { DEFAULT_MANIFEST_FILE_NAME } from '../../config/defaults';
 import { ModuleManifestLoadError } from '../../error/error';
+import { collectDependencies } from '../collectDependenics';
 import type { LoadMetaResult } from '../type';
 import { validateModuleMeta } from '../validation';
 
@@ -29,7 +30,10 @@ export async function loadMeta(root: string): Promise<LoadMetaResult | null> {
 
 			return {
 				overridePath: fullPath,
-				moduleConfig: validateModuleMeta(raw, fullPath)
+				moduleConfig: validateModuleMeta(raw, fullPath),
+				dependencies: collectDependencies(fullPath, {
+					root: path.resolve(root, '..', '..')
+				})
 			};
 		}
 	}
