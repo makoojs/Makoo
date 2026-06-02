@@ -23,7 +23,7 @@ async function printDevBanner(server: Awaited<ReturnType<typeof createServer>>):
 
 	console.log(`\n${colorize(title, ansi.bold, ansi.cyan)}\n`);
 	console.log(
-		`  ${colorize('➜', ansi.green)}  ${colorize('Local:', ansi.bold)}   ${localUrl ?? 'unavailable'}`
+		`  ${colorize('➜', ansi.green)}  ${colorize('Local:', ansi.bold)}   ${colorize(localUrl ?? 'unavailable', ansi.cyan)}`
 	);
 	console.log(
 		`  ${colorize('➜', ansi.green)}  ${colorize('Network:', ansi.bold)} ${networkUrl ?? colorize('use --host to expose', ansi.dim)}`

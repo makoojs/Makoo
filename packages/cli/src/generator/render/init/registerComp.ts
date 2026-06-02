@@ -1,4 +1,6 @@
 import type { ArtifactOptions } from '@makoo/core';
+import type { ResolvedInjectionFramework } from '../../../config/type';
+import { UnsupportedFrameworkGenerationError } from '../../../error/error';
 import type { Component, RenderInitResult } from '../../../generator/type';
 import { renderInlineValue } from '../util/value';
 
@@ -19,6 +21,22 @@ const renderMatchUrlHelper = (): string => {
 		'};'
 	].join('\n');
 };
+function frameworkVariantRegisterCode(
+	instanceName: string,
+	component: Component,
+	config: ArtifactOptions,
+	framework: ResolvedInjectionFramework
+): string {
+	if (framework === 'Vue') {
+		return `${instanceName}.register(${JSON.stringify(component.componentMeta.injectAt)}, ${component.componentName}, ${renderInlineValue(config)});`;
+	}
+
+	if (framework === 'React') {
+		return `${instanceName}.register(${JSON.stringify(component.componentMeta.injectAt)}, createElement(${component.componentName}), ${renderInlineValue(config)});`;
+	}
+
+	throw new UnsupportedFrameworkGenerationError(framework);
+}
 
 export function renderRegisterComponent(
 	instanceName: string,
@@ -33,7 +51,13 @@ export function renderRegisterComponent(
 			on: item.componentMeta.on,
 			hooks: item.componentMeta.hooks
 		};
-		const register = `${instanceName}.register(${JSON.stringify(item.componentMeta.injectAt)}, ${item.componentName}, ${renderInlineValue(config)});`;
+		const register = frameworkVariantRegisterCode(
+			instanceName,
+			item,
+			config,
+			item.componentMeta.framework
+		);
+
 		if (!item.componentMeta.match) {
 			return register;
 		}

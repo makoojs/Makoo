@@ -1,7 +1,7 @@
 ﻿<script setup lang="ts">
 defineOptions({ name: 'DemoPage' })
 
-import React from 'react'
+import { createElement} from 'react'
 import { onMounted, onUnmounted, provide, ref, watch } from 'vue'
 import { createActivityStore, Injector } from '@makoo/core'
 import { createReactAdapter } from '@makoo/react'
@@ -63,7 +63,7 @@ injector.registerListener('#case-listener-button', 'click', () => {
 })
 
 
-injector.register('#case-react-target', React.createElement(InjectedReactBadge))
+injector.register('#case-react-target', createElement(InjectedReactBadge))
 
 
 provide<RegisterResult>('delayCase:result', result);

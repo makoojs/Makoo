@@ -1,9 +1,13 @@
 #!/usr/bin/env node
 
 import { execSync } from 'node:child_process';
+import { existsSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import process from 'node:process';
 import { confirm, input, select } from '@inquirer/prompts';
+import { generateReactTemplate } from './template/react-template';
+import type { MakooFramework } from './template/type';
+import { ansi, colorize, resolveDependencyMode } from './template/util';
 import { generateVueTemplate } from './template/vue-template';
 
 function commandExists(cmd: string): boolean {
@@ -28,20 +32,62 @@ function detectPackageManager(): string | null {
 	return null;
 }
 
-const theme = {
-	prefix: { done: '\x1b[32m✓\x1b[0m', loading: '⏳' },
-	icon: { cursor: '▶', checked: '\x1b[32m✓\x1b[0m', unchecked: '○' }
-};
+function resolveTargetDir(projectName: string): string {
+	return join(process.cwd(), projectName);
+}
 
+function isNonEmptyTargetDir(targetDir: string): boolean {
+	if (!existsSync(targetDir)) {
+		return false;
+	}
+
+	const stat = statSync(targetDir);
+	if (!stat.isDirectory()) {
+		throw new Error(
+			`\x1b[31m\nTarget path "${targetDir}" exists and is not a directory.\x1b[0m`
+		);
+	}
+
+	return readdirSync(targetDir).length > 0;
+}
+
+const theme = {
+	prefix: { done: colorize('✓', ansi.green), loading: '⏳' },
+	icon: { cursor: '▶', checked: colorize('✓', ansi.green), unchecked: '○' }
+};
 export async function createMakoo() {
 	let pkgManager = detectPackageManager();
 	console.log("\n🚀  Welcome to makoo! Let's set up your project.\n");
 	try {
+		const dependencyMode = resolveDependencyMode();
+
 		const projectName: string = await input({
 			message: '📁  Project name:',
 			default: 'makoo-project',
 			theme
 		});
+		const targetDir = resolveTargetDir(projectName);
+
+		if (isNonEmptyTargetDir(targetDir)) {
+			const directoryAction = await select({
+				message: `Target directory "${projectName}" is not empty. Please choose how to proceed:`,
+				choices: [
+					{ name: 'Cancel operation', value: 'cancel' },
+					{ name: 'Remove existing files and continue', value: 'remove' },
+					{ name: 'Ignore files and continue', value: 'ignore' }
+				],
+				theme
+			});
+
+			if (directoryAction === 'cancel') {
+				console.log(colorize('\n❌ Operation cancelled.', ansi.red));
+				process.exit(0);
+			}
+
+			if (directoryAction === 'remove') {
+				rmSync(targetDir, { recursive: true, force: true });
+			}
+		}
 
 		const scriptName: string = await input({
 			message: '📝  Userscript name (shown in @name):',
@@ -57,13 +103,7 @@ export async function createMakoo() {
 
 		const nameSpace: string = await input({
 			message: '🌐  Namespace:',
-			default: 'http://tampermonkey.net',
-			theme
-		});
-
-		const description: string = await input({
-			message: '💬  Description:',
-			default: '',
+			default: 'npm/makoo',
 			theme
 		});
 
@@ -76,31 +116,42 @@ export async function createMakoo() {
 		const variant: string = await select({
 			message: '📘  Select a Variant:',
 			choices: [
-				{ name: 'TypeScript', value: 'ts' },
-				{ name: 'JavaScript', value: 'js' }
+				{ name: colorize('TypeScript', ansi.blue), value: 'ts' },
+				{ name: colorize('JavaScript', ansi.yellow), value: 'js' }
 			],
 			theme
 		});
 
-		const framework: string = await select({
+		const framework: MakooFramework = await select({
 			message: '⚡  Select a framework:',
 			choices: [
-				{ name: 'Vue', value: 'Vue' },
-				{ name: 'React', value: 'React' }
+				{ name: colorize('Vue', ansi.green), value: 'Vue' },
+				{ name: colorize('React', ansi.cyan), value: 'React' }
 			],
 			theme
 		});
 
-		generateVueTemplate({
+		const initData = {
 			projectName,
 			scriptName,
 			version,
 			nameSpace,
-			description,
 			userScriptMatch,
 			variant,
-			framework: framework as 'Vue' | 'React'
-		});
+			framework,
+			dependencyMode
+		};
+
+		switch (framework) {
+			case 'Vue':
+				generateVueTemplate(initData);
+				break;
+			case 'React':
+				generateReactTemplate(initData);
+				break;
+			default:
+				throw new Error(colorize(`Unsupported framework: ${framework}`, ansi.red));
+		}
 
 		const installNow: boolean = await confirm({
 			message: `📥  Install with ${pkgManager} and start now?`,
@@ -132,12 +183,16 @@ export async function createMakoo() {
 		}
 	} catch (error: unknown) {
 		if (error && typeof error === 'object' && (error as Error).name === 'ExitPromptError') {
-			console.log('\x1b[31m\n❌ Operation cancelled.\x1b[0m');
+			console.log(colorize('\n❌ Operation cancelled.', ansi.red));
 			process.exit(0);
+			return;
 		}
-		console.error(`\x1b[31m${error instanceof Error ? error.message : String(error)}\x1b[0m`);
+		console.error(colorize(error instanceof Error ? error.message : String(error), ansi.red));
 		process.exit(1);
+		return;
 	}
 }
 
-createMakoo();
+if (process.env.NODE_ENV !== 'test') {
+	createMakoo();
+}

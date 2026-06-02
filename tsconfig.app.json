@@ -24,19 +24,18 @@
     "noUncheckedSideEffectImports": true,
     "forceConsistentCasingInFileNames": true,
     "jsx": "react-jsx",
-    "baseUrl": ".",
     "paths": {
       "@makoo/core": [
-        "packages/core/src/index.ts"
+        "./packages/core/src/index.ts"
       ],
       "@makoo/vue": [
-        "packages/vue/src/index.ts"
+        "./packages/vue/src/index.ts"
       ],
       "@makoo/react": [
-        "packages/react/src/index.ts"
+        "./packages/react/src/index.ts"
       ],
       "@makoo/cli": [
-        "packages/cli/src/index.ts"
+        "./packages/cli/src/index.ts"
       ]
     }
   },

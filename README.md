@@ -1,5 +1,5 @@
 <p align="center">
-  <img width="150" src="./demo/assets/makoo-icon.png">
+  <img width="150" src="./demo/assets/makoo-icon-transparent.png">
 </p>
 
 <h1 align="center">Makoo</h1>

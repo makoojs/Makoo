@@ -11,24 +11,21 @@ import {
 
 function packageJsonTemplate(data: InitData): string {
 	const devDeps: Record<string, string> = {
-		vite: '^8.0.14'
+		vite: '^8.0.14',
+		'@vitejs/plugin-react': '^5.2.0'
 	};
 
 	if (data.variant === 'ts') {
 		devDeps.typescript = '~5.9.3';
 		devDeps['@types/node'] = '^25.9.1';
-	}
-	if (data.framework === 'Vue' && data.variant === 'ts') {
-		devDeps['vue-tsc'] = '^3.1.5';
-	}
-	if (data.framework === 'Vue') {
-		devDeps['@vitejs/plugin-vue'] = '^6.0.7';
+		devDeps['@types/react'] = '^19.2.15';
+		devDeps['@types/react-dom'] = '^19.2.3';
 	}
 
-	const deps: Record<string, string> = {};
-	if (data.framework === 'Vue') {
-		deps.vue = '^3.5.0';
-	}
+	const deps = {
+		react: '^19.2.0',
+		'react-dom': '^19.2.0'
+	};
 	const makooDependencies = resolveMakooDependencies(data.framework, data.dependencyMode);
 
 	const obj = {
@@ -37,8 +34,8 @@ function packageJsonTemplate(data: InitData): string {
 		type: 'module',
 		scripts: {
 			dev: 'makoo dev',
-			build: data.variant === 'ts' ? 'vue-tsc -b && makoo build' : 'makoo build',
-			...(data.variant === 'ts' ? { typecheck: 'vue-tsc -b' } : {})
+			build: data.variant === 'ts' ? 'tsc -b && makoo build' : 'makoo build',
+			...(data.variant === 'ts' ? { typecheck: 'tsc -b' } : {})
 		},
 		dependencies: {
 			...deps,
@@ -61,18 +58,18 @@ function viteConfigTemplate(data: InitData): string {
 	const localResolveBlock =
 		data.dependencyMode === 'local'
 			? `  resolve: {
-    dedupe: ['vue']
-  },`
+    dedupe: ['react', 'react-dom']
+  },
+`
 			: '';
 
 	return `import { defineConfig } from 'vite';
-import { cdn, makoo } from '@makoo/cli';
-import vue from '@vitejs/plugin-vue';
+import react from '@vitejs/plugin-react';
+import { makoo } from '@makoo/cli';
 
 export default defineConfig({
-  ${localResolveBlock}
-  plugins: [
-    vue(),
+  ${localResolveBlock}plugins: [
+    react(),
     makoo({
       app: {
         name: '${data.scriptName}',
@@ -84,9 +81,26 @@ export default defineConfig({
           namespace: '${data.nameSpace}',
           match: [${matches}],
         },
+        // Uses the third-party umd-react package because React 19 and related
+        // react-dom packages no longer ship official UMD builds. That package
+        // squishes ReactDOM and ReactDOMClient back into the same ReactDOM
+        // global for backward compatibility, so react-dom/client also resolves
+        // to the ReactDOM UMD build here. If you want to use React, prefer
+        // React 18 or a third-party UMD package.
         build: {
           externalGlobals: {
-            vue: cdn.jsdelivr('Vue', 'dist/vue.global.min.js')
+          react: [
+            'React',
+            () => 'https://unpkg.com/umd-react/dist/react.production.min.js'
+          ],
+          'react-dom': [
+            'ReactDOM',
+            () => 'https://unpkg.com/umd-react/dist/react-dom.production.min.js'
+          ],
+          'react-dom/client': [
+            'ReactDOM',
+            () => 'https://unpkg.com/umd-react/dist/react-dom.production.min.js'
+          ]
           }
         },
       },
@@ -96,50 +110,60 @@ export default defineConfig({
 `;
 }
 
-function manifestTemplate(): string {
+function manifestTemplate(data: InitData): string {
 	return `import { defineInjections } from '@makoo/cli';
 
 export default defineInjections({
   injections: {
     'hello-world': {
       injectAt: 'body',
-      component: './hello-world/app.vue',
+      component: './hello-world/app.${data.variant === 'ts' ? 'tsx' : 'jsx'}',
     }
   }
 });
 `;
 }
 
-function vueComponentTemplate(data: InitData): string {
-	return `<script setup${data.variant === 'ts' ? ' lang="ts"' : ''}>
-import { ref } from 'vue';
+function reactComponentTemplate(data: InitData): string {
+	const stateImport =
+		data.variant === 'ts'
+			? "import { useState } from 'react';"
+			: "import { useState } from 'react';";
+
+	return `${stateImport}
+import './style.css';
 import makooLogo from '../../assets/makoo-icon-transparent.png';
-import vueLogo from '../../assets/vue.svg';
+import reactLogo from '../../assets/react.svg';
 
-const count = ref(0);
-</script>
+export default function App() {
+  const [count, setCount] = useState(0);
 
-<template>
-  <section class="makoo-hello-world">
-    <div class="hero">
-      <img :src="vueLogo" class="logo logo-vue" alt="Vue logo" />
-      <span class="hero-plus">+</span>
-      <img :src="makooLogo" class="logo logo-makoo" alt="Makoo logo" />
-    </div>
+  return (
+    <section className="makoo-hello-world">
+      <div className="hero">
+        <img src={reactLogo} className="logo logo-react" alt="React logo" />
+        <span className="hero-plus">+</span>
+        <img src={makooLogo} className="logo logo-makoo" alt="Makoo logo" />
+      </div>
 
-    <div class="content">
-      <h1>Makoo</h1>
-      <p>Edit <code>app.vue</code> and save to test HMR.</p>
-    </div>
+      <div className="content">
+        <h1>Makoo</h1>
+        <p>
+          Edit <code>app.${data.variant === 'ts' ? 'tsx' : 'jsx'}</code> and save to test HMR.
+        </p>
+      </div>
 
-    <button type="button" class="counter" @click="count += 1">
-      count is {{ count }}
-    </button>
-  </section>
-</template>
+      <button type="button" className="counter" onClick={() => setCount((value) => value + 1)}>
+        count is {count}
+      </button>
+    </section>
+  );
+}
+`;
+}
 
-<style scoped>
-.makoo-hello-world {
+function reactStyleTemplate(): string {
+	return `.makoo-hello-world {
   position: fixed;
   top: 50%;
   left: 50%;
@@ -179,9 +203,9 @@ const count = ref(0);
   transform: translateY(-3px) scale(1.03);
 }
 
-.logo-vue {
-  width: 80px;
-  height: 80px;
+.logo-react {
+  width: 88px;
+  height: 88px;
 }
 
 .logo-makoo {
@@ -228,11 +252,11 @@ const count = ref(0);
   justify-self: center;
   min-width: 180px;
   padding: 0.9rem 1.2rem;
-  background: linear-gradient(135deg, #42b883, #35495e);
+  background: linear-gradient(135deg, #61dafb, #2563eb);
   color: #fff;
   border: 0;
   border-radius: 999px;
-  box-shadow: 0 12px 24px rgba(66, 184, 131, 0.28);
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.22);
   font: inherit;
   font-size: 1rem;
   font-weight: 600;
@@ -245,35 +269,40 @@ const count = ref(0);
 
 .counter:hover {
   transform: translateY(-2px);
-  box-shadow: 0 16px 28px rgba(66, 184, 131, 0.34);
+  box-shadow: 0 16px 28px rgba(37, 99, 235, 0.28);
 }
 
 .counter:active {
   transform: translateY(0);
 }
-</style>
 `;
 }
 
-export function generateVueTemplate(data: InitData): void {
+export function generateReactTemplate(data: InitData): void {
 	const root = join(process.cwd(), data.projectName);
 	const ext = data.variant;
+	const componentExt = data.variant === 'ts' ? 'tsx' : 'jsx';
+
 	writeTemplateFiles(root, {
 		'package.json': packageJsonTemplate(data),
 		[`vite.config.${ext}`]: viteConfigTemplate(data),
-		[`injections/manifest.${ext}`]: manifestTemplate(),
-		'injections/hello-world/app.vue': vueComponentTemplate(data)
+		[`injections/manifest.${ext}`]: manifestTemplate(data),
+		[`injections/hello-world/app.${componentExt}`]: reactComponentTemplate(data),
+		'injections/hello-world/style.css': reactStyleTemplate()
 	});
 	writeGitignoreFile(root);
 	copyTemplateAssets(root, [
-		{ source: 'vue.svg', target: 'assets/vue.svg' },
+		{ source: 'react.svg', target: 'assets/react.svg' },
 		{ source: 'makoo-icon-transparent.png', target: 'assets/makoo-icon-transparent.png' }
 	]);
 
 	if (data.variant === 'ts') {
 		createTypeScriptConfigFiles(root, {
-			appInclude: ['env.d.ts', 'injections/**/*.ts', 'injections/**/*.vue'],
-			nodeInclude: ['vite.config.ts']
+			appInclude: ['env.d.ts', 'injections/**/*.ts', 'injections/**/*.tsx'],
+			nodeInclude: ['vite.config.ts'],
+			appCompilerOptions: {
+				jsx: 'react-jsx'
+			}
 		});
 	}
 }

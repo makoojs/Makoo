@@ -257,7 +257,7 @@ describe('devCommand', () => {
 				`\n\x1B[1m\x1B[36mMakoo v${cliPackage.version}\x1B[0m\n`
 			);
 			expect(log).toHaveBeenCalledWith(
-				'  \x1B[32m➜\x1B[0m  \x1B[1mLocal:\x1B[0m   http://localhost:5173/'
+				'  \x1B[32m➜\x1B[0m  \x1B[1mLocal:\x1B[0m   \x1B[36mhttp://localhost:5173/\x1B[0m'
 			);
 			expect(log).toHaveBeenCalledWith(
 				'  \x1B[32m➜\x1B[0m  \x1B[1mNetwork:\x1B[0m \x1B[2muse --host to expose\x1B[0m'

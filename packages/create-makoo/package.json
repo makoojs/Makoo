@@ -5,7 +5,8 @@
   "type": "module",
   "license": "MIT",
   "files": [
-    "dist"
+    "dist",
+    "assets"
   ],
   "bin": {
     "create-makoo": "./dist/index.cjs"

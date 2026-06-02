@@ -6,7 +6,6 @@
         "emitDeclarationOnly": true,
         "rootDir": "src",
         "tsBuildInfoFile": "../../node_modules/.tmp/tsconfig.package-vue.tsbuildinfo",
-        "baseUrl": ".",
         "paths": {
             "@makoo/core": [
                 "../core"
