@@ -34,4 +34,37 @@ describe('validateCliConfig', () => {
 			});
 		}
 	});
+
+	it('rejects monkey.clientAlias and monkey.server.mountGmApi', () => {
+		try {
+			validateCliConfig({
+				app: {
+					name: 'demo-script',
+					version: '1.0.0'
+				},
+				monkey: {
+					clientAlias: '$',
+					server: {
+						mountGmApi: true
+					}
+				}
+			});
+			throw new Error('expected validation to throw');
+		} catch (error) {
+			expect(error).toBeInstanceOf(ConfigValidationError);
+			expect(error).toMatchObject({
+				name: 'ConfigValidationError',
+				issues: [
+					{
+						path: 'monkey.clientAlias',
+						message: 'monkey.clientAlias is not supported by makoo'
+					},
+					{
+						path: 'monkey.server.mountGmApi',
+						message: 'monkey.server.mountGmApi is not supported by makoo'
+					}
+				]
+			});
+		}
+	});
 });

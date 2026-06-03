@@ -39,7 +39,6 @@ export type MonkeyGenerateContext = {
 export type MonkeyServerConfig = {
 	open?: boolean;
 	prefix?: string | ((name: string) => string) | false;
-	mountGmApi?: boolean;
 };
 
 export type MonkeyBuildConfig = {
@@ -63,7 +62,6 @@ export type MonkeyConfig = {
 	userscript?: MonkeyUserScript;
 	align?: number | false;
 	generate?: (options: MonkeyGenerateContext) => Thenable<string>;
-	clientAlias?: string;
 	styleImport?: boolean;
 	server?: MonkeyServerConfig;
 	build?: MonkeyBuildConfig;
@@ -158,7 +156,7 @@ export type ResolvedMonkeyBuildConfig = {
 
 export type ResolvedMonkeyConfig = Omit<
 	MonkeyConfig,
-	'userscript' | 'align' | 'clientAlias' | 'styleImport' | 'server' | 'build'
+	'userscript' | 'align' | 'styleImport' | 'server' | 'build'
 > & {
 	userscript: MonkeyUserScript;
 	align: number | false;

@@ -1,8 +1,10 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ErrorCode } from '@makoo/core';
 import {
 	getExtName,
+	loadCliVersion,
 	moduleTemplate,
 	reactTemplate,
 	updateManifest,
@@ -13,6 +15,88 @@ import { UnsupportedFrameworkGenerationError } from '../src/error/error';
 import { cleanupTempProjects, trackProject, withCwd } from './utils/tempProject';
 
 afterEach(cleanupTempProjects);
+
+describe('loadCliVersion', () => {
+	it('returns cached version without reading package files', async () => {
+		await expect(loadCliVersion('9.9.9')).resolves.toBe('9.9.9');
+	});
+
+	it('resolves cli package version when cache is empty', async () => {
+		const cliPackage = JSON.parse(
+			readFileSync(path.join(__dirname, '../package.json'), 'utf-8')
+		) as { version: string };
+
+		await expect(loadCliVersion(null)).resolves.toBe(cliPackage.version);
+	});
+});
+
+describe('loadMakooConfig', () => {
+	afterEach(() => {
+		vi.doUnmock('vite');
+		vi.resetModules();
+	});
+
+	it('returns resolved makoo config from vite plugin payload', async () => {
+		vi.resetModules();
+		const makooConfig = {
+			app: { name: 'demo', version: '0.0.1' },
+			source: { include: ['*'], exclude: [] },
+			injector: { alive: false, scope: 'local', timeout: 5000 },
+			monkey: { userscript: { match: ['https://example.com/*'] } }
+		};
+		const loadConfigFromFile = vi.fn().mockResolvedValue({
+			path: '/tmp/vite.config.ts',
+			config: {
+				plugins: [[null, false, { name: 'vite-plugin-makoo', __makoo: makooConfig }]]
+			}
+		});
+
+		vi.doMock('vite', () => ({
+			loadConfigFromFile
+		}));
+
+		const util = await import('../src/command/_util');
+		await expect(util.loadMakooConfig()).resolves.toBe(makooConfig);
+		expect(loadConfigFromFile).toHaveBeenCalledWith(
+			{ command: 'build', mode: 'production' },
+			undefined,
+			process.cwd()
+		);
+	});
+
+	it('throws when vite config file is missing', async () => {
+		vi.resetModules();
+		vi.doMock('vite', () => ({
+			loadConfigFromFile: vi.fn().mockResolvedValue(null)
+		}));
+
+		const util = await import('../src/command/_util');
+
+		await expect(util.loadMakooConfig()).rejects.toMatchObject({
+			name: 'LoadViteMakooConfigError',
+			code: ErrorCode.CLI_VITE_CONFIG_NOT_FOUND
+		});
+	});
+
+	it('throws when makoo plugin is not present in vite config', async () => {
+		vi.resetModules();
+		vi.doMock('vite', () => ({
+			loadConfigFromFile: vi.fn().mockResolvedValue({
+				path: '/tmp/vite.config.ts',
+				config: {
+					plugins: [{ name: 'vite:vue' }]
+				}
+			})
+		}));
+
+		const util = await import('../src/command/_util');
+
+		await expect(util.loadMakooConfig()).rejects.toMatchObject({
+			name: 'LoadViteMakooConfigError',
+			code: ErrorCode.CLI_PLUGIN_NOT_FOUND
+		});
+	});
+});
 
 // --- getExtName ---
 
@@ -201,8 +285,10 @@ export default defineInjections({ injections: {} });`
 		});
 
 		await withCwd(root, async () => {
-			const { ModuleAlreadyExistsError } = await import('../src/error/error');
-			await expect(addCommand('demo', 'Vue')).rejects.toThrow(ModuleAlreadyExistsError);
+			await expect(addCommand('demo', 'Vue')).rejects.toMatchObject({
+				name: 'ModuleAlreadyExistsError',
+				code: ErrorCode.CLI_MODULE_ALREADY_EXISTS
+			});
 		});
 	});
 
@@ -243,9 +329,13 @@ describe('devCommand', () => {
 		});
 
 		vi.doMock('vite', () => ({ createServer }));
-		vi.doMock('../src/command/_util', () => ({
-			loadCliVersion: vi.fn().mockResolvedValue(cliPackage.version)
-		}));
+		vi.doMock('../src/command/_util', async (importOriginal) => {
+			const actual = await importOriginal<typeof import('../src/command/_util')>();
+			return {
+				...actual,
+				loadCliVersion: vi.fn().mockResolvedValue(cliPackage.version)
+			};
+		});
 
 		try {
 			const { devCommand } = await import('../src/command/dev');

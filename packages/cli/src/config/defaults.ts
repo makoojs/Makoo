@@ -48,8 +48,7 @@ export const DEFAULT_INJECTOR_CONFIG: Required<InjectorConfig> = {
 
 export const DEFAULT_MONKEY_SERVER_CONFIG: Required<MonkeyServerConfig> = {
 	open: process.platform === 'win32' || process.platform === 'darwin',
-	prefix: 'server:',
-	mountGmApi: false
+	prefix: 'server:'
 };
 
 export const DEFAULT_MONKEY_BUILD_CONFIG: Pick<
@@ -60,7 +59,9 @@ export const DEFAULT_MONKEY_BUILD_CONFIG: Pick<
 	autoGrant: true
 };
 
-export const DEFAULT_MONKEY_CONFIG: Pick<MonkeyConfig, 'align' | 'clientAlias' | 'styleImport'> = {
+export const DEFAULT_MONKEY_CONFIG: Pick<MonkeyConfig, 'align' | 'styleImport'> & {
+	clientAlias: string;
+} = {
 	align: 2,
 	clientAlias: '$',
 	styleImport: true

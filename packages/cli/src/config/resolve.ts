@@ -230,7 +230,7 @@ export const resolveMonkeyServerConfig = (
 	return {
 		open: config?.server?.open ?? DEFAULT_MONKEY_SERVER_CONFIG.open,
 		prefix: config?.server?.prefix ?? DEFAULT_MONKEY_SERVER_CONFIG.prefix,
-		mountGmApi: config?.server?.mountGmApi ?? DEFAULT_MONKEY_SERVER_CONFIG.mountGmApi
+		mountGmApi: false
 	};
 };
 
@@ -261,7 +261,6 @@ export const resolveMonkeyConfig = (
 	const {
 		userscript,
 		align,
-		clientAlias,
 		styleImport,
 		server: _server,
 		build: _build,
@@ -279,7 +278,7 @@ export const resolveMonkeyConfig = (
 			...userscript
 		},
 		align: align ?? DEFAULT_MONKEY_CONFIG.align ?? 2,
-		clientAlias: clientAlias ?? DEFAULT_MONKEY_CONFIG.clientAlias ?? '$',
+		clientAlias: DEFAULT_MONKEY_CONFIG.clientAlias,
 		styleImport: styleImport ?? DEFAULT_MONKEY_CONFIG.styleImport ?? true,
 		server: resolveMonkeyServerConfig(config),
 		build: resolveMonkeyBuildConfig(app, config)

@@ -10,6 +10,17 @@ import type { ResolvedConfig } from '../config/types';
 import { LoadViteMakooConfigError, UnsupportedFrameworkGenerationError } from '../error/error';
 import type { MakooMonkeyPlugin } from '../vitePlugin/types';
 
+export const ansi = {
+	reset: '\x1B[0m',
+	bold: '\x1B[1m',
+	cyan: '\x1B[36m',
+	green: '\x1B[32m',
+	dim: '\x1B[2m'
+} as const;
+
+export const colorize = (value: string, ...codes: string[]): string =>
+	`${codes.join('')}${value}${ansi.reset}`;
+
 export async function loadCliVersion(cliVersionCache: string | null): Promise<string> {
 	if (cliVersionCache) {
 		return cliVersionCache;

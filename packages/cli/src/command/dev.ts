@@ -1,16 +1,5 @@
 import { createServer } from 'vite';
-import { loadCliVersion } from './_util';
-
-const ansi = {
-	reset: '\x1B[0m',
-	bold: '\x1B[1m',
-	cyan: '\x1B[36m',
-	green: '\x1B[32m',
-	dim: '\x1B[2m'
-} as const;
-
-const colorize = (value: string, ...codes: string[]): string =>
-	`${codes.join('')}${value}${ansi.reset}`;
+import { ansi, colorize, loadCliVersion } from './_util';
 
 const cliVersionCache: string | null = null;
 

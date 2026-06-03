@@ -45,7 +45,6 @@ describe('resolveConfig', () => {
 			match: ['https://example.com/*']
 		});
 		expect(config.monkey.align).toBe(2);
-		expect(config.monkey.clientAlias).toBe('$');
 		expect(config.monkey.styleImport).toBe(true);
 		expect(config.monkey.server.prefix).toBe('server:');
 		expect(config.monkey.server.mountGmApi).toBe(false);
@@ -77,7 +76,10 @@ describe('resolveMonkeyPluginOptions', () => {
 							react: 'React'
 						},
 						externalResource: {
-							'element-plus/dist/index.css': ['element-plus-css', 'https://cdn.example.com/element-plus.css']
+							'element-plus/dist/index.css': [
+								'element-plus-css',
+								'https://cdn.example.com/element-plus.css'
+							]
 						}
 					}
 				}
@@ -104,6 +106,7 @@ describe('resolveMonkeyPluginOptions', () => {
 			namespace: 'https://makoo.test',
 			match: ['https://override.test/*']
 		});
+		expect(options.clientAlias).toBe('$');
 		expect(options.server).toMatchObject({
 			open: false,
 			prefix: 'server:',
@@ -117,7 +120,10 @@ describe('resolveMonkeyPluginOptions', () => {
 			metaFileName: false,
 			autoGrant: false,
 			externalResource: {
-				'element-plus/dist/index.css': ['element-plus-css', 'https://cdn.example.com/element-plus.css']
+				'element-plus/dist/index.css': [
+					'element-plus-css',
+					'https://cdn.example.com/element-plus.css'
+				]
 			}
 		});
 	});

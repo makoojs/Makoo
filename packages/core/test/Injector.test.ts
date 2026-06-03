@@ -230,6 +230,68 @@ describe('Injector', () => {
 		expect(context?.appRoot?.parentElement).toBe(host);
 	});
 
+	it('should expose a task-scoped makoo api to mounted artifacts', () => {
+		const host = document.createElement('div');
+		host.id = 'makoo-api-host';
+		document.body.appendChild(host);
+		const source = createActivityStore(true);
+		const observerOffTaskSpy = vi.spyOn(ObserverHub.prototype, 'offTask');
+		const enableSpy = vi.spyOn(taskLifeCycle, 'enableAlive').mockImplementation(() => {});
+		const disableSpy = vi.spyOn(taskLifeCycle, 'disableAlive').mockImplementation(() => {});
+		const resetSpy = vi.spyOn(taskLifeCycle, 'reset').mockImplementation(() => {});
+		const destroySpy = vi.spyOn(taskLifeCycle, 'destroy').mockImplementation(() => {});
+		const bindSpy = vi.spyOn(taskRunner, 'bindListenerSignal').mockReturnValue(true);
+		const controlSpy = vi.spyOn(taskRunner, 'controlListener').mockReturnValue(true);
+		let capturedApi:
+			| import('../src/adapter/types').MakooArtifactApi
+			| undefined;
+
+		const artifact = { kind: 'custom-artifact', name: 'MakooApiArtifact' };
+		const result = injector
+			.applyAdapter({
+				name: 'custom-makoo-api',
+				matches(candidate): candidate is typeof artifact {
+					return candidate === artifact;
+				},
+				mount(input) {
+					capturedApi = input.makoo;
+					return { handle: {} };
+				},
+				unmount: vi.fn()
+			})
+			.register('#makoo-api-host', artifact);
+
+		injector.run();
+
+		expect(capturedApi).toBeDefined();
+		expect(capturedApi?.taskId).toBe(result.taskId);
+		expect(capturedApi?.injectAt).toBe('#makoo-api-host');
+		expect(capturedApi?.getLogger()).toBe(injector.getLogger());
+
+		const hook = vi.fn();
+		const off = capturedApi?.on('artifact:mountSuccess', hook);
+		capturedApi?.off('artifact:mountSuccess', hook);
+		capturedApi?.enableAlive();
+		capturedApi?.disableAlive();
+		capturedApi?.reset();
+		capturedApi?.destroy();
+		capturedApi?.bindListenerSignal(source);
+		capturedApi?.controlListener(Action.OPEN);
+		off?.();
+
+		expect(enableSpy).toHaveBeenCalledWith(result.taskId);
+		expect(disableSpy).toHaveBeenCalledWith(result.taskId);
+		expect(resetSpy).toHaveBeenCalledWith(result.taskId);
+		expect(destroySpy).toHaveBeenCalledWith(result.taskId);
+		expect(bindSpy).toHaveBeenCalledWith(result.taskId, source);
+		expect(controlSpy).toHaveBeenCalledWith(result.taskId, Action.OPEN);
+		expect(observerOffTaskSpy).toHaveBeenCalledWith(
+			result.taskId,
+			'artifact:mountSuccess',
+			hook
+		);
+	});
+
 	it('should reset task context', () => {
 		injector.register('#reset', createVueComponent('ResetComp'));
 		injector.reset('task-a');
@@ -362,6 +424,19 @@ describe('Injector', () => {
 		expect(anyHook).toHaveBeenCalled();
 		expect(taskHook).toHaveBeenCalledOnce();
 	});
+
+	it('should forward off and offAny to observer facade methods', () => {
+		const offSpy = vi.spyOn(ObserverHub.prototype, 'off');
+		const offAnySpy = vi.spyOn(ObserverHub.prototype, 'offAny');
+		const hook = vi.fn();
+
+		injector.off('artifact:mountFail', hook);
+		injector.offAny(hook);
+
+		expect(offSpy).toHaveBeenCalledWith('artifact:mountFail', hook);
+		expect(offAnySpy).toHaveBeenCalledWith(hook);
+	});
+
 	it('should get the logger', () => {
 		const logger = new Logger();
 		const testInjector = createInjector({ logger });
