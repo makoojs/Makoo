@@ -1,4 +1,23 @@
+import type { ObserveEventName, ObserveHook } from '../hooks/types';
+import type { ActionEvent } from '../Injector/types';
+import type { ILogger } from '../logger/types';
+import type { ActivitySignalSource } from '../signal/types';
+
 export type AdapterUnmountReason = 'destroy' | 'reset' | 'remount' | 'manual';
+
+export type MakooArtifactApi = {
+	taskId: string;
+	injectAt: string;
+	enableAlive: () => void;
+	disableAlive: () => void;
+	reset: () => void;
+	destroy: () => void;
+	on: (event: ObserveEventName, hook: ObserveHook) => () => void;
+	off: (event?: ObserveEventName, hook?: ObserveHook) => void;
+	getLogger: () => ILogger;
+	bindListenerSignal: (source: ActivitySignalSource<boolean>) => boolean;
+	controlListener: (event: ActionEvent) => boolean;
+};
 
 export type AdapterMountInput<TArtifact = unknown> = {
 	host: HTMLElement;
@@ -6,6 +25,7 @@ export type AdapterMountInput<TArtifact = unknown> = {
 	artifact: TArtifact;
 	taskId: string;
 	injectAt: string;
+	makoo: MakooArtifactApi;
 };
 
 export type AdapterMountResult<THandle = unknown, TInstance = unknown> = {

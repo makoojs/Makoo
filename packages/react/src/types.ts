@@ -1,8 +1,12 @@
-import type { ResolvableMountAdapter } from '@makoo/core';
-import type { ReactElement } from 'react';
+import type { MakooArtifactApi, ResolvableMountAdapter } from '@makoo/core';
+import type { ComponentType, ExoticComponent } from 'react';
 import type { Root } from 'react-dom/client';
 
-export type ReactMountArtifact = ReactElement;
+export type ReactMountProps = {
+	makoo: MakooArtifactApi;
+};
+
+export type ReactMountArtifact = ComponentType<ReactMountProps> | ExoticComponent<ReactMountProps>;
 export type ReactMountRoot = Root;
 
 export type ReactMountAdapter = ResolvableMountAdapter<

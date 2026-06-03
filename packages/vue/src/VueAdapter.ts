@@ -10,9 +10,9 @@ export function createVueAdapter(): VueMountAdapter {
 	const adapter: VueMountAdapter = {
 		name: 'vue',
 		matches: isVueComponent,
-		mount({ mountPoint, artifact }) {
+		mount({ mountPoint, artifact, makoo }) {
 			try {
-				const app = createApp(artifact);
+				const app = createApp(artifact, { makoo });
 				const plugins = VuePlugin.getPlugins();
 				for (const plugin of plugins) {
 					app.use(plugin);

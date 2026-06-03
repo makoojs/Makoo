@@ -208,6 +208,25 @@ describe('Injector', () => {
 		expect(context?.taskStatus).toBe('active');
 		expect(context?.adapter.name).toBe('custom');
 		expect(mount).toHaveBeenCalledOnce();
+		expect(mount).toHaveBeenCalledWith(
+			expect.objectContaining({
+				taskId: result.taskId,
+				injectAt: '#custom-adapter',
+				makoo: expect.objectContaining({
+					taskId: result.taskId,
+					injectAt: '#custom-adapter',
+					enableAlive: expect.any(Function),
+					disableAlive: expect.any(Function),
+					reset: expect.any(Function),
+					destroy: expect.any(Function),
+					on: expect.any(Function),
+					off: expect.any(Function),
+					getLogger: expect.any(Function),
+					bindListenerSignal: expect.any(Function),
+					controlListener: expect.any(Function)
+				})
+			})
+		);
 		expect(context?.appRoot?.parentElement).toBe(host);
 	});
 

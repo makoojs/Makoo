@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { WatchHandle } from 'vue';
 import { createVueAdapter } from '../../vue/src/VueAdapter';
 import { VuePlugin } from '../../vue/src/VuePlugin';
+import type { MakooArtifactApi } from '../src/adapter/types';
 import { ErrorCode } from '../src/error/ErrorCode';
 import { TaskError } from '../src/error/TaskError';
 import { ObserverHub } from '../src/hooks/ObserverHub';
@@ -15,6 +16,22 @@ import { TaskRunner } from '../src/Task/TaskRunner';
 import type { ArtifactTask, ListenerTask } from '../src/Task/types';
 import { DOMWatcher } from '../src/watcher/DomWatcher';
 import { createArtifactTask, createListenerTask, createVueComponent } from './factory/TaskFactor';
+
+function createArtifactApi(taskId: string, injectAt: string): MakooArtifactApi {
+	return {
+		taskId,
+		injectAt,
+		enableAlive: vi.fn(),
+		disableAlive: vi.fn(),
+		reset: vi.fn(),
+		destroy: vi.fn(),
+		on: vi.fn(() => vi.fn()),
+		off: vi.fn(),
+		getLogger: vi.fn(() => new Logger()),
+		bindListenerSignal: vi.fn(() => false),
+		controlListener: vi.fn(() => false)
+	};
+}
 
 describe('TaskRunner', () => {
 	let taskContext: TaskContext;
@@ -33,7 +50,8 @@ describe('TaskRunner', () => {
 				timeout: 5000,
 				logger: new Logger()
 			},
-			createObserveEmitter(observer)
+			createObserveEmitter(observer),
+			createArtifactApi
 		);
 		document.body.innerHTML = '';
 		vi.spyOn(console, 'info').mockImplementation(() => {});
@@ -69,7 +87,8 @@ describe('TaskRunner', () => {
 				logger: new Logger(),
 				observer
 			},
-			createObserveEmitter(observer)
+			createObserveEmitter(observer),
+			createArtifactApi
 		);
 
 		taskContext.set(
@@ -259,7 +278,8 @@ describe('TaskRunner', () => {
 				logger: new Logger(),
 				observer
 			},
-			createObserveEmitter(observer)
+			createObserveEmitter(observer),
+			createArtifactApi
 		);
 
 		taskContext.set(
@@ -303,7 +323,8 @@ describe('TaskRunner', () => {
 				logger: new Logger(),
 				observer
 			},
-			createObserveEmitter(observer)
+			createObserveEmitter(observer),
+			createArtifactApi
 		);
 
 		const host = document.createElement('div');
@@ -381,7 +402,8 @@ describe('TaskRunner', () => {
 				logger: new Logger(),
 				observer
 			},
-			createObserveEmitter(observer)
+			createObserveEmitter(observer),
+			createArtifactApi
 		);
 
 		taskContext.set(
@@ -446,7 +468,8 @@ describe('TaskRunner', () => {
 				logger: new Logger(),
 				observer
 			},
-			createObserveEmitter(observer)
+			createObserveEmitter(observer),
+			createArtifactApi
 		);
 		observer.on('task:statusChange', (event) => {
 			statusEvents.push(event);
@@ -628,7 +651,8 @@ describe('TaskRunner', () => {
 				logger: new Logger(),
 				observer
 			},
-			createObserveEmitter(observer)
+			createObserveEmitter(observer),
+			createArtifactApi
 		);
 
 		const btn = document.createElement('button');
@@ -703,7 +727,8 @@ describe('TaskRunner', () => {
 				logger: new Logger(),
 				observer
 			},
-			createObserveEmitter(observer)
+			createObserveEmitter(observer),
+			createArtifactApi
 		);
 
 		vi.spyOn(

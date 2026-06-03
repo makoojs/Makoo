@@ -1,17 +1,18 @@
 import { ErrorCode } from '@makoo/core';
+import { createElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { ReactAdapterError } from './error';
 import type { ReactMountAdapter } from './types';
-import { isReactElement } from './util';
+import { isReactMountArtifact } from './util';
 
 export function createReactAdapter(): ReactMountAdapter {
 	return {
 		name: 'react',
-		matches: isReactElement,
-		mount({ mountPoint, artifact }) {
+		matches: isReactMountArtifact,
+		mount({ mountPoint, artifact, makoo }) {
 			try {
 				const root = createRoot(mountPoint);
-				root.render(artifact);
+				root.render(createElement(artifact, { makoo }));
 				return {
 					handle: root
 				};

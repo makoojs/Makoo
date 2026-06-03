@@ -79,6 +79,7 @@ If the task touches multiple areas or you need a fuller package map, read `refer
 - Match current test style: `describe` and `it`, straightforward fixture setup, explicit expectations, and `vi.spyOn` for interaction testing.
 - Test observable behavior and normalization results, not private implementation trivia, unless the repo already exposes internals for that pattern.
 - For generator, config, and resolver work, assert concrete output shape and edge cases.
+- Do not run `pnpm exec tsc -p packages/*/tsconfig.json` or similar package-level `tsc -p` commands as routine verification because these package tsconfig files emit `.d.ts` files into source directories. Prefer Vitest coverage, targeted runtime checks, or the package's actual build pipeline instead.
 
 ## Change Workflow
 

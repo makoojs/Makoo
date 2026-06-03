@@ -1,9 +1,12 @@
-import type { ResolvableMountAdapter } from '@makoo/core';
+import type { MakooArtifactApi, ResolvableMountAdapter } from '@makoo/core';
 import type { App, Component, ComponentPublicInstance } from 'vue';
 
 export type VueMountHandle = App<Element>;
 export type VueMountArtifact = Component;
 export type VueMountInstance = ComponentPublicInstance;
+export type VueMountProps = {
+	makoo: MakooArtifactApi;
+};
 
 export type VueMountAdapter = ResolvableMountAdapter<
 	VueMountArtifact,

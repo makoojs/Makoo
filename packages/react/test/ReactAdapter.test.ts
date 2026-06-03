@@ -1,5 +1,5 @@
 import { ErrorCode, Injector } from '@makoo/core';
-import { createElement } from 'react';
+import { isValidElement } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ReactAdapterError } from '../src/error';
 import { createReactAdapter } from '../src/ReactAdapter';
@@ -20,6 +20,10 @@ vi.mock('react-dom/client', () => ({
 	createRoot: reactDomClientMock.createRoot
 }));
 
+function Badge() {
+	return 'Badge';
+}
+
 describe('ReactAdapter', () => {
 	let injector: Injector;
 
@@ -38,7 +42,7 @@ describe('ReactAdapter', () => {
 		const host = document.createElement('div');
 		host.id = 'react-adapter';
 		document.body.appendChild(host);
-		const artifact: ReactMountArtifact = createElement('span', null, 'Badge');
+		const artifact: ReactMountArtifact = Badge;
 		const result = injector.register('#react-adapter', artifact);
 
 		injector.run();
@@ -50,14 +54,20 @@ describe('ReactAdapter', () => {
 		expect(reactDomClientMock.createRoot).toHaveBeenCalledWith(
 			context.get(result.taskId, 'component')?.appRoot
 		);
-		expect(reactDomClientMock.root.render).toHaveBeenCalledWith(artifact);
+		const rendered = reactDomClientMock.root.render.mock.calls[0]?.[0];
+		expect(isValidElement(rendered)).toBe(true);
+		expect(rendered?.type).toBe(artifact);
+		expect(rendered?.props.makoo).toMatchObject({
+			taskId: result.taskId,
+			injectAt: '#react-adapter'
+		});
 	});
 
 	it('should unmount React elements through React adapter', () => {
 		const host = document.createElement('div');
 		host.id = 'react-adapter';
 		document.body.appendChild(host);
-		const artifact: ReactMountArtifact = createElement('span', null, 'Badge');
+		const artifact: ReactMountArtifact = Badge;
 		const result = injector.register('#react-adapter', artifact);
 
 		injector.run();
@@ -77,9 +87,22 @@ describe('ReactAdapter', () => {
 			createReactAdapter().mount({
 				host,
 				mountPoint: host,
-				artifact: createElement('span', null, 'Badge'),
+				artifact: Badge,
 				taskId: 'test-task',
-				injectAt: '#react-adapter'
+				injectAt: '#react-adapter',
+				makoo: {
+					taskId: 'test-task',
+					injectAt: '#react-adapter',
+					enableAlive: vi.fn(),
+					disableAlive: vi.fn(),
+					reset: vi.fn(),
+					destroy: vi.fn(),
+					on: vi.fn(() => vi.fn()),
+					off: vi.fn(),
+					getLogger: vi.fn(),
+					bindListenerSignal: vi.fn(() => false),
+					controlListener: vi.fn(() => false)
+				}
 			})
 		).toThrow(
 			expect.objectContaining({
@@ -99,9 +122,22 @@ describe('ReactAdapter', () => {
 			createReactAdapter().mount({
 				host: document.createElement('div'),
 				mountPoint: document.createElement('div'),
-				artifact: createElement('span', null, 'Badge'),
+				artifact: Badge,
 				taskId: 'test-task',
-				injectAt: '#react-adapter'
+				injectAt: '#react-adapter',
+				makoo: {
+					taskId: 'test-task',
+					injectAt: '#react-adapter',
+					enableAlive: vi.fn(),
+					disableAlive: vi.fn(),
+					reset: vi.fn(),
+					destroy: vi.fn(),
+					on: vi.fn(() => vi.fn()),
+					off: vi.fn(),
+					getLogger: vi.fn(),
+					bindListenerSignal: vi.fn(() => false),
+					controlListener: vi.fn(() => false)
+				}
 			});
 			throw new Error('expected mount to throw');
 		} catch (error) {

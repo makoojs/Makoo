@@ -1,5 +1,5 @@
 import { AdapterRegistry } from '../adapter/Adapter';
-import type { ResolvableMountAdapter } from '../adapter/types';
+import type { MakooArtifactApi, ResolvableMountAdapter } from '../adapter/types';
 import { ObserverHub } from '../hooks/ObserverHub';
 import type { ObserveEmitter, ObserveEventName, ObserveHook } from '../hooks/types';
 import { createObserveEmitter, registerHooks } from '../hooks/util';
@@ -10,12 +10,7 @@ import { TaskContext } from '../Task/TaskContext';
 import { TaskLifeCycle } from '../Task/TaskLifeCycle';
 import { TaskRegister } from '../Task/TaskRegister';
 import { TaskRunner } from '../Task/TaskRunner';
-import type {
-	_RegisterResult,
-	ListenerRegisterResult,
-	RegisterResult,
-	TaskActivitySignal
-} from '../Task/types';
+import type { ListenerRegisterResult, RegisterResult, TaskActivitySignal } from '../Task/types';
 import type { ActionEvent, ArtifactOptions, InjectionConfig } from './types';
 
 export class Injector {
@@ -64,6 +59,7 @@ export class Injector {
 			this.taskContext,
 			this.injectConfig,
 			emitObserve,
+			(taskId, injectAt) => this.createArtifactApi(taskId, injectAt),
 			this.logger
 		);
 
@@ -74,6 +70,22 @@ export class Injector {
 			emitObserve,
 			this.logger
 		);
+	}
+
+	private createArtifactApi(taskId: string, injectAt: string): MakooArtifactApi {
+		return {
+			taskId,
+			injectAt,
+			enableAlive: () => this.taskLifeCycle.enableAlive(taskId),
+			disableAlive: () => this.taskLifeCycle.disableAlive(taskId),
+			reset: () => this.taskLifeCycle.reset(taskId),
+			destroy: () => this.taskLifeCycle.destroy(taskId),
+			on: (event, hook) => this.observer.onTask(taskId, event, hook),
+			off: (event, hook) => this.observer.offTask(taskId, event, hook),
+			getLogger: () => this.logger,
+			bindListenerSignal: (source) => this.taskRunner.bindListenerSignal(taskId, source),
+			controlListener: (event) => this.taskRunner.controlListener(taskId, event)
+		};
 	}
 
 	public applyAdapter(adapter: ResolvableMountAdapter): this {
@@ -100,10 +112,6 @@ export class Injector {
 		option?: ArtifactOptions
 	): RegisterResult {
 		const result = this.taskRegister.register(injectAt, artifact, option);
-		return this.wrapRegisterResult(result);
-	}
-
-	private wrapRegisterResult(result: _RegisterResult): RegisterResult {
 		return {
 			enableAlive: () => this.taskLifeCycle.enableAlive(result.taskId),
 			disableAlive: () => this.taskLifeCycle.disableAlive(result.taskId),

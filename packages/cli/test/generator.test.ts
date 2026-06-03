@@ -58,11 +58,10 @@ describe('generate', () => {
 		);
 		expect(result.code).toContain("import { Injector } from '@makoo/core';");
 		expect(result.code).toContain('import { createReactAdapter } from "@makoo/react";');
-		expect(result.code).toContain('import { createElement } from "react";');
 		expect(result.code).toContain('const injector = new Injector(');
 		expect(result.code).toContain('"run:start":(() => "run-start")');
 		expect(result.code).toContain('injector.applyAdapter(createReactAdapter());');
-		expect(result.code).toContain('injector.register("#app", createElement(Injection_hello_card),');
+		expect(result.code).toContain('injector.register("#app", Injection_hello_card,');
 		expect(result.code).toContain('"listenAt":"#app"');
 		expect(result.code).toContain('"type":"click"');
 		expect(result.code).toContain('"callback":(() => "clicked")');
@@ -125,9 +124,7 @@ describe('generate', () => {
 		expect(result.code).toContain(
 			'if (matchUrl(location.href, {"include":["https://example.com/*"],"exclude":["https://example.com/admin/*"]})) {'
 		);
-		expect(result.code).toContain('injector.register("#app", createElement(Injection_matched_card),');
-		expect(result.code).toContain(
-			'injector.register("#plain", createElement(Injection_plain_card),'
-		);
+		expect(result.code).toContain('injector.register("#app", Injection_matched_card,');
+		expect(result.code).toContain('injector.register("#plain", Injection_plain_card,');
 	});
 });
