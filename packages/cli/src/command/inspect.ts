@@ -1,6 +1,6 @@
-import type { ResolvedConfig } from '../config/type';
+import type { ResolvedConfig } from '../config/types';
 import { scanner } from '../scanner/scanner';
-import type { ScannerResult } from '../scanner/type';
+import type { ScannerResult } from '../scanner/types';
 import { loadMakooConfig } from './_util';
 
 export async function inspectCommand() {

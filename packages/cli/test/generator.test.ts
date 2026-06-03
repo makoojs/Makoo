@@ -2,7 +2,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { resolveConfig, resolveInjection } from '../src/config/resolve';
 import { generate } from '../src/generator/generator';
-import type { ScannerResult } from '../src/scanner/type';
+import type { ScannerResult } from '../src/scanner/types';
 
 const root = path.resolve('/project');
 

@@ -1,4 +1,4 @@
-import type { InjectionManifest, InjectionModuleConfig, StrictShape } from './type';
+import type { InjectionManifest, InjectionModuleConfig, StrictShape } from './types';
 
 export const defineInjection = <T extends InjectionModuleConfig>(
 	config: StrictShape<InjectionModuleConfig, T>

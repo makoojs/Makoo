@@ -4,4 +4,4 @@ export type {
 	ReactMountAdapter,
 	ReactMountArtifact,
 	ReactMountRoot
-} from './type';
+} from './types';

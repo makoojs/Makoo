@@ -5,7 +5,7 @@ import type {
 	ObserveEventName,
 	ObserveHook,
 	PropagationState
-} from './type';
+} from './types';
 
 export const noopObserveEmitter: ObserveEmitter = () => {};
 

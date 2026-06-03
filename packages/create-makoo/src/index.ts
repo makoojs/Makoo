@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import process from 'node:process';
 import { confirm, input, select } from '@inquirer/prompts';
 import { generateReactTemplate } from './template/react-template';
-import type { MakooFramework } from './template/type';
+import type { MakooFramework } from './template/types';
 import { ansi, colorize, resolveDependencyMode } from './template/util';
 import { generateVueTemplate } from './template/vue-template';
 

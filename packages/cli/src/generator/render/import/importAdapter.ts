@@ -1,5 +1,5 @@
-﻿import type { InjectionFramework, ResolvedInjectionModule } from '../../../config/type';
-import type { RenderImportResult } from '../../type';
+﻿import type { InjectionFramework, ResolvedInjectionModule } from '../../../config/types';
+import type { RenderImportResult } from '../../types';
 
 export function renderImportAdapter(injections: ResolvedInjectionModule[]): RenderImportResult {
 	const frameworkSet: Set<InjectionFramework> = new Set();

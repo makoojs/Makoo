@@ -6,7 +6,7 @@ import type {
 	ObserveHook,
 	PropagationCtrl,
 	PropagationState
-} from './type';
+} from './types';
 import { createPropagationState } from './util';
 
 export class ObserverHub {

@@ -1,6 +1,6 @@
 /// <reference types="vitest/config" />
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ObserveEventName } from '../src/hooks/type';
+import type { ObserveEventName } from '../src/hooks/types';
 import { DOMWatcher } from '../src/watcher/DomWatcher';
 import type { InjectCallback } from '../src/watcher/types';
 

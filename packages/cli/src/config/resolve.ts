@@ -45,7 +45,7 @@ import type {
 	ResolvedSourceConfig,
 	ResolveInjectionOptions,
 	SourceConfig
-} from './type';
+} from './types';
 import { validateCliConfig } from './validation';
 
 const toStringArray = (value: string | string[] | undefined, fallback: string[]): string[] => {

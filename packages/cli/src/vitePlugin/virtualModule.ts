@@ -1,6 +1,6 @@
 import { generate } from '../generator/generator';
-import type { GeneratorResult } from '../generator/type';
-import type { ScannerResult } from '../scanner/type';
+import type { GeneratorResult } from '../generator/types';
+import type { ScannerResult } from '../scanner/types';
 
 export function buildVirtualMouduleCode(scanResult: ScannerResult, isDev: boolean): string {
 	const generatorResult: GeneratorResult = generate(scanResult);

@@ -1,4 +1,4 @@
-import type { ObserveEmitter } from '../hooks/type';
+import type { ObserveEmitter } from '../hooks/types';
 import { noopObserveEmitter } from '../hooks/util';
 import { Logger } from '../logger/Logger';
 import type { ILogger } from '../logger/types';

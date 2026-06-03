@@ -1,5 +1,5 @@
-import type { ResolvedInjectorConfig } from '../../../config/type';
-import type { RenderInitResult } from '../../type';
+import type { ResolvedInjectorConfig } from '../../../config/types';
+import type { RenderInitResult } from '../../types';
 import { renderInlineValue } from '../util/value';
 
 export function renderInitInjector(

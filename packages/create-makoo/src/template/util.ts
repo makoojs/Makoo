@@ -7,7 +7,7 @@ import type {
 	MakooFramework,
 	TemplateAsset,
 	TsconfigTemplateOptions
-} from './type';
+} from './types';
 
 const gitignoreTemplate = `# Logs
 logs

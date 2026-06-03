@@ -4,7 +4,7 @@ import type {
 	ResolvedConfig,
 	ResolvedInjectionFramework,
 	ResolvedInjectionModule
-} from '../config/type';
+} from '../config/types';
 
 export type ScannerResult = {
 	manifestFile: string;

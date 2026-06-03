@@ -1,8 +1,8 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { resolveConfig } from '../src/config/resolve';
-import type { ResolvedInjectionModule } from '../src/config/type';
-import type { ScannerResult } from '../src/scanner/type';
+import type { ResolvedInjectionModule } from '../src/config/types';
+import type { ScannerResult } from '../src/scanner/types';
 import { getWatchTargets, isStructuralChange } from '../src/vitePlugin/watchList';
 
 const root = path.resolve('/project');

@@ -1,6 +1,6 @@
 import { ErrorCode } from '../error/ErrorCode';
 import { TaskError } from '../error/TaskError';
-import type { ObserveEmitter } from '../hooks/type';
+import type { ObserveEmitter } from '../hooks/types';
 import { Action, type ActionEvent, type InjectionConfig } from '../Injector/types';
 import { Logger } from '../logger/Logger';
 import type { ILogger } from '../logger/types';

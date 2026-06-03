@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { CJS_IMPORT_RE, ESM_IMPORT_RE, SOURCE_EXTENSIONS } from '../config/defaults';
-import type { CollectDependenciesOption } from './type';
+import type { CollectDependenciesOption } from './types';
 
 function isInsideRoot(file: string, root: string): boolean {
 	const rel = path.relative(root, file);

@@ -3,7 +3,7 @@ import { createElement } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ReactAdapterError } from '../src/error';
 import { createReactAdapter } from '../src/ReactAdapter';
-import type { ReactMountArtifact } from '../src/type';
+import type { ReactMountArtifact } from '../src/types';
 
 const reactDomClientMock = vi.hoisted(() => {
 	const root = {

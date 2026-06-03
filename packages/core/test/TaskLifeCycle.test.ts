@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ObserverHub } from '../src/hooks/ObserverHub';
-import type { ObserveEvent } from '../src/hooks/type';
+import type { ObserveEvent } from '../src/hooks/types';
 import { createObserveEmitter } from '../src/hooks/util';
 import { Logger } from '../src/logger/Logger';
 import { TaskContext } from '../src/Task/TaskContext';

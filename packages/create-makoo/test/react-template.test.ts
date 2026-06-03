@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { generateReactTemplate } from '../src/template/react-template';
-import type { InitData } from '../src/template/type';
+import type { InitData } from '../src/template/types';
 import { cleanupTempProjects, trackProject, withCwd } from './utils/tempProject';
 
 afterEach(cleanupTempProjects);

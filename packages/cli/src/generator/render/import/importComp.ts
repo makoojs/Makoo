@@ -1,5 +1,5 @@
-import type { ResolvedInjectionModule } from '../../../config/type';
-import type { Component, RenderImportCompResult } from '../../type';
+import type { ResolvedInjectionModule } from '../../../config/types';
+import type { Component, RenderImportCompResult } from '../../types';
 
 const normalizeImportPath = (value: string): string => {
 	return value.replace(/\\/g, '/');

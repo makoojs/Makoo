@@ -1,5 +1,5 @@
 import type { ObserverHub } from '../hooks/ObserverHub';
-import type { LifecycleHookMap } from '../hooks/type';
+import type { LifecycleHookMap } from '../hooks/types';
 import type { ILogger } from '../logger/types';
 import type { TaskActivitySignal } from '../Task/types';
 

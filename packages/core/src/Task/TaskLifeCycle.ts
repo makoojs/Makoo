@@ -1,4 +1,4 @@
-import type { ObserveEmitter } from '../hooks/type';
+import type { ObserveEmitter } from '../hooks/types';
 import type { InjectionConfig } from '../Injector/types';
 import { Logger } from '../logger/Logger';
 import type { ILogger } from '../logger/types';

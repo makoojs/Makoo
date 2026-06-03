@@ -1,5 +1,5 @@
 import process from 'node:process';
-import type { InjectorConfig, MonkeyBuildConfig, MonkeyConfig, MonkeyServerConfig } from './type';
+import type { InjectorConfig, MonkeyBuildConfig, MonkeyConfig, MonkeyServerConfig } from './types';
 
 // collect all dependencies
 export const SOURCE_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mts', '.cts', '.mjs', '.cjs'];

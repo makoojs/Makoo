@@ -3,6 +3,6 @@ export type {
 	VueMountArtifact,
 	VueMountHandle,
 	VueMountInstance
-} from './type';
+} from './types';
 export { createVueAdapter } from './VueAdapter';
 export { VuePlugin } from './VuePlugin';

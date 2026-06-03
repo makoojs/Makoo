@@ -1,7 +1,7 @@
 import type { AdapterResolver } from '../adapter/types';
 import { AdapterError } from '../error/AdapterError';
 import { ErrorCode } from '../error/ErrorCode';
-import type { ObserveEmitter } from '../hooks/type';
+import type { ObserveEmitter } from '../hooks/types';
 import { registerHooks } from '../hooks/util';
 import type { ArtifactOptions, InjectionConfig } from '../Injector/types';
 import { Logger } from '../logger/Logger';

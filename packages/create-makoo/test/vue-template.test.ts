@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { InitData } from '../src/template/type';
+import type { InitData } from '../src/template/types';
 import { generateVueTemplate } from '../src/template/vue-template';
 import { cleanupTempProjects, trackProject, withCwd } from './utils/tempProject';
 

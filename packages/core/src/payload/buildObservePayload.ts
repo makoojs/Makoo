@@ -1,4 +1,4 @@
-import type { ObserveEvent } from '../hooks/type';
+import type { ObserveEvent } from '../hooks/types';
 
 type ObservePayload = Omit<ObserveEvent, 'name' | 'ts'>;
 

@@ -19,8 +19,8 @@ export type {
 	ObserveEvent,
 	ObserveEventName,
 	ObserveHook
-} from './hooks/type';
-export { OBSERVE_EVENT_NAMES } from './hooks/type';
+} from './hooks/types';
+export { OBSERVE_EVENT_NAMES } from './hooks/types';
 export { Injector } from './Injector/Injector';
 export type {
 	ActionEvent,

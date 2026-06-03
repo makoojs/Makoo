@@ -1,7 +1,7 @@
 import { ErrorCode } from '@makoo/core';
 import { createRoot } from 'react-dom/client';
 import { ReactAdapterError } from './error';
-import type { ReactMountAdapter } from './type';
+import type { ReactMountAdapter } from './types';
 import { isReactElement } from './util';
 
 export function createReactAdapter(): ReactMountAdapter {

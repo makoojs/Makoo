@@ -1,4 +1,4 @@
-import type { ScannerResult } from '../scanner/type';
+import type { ScannerResult } from '../scanner/types';
 import { renderImportAdapter } from './render/import/importAdapter';
 import { renderImportComp } from './render/import/importComp';
 import { renderImportInjector } from './render/import/importInjector';
@@ -10,7 +10,7 @@ import type {
 	RenderImportCompResult,
 	RenderImportResult,
 	RenderInitResult
-} from './type';
+} from './types';
 
 export function generate(sannerResult: ScannerResult): GeneratorResult {
 	const importComponent: RenderImportCompResult = renderImportComp(sannerResult.injections);

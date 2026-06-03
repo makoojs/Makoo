@@ -2,7 +2,7 @@ import { ErrorCode } from '@makoo/core';
 import type { ComponentPublicInstance } from 'vue';
 import { createApp } from 'vue';
 import { VueAdapterError } from './error';
-import type { VueMountAdapter } from './type';
+import type { VueMountAdapter } from './types';
 import { isVueComponent } from './util';
 import { VuePlugin } from './VuePlugin';
 

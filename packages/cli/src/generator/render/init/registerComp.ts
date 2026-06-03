@@ -1,7 +1,7 @@
 import type { ArtifactOptions } from '@makoo/core';
-import type { ResolvedInjectionFramework } from '../../../config/type';
+import type { ResolvedInjectionFramework } from '../../../config/types';
 import { UnsupportedFrameworkGenerationError } from '../../../error/error';
-import type { Component, RenderInitResult } from '../../../generator/type';
+import type { Component, RenderInitResult } from '../../../generator/types';
 import { renderInlineValue } from '../util/value';
 
 // runtime inject web url match logic

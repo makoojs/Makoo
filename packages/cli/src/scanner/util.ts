@@ -1,4 +1,4 @@
-import type { ResolvedInjectionModule } from '../config/type';
+import type { ResolvedInjectionModule } from '../config/types';
 
 export function mergeMeta(
 	source: ResolvedInjectionModule[],

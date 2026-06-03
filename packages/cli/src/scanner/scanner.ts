@@ -2,11 +2,11 @@ import { readdirSync } from 'node:fs';
 import path from 'node:path';
 import picomatch from 'picomatch';
 import { resolveInjection, resolveInjections, resolveInjectorConfig } from '../config/resolve';
-import type { ResolvedConfig, ResolvedInjectionModule } from '../config/type';
+import type { ResolvedConfig, ResolvedInjectionModule } from '../config/types';
 import { ManifestNotFoundError, NoEnabledInjectionsError } from '../error/error';
 import { loadManifest } from './load/loadManifes';
 import { loadMeta } from './load/loadMeta';
-import type { ScannerResult } from './type';
+import type { ScannerResult } from './types';
 import { mergeMeta } from './util';
 
 export async function scanner(config: ResolvedConfig): Promise<ScannerResult> {

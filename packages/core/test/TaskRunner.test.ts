@@ -5,7 +5,7 @@ import { VuePlugin } from '../../vue/src/VuePlugin';
 import { ErrorCode } from '../src/error/ErrorCode';
 import { TaskError } from '../src/error/TaskError';
 import { ObserverHub } from '../src/hooks/ObserverHub';
-import type { ObserveEvent } from '../src/hooks/type';
+import type { ObserveEvent } from '../src/hooks/types';
 import { createObserveEmitter } from '../src/hooks/util';
 import { Action } from '../src/Injector/types';
 import { Logger } from '../src/logger/Logger';

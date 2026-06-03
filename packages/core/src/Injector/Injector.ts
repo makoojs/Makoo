@@ -1,7 +1,7 @@
 import { AdapterRegistry } from '../adapter/Adapter';
 import type { ResolvableMountAdapter } from '../adapter/types';
 import { ObserverHub } from '../hooks/ObserverHub';
-import type { ObserveEmitter, ObserveEventName, ObserveHook } from '../hooks/type';
+import type { ObserveEmitter, ObserveEventName, ObserveHook } from '../hooks/types';
 import { createObserveEmitter, registerHooks } from '../hooks/util';
 import { Logger } from '../logger/Logger';
 import type { ILogger } from '../logger/types';

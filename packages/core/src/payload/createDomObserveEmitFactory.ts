@@ -1,4 +1,4 @@
-import type { ObserveEmitter } from '../hooks/type';
+import type { ObserveEmitter } from '../hooks/types';
 import type { TaskKind } from '../Task/types';
 import type { DomWatcherEmit } from '../watcher/types';
 import { buildDomObservePayload } from './buildDomObservePayload';

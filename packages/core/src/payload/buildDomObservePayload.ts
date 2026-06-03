@@ -1,4 +1,4 @@
-import type { ObserveEvent } from '../hooks/type';
+import type { ObserveEvent } from '../hooks/types';
 import type { TaskKind } from '../Task/types';
 import { buildObservePayload, type ObservePayloadBuilderMap } from './buildObservePayload';
 

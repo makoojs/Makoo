@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import process from 'node:process';
-import type { InitData } from './type';
+import type { InitData } from './types';
 import {
 	copyTemplateAssets,
 	createTypeScriptConfigFiles,

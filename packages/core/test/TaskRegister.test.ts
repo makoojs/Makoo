@@ -3,7 +3,7 @@ import { createVueAdapter } from '../../vue/src/VueAdapter';
 import { AdapterError } from '../src/error/AdapterError';
 import { ErrorCode } from '../src/error/ErrorCode';
 import { ObserverHub } from '../src/hooks/ObserverHub';
-import type { ObserveEvent } from '../src/hooks/type';
+import type { ObserveEvent } from '../src/hooks/types';
 import { createObserveEmitter } from '../src/hooks/util';
 import { Logger } from '../src/logger/Logger';
 import { createActivityStore } from '../src/signal/observeActivitySignal';

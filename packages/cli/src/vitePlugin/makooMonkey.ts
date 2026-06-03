@@ -1,10 +1,10 @@
 import type { ConfigEnv, ViteDevServer } from 'vite';
 import { FAKE_ENTRY, FAKE_RESOLVED_ID, RESOLVED_ID, VIRTUAL_MODULE_ID } from '../config/defaults';
-import type { ResolvedConfig } from '../config/type';
+import type { ResolvedConfig } from '../config/types';
 import { scanner } from '../scanner/scanner';
-import type { ScannerResult } from '../scanner/type';
+import type { ScannerResult } from '../scanner/types';
 import { invalidateVirtualModule, sendScanError, triggerModuleHmr } from './hmrController';
-import type { MakooMonkeyPlugin } from './type';
+import type { MakooMonkeyPlugin } from './types';
 import { buildVirtualMouduleCode } from './virtualModule';
 import { getWatchTargets, isStructuralChange } from './watchList';
 

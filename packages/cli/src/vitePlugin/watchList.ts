@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { DEFAULT_MANIFEST_FILE_NAME } from '../config/defaults';
-import type { ScannerResult } from '../scanner/type';
-import type { WatchTargets } from './type';
+import type { ScannerResult } from '../scanner/types';
+import type { WatchTargets } from './types';
 
 export function getWatchTargets(scanResult: ScannerResult): WatchTargets {
 	const { config, injections, manifestDependencies } = scanResult;

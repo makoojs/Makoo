@@ -1,5 +1,5 @@
 import type { MountAdapter } from '../adapter/types';
-import type { LifecycleHookMap } from '../hooks/type';
+import type { LifecycleHookMap } from '../hooks/types';
 import type { ActivitySignalSource, SignalUnsubscribe } from '../signal/types';
 
 export type TaskRecord = {

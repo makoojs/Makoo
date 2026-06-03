@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { WatchHandle } from 'vue';
 import { ObserverHub } from '../src/hooks/ObserverHub';
-import type { ObserveEvent } from '../src/hooks/type';
+import type { ObserveEvent } from '../src/hooks/types';
 import { TaskContext } from '../src/Task/TaskContext';
 import type { ArtifactTask, Task } from '../src/Task/types';
 import {

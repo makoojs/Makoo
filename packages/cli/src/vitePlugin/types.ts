@@ -1,5 +1,5 @@
 import type { Plugin } from 'vite';
-import type { CliConfig, ResolvedConfig } from '../config/type';
+import type { CliConfig, ResolvedConfig } from '../config/types';
 export type MakooMonkeyPlugin = Plugin & { __makoo: ResolvedConfig };
 
 export type WatchTargets = {
