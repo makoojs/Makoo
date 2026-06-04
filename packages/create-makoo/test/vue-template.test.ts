@@ -56,9 +56,9 @@ describe('generateVueTemplate', () => {
 			expect(readFileSync(gitignorePath, 'utf-8')).toContain('!.vscode/extensions.json');
 			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"typecheck": "vue-tsc -b"');
 			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"@types/node": "^25.9.1"');
-			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"@makoo/core": "^1.3.1"');
-			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"@makoo/vue": "^1.3.1"');
-			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"@makoo/cli": "^1.3.1"');
+			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"@makoo/core": "^0.1.0"');
+			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"@makoo/vue": "^0.1.0"');
+			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"@makoo/cli": "^0.1.0"');
 			expect(readFileSync(viteConfigPath, 'utf-8')).not.toContain('dedupe: [\'vue\']');
 			expect(readFileSync(appPath, 'utf-8')).toContain(
 				'../../assets/makoo-icon-transparent.png'

@@ -16,9 +16,9 @@ describe('resolveMakooDependencies', () => {
 	it('returns npm package versions in npm mode', () => {
 		const result = resolveMakooDependencies('Vue', 'npm');
 
-		expect(result.dependencies['@makoo/core']).toBe('^1.3.1');
-		expect(result.dependencies['@makoo/vue']).toBe('^1.3.1');
-		expect(result.devDependencies['@makoo/cli']).toBe('^1.3.1');
+		expect(result.dependencies['@makoo/core']).toBe('^0.1.0');
+		expect(result.dependencies['@makoo/vue']).toBe('^0.1.0');
+		expect(result.devDependencies['@makoo/cli']).toBe('^0.1.0');
 	});
 
 	it('returns local file paths in debug mode', () => {

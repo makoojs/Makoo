@@ -46,9 +46,9 @@ describe('generateReactTemplate', () => {
 
 			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"@vitejs/plugin-react"');
 			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"@types/react": "^19.2.15"');
-			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"@makoo/core": "^1.3.1"');
-			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"@makoo/react": "^1.3.1"');
-			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"@makoo/cli": "^1.3.1"');
+			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"@makoo/core": "^0.1.0"');
+			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"@makoo/react": "^0.1.0"');
+			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"@makoo/cli": "^0.1.0"');
 			expect(readFileSync(appTsconfigPath, 'utf-8')).toContain('"jsx": "react-jsx"');
 			expect(readFileSync(viteConfigPath, 'utf-8')).not.toContain(
 				"dedupe: ['react', 'react-dom']"
