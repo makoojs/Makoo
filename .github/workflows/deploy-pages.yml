@@ -10,6 +10,7 @@ on:
       - "src/**"
       - "vite.demo.config.ts"
       - "package.json"
+      - "pnpm-workspace.yaml"
       - "pnpm-lock.yaml"
       - ".github/workflows/deploy-pages.yml"
   workflow_dispatch:
@@ -37,7 +38,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10
+          version: 11.5.1
 
       - name: Setup Node.js
         uses: actions/setup-node@v4

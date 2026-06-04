@@ -6,8 +6,7 @@
 <p align="center">A component injection framework for userscripts</p>
 
 <div align="center">
-  <a href="https://github.com/FlowingInk/makoo/"><img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/FlowingInk/makoo?style=flat-square"></a>
-  <a href="https://www.npmjs.com/package/@makoo/cli"><img alt="NPM Version" src="https://img.shields.io/npm/v/@makoo/cli"></a>
+  <a href="https://github.com/makoojs/Makoo/"><img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/makoojs/Makoo?style=flat-square"></a>
   <a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/License-MIT-yellow.svg"></a>
 </div>
 
