@@ -1,9 +1,14 @@
-import { readdirSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import picomatch from 'picomatch';
 import { resolveInjection, resolveInjections, resolveInjectorConfig } from '../config/resolve';
 import type { ResolvedConfig, ResolvedInjectionModule } from '../config/types';
-import { ManifestNotFoundError, NoEnabledInjectionsError } from '../error/error';
+import {
+	ManifestNotFoundError,
+	NoEnabledInjectionsError,
+	RuntimeSetupNotFoundError
+} from '../error/error';
+import { collectDependencies } from './collectDependenics';
 import { loadManifest } from './load/loadManifes';
 import { loadMeta } from './load/loadMeta';
 import type { ScannerResult } from './types';
@@ -15,6 +20,16 @@ export async function scanner(config: ResolvedConfig): Promise<ScannerResult> {
 		throw new ManifestNotFoundError(config.source.dir);
 	}
 	const manifestDependencies = new Set<string>(loadedManifest.dependencies);
+	const runtimeDependencies = new Set<string>();
+	for (const setupFile of config.runtime.setup) {
+		if (!existsSync(setupFile)) {
+			throw new RuntimeSetupNotFoundError(setupFile);
+		}
+		runtimeDependencies.add(setupFile);
+		for (const dependency of collectDependencies(setupFile, { root: config.root })) {
+			runtimeDependencies.add(dependency);
+		}
+	}
 	const resolveInjector = resolveInjectorConfig(loadedManifest.manifest.globalInjector);
 	const resolveManifest = resolveInjections(loadedManifest.manifest, {
 		root: config.root,
@@ -69,6 +84,7 @@ export async function scanner(config: ResolvedConfig): Promise<ScannerResult> {
 		config: { ...config, injector: resolveInjector },
 		manifestFile: loadedManifest.manifestFile,
 		manifestDependencies: [...manifestDependencies].sort(),
+		runtimeDependencies: [...runtimeDependencies].sort(),
 		injections,
 		frameworks
 	};

@@ -1,9 +1,9 @@
-import type { MakooArtifactApi } from '@makoo/core';
+import type { MakooContext } from '@makoo/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h } from 'vue';
 import { createVueAdapter } from '../src/VueAdapter';
 
-function createMakooApi(): MakooArtifactApi {
+function createMakooApi(): MakooContext {
 	return {
 		taskId: 'vue-task',
 		injectAt: '#vue-adapter',
@@ -12,7 +12,9 @@ function createMakooApi(): MakooArtifactApi {
 		reset: vi.fn(),
 		destroy: vi.fn(),
 		on: vi.fn(() => vi.fn()),
+		onTask: vi.fn(() => vi.fn()),
 		off: vi.fn(),
+		offTask: vi.fn(),
 		getLogger: vi.fn(),
 		bindListenerSignal: vi.fn(() => false),
 		controlListener: vi.fn(() => false)
@@ -29,7 +31,7 @@ describe('VueAdapter', () => {
 		const mountPoint = document.createElement('div');
 		document.body.appendChild(mountPoint);
 		const makoo = createMakooApi();
-		let receivedMakoo: MakooArtifactApi | undefined;
+		let receivedMakoo: MakooContext | undefined;
 
 		const artifact = defineComponent({
 			name: 'VueMakooBadge',
@@ -40,7 +42,7 @@ describe('VueAdapter', () => {
 				}
 			},
 			setup(props) {
-				receivedMakoo = props.makoo as MakooArtifactApi;
+				receivedMakoo = props.makoo as MakooContext;
 				return () => h('div', 'badge');
 			}
 		});

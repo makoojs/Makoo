@@ -19,7 +19,7 @@
 
 Makoo 用来把 Vue、React 等现代组件稳定地注入到任意网页中，尤其适合 Tampermonkey、Violentmonkey、ScriptCat 这类 userscript 场景。
 
-它关注的是 userscript 开发里最容易变乱的那部分：等待目标 DOM、挂载组件、处理页面重绘、按模块管理注入项、在开发时热更新结构变化。构建、元信息和脚本安装流程仍然交给 [vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey)，Makoo 在它之上封装了多一层，提供组件注入层。
+它关注的是 userscript 开发里最容易变乱的那部分：等待目标 DOM、挂载组件、处理页面重绘、按模块管理注入项、在开发时热更新结构变化。构建、元信息和脚本安装流程仍然交给 [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey)，Makoo 在它之上封装了多一层，提供组件注入层。
 
 ## 目录
 
@@ -50,7 +50,7 @@ pnpm install
 pnpm dev
 ```
 
-一个最小项目通常包含：
+一个最小项目包含：
 
 ```txt
 .
@@ -59,70 +59,6 @@ pnpm dev
    ├─ manifest.ts
    └─ hello-world
       └─ app.vue
-```
-
-`vite.config.ts`：
-
-```ts
-import { defineConfig } from 'vite';
-import { makoo } from '@makoo/cli';
-import vue from '@vitejs/plugin-vue';
-
-export default defineConfig({
-	plugins: [
-		vue(),
-		...makoo({
-			app: {
-				name: 'my-userscript',
-				version: '0.0.1',
-				description: 'My first Makoo script'
-			},
-			monkey: {
-				userscript: {
-					namespace: 'https://example.com',
-					match: ['https://example.com/*']
-				}
-			}
-		})
-	]
-});
-```
-
-`injections/manifest.ts`：
-
-```ts
-import { defineInjections } from '@makoo/cli';
-
-export default defineInjections({
-	injections: {
-		'hello-world': {
-			injectAt: 'body',
-			component: './hello-world/app.vue'
-		}
-	}
-});
-```
-
-`injections/hello-world/app.vue`：
-
-```vue
-<template>
-	<div class="hello-world">Hello from Makoo</div>
-</template>
-
-<style scoped>
-.hello-world {
-	position: fixed;
-	right: 24px;
-	bottom: 24px;
-	z-index: 9999;
-	padding: 12px 16px;
-	background: white;
-	border: 1px solid #d1d5db;
-	border-radius: 8px;
-	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-}
-</style>
 ```
 
 ## 核心概念
@@ -185,7 +121,7 @@ makoo({
 
 `injector` 是全局注入默认值，模块没有显式配置时会继承这里的 `alive`、`scope`、`timeout` 和 `hooks`。
 
-`monkey` 会透传给 [`vite-plugin-monkey`](https://github.com/lisonge/vite-plugin-monkey)，用于配置 userscript 元信息、开发服务和构建行为。
+大多数 `monkey` 配置会透传给 [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey)，用于配置 userscript 元信息、开发服务和构建行为。Makoo 会内部管理 `clientAlias` 和 `server.mountGmApi`，因此这两个选项不支持用户配置。
 
 ## Manifest 参考
 
@@ -357,7 +293,7 @@ export default defineInjections({
 
 ### 使用 `externalGlobals` 减小包体积
 
-`monkey.build.externalGlobals` 和 `externalResource` 会透传给 `vite-plugin-monkey`：
+`monkey.build.externalGlobals` 和 `externalResource` 会透传给 [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey)：
 
 ```ts
 import { defineConfig } from 'vite';
@@ -382,7 +318,7 @@ export default defineConfig({
 
 ### 使用 GM API
 
-Makoo 提供 `@makoo/cli/monkey` 作为 `vite-plugin-monkey` GM API 的稳定入口。推荐按能力导入，这样最终脚本只会引用实际使用到的 GM 能力：
+Makoo 提供 `@makoo/cli/monkey` 作为 [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) GM API 的稳定入口。推荐按能力导入，这样最终脚本只会引用实际使用到的 GM 能力：
 
 ```ts
 import { gmRequest, gmStorage, gmStyle } from '@makoo/cli/monkey';
@@ -400,7 +336,7 @@ gmRequest.get('https://api.example.com/data', {
 });
 ```
 
-也可以使用聚合入口：
+也可以使用聚合入口。如果希望生成的 `@grant` 范围尽量小，优先使用按能力导入；`GMapi` 更适合作为共享代码或探索阶段的便利入口：
 
 ```ts
 import { GMapi } from '@makoo/cli/monkey';
@@ -408,7 +344,7 @@ import { GMapi } from '@makoo/cli/monkey';
 GMapi.storage.set('enabled', true);
 ```
 
-`@grant` 仍由 `vite-plugin-monkey` 根据最终代码自动生成；开发期也不需要手动开启全局 `GM_*`。
+当 `monkey.build.autoGrant` 开启时，`@grant` 会继续由 [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) 根据最终代码自动生成；该选项默认开启。开发期也不需要手动开启全局 `GM_*`。
 
 ## 包说明
 
@@ -429,7 +365,7 @@ Makoo 的开发离不开这些优秀的开源项目：
 | 项目 | 说明 |
 | --- | --- |
 | [Vite](https://vite.dev/) | 提供现代前端开发与构建能力 |
-| [vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) | 提供 userscript 构建、元信息生成和开发流程支持 |
+| [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) | 提供 userscript 构建、元信息生成和开发流程支持 |
 | [Vue](https://vuejs.org/) | 提供 Vue 组件生态与运行时能力 |
 | [React](https://react.dev/) | 提供 React 组件生态与运行时能力 |
 | [Vitest](https://vitest.dev/) | 提供测试框架 |

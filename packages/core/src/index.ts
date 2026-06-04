@@ -4,7 +4,7 @@ export type {
 	AdapterResolver,
 	AdapterUnmountInput,
 	AdapterUnmountReason,
-	MakooArtifactApi,
+	MakooContext,
 	MountAdapter,
 	ResolvableMountAdapter
 } from './adapter/types';

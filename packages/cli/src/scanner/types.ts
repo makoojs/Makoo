@@ -9,6 +9,7 @@ import type {
 export type ScannerResult = {
 	manifestFile: string;
 	manifestDependencies: string[];
+	runtimeDependencies: string[];
 	config: ResolvedConfig;
 	injections: ResolvedInjectionModule[];
 	frameworks: ResolvedInjectionFramework[];

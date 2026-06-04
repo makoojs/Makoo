@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { WatchHandle } from 'vue';
 import { createVueAdapter } from '../../vue/src/VueAdapter';
 import { VuePlugin } from '../../vue/src/VuePlugin';
-import type { MakooArtifactApi } from '../src/adapter/types';
+import type { MakooContext } from '../src/adapter/types';
 import { ErrorCode } from '../src/error/ErrorCode';
 import { TaskError } from '../src/error/TaskError';
 import { ObserverHub } from '../src/hooks/ObserverHub';
@@ -17,7 +17,7 @@ import type { ArtifactTask, ListenerTask } from '../src/Task/types';
 import { DOMWatcher } from '../src/watcher/DomWatcher';
 import { createArtifactTask, createListenerTask, createVueComponent } from './factory/TaskFactor';
 
-function createArtifactApi(taskId: string, injectAt: string): MakooArtifactApi {
+function createMakooContext(taskId: string, injectAt: string): MakooContext {
 	return {
 		taskId,
 		injectAt,
@@ -26,7 +26,9 @@ function createArtifactApi(taskId: string, injectAt: string): MakooArtifactApi {
 		reset: vi.fn(),
 		destroy: vi.fn(),
 		on: vi.fn(() => vi.fn()),
+		onTask: vi.fn(() => vi.fn()),
 		off: vi.fn(),
+		offTask: vi.fn(),
 		getLogger: vi.fn(() => new Logger()),
 		bindListenerSignal: vi.fn(() => false),
 		controlListener: vi.fn(() => false)
@@ -51,7 +53,7 @@ describe('TaskRunner', () => {
 				logger: new Logger()
 			},
 			createObserveEmitter(observer),
-			createArtifactApi
+			createMakooContext
 		);
 		document.body.innerHTML = '';
 		vi.spyOn(console, 'info').mockImplementation(() => {});
@@ -88,7 +90,7 @@ describe('TaskRunner', () => {
 				observer
 			},
 			createObserveEmitter(observer),
-			createArtifactApi
+			createMakooContext
 		);
 
 		taskContext.set(
@@ -279,7 +281,7 @@ describe('TaskRunner', () => {
 				observer
 			},
 			createObserveEmitter(observer),
-			createArtifactApi
+			createMakooContext
 		);
 
 		taskContext.set(
@@ -324,7 +326,7 @@ describe('TaskRunner', () => {
 				observer
 			},
 			createObserveEmitter(observer),
-			createArtifactApi
+			createMakooContext
 		);
 
 		const host = document.createElement('div');
@@ -403,7 +405,7 @@ describe('TaskRunner', () => {
 				observer
 			},
 			createObserveEmitter(observer),
-			createArtifactApi
+			createMakooContext
 		);
 
 		taskContext.set(
@@ -469,7 +471,7 @@ describe('TaskRunner', () => {
 				observer
 			},
 			createObserveEmitter(observer),
-			createArtifactApi
+			createMakooContext
 		);
 		observer.on('task:statusChange', (event) => {
 			statusEvents.push(event);
@@ -652,7 +654,7 @@ describe('TaskRunner', () => {
 				observer
 			},
 			createObserveEmitter(observer),
-			createArtifactApi
+			createMakooContext
 		);
 
 		const btn = document.createElement('button');
@@ -728,7 +730,7 @@ describe('TaskRunner', () => {
 				observer
 			},
 			createObserveEmitter(observer),
-			createArtifactApi
+			createMakooContext
 		);
 
 		vi.spyOn(

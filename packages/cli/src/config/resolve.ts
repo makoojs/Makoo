@@ -16,6 +16,7 @@ import {
 	DEFAULT_MONKEY_BUILD_CONFIG,
 	DEFAULT_MONKEY_CONFIG,
 	DEFAULT_MONKEY_SERVER_CONFIG,
+	DEFAULT_RUNTIME_CONFIG,
 	DEFAULT_SOURCE_CONFIG,
 	FAKE_ENTRY,
 	REACT_EXTENSIONS,
@@ -42,8 +43,10 @@ import type {
 	ResolvedMonkeyBuildConfig,
 	ResolvedMonkeyConfig,
 	ResolvedMonkeyServerConfig,
+	ResolvedRuntimeConfig,
 	ResolvedSourceConfig,
 	ResolveInjectionOptions,
+	RuntimeConfig,
 	SourceConfig
 } from './types';
 import { validateCliConfig } from './validation';
@@ -224,6 +227,17 @@ export const resolveInjectorConfig = (
 	};
 };
 
+export const resolveRuntimeConfig = (
+	config: RuntimeConfig | undefined,
+	root: string
+): ResolvedRuntimeConfig => {
+	return {
+		setup: toStringArray(config?.setup, DEFAULT_RUNTIME_CONFIG.setup).map((item) =>
+			resolveFileSystemPath(root, item)
+		)
+	};
+};
+
 export const resolveMonkeyServerConfig = (
 	config: MonkeyConfig | undefined
 ): ResolvedMonkeyServerConfig => {
@@ -380,13 +394,15 @@ export const resolveConfig = (config: CliConfig, root: string = process.cwd()): 
 	const source = resolveSourceConfig(config.source, root);
 	const injector = resolveInjectorConfig(config.injector);
 	const monkey = resolveMonkeyConfig(app, config.monkey);
+	const runtime = resolveRuntimeConfig(config.runtime, projectRoot);
 
 	return {
 		root: projectRoot,
 		app,
 		monkey,
 		source,
-		injector
+		injector,
+		runtime
 	};
 };
 

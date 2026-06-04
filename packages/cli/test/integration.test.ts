@@ -118,9 +118,10 @@ describe('makoo build integration', () => {
 					]
 				};
 			`,
+			'injections/runtime-setup.ts':
+				'(globalThis as { __makooRuntimeSetup?: string }).__makooRuntimeSetup = "ready";',
 			'injections/hello/index.ts': 'export default function HelloWidget() { return null; }'
 		});
-
 		await withCwd(root, async () => {
 			await build({
 				root,
@@ -132,6 +133,9 @@ describe('makoo build integration', () => {
 						name: 'build-script',
 						version: '0.0.7',
 						description: 'build integration test'
+					},
+					runtime: {
+						setup: './injections/runtime-setup.ts'
 					},
 					monkey: {
 						userscript: {
@@ -171,6 +175,7 @@ describe('makoo build integration', () => {
 		expect(header).toMatch(/\/\/ @description\s+build integration test/);
 		expect(header).toMatch(/\/\/ @match\s+https:\/\/example\.com\/\*/);
 		expect(userscript).toContain('new Injector');
+		expect(userscript).toContain('__makooRuntimeSetup');
 		expect(userscript).toContain('createReactAdapter');
 		expect(userscript).toContain('register("body"');
 		expect(userscript).toContain('.run()');

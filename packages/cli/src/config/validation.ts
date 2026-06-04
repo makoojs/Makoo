@@ -34,7 +34,8 @@ export const CliConfigSchema = z.object({
 	app: AppConfigSchema,
 	monkey: MonkeyConfigSchema.optional(),
 	source: z.object({}).passthrough().optional(),
-	injector: z.object({}).passthrough().optional()
+	injector: z.object({}).passthrough().optional(),
+	runtime: z.object({}).passthrough().optional()
 });
 
 export function validateCliConfig(data: unknown): asserts data is z.infer<typeof CliConfigSchema> {

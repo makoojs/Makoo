@@ -220,7 +220,9 @@ describe('Injector', () => {
 					reset: expect.any(Function),
 					destroy: expect.any(Function),
 					on: expect.any(Function),
+					onTask: expect.any(Function),
 					off: expect.any(Function),
+					offTask: expect.any(Function),
 					getLogger: expect.any(Function),
 					bindListenerSignal: expect.any(Function),
 					controlListener: expect.any(Function)
@@ -230,11 +232,12 @@ describe('Injector', () => {
 		expect(context?.appRoot?.parentElement).toBe(host);
 	});
 
-	it('should expose a task-scoped makoo api to mounted artifacts', () => {
+	it('should expose a makoo context with global and task-scoped hook helpers', () => {
 		const host = document.createElement('div');
 		host.id = 'makoo-api-host';
 		document.body.appendChild(host);
 		const source = createActivityStore(true);
+		const observerOffSpy = vi.spyOn(ObserverHub.prototype, 'off');
 		const observerOffTaskSpy = vi.spyOn(ObserverHub.prototype, 'offTask');
 		const enableSpy = vi.spyOn(taskLifeCycle, 'enableAlive').mockImplementation(() => {});
 		const disableSpy = vi.spyOn(taskLifeCycle, 'disableAlive').mockImplementation(() => {});
@@ -243,7 +246,7 @@ describe('Injector', () => {
 		const bindSpy = vi.spyOn(taskRunner, 'bindListenerSignal').mockReturnValue(true);
 		const controlSpy = vi.spyOn(taskRunner, 'controlListener').mockReturnValue(true);
 		let capturedApi:
-			| import('../src/adapter/types').MakooArtifactApi
+			| import('../src/adapter/types').MakooContext
 			| undefined;
 
 		const artifact = { kind: 'custom-artifact', name: 'MakooApiArtifact' };
@@ -268,9 +271,12 @@ describe('Injector', () => {
 		expect(capturedApi?.injectAt).toBe('#makoo-api-host');
 		expect(capturedApi?.getLogger()).toBe(injector.getLogger());
 
-		const hook = vi.fn();
-		const off = capturedApi?.on('artifact:mountSuccess', hook);
-		capturedApi?.off('artifact:mountSuccess', hook);
+		const globalHook = vi.fn();
+		const taskHook = vi.fn();
+		const off = capturedApi?.on('artifact:mountSuccess', globalHook);
+		const offTask = capturedApi?.onTask('artifact:mountSuccess', taskHook);
+		capturedApi?.off('artifact:mountSuccess', globalHook);
+		capturedApi?.offTask('artifact:mountSuccess', taskHook);
 		capturedApi?.enableAlive();
 		capturedApi?.disableAlive();
 		capturedApi?.reset();
@@ -278,6 +284,7 @@ describe('Injector', () => {
 		capturedApi?.bindListenerSignal(source);
 		capturedApi?.controlListener(Action.OPEN);
 		off?.();
+		offTask?.();
 
 		expect(enableSpy).toHaveBeenCalledWith(result.taskId);
 		expect(disableSpy).toHaveBeenCalledWith(result.taskId);
@@ -285,10 +292,11 @@ describe('Injector', () => {
 		expect(destroySpy).toHaveBeenCalledWith(result.taskId);
 		expect(bindSpy).toHaveBeenCalledWith(result.taskId, source);
 		expect(controlSpy).toHaveBeenCalledWith(result.taskId, Action.OPEN);
+		expect(observerOffSpy).toHaveBeenCalledWith('artifact:mountSuccess', globalHook);
 		expect(observerOffTaskSpy).toHaveBeenCalledWith(
 			result.taskId,
 			'artifact:mountSuccess',
-			hook
+			taskHook
 		);
 	});
 

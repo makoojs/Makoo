@@ -98,7 +98,9 @@ describe('ReactAdapter', () => {
 					reset: vi.fn(),
 					destroy: vi.fn(),
 					on: vi.fn(() => vi.fn()),
+					onTask: vi.fn(() => vi.fn()),
 					off: vi.fn(),
+					offTask: vi.fn(),
 					getLogger: vi.fn(),
 					bindListenerSignal: vi.fn(() => false),
 					controlListener: vi.fn(() => false)
@@ -133,7 +135,9 @@ describe('ReactAdapter', () => {
 					reset: vi.fn(),
 					destroy: vi.fn(),
 					on: vi.fn(() => vi.fn()),
+					onTask: vi.fn(() => vi.fn()),
 					off: vi.fn(),
+					offTask: vi.fn(),
 					getLogger: vi.fn(),
 					bindListenerSignal: vi.fn(() => false),
 					controlListener: vi.fn(() => false)

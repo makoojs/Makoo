@@ -79,6 +79,14 @@ export type SourceConfig = {
 	exclude?: string[];
 };
 
+export type RuntimeConfig = {
+	setup?: string | string[];
+};
+
+export type ResolvedRuntimeConfig = {
+	setup: string[];
+};
+
 export type ResolvedSourceConfig = {
 	dir: string; // Injected Components Directory
 	include: string[];
@@ -172,6 +180,7 @@ export type CliConfig = {
 	monkey?: MonkeyConfig;
 	source?: SourceConfig;
 	injector?: InjectorConfig;
+	runtime?: RuntimeConfig;
 };
 // CliConfig -> ResolvedConfig
 //resolved config type
@@ -181,5 +190,6 @@ export type ResolvedConfig = {
 	monkey: ResolvedMonkeyConfig; // vite-plugin-monkey build config
 	source: ResolvedSourceConfig; // tell cli where find the injection components
 	injector: ResolvedInjectorConfig; // global `Injector` runtime config
+	runtime: ResolvedRuntimeConfig; // runtime side-effect imports before injector setup
 };
 export type MonkeyUserscriptOption = NonNullable<MonkeyOption['userscript']>;

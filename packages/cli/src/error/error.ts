@@ -26,6 +26,18 @@ export class LoadViteMakooConfigError extends MakooError {
 	}
 }
 
+export class RuntimeSetupNotFoundError extends MakooError {
+	constructor(file: string, code: string = ErrorCode.CLI_RUNTIME_SETUP_NOT_FOUND, cause?: Error) {
+		super(
+			`Runtime setup file not found at ${file}`,
+			[{ path: 'runtime.setup', message: file }],
+			code,
+			cause
+		);
+		this.name = 'RuntimeSetupNotFoundError';
+	}
+}
+
 // --- Manifest validation error (CLI-specific) ---
 
 export class ManifestValidationError extends MakooError {

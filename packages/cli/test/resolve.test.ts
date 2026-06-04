@@ -38,6 +38,7 @@ describe('resolveConfig', () => {
 		expect(config.source.include).toEqual(['*']);
 		expect(config.source.exclude).toEqual([]);
 		expect(config.injector).toMatchObject({ alive: false, scope: 'local', timeout: 5000 });
+		expect(config.runtime.setup).toEqual([]);
 		expect(config.monkey.userscript).toMatchObject({
 			name: 'demo-script',
 			version: '1.2.3',
@@ -51,6 +52,26 @@ describe('resolveConfig', () => {
 		expect(config.monkey.build.fileName).toBe('demo-script.user.js');
 		expect(config.monkey.build.metaFileName).toBe('demo-script.meta.js');
 		expect(config.monkey.build.autoGrant).toBe(true);
+	});
+
+	it('resolves runtime setup imports relative to project root', () => {
+		const config = resolveConfig(
+			{
+				app: {
+					name: 'runtime-setup',
+					version: '0.0.1'
+				},
+				runtime: {
+					setup: ['./injections/vue-setup.ts', '/shared/gm-setup.ts']
+				}
+			},
+			root
+		);
+
+		expect(config.runtime.setup).toEqual([
+			path.join(root, 'injections/vue-setup.ts'),
+			path.normalize('/shared/gm-setup.ts')
+		]);
 	});
 });
 

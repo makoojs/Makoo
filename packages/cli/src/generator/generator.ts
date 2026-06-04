@@ -2,6 +2,7 @@ import type { ScannerResult } from '../scanner/types';
 import { renderImportAdapter } from './render/import/importAdapter';
 import { renderImportComp } from './render/import/importComp';
 import { renderImportInjector } from './render/import/importInjector';
+import { renderRuntimeSetupImport } from './render/import/importRuntimeSetup';
 import { renderInitInjector } from './render/init/initInjector';
 import { renderRegisterComponent } from './render/init/registerComp';
 import { renderInjectorRun } from './render/run/renderInjectorRun';
@@ -13,6 +14,7 @@ import type {
 } from './types';
 
 export function generate(sannerResult: ScannerResult): GeneratorResult {
+	const importRuntimeSetup = renderRuntimeSetupImport(sannerResult.config.runtime.setup);
 	const importComponent: RenderImportCompResult = renderImportComp(sannerResult.injections);
 	const importAdapter: RenderImportResult = renderImportAdapter(sannerResult.injections);
 	const initInjector: RenderInitResult = renderInitInjector(
@@ -25,10 +27,13 @@ export function generate(sannerResult: ScannerResult): GeneratorResult {
 	);
 
 	const importCode: string = [
+		importRuntimeSetup,
 		importComponent.code,
 		renderImportInjector(),
 		importAdapter.code
-	].join('\n');
+	]
+		.filter(Boolean)
+		.join('\n');
 	const initInjectorCode: string = initInjector.code;
 	const registerCode: string = initComponetnRegister.code;
 	const injectorRunCode: string = renderInjectorRun(initInjector.instanceName);

@@ -46,6 +46,7 @@ describe('generate', () => {
 			config,
 			manifestFile: path.join(root, 'injections/manifest.ts'),
 			manifestDependencies: [],
+			runtimeDependencies: [],
 			injections: [injection],
 			frameworks: ['React']
 		};
@@ -114,6 +115,7 @@ describe('generate', () => {
 			config,
 			manifestFile: path.join(root, 'injections/manifest.ts'),
 			manifestDependencies: [],
+			runtimeDependencies: [],
 			injections: [matchedInjection, plainInjection],
 			frameworks: ['React']
 		};
@@ -126,5 +128,49 @@ describe('generate', () => {
 		);
 		expect(result.code).toContain('injector.register("#app", Injection_matched_card,');
 		expect(result.code).toContain('injector.register("#plain", Injection_plain_card,');
+	});
+
+	it('renders runtime setup imports before component imports', () => {
+		const config = resolveConfig(
+			{
+				app: {
+					name: 'runtime-setup',
+					version: '1.0.0'
+				},
+				runtime: {
+					setup: ['./injections/vue-setup.ts']
+				}
+			},
+			root
+		);
+		const injection = resolveInjection(
+			{
+				name: 'panel',
+				injectAt: '#app',
+				component: './panel/App.vue',
+				framework: 'Vue'
+			},
+			{
+				root,
+				source: config.source,
+				injector: config.injector,
+				componentPath: path.join(root, 'injections/panel/App.vue')
+			}
+		);
+		const scanResult: ScannerResult = {
+			config,
+			manifestFile: path.join(root, 'injections/manifest.ts'),
+			manifestDependencies: [],
+			runtimeDependencies: [],
+			injections: [injection],
+			frameworks: ['Vue']
+		};
+
+		const result = generate(scanResult);
+		const setupImport = `import '${path.join(root, 'injections/vue-setup.ts').replace(/\\/g, '/')}';`;
+		const componentImport = `import Injection_panel from '${path.join(root, 'injections/panel/App.vue').replace(/\\/g, '/')}';`;
+
+		expect(result.code).toContain(setupImport);
+		expect(result.code.indexOf(setupImport)).toBeLessThan(result.code.indexOf(componentImport));
 	});
 });

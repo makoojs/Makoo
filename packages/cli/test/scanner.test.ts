@@ -126,4 +126,62 @@ describe('scanner', () => {
 		expect(modules.skipMe).toBeUndefined();
 		expect(result.frameworks).toEqual(['React', 'Vue']);
 	});
+
+	it('collects runtime setup files and local dependencies', async () => {
+		const root = await trackProject({
+			'injections/manifest.ts': `
+				export default {
+					injections: {
+						widget: { injectAt: '#app', component: './widget/index.tsx', framework: 'React' }
+					}
+				};
+			`,
+			'injections/widget/index.tsx': 'export default function Widget() { return null; }',
+			'injections/vue-setup.ts': "import './router';\nexport const setup = true;",
+			'injections/router.ts': 'export const router = {};'
+		});
+		const config = resolveConfig(
+			{
+				app: { name: 'runtime-setup', version: '0.0.1' },
+				runtime: {
+					setup: './injections/vue-setup.ts'
+				}
+			},
+			root
+		);
+
+		const result = await withCwd(root, () => scanner(config));
+
+		expect(result.runtimeDependencies).toEqual([
+			path.join(root, 'injections/router.ts'),
+			path.join(root, 'injections/vue-setup.ts')
+		]);
+	});
+
+	it('throws when runtime setup file is missing', async () => {
+		const root = await trackProject({
+			'injections/manifest.ts': `
+				export default {
+					injections: {
+						widget: { injectAt: '#app', component: './widget/index.tsx', framework: 'React' }
+					}
+				};
+			`,
+			'injections/widget/index.tsx': 'export default function Widget() { return null; }'
+		});
+		const config = resolveConfig(
+			{
+				app: { name: 'missing-runtime-setup', version: '0.0.1' },
+				runtime: {
+					setup: './injections/vue-setup.ts'
+				}
+			},
+			root
+		);
+
+		const err = await withCwd(root, () => scanner(config)).catch((e) => e);
+		expect(err).toBeInstanceOf(MakooError);
+		expect((err as MakooError).code).toBe(ErrorCode.CLI_RUNTIME_SETUP_NOT_FOUND);
+		expect(err.message).toContain('Runtime setup file not found');
+	});
 });

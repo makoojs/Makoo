@@ -1,5 +1,11 @@
 import process from 'node:process';
-import type { InjectorConfig, MonkeyBuildConfig, MonkeyConfig, MonkeyServerConfig } from './types';
+import type {
+	InjectorConfig,
+	MonkeyBuildConfig,
+	MonkeyConfig,
+	MonkeyServerConfig,
+	ResolvedRuntimeConfig
+} from './types';
 
 // collect all dependencies
 export const SOURCE_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mts', '.cts', '.mjs', '.cjs'];
@@ -37,6 +43,10 @@ export const DEFAULT_SOURCE_CONFIG = {
 	include: ['*'],
 	exclude: [] as string[],
 	manifest: DEFAULT_MANIFEST_FILE_NAME
+};
+
+export const DEFAULT_RUNTIME_CONFIG: ResolvedRuntimeConfig = {
+	setup: []
 };
 
 export const DEFAULT_INJECTOR_CONFIG: Required<InjectorConfig> = {

@@ -5,7 +5,7 @@ import type { ActivitySignalSource } from '../signal/types';
 
 export type AdapterUnmountReason = 'destroy' | 'reset' | 'remount' | 'manual';
 
-export type MakooArtifactApi = {
+export type MakooContext = {
 	taskId: string;
 	injectAt: string;
 	enableAlive: () => void;
@@ -13,7 +13,9 @@ export type MakooArtifactApi = {
 	reset: () => void;
 	destroy: () => void;
 	on: (event: ObserveEventName, hook: ObserveHook) => () => void;
-	off: (event?: ObserveEventName, hook?: ObserveHook) => void;
+	onTask: (event: ObserveEventName, hook: ObserveHook) => () => void;
+	off: (event: ObserveEventName, hook?: ObserveHook) => void;
+	offTask: (event?: ObserveEventName, hook?: ObserveHook) => void;
 	getLogger: () => ILogger;
 	bindListenerSignal: (source: ActivitySignalSource<boolean>) => boolean;
 	controlListener: (event: ActionEvent) => boolean;
@@ -25,7 +27,7 @@ export type AdapterMountInput<TArtifact = unknown> = {
 	artifact: TArtifact;
 	taskId: string;
 	injectAt: string;
-	makoo: MakooArtifactApi;
+	makoo: MakooContext;
 };
 
 export type AdapterMountResult<THandle = unknown, TInstance = unknown> = {

@@ -1,4 +1,4 @@
-import type { MakooArtifactApi } from '../adapter/types';
+import type { MakooContext } from '../adapter/types';
 import { ErrorCode } from '../error/ErrorCode';
 import { TaskError } from '../error/TaskError';
 import type { ObserveEmitter } from '../hooks/types';
@@ -22,19 +22,19 @@ export class TaskRunner {
 	private readonly injectConfig: InjectionConfig;
 	private readonly logger: ILogger;
 	private readonly emit: ObserveEmitter;
-	private readonly resolveArtifactApi: (taskId: string, injectAt: string) => MakooArtifactApi;
+	private readonly resolveMakooContext: (taskId: string, injectAt: string) => MakooContext;
 
 	constructor(
 		taskContext: TaskContext,
 		injectConfig: InjectionConfig,
 		emitter: ObserveEmitter,
-		resolveArtifactApi: (taskId: string, injectAt: string) => MakooArtifactApi,
+		resolveMakooContext: (taskId: string, injectAt: string) => MakooContext,
 		logger?: ILogger
 	) {
 		this.taskContext = taskContext;
 		this.injectConfig = injectConfig;
 		this.emit = emitter;
-		this.resolveArtifactApi = resolveArtifactApi;
+		this.resolveMakooContext = resolveMakooContext;
 		this.logger = logger ?? injectConfig.logger ?? new Logger();
 	}
 
@@ -448,7 +448,7 @@ export class TaskRunner {
 				artifact: context.artifact,
 				taskId,
 				injectAt,
-				makoo: this.resolveArtifactApi(taskId, injectAt)
+				makoo: this.resolveMakooContext(taskId, injectAt)
 			});
 
 			// Save to context
