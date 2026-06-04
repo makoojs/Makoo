@@ -77,3 +77,28 @@
 ## [1.3.1] - 2026-04-18
 
 - fix the public demo website url in readme.md
+
+## [Unreleased]
+
+### ✨ Features
+
+- **feat(adapter):** introduce a framework-agnostic mount adapter protocol and `Injector.applyAdapter()`, allowing each injector instance to resolve and mount non-Vue artifacts through custom adapters.
+- **feat(vue):** move Vue mounting into the default compatibility adapter while keeping `Injector` Vue-compatible out of the box.
+- **feat(react):** add optional React adapter support, React mount types, optional React peer dependencies, and a demo case showing React element injection.
+- **feat(signal):** add `createActivityStore()` and the activity signal protocol for listener activation control, with `get()` / `subscribe()` based stores.
+- **feat(observer):** add hook propagation control through the second hook argument, supporting `ctrl.stopPropagation()` and `ctrl.stopImmediatePropagation()` across task, event, and global hook scopes.
+
+### ♻️ Refactors & Compatibility
+
+- **refactor(core):** replace direct Vue `App` runtime storage with adapter `mountHandle`, `instance`, `hostElement`, and adapter-driven unmount cleanup.
+- **refactor(api):** rename component-oriented internal/runtime fields toward artifact terminology, including lifecycle payload metadata moving from `meta.componentName` to `meta.artifactName`.
+- **refactor(vue):** centralize Vue plugin handling in the singleton `VuePlugin` registry and expose it for advanced orchestration.
+- **refactor(adapter):** move Vue adapter implementation from `core/adapter` to `adapters/vue`, add `BaseInjector`, and keep the public `Injector` as the Vue-compatible facade.
+- **refactor(vue):** tighten Vue component recognition so plain function artifacts can be reserved for other adapters instead of being treated as Vue components.
+- **compat(signal):** keep Vue `ref`-like activity signals working in `1.x`, but mark that path as deprecated in favor of `ActivitySignalStore`.
+
+### 📚 Tests & Docs
+
+- Add coverage for custom adapter registration, React adapter mount/unmount behavior, activity signal stores and ref compatibility, ObserverHub propagation control, and updated artifact task runtime state.
+- Update English and Chinese README content for adapter usage, React support, activity signals, `VuePlugin`, hook propagation control, exported types, and artifact-oriented payload fields.
+- Refresh the demo with a React injection scenario and updated adapter usage examples.

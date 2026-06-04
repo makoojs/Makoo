@@ -1,4 +1,4 @@
-﻿<p align="center">
+<p align="center">
   <img width="150" src="./demo/assets/vue-implant-icon.png">
 </p>
 
@@ -21,6 +21,16 @@
 </div>
 
 ---
+
+## 废弃说明
+
+> [!WARNING]
+>
+> `vue-implant` 已停止作为独立库继续演进，相关能力已升级并迁移到 **Makoo**。
+>
+> 建议新项目直接使用 Makoo；已有 `vue-implant` 项目可以继续参考本文档维护存量接入，并在合适时机迁移到 Makoo。
+>
+> 新项目地址：[makoojs/Makoo](https://github.com/makoojs/Makoo)
 
 
 

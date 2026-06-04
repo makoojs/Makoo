@@ -21,6 +21,16 @@
 
 ---
 
+## Deprecation Notice
+
+> [!WARNING]
+>
+> `vue-implant` is no longer evolving as a standalone library. Its capabilities have been upgraded and migrated to **Makoo**.
+>
+> New projects should use Makoo directly. Existing `vue-implant` projects can continue to use this documentation for maintenance and migrate to Makoo when appropriate.
+>
+> New project: [makoojs/Makoo](https://github.com/makoojs/Makoo)
+
 
 
 `vue-implant` is a component injection framework primarily designed for Greasemonkey script development scenarios. It keeps Vue support as the default compatibility layer while exposing a framework-agnostic injection core and pluggable mount adapters for advanced integrations.
