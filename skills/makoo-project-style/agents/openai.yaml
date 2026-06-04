@@ -1,0 +1,4 @@
+interface:
+  display_name: "Makoo Project Style"
+  short_description: "Makoo monorepo style and structure guardrails"
+  default_prompt: "Use $makoo-project-style to keep changes aligned with Makoo code style and project structure."

@@ -5,7 +5,8 @@ on:
     branches:
       - main
     paths:
-      - package.json
+      - "package.json"
+      - "packages/*/package.json"
   workflow_dispatch:
 
 permissions:
@@ -25,7 +26,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10
+          version: 11.5.1
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -35,54 +36,95 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
           registry-url: https://registry.npmjs.org
 
-      - name: Check version rule (patch only)
+      - name: Detect changed packages
         id: versions
         shell: bash
         run: |
           node <<'NODE'
           const fs = require('node:fs');
+          const path = require('node:path');
           const { execSync } = require('node:child_process');
 
-          const newVersion = JSON.parse(fs.readFileSync('package.json', 'utf8')).version;
-          let oldVersion = '';
+          const workspaceDirs = fs.readdirSync('packages', { withFileTypes: true })
+            .filter(d => d.isDirectory())
+            .map(d => path.join('packages', d.name));
 
-          try {
-            const previousPackageJson = execSync('git show HEAD^:package.json', { encoding: 'utf8' });
-            oldVersion = JSON.parse(previousPackageJson).version;
-          } catch {
-            oldVersion = '';
+          const allPkgPaths = ['package.json', ...workspaceDirs.map(d => path.join(d, 'package.json'))];
+
+          // Find which package.json files changed in this push
+          const changedFiles = execSync('git diff --name-only HEAD^ HEAD', { encoding: 'utf8' })
+            .split('\n')
+            .map(f => f.trim())
+            .filter(Boolean);
+
+          const changedPkgPaths = allPkgPaths.filter(p => changedFiles.includes(p.replace(/\\/g, '/')));
+
+          if (changedPkgPaths.length === 0) {
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, 'should_release=false\n');
+            console.log('No package.json changed, stopping.');
+            process.exit(0);
           }
 
           const parseSemver = (value) => {
             const match = /^(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/.exec(value || '');
             if (!match) return null;
-            return {
-              major: Number(match[1]),
-              minor: Number(match[2]),
-              patch: Number(match[3]),
-            };
+            return { major: Number(match[1]), minor: Number(match[2]), patch: Number(match[3]) };
           };
 
-          const oldParsed = parseSemver(oldVersion);
-          const newParsed = parseSemver(newVersion);
+          // Collect bumped packages
+          const bumps = [];
 
-          const shouldRelease = Boolean(
-            oldParsed &&
-              newParsed &&
-              oldParsed.major === newParsed.major &&
-              oldParsed.minor === newParsed.minor &&
-              oldParsed.patch !== newParsed.patch
-          );
+          for (const pkgPath of changedPkgPaths) {
+            const current = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
 
-          fs.appendFileSync(process.env.GITHUB_OUTPUT, `old_version=${oldVersion}\n`);
-          fs.appendFileSync(process.env.GITHUB_OUTPUT, `new_version=${newVersion}\n`);
-          fs.appendFileSync(process.env.GITHUB_OUTPUT, `should_release=${shouldRelease}\n`);
+            // Skip private packages (like root)
+            if (current.private) continue;
+
+            let old = null;
+            try {
+              const oldContent = execSync(`git show HEAD^:${pkgPath}`, { encoding: 'utf8' });
+              old = JSON.parse(oldContent);
+            } catch {
+              // New package, first release
+            }
+
+            const oldParsed = parseSemver(old?.version);
+            const newParsed = parseSemver(current.version);
+
+            if (oldParsed && newParsed &&
+                oldParsed.major === newParsed.major &&
+                oldParsed.minor === newParsed.minor &&
+                oldParsed.patch !== newParsed.patch) {
+              bumps.push({
+                name: current.name,
+                path: path.dirname(pkgPath),
+                oldVersion: old.version,
+                newVersion: current.version
+              });
+            }
+          }
+
+          if (bumps.length === 0) {
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, 'should_release=false\n');
+            console.log('No patch-level version bump detected.');
+            process.exit(0);
+          }
+
+          const tagVersion = bumps[0].newVersion;
+          const packageList = bumps.map(b => b.name).join(', ');
+
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `should_release=true\n`);
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `tag_version=${tagVersion}\n`);
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `packages=${packageList}\n`);
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `bump_count=${bumps.length}\n`);
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `publish_dirs=${bumps.map(b => b.path).join(' ')}\n`);
+
+          console.log('Bumped packages:', bumps.map(b => `${b.name}: ${b.oldVersion} -> ${b.newVersion}`).join(', '));
           NODE
 
-      - name: Stop when not patch-only bump
+      - name: Stop when no patch bump
         if: steps.versions.outputs.should_release != 'true'
-        run: |
-          echo "Skip release. old=${{ steps.versions.outputs.old_version }}, new=${{ steps.versions.outputs.new_version }}"
+        run: echo "No patch bump detected, skipping release."
 
       - name: Prepare tag and release text
         if: steps.versions.outputs.should_release == 'true'
@@ -91,18 +133,18 @@ jobs:
         run: |
           git fetch --tags --force
 
-          NEW_TAG="v${{ steps.versions.outputs.new_version }}"
-          PREV_TAG=$(git tag --sort=-v:refname | grep -v "^${NEW_TAG}$" | head -n 1 || true)
+          NEW_TAG="v${{ steps.versions.outputs.tag_version }}"
+          PREV_TAG=$(git tag --sort=-v:refname | head -n 1 || true)
 
           if [ -n "$PREV_TAG" ]; then
-            RELEASE_BODY="View this change:https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${NEW_TAG}"
+            RELEASE_BODY="Changed packages: ${{ steps.versions.outputs.packages }}
+          View this change: https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${NEW_TAG}"
           else
-            RELEASE_BODY="First release, view repository:https://github.com/${{ github.repository }}"
+            RELEASE_BODY="First release, view repository: https://github.com/${{ github.repository }}"
           fi
 
           {
             echo "new_tag=$NEW_TAG"
-            echo "prev_tag=$PREV_TAG"
             echo "release_body=$RELEASE_BODY"
           } >> "$GITHUB_OUTPUT"
 
@@ -110,13 +152,13 @@ jobs:
         if: steps.versions.outputs.should_release == 'true'
         run: pnpm install --frozen-lockfile
 
-      - name: Run tests
-        if: steps.versions.outputs.should_release == 'true'
-        run: pnpm test
-
       - name: Build project
         if: steps.versions.outputs.should_release == 'true'
         run: pnpm build
+
+      - name: Run tests
+        if: steps.versions.outputs.should_release == 'true'
+        run: pnpm test
 
       - name: Create and push tag
         if: steps.versions.outputs.should_release == 'true'
@@ -124,18 +166,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
 
           TAG="${{ steps.release_meta.outputs.new_tag }}"
-          BODY="${{ steps.release_meta.outputs.release_body }}"
 
           if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
             echo "Tag ${TAG} already exists on remote, skip creating tag."
           else
             echo "Creating tag ${TAG}..."
-            git tag -a "$TAG" -m "$BODY"
+            git tag -a "$TAG" -m "${{ steps.release_meta.outputs.release_body }}"
             git push origin "$TAG"
           fi
 
@@ -158,4 +198,9 @@ jobs:
         if: steps.versions.outputs.should_release == 'true'
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: pnpm publish --no-git-checks --access public
+        shell: bash
+        run: |
+          for dir in ${{ steps.versions.outputs.publish_dirs }}; do
+            echo "Publishing $dir..."
+            (cd "$dir" && pnpm publish --no-git-checks --access public)
+          done

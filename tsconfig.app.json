@@ -12,25 +12,37 @@
     "types": [
       "vite/client"
     ],
-    /* Bundler mode */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "isolatedModules": true,
     "moduleDetection": "force",
     "noEmit": true,
-    /* Linting */
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
     "forceConsistentCasingInFileNames": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "paths": {
+      "@makoo/core": [
+        "./packages/core/src/index.ts"
+      ],
+      "@makoo/vue": [
+        "./packages/vue/src/index.ts"
+      ],
+      "@makoo/react": [
+        "./packages/react/src/index.ts"
+      ],
+      "@makoo/cli": [
+        "./packages/cli/src/index.ts"
+      ]
+    }
   },
   "include": [
-    "src/**/*.ts",
-    "src/**/*.tsx",
-    "src/**/*.vue",
+    "packages/*/src/**/*.ts",
+    "packages/*/src/**/*.tsx",
+    "packages/*/src/**/*.vue",
     "demo/**/*.ts",
     "demo/**/*.tsx",
     "demo/**/*.vue"

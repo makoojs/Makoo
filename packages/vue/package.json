@@ -1,0 +1,30 @@
+{
+  "name": "@makoo/vue",
+  "version": "0.1.0",
+  "description": "Vue adapter and compatibility injector for makoo",
+  "type": "module",
+  "license": "MIT",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "dependencies": {
+    "@makoo/core": "workspace:*"
+  },
+  "devDependencies": {
+    "vue": "^3.5.35"
+  },
+  "peerDependencies": {
+    "vue": ">=3"
+  }
+}

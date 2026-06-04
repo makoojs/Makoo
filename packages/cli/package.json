@@ -1,0 +1,42 @@
+{
+  "name": "@makoo/cli",
+  "version": "0.1.0",
+  "description": "CLI and build integration for makoo",
+  "type": "module",
+  "license": "MIT",
+  "files": [
+    "dist"
+  ],
+  "bin": {
+    "makoo": "./dist/bin.js"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./monkey": {
+      "types": "./dist/monkey/index.d.ts",
+      "import": "./dist/monkey/index.js",
+      "require": "./dist/monkey/index.cjs"
+    }
+  },
+  "dependencies": {
+    "@makoo/core": "workspace:*",
+    "jiti": "^2.6.1",
+    "picomatch": "^4.0.4",
+    "vite-plugin-monkey": "^7.1.9",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/picomatch": "^4.0.3",
+    "cac": "^7.0.0"
+  },
+  "peerDependencies": {
+    "vite": ">=7"
+  }
+}

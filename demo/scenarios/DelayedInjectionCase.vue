@@ -2,7 +2,7 @@
 defineOptions({ name: 'DelayedInjectionCase' })
 
 import { inject, onMounted, ref } from 'vue'
-import type { RegisterResult } from '../../src/core/Task/types'
+import type { RegisterResult } from '../../packages/core/src/Task/types'
 
 const hostVisible = ref(false);
 const delayAliveEnabled = ref(true);
@@ -39,7 +39,7 @@ onMounted(() => {
 
         <div style="display: flex; gap: 8px;">
             <button class="btn-secondary" @click="triggerDelay">
-                <span class="icon">⚡</span>Reactivate Delay
+                <span class="icon">Reactivate Delay</span>
             </button>
 
             <button class="btn-secondary" @click="triggerAlive">

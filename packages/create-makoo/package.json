@@ -1,0 +1,17 @@
+{
+  "name": "@makoo/create-makoo",
+  "version": "0.1.0",
+  "description": "Create a makoo userscript project",
+  "type": "module",
+  "license": "MIT",
+  "files": [
+    "dist",
+    "assets"
+  ],
+  "bin": {
+    "create-makoo": "./dist/index.cjs"
+  },
+  "dependencies": {
+    "@inquirer/prompts": "^8.5.0"
+  }
+}

@@ -11,7 +11,7 @@
 ### 📦 Ecosystem & Deliverables
 
 - **NPM Distribution**: Fully available on Registry for `npm`, `pnpm`, or `yarn`.
-- **Live Demo**: Explore the framework's stability and real-world injection scenarios at [flowingink.github.io/vue-implant/](https://flowingink.github.io/vue-implant/).
+- **Live Demo**: Explore the framework's stability and real-world injection scenarios at [flowingink.github.io/makoo/](https://flowingink.github.io/makoo/).
 - **Full API Documentation**: Comprehensive documentation provided in both English and Chinese, covering everything from quick start to advanced patterns.
 
 ## [1.0.1] - 2026-03-21
@@ -20,20 +20,20 @@
 
 ## [1.1.0] - 2026-04-02
 
-- **refactor/modularize:** Injector core and decompose into specialized task modules by @FlowingInk in https://github.com/FlowingInk/vue-implant/pull/15
-- **feat(injector):** support shared Vue plugins and unified plugin management by @FlowingInk in https://github.com/FlowingInk/vue-implant/pull/16
-- **Feat/inject enhancement:** add some config to enhancement the dev and support custom Logger DI by ILogger interface @FlowingInk in https://github.com/FlowingInk/vue-implant/pull/17
-- **refactor/Split global types:** Split global types into file of different module @FlowingInk in https://github.com/FlowingInk/vue-implant/pull/18
-- **fix/lifecycle-routing-leak:** Fix the vulnerability where Injector bypasses TaskLifeCycle and directly calls the internal lifecycle, ensuring state is controlled.  @FlowingInk in https://github.com/FlowingInk/vue-implant/pull/19
-- **chore/docs:** Refine README and add best practices by @FlowingInk in https://github.com/FlowingInk/vue-implant/pull/20
+- **refactor/modularize:** Injector core and decompose into specialized task modules by @FlowingInk in https://github.com/FlowingInk/makoo/pull/15
+- **feat(injector):** support shared Vue plugins and unified plugin management by @FlowingInk in https://github.com/FlowingInk/makoo/pull/16
+- **Feat/inject enhancement:** add some config to enhancement the dev and support custom Logger DI by ILogger interface @FlowingInk in https://github.com/FlowingInk/makoo/pull/17
+- **refactor/Split global types:** Split global types into file of different module @FlowingInk in https://github.com/FlowingInk/makoo/pull/18
+- **fix/lifecycle-routing-leak:** Fix the vulnerability where Injector bypasses TaskLifeCycle and directly calls the internal lifecycle, ensuring state is controlled.  @FlowingInk in https://github.com/FlowingInk/makoo/pull/19
+- **chore/docs:** Refine README and add best practices by @FlowingInk in https://github.com/FlowingInk/makoo/pull/20
 
 
 ## [1.2.0] - 2026-04-09
 
 ### ✨ Features
 
-- **feat(core):** integrate `ObserverHub` and observability hooks across task lifecycle, and expose observer-related APIs by @FlowingInk in https://github.com/FlowingInk/vue-implant/pull/21
-- **feat(logger):** add log level control and expose `Injector.getLogger()` by @FlowingInk in https://github.com/FlowingInk/vue-implant/pull/22
+- **feat(core):** integrate `ObserverHub` and observability hooks across task lifecycle, and expose observer-related APIs by @FlowingInk in https://github.com/FlowingInk/makoo/pull/21
+- **feat(logger):** add log level control and expose `Injector.getLogger()` by @FlowingInk in https://github.com/FlowingInk/makoo/pull/22
 
 ### 🛠 Fixes
 
@@ -53,14 +53,14 @@
 
 ### ✨ Features
 
-- **feat(hooks):** add lifecycle hooks support at injector-level (`new Injector({ hooks })`) and component-level (`register(..., { hooks })`), with unified subscribe/unsubscribe APIs (`on`, `onTask`, `onAny`, `off`, `offTask`, `offAny`) by @FlowingInk in https://github.com/FlowingInk/vue-implant/pull/25
-- **feat(observe):** expose normalized lifecycle event model and payload matrix for register/run/inject/listener/alive/task/resource/dom events by @FlowingInk in https://github.com/FlowingInk/vue-implant/pull/25
+- **feat(hooks):** add lifecycle hooks support at injector-level (`new Injector({ hooks })`) and component-level (`register(..., { hooks })`), with unified subscribe/unsubscribe APIs (`on`, `onTask`, `onAny`, `off`, `offTask`, `offAny`) by @FlowingInk in https://github.com/FlowingInk/makoo/pull/25
+- **feat(observe):** expose normalized lifecycle event model and payload matrix for register/run/inject/listener/alive/task/resource/dom events by @FlowingInk in https://github.com/FlowingInk/makoo/pull/25
 
 ### 🛠 Fixes
 
-- **fix(alive):** remove `nextTick` async setup window for alive observers and simplify to synchronous setup; remove `aliveEpoch` from runtime and event payloads by @FlowingInk in https://github.com/FlowingInk/vue-implant/pull/26
-- **fix(task):** split task runtime into `ComponentTask` / `ListenerTask` and tighten lifecycle routing and cleanup consistency across `TaskContext`, `TaskRunner`, and `TaskLifeCycle` by @FlowingInk in https://github.com/FlowingInk/vue-implant/pull/25
-- **fix(observe):** normalize and stabilize observe payload builders (`register`, `run`, `inject`, `listener`, `alive`, `task`, `resource`, `dom`) and emit DOM watcher events with named event contracts by @FlowingInk in https://github.com/FlowingInk/vue-implant/pull/25
+- **fix(alive):** remove `nextTick` async setup window for alive observers and simplify to synchronous setup; remove `aliveEpoch` from runtime and event payloads by @FlowingInk in https://github.com/FlowingInk/makoo/pull/26
+- **fix(task):** split task runtime into `ComponentTask` / `ListenerTask` and tighten lifecycle routing and cleanup consistency across `TaskContext`, `TaskRunner`, and `TaskLifeCycle` by @FlowingInk in https://github.com/FlowingInk/makoo/pull/25
+- **fix(observe):** normalize and stabilize observe payload builders (`register`, `run`, `inject`, `listener`, `alive`, `task`, `resource`, `dom`) and emit DOM watcher events with named event contracts by @FlowingInk in https://github.com/FlowingInk/makoo/pull/25
 
 ### 📚 Tests & Docs
 
@@ -69,7 +69,7 @@
 
 ### 🧰 Tooling & CI
 
-- add auth tester workflow for NPM/GitHub token validation by @FlowingInk in https://github.com/FlowingInk/vue-implant/pull/24
+- add auth tester workflow for NPM/GitHub token validation by @FlowingInk in https://github.com/FlowingInk/makoo/pull/24
 - migrate dependency management to `pnpm`, remove `package-lock.json`, and add `pnpm-lock.yaml`
 - update CI/Pages/patch-release workflows to use `pnpm` install/cache/publish pipeline
 
