@@ -18,6 +18,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
+    },
+    "./monkey": {
+      "types": "./dist/monkey/index.d.ts",
+      "import": "./dist/monkey/index.js",
+      "require": "./dist/monkey/index.cjs"
     }
   },
   "dependencies": {

@@ -380,6 +380,36 @@ export default defineConfig({
 });
 ```
 
+### 使用 GM API
+
+Makoo 提供 `@makoo/cli/monkey` 作为 `vite-plugin-monkey` GM API 的稳定入口。推荐按能力导入，这样最终脚本只会引用实际使用到的 GM 能力：
+
+```ts
+import { gmRequest, gmStorage, gmStyle } from '@makoo/cli/monkey';
+
+gmStyle.add('.makoo-panel { z-index: 999999; }');
+
+gmStorage.set('token', 'abc');
+const token = gmStorage.get<string>('token');
+
+gmRequest.get('https://api.example.com/data', {
+	responseType: 'json',
+	onload(event) {
+		console.log(event.response);
+	}
+});
+```
+
+也可以使用聚合入口：
+
+```ts
+import { GMapi } from '@makoo/cli/monkey';
+
+GMapi.storage.set('enabled', true);
+```
+
+`@grant` 仍由 `vite-plugin-monkey` 根据最终代码自动生成；开发期也不需要手动开启全局 `GM_*`。
+
 ## 包说明
 
 | 包 | 职责 |

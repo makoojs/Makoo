@@ -7,9 +7,12 @@ export default defineConfig({
 	build: {
 		outDir: 'dist',
 		lib: {
-			entry: resolve(__dirname, 'src/index.ts'),
+			entry: {
+				index: resolve(__dirname, 'src/index.ts'),
+				'monkey/index': resolve(__dirname, 'src/monkey/index.ts')
+			},
 			formats: ['es', 'cjs'],
-			fileName: 'index'
+			fileName: (format, entryName) => `${entryName}.${format === 'es' ? 'js' : 'cjs'}`
 		},
 		rollupOptions: {
 			treeshake: true,
@@ -18,6 +21,7 @@ export default defineConfig({
 				'jiti',
 				'vite',
 				'vite-plugin-monkey',
+				'vite-plugin-monkey/dist/client',
 				'node:fs',
 				'node:path',
 				'node:process'
