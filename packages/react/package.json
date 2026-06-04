@@ -1,6 +1,6 @@
 {
   "name": "@makoo/react",
-  "version": "1.3.1",
+  "version": "0.1.0",
   "description": "React adapter for makoo",
   "type": "module",
   "license": "MIT",
