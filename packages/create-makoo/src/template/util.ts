@@ -1,6 +1,7 @@
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { recommendedMakooVersions } from './makooVersion';
 import type {
 	DependencyMode,
 	MakooDependencyResult,
@@ -47,6 +48,7 @@ export const ansi = {
 export const colorize = (value: string, ...codes: string[]): string => {
 	return `${codes.join('')}${value}${ansi.reset}`;
 };
+
 function ensureDir(dir: string): void {
 	if (!existsSync(dir)) {
 		mkdirSync(dir, { recursive: true });
@@ -55,11 +57,6 @@ function ensureDir(dir: string): void {
 
 function toJson(value: unknown): string {
 	return `${JSON.stringify(value, null, 2)}\n`;
-}
-
-function readJsonFile<T>(filePath: string): T {
-	const content = readFileSync(filePath, 'utf-8').replace(/^\uFEFF/, '');
-	return JSON.parse(content) as T;
 }
 
 function resolveAssetRoot(): string {
@@ -91,13 +88,6 @@ function resolveRepoRoot(): string {
 	}
 
 	throw new Error('[makoo] Repository root not found.');
-}
-
-function resolveMakooVersion(packageName: string): string {
-	const packageJsonPath = join(resolveRepoRoot(), 'packages', packageName, 'package.json');
-	const packageJson = readJsonFile<{ version: string }>(packageJsonPath);
-
-	return `^${packageJson.version}`;
 }
 
 function resolveLocalPackagePath(packageName: string): string {
@@ -141,7 +131,9 @@ export function resolveMakooDependencies(
 	mode: DependencyMode
 ): MakooDependencyResult {
 	const packagePath = (name: string): string =>
-		mode === 'local' ? resolveLocalPackagePath(name) : resolveMakooVersion(name);
+		mode === 'local'
+			? resolveLocalPackagePath(name)
+			: recommendedMakooVersions[name as keyof typeof recommendedMakooVersions];
 
 	return {
 		dependencies: {

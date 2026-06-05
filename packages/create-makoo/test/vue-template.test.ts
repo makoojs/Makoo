@@ -86,6 +86,19 @@ describe('generateVueTemplate', () => {
 		});
 	});
 
+	it('uses recommended Makoo versions for npm dependencies', async () => {
+		const root = await trackProject({});
+
+		await withCwd(root, async () => {
+			generateVueTemplate(createInitData('ts'));
+
+			const packageJsonPath = path.join(root, 'demo-app', 'package.json');
+			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"@makoojs/core": "^0.1.0"');
+			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"@makoojs/vue": "^0.1.0"');
+			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"@makoojs/cli": "^0.1.0"');
+		});
+	});
+
 	it('adds local resolve dedupe for Vue debug projects', async () => {
 		const root = await trackProject({});
 

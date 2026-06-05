@@ -173,8 +173,14 @@ jobs:
         if: steps.versions.outputs.should_release == 'true'
         run: pnpm test
 
-      - name: Create and push tag
+      - name: Skip automated release while initial publishing is manual
         if: steps.versions.outputs.should_release == 'true'
+        run: |
+          echo "Patch bump detected for: ${{ steps.versions.outputs.packages }}"
+          echo "Automated tag, GitHub Release, and npm publish are temporarily disabled."
+
+      - name: Create and push tag
+        if: false
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -193,7 +199,7 @@ jobs:
           fi
 
       - name: Create or update GitHub Release
-        if: steps.versions.outputs.should_release == 'true'
+        if: false
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
@@ -208,7 +214,7 @@ jobs:
           fi
 
       - name: Publish to npm
-        if: steps.versions.outputs.should_release == 'true'
+        if: false
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         shell: bash
