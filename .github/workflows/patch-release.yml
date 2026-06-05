@@ -71,21 +71,28 @@ jobs:
             return { major: Number(match[1]), minor: Number(match[2]), patch: Number(match[3]) };
           };
 
+          const parseJson = (content) => JSON.parse(content.replace(/^\uFEFF/, ''));
+          const readPackageJson = (pkgPath) => parseJson(fs.readFileSync(pkgPath, 'utf8'));
+
           // Collect bumped packages
           const bumps = [];
 
           for (const pkgPath of changedPkgPaths) {
-            const current = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+            const current = readPackageJson(pkgPath);
 
             // Skip private packages (like root)
             if (current.private) continue;
 
             let old = null;
             try {
-              const oldContent = execSync(`git show HEAD^:${pkgPath}`, { encoding: 'utf8' });
-              old = JSON.parse(oldContent);
+              const oldContent = execSync(`git show HEAD^:${pkgPath}`, {
+                encoding: 'utf8',
+                stdio: ['ignore', 'pipe', 'ignore']
+              });
+              old = parseJson(oldContent);
             } catch {
-              // New package, first release
+              // New package first releases are intentionally skipped.
+              // Publish them manually so the initial release stays controlled.
             }
 
             const oldParsed = parseSemver(old?.version);
