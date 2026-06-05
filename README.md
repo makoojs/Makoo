@@ -3,7 +3,7 @@
 </p>
 
 <h1 align="center">Makoo</h1>
-<p align="center">A component injection framework for userscripts</p>
+<p align="center">A userscript development framework for Tampermonkey, Violentmonkey, and ScriptCat</p>
 
 <div align="center">
   <a href="https://github.com/makoojs/Makoo/"><img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/makoojs/Makoo?style=flat-square"></a>
@@ -16,9 +16,9 @@
 
 ---
 
-Makoo helps you inject modern Vue and React components into existing web pages. It is especially designed for userscript environments such as Tampermonkey, Violentmonkey, and ScriptCat.
+Makoo is a userscript development framework for building maintainable Vue / React injection apps for browser script managers such as Tampermonkey, Violentmonkey, and ScriptCat.
 
-It focuses on the part of userscript development that tends to get messy: waiting for target DOM nodes, mounting components, handling page redraws, managing injection modules, and keeping structural changes hot-updated during development. Build output, userscript metadata, and install flows are still handled by [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey); Makoo adds a component injection layer on top.
+It focuses on the parts of userscript development that tend to get messy: waiting for target DOM nodes, mounting components, handling page redraws, managing injection modules, and keeping structural changes hot-updated during development. Build output, userscript metadata, and install flows are still handled by [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey); Makoo adds a structured framework layer for component-driven userscript projects.
 
 ## Table of Contents
 

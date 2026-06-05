@@ -3,7 +3,7 @@
 </p>
 
 <h1 align="center">Makoo</h1>
-<p align="center">面向 userscript 的组件注入框架</p>
+<p align="center">面向油猴 / 暴力猴 / ScriptCat 的 userscript 开发框架</p>
 
 <div align="center">
   <a href="https://github.com/makoojs/Makoo/"><img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/makoojs/Makoo?style=flat-square"></a>
@@ -16,9 +16,9 @@
 
 ---
 
-Makoo 用来把 Vue、React 等现代组件稳定地注入到任意网页中，尤其适合 Tampermonkey、Violentmonkey、ScriptCat 这类 userscript 场景。
+Makoo 是一个面向 userscript 的开发框架，用来为 Tampermonkey（油猴）、Violentmonkey（暴力猴）、ScriptCat 等浏览器脚本管理器构建可维护的 Vue / React 注入式应用。
 
-它关注的是 userscript 开发里最容易变乱的那部分：等待目标 DOM、挂载组件、处理页面重绘、按模块管理注入项、在开发时热更新结构变化。构建、元信息和脚本安装流程仍然交给 [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey)，Makoo 在它之上封装了多一层，提供组件注入层。
+它关注的是油猴脚本、暴力猴脚本和其他 userscript 开发里最容易变乱的那部分：等待目标 DOM、挂载组件、处理页面重绘、按模块管理注入项、在开发时热更新结构变化。构建、元信息和脚本安装流程仍然交给 [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey)，Makoo 在它之上封装了多一层，让 userscript 项目更像一个结构清晰的前端开发框架。
 
 ## 目录
 
