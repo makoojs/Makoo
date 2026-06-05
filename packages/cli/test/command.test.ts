@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ErrorCode } from '@makoo/core';
+import { ErrorCode } from '@makoojs/core';
 import {
 	getExtName,
 	loadCliVersion,
@@ -167,7 +167,7 @@ describe('reactTemplate', () => {
 describe('updateManifest', () => {
 	it('adds entry to object-form injections', async () => {
 		const root = await trackProject({
-			'injections/manifest.ts': `import { defineInjections } from '@makoo/cli';
+			'injections/manifest.ts': `import { defineInjections } from '@makoojs/cli';
 export default defineInjections({
   injections: {
     header: {
@@ -191,7 +191,7 @@ export default defineInjections({
 
 	it('adds entry to array-form injections', async () => {
 		const root = await trackProject({
-			'injections/manifest.ts': `import { defineInjections } from '@makoo/cli';
+			'injections/manifest.ts': `import { defineInjections } from '@makoojs/cli';
 export default defineInjections({
   injections: [
     { name: 'header', injectAt: 'body', component: './header/App.vue' }
@@ -233,7 +233,7 @@ export default defineInjections({
 describe('addCommand', () => {
 	it('creates module dir and component file (Vue)', async () => {
 		const root = await trackProject({
-			'injections/manifest.ts': `import { defineInjections } from '@makoo/cli';
+			'injections/manifest.ts': `import { defineInjections } from '@makoojs/cli';
 export default defineInjections({ injections: {} });`
 		});
 
@@ -251,7 +251,7 @@ export default defineInjections({ injections: {} });`
 
 	it('creates module dir and component file (React)', async () => {
 		const root = await trackProject({
-			'injections/manifest.ts': `import { defineInjections } from '@makoo/cli';
+			'injections/manifest.ts': `import { defineInjections } from '@makoojs/cli';
 export default defineInjections({ injections: {} });`
 		});
 
@@ -294,7 +294,7 @@ export default defineInjections({ injections: {} });`
 
 	it('updates manifest with new module entry', async () => {
 		const root = await trackProject({
-			'injections/manifest.ts': `import { defineInjections } from '@makoo/cli';
+			'injections/manifest.ts': `import { defineInjections } from '@makoojs/cli';
 export default defineInjections({ injections: {} });`
 		});
 

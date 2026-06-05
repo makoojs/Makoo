@@ -1,6 +1,6 @@
 import { relative } from 'node:path';
 import process from 'node:process';
-import { ErrorCode, MakooError, type MakooIssue } from '@makoo/core';
+import { ErrorCode, MakooError, type MakooIssue } from '@makoojs/core';
 
 export interface ValidationIssue {
 	code: string;

@@ -1,9 +1,21 @@
 {
-  "name": "@makoo/create-makoo",
+  "name": "@makoojs/create-makoo",
   "version": "0.1.0",
-  "description": "Create a makoo userscript project",
+  "description": "Scaffold Makoo userscript development framework projects",
   "type": "module",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/makoojs/Makoo.git",
+    "directory": "packages/create-makoo"
+  },
+  "homepage": "https://github.com/makoojs/Makoo#readme",
+  "bugs": {
+    "url": "https://github.com/makoojs/Makoo/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "files": [
     "dist",
     "assets"

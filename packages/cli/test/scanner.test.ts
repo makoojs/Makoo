@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { ErrorCode, MakooError } from '@makoo/core';
+import { ErrorCode, MakooError } from '@makoojs/core';
 import { afterEach, describe, expect, it } from 'vitest';
 import { resolveConfig } from '../src/config/resolve';
 import { scanner } from '../src/scanner/scanner';

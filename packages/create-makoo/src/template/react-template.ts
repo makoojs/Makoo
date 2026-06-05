@@ -65,7 +65,7 @@ function viteConfigTemplate(data: InitData): string {
 
 	return `import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import { makoo } from '@makoo/cli';
+import { makoo } from '@makoojs/cli';
 
 export default defineConfig({
   ${localResolveBlock}plugins: [
@@ -111,7 +111,7 @@ export default defineConfig({
 }
 
 function manifestTemplate(data: InitData): string {
-	return `import { defineInjections } from '@makoo/cli';
+	return `import { defineInjections } from '@makoojs/cli';
 
 export default defineInjections({
   injections: {

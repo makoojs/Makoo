@@ -1,4 +1,4 @@
-import { ErrorCode } from '@makoo/core';
+import { ErrorCode } from '@makoojs/core';
 import type { ComponentPublicInstance } from 'vue';
 import { createApp } from 'vue';
 import { VueAdapterError } from './error';

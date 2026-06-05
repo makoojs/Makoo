@@ -1,8 +1,8 @@
-# @makoo/cli
+# @makoojs/cli
 
-`@makoo/cli` is the main entry point for Makoo projects. It provides the Vite plugin, CLI commands, manifest type helpers, injection scanning, virtual entry generation, and connects userscript development, build, and install flows to [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey).
+`@makoojs/cli` is the main entry point for Makoo projects. It provides the Vite plugin, CLI commands, manifest type helpers, injection scanning, virtual entry generation, and connects userscript development, build, and install flows to [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey).
 
-If you are building a regular Makoo userscript project, you should usually start from this package. `@makoo/core` provides the low-level injection runtime, `@makoo/vue` and `@makoo/react` provide component mounting adapters, and `@makoo/cli` organizes them into the Vite and userscript build flow.
+If you are building a regular Makoo userscript project, you should usually start from this package. `@makoojs/core` provides the low-level injection runtime, `@makoojs/vue` and `@makoojs/react` provide component mounting adapters, and `@makoojs/cli` organizes them into the Vite and userscript build flow.
 
 ## Use Cases
 
@@ -11,17 +11,17 @@ If you are building a regular Makoo userscript project, you should usually start
 - Write `injections/manifest.ts` and module-level `manifest.ts` files.
 - Generate userscript metadata, dev entries, and build output through [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey).
 - Use commands such as `makoo dev`, `makoo build`, `makoo add`, and `makoo inspect`.
-- Use Makoo's stable GM API entry through `@makoo/cli/monkey`.
+- Use Makoo's stable GM API entry through `@makoojs/cli/monkey`.
 
 ## Installation
 
 ```bash
-// npm install @makoo/cli
-// yarn add @makoo/cli
-pnpm add @makoo/cli
+// npm install @makoojs/cli
+// yarn add @makoojs/cli
+pnpm add @makoojs/cli
 ```
 
-If you create a project with `@makoo/create-makoo`, `@makoo/cli` is usually configured for you.
+If you create a project with `@makoojs/create-makoo`, `@makoojs/cli` is usually configured for you.
 
 ## Minimal Vite Config
 
@@ -29,7 +29,7 @@ If you create a project with `@makoo/create-makoo`, `@makoo/cli` is usually conf
 
 ```ts
 import { defineConfig } from 'vite';
-import { makoo } from '@makoo/cli';
+import { makoo } from '@makoojs/cli';
 import vue from '@vitejs/plugin-vue';
 
 export default defineConfig({
@@ -75,12 +75,12 @@ The top-level `injections/manifest.ts` declares global injection config and the 
 
 ## Manifest Basics
 
-`@makoo/cli` exports `defineInjections()` and `defineInjection()` to provide type constraints for manifests.
+`@makoojs/cli` exports `defineInjections()` and `defineInjection()` to provide type constraints for manifests.
 
 Object form is suitable for most projects:
 
 ```ts
-import { defineInjections } from '@makoo/cli';
+import { defineInjections } from '@makoojs/cli';
 
 export default defineInjections({
 	globalInjector: {
@@ -110,7 +110,7 @@ export default defineInjections({
 Array form is useful for generated entries or cases where you need to declare `name` explicitly:
 
 ```ts
-import { defineInjections } from '@makoo/cli';
+import { defineInjections } from '@makoojs/cli';
 
 export default defineInjections({
 	injections: [
@@ -127,7 +127,7 @@ export default defineInjections({
 Module-level manifests can use `defineInjection()`:
 
 ```ts
-import { defineInjection } from '@makoo/cli';
+import { defineInjection } from '@makoojs/cli';
 
 export default defineInjection({
 	injectAt: '#app',
@@ -149,7 +149,7 @@ Common fields:
 | `alive` | Whether to retry injection after the target DOM is removed |
 | `scope` | Alive observation scope, supports `local` and `global` |
 | `timeout` | Timeout for waiting for the target DOM |
-| `hooks` | Lifecycle observation hooks passed to `@makoo/core` |
+| `hooks` | Lifecycle observation hooks passed to `@makoojs/core` |
 
 `match` supports array shorthand:
 
@@ -203,7 +203,7 @@ makoo({
 | --- | --- |
 | `app` | Generates userscript `name`, `version`, and `description` |
 | `source` | Controls which injection module directories are scanned |
-| `injector` | Global injection defaults passed to `@makoo/core` |
+| `injector` | Global injection defaults passed to `@makoojs/core` |
 | `runtime` | Controls runtime setup imports in the Makoo-generated entry |
 | `monkey` | Most options are passed through to [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) |
 
@@ -270,7 +270,7 @@ Use it to register Vue plugins, initialize GM helpers, import global styles, or 
 ```ts
 // vite.config.ts
 import { defineConfig } from 'vite';
-import { makoo } from '@makoo/cli';
+import { makoo } from '@makoojs/cli';
 
 export default defineConfig({
 	plugins: [
@@ -294,7 +294,7 @@ export default defineConfig({
 
 ```ts
 // injections/vue-setup.ts
-import { VuePlugin } from '@makoo/vue';
+import { VuePlugin } from '@makoojs/vue';
 import router from './router';
 import i18n from './i18n';
 
@@ -316,10 +316,10 @@ In dev mode, setup files and their statically imported local dependencies partic
 
 ## Use GM APIs
 
-`@makoo/cli` provides the `@makoo/cli/monkey` subpath as Makoo's stable wrapper around [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) GM APIs.
+`@makoojs/cli` provides the `@makoojs/cli/monkey` subpath as Makoo's stable wrapper around [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) GM APIs.
 
 ```ts
-import { gmStorage, gmStyle } from '@makoo/cli/monkey';
+import { gmStorage, gmStyle } from '@makoojs/cli/monkey';
 
 gmStyle.add('.makoo-panel { z-index: 999999; }');
 gmStorage.set('enabled', true);
@@ -328,7 +328,7 @@ gmStorage.set('enabled', true);
 You can also use the grouped entry:
 
 ```ts
-import { GMapi } from '@makoo/cli/monkey';
+import { GMapi } from '@makoojs/cli/monkey';
 
 GMapi.storage.set('enabled', true);
 ```
@@ -337,11 +337,11 @@ Prefer capability-level imports when you want the generated `@grant` surface to 
 
 ## Reduce Build Size
 
-`@makoo/cli` re-exports the `cdn` helper from [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey). You can use it with `monkey.build.externalGlobals` to load external dependencies from a CDN and reduce userscript bundle size.
+`@makoojs/cli` re-exports the `cdn` helper from [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey). You can use it with `monkey.build.externalGlobals` to load external dependencies from a CDN and reduce userscript bundle size.
 
 ```ts
 import { defineConfig } from 'vite';
-import { cdn, makoo } from '@makoo/cli';
+import { cdn, makoo } from '@makoojs/cli';
 
 export default defineConfig({
 	plugins: makoo({
@@ -364,10 +364,10 @@ export default defineConfig({
 
 | Package | Responsibility |
 | --- | --- |
-| `@makoo/cli` | Vite plugin, CLI commands, scanning, code generation, and userscript build integration |
-| `@makoo/core` | Framework-agnostic injection runtime core |
-| `@makoo/vue` | Vue adapter and Vue plugin registration helpers |
-| `@makoo/react` | React adapter |
-| `@makoo/create-makoo` | Project scaffold |
+| `@makoojs/cli` | Vite plugin, CLI commands, scanning, code generation, and userscript build integration |
+| `@makoojs/core` | Framework-agnostic injection runtime core |
+| `@makoojs/vue` | Vue adapter and Vue plugin registration helpers |
+| `@makoojs/react` | React adapter |
+| `@makoojs/create-makoo` | Project scaffold |
 
-`@makoo/cli` is not a complete runtime implementation by itself. Many features cannot exist independently and rely on the injection scheduling capabilities provided by `@makoo/core`.
+`@makoojs/cli` is not a complete runtime implementation by itself. Many features cannot exist independently and rely on the injection scheduling capabilities provided by `@makoojs/core`.

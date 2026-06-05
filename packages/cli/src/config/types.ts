@@ -2,7 +2,7 @@ import type {
 	ArtifactOptions,
 	LifecycleHookMap,
 	InjectionConfig as RuntimeInjectionConfig
-} from '@makoo/core';
+} from '@makoojs/core';
 import type {
 	ExternalGlobals,
 	ExternalResource,

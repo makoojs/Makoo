@@ -1,6 +1,6 @@
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { ErrorCode, MakooError } from '@makoo/core';
+import { ErrorCode, MakooError } from '@makoojs/core';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { ResolvedSourceConfig } from '../src/config/types';
 import { loadManifest } from '../src/scanner/load/loadManifes';

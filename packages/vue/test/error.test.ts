@@ -1,4 +1,4 @@
-import { AdapterError, ErrorCode, MakooError } from '@makoo/core';
+import { AdapterError, ErrorCode, MakooError } from '@makoojs/core';
 import { describe, expect, it } from 'vitest';
 import { VueAdapterError } from '../src/error';
 

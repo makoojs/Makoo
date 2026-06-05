@@ -1,11 +1,11 @@
-# @makoo/core
+# @makoojs/core
 
-`@makoo/core` is Makoo's framework-agnostic runtime core. It registers and schedules injection tasks, waits for target DOM nodes, mounts artifacts, manages alive reinjection, binds event listeners, and provides lifecycle observation events, logging, and error infrastructure.
+`@makoojs/core` is Makoo's framework-agnostic runtime core. It registers and schedules injection tasks, waits for target DOM nodes, mounts artifacts, manages alive reinjection, binds event listeners, and provides lifecycle observation events, logging, and error infrastructure.
 
-Projects should usually start with `@makoo/cli`. The CLI provides the Vite plugin, scans the `injections` directory, resolves manifests, generates userscript entry code, and passes configuration through to [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) for development, build, and install flows. `@makoo/core` is the lower-level runtime package. You only need to use it directly when you want to leave Makoo's CLI flow and manually integrate the injection runtime. `@makoo/vue` and `@makoo/react` are component mounting adapters that connect Vue or React components to the `@makoo/core` injection flow.
+Projects should usually start with `@makoojs/cli`. The CLI provides the Vite plugin, scans the `injections` directory, resolves manifests, generates userscript entry code, and passes configuration through to [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) for development, build, and install flows. `@makoojs/core` is the lower-level runtime package. You only need to use it directly when you want to leave Makoo's CLI flow and manually integrate the injection runtime. `@makoojs/vue` and `@makoojs/react` are component mounting adapters that connect Vue or React components to the `@makoojs/core` injection flow.
 
 > [!NOTE]
-> `@makoo/core` is the parent package for the rest of Makoo. Other packages depend on its types or runtime capabilities either directly or indirectly.
+> `@makoojs/core` is the parent package for the rest of Makoo. Other packages depend on its types or runtime capabilities either directly or indirectly.
 
 ## Use Cases
 
@@ -17,9 +17,9 @@ Projects should usually start with `@makoo/cli`. The CLI provides the Vite plugi
 ## Installation
 
 ```bash
-// npm install @makoo/core
-// yarn add @makoo/core
-pnpm add @makoo/core
+// npm install @makoojs/core
+// yarn add @makoojs/core
+pnpm add @makoojs/core
 ```
 
 ## Minimal Runtime Example
@@ -27,7 +27,7 @@ pnpm add @makoo/core
 The following example shows the basic core flow: create an `Injector`, register an adapter, register an artifact, then call `run()` to wait for the target DOM node and mount it.
 
 ```ts
-import { Injector, type ResolvableMountAdapter } from '@makoo/core';
+import { Injector, type ResolvableMountAdapter } from '@makoojs/core';
 
 type TextArtifact = {
 	kind: 'text';
@@ -93,7 +93,7 @@ Common methods:
 core does not care whether an artifact is a Vue component, a React component, or another object. It only requires adapters to implement a unified mounting protocol.
 
 ```ts
-import type { ResolvableMountAdapter } from '@makoo/core';
+import type { ResolvableMountAdapter } from '@makoojs/core';
 
 const adapter: ResolvableMountAdapter<MyArtifact, MyHandle, MyInstance> = {
 	name: 'my-adapter',
@@ -171,7 +171,7 @@ result.enableAlive();
 Besides mounting artifacts, `Injector` can also register standalone DOM event listener tasks.
 
 ```ts
-import { createActivityStore } from '@makoo/core';
+import { createActivityStore } from '@makoojs/core';
 
 const enabled = createActivityStore(true);
 
@@ -193,7 +193,7 @@ enabled.set(true);
 `createActivityStore()` returns a small subscribable boolean state. When passed to a listener, Makoo automatically attaches or detaches the event listener based on that state.
 
 > [!NOTE]
-> `@makoo/cli` cannot parse this standalone listener mounting form yet. It only supports the **`component + listener`** form.
+> `@makoojs/cli` cannot parse this standalone listener mounting form yet. It only supports the **`component + listener`** form.
 
 ## Observation Events
 
@@ -238,7 +238,7 @@ The full event name list is available from `OBSERVE_EVENT_NAMES`.
 In a custom runtime, you can use it directly:
 
 ```ts
-import { DOMWatcher } from '@makoo/core';
+import { DOMWatcher } from '@makoojs/core';
 
 const stop = DOMWatcher.onDomReady(
 	'#app',
@@ -262,7 +262,7 @@ stop();
 core uses `Logger` by default and prints logs with the `[Makoo]` prefix. You can pass a custom logger.
 
 ```ts
-import { Injector, type ILogger } from '@makoo/core';
+import { Injector, type ILogger } from '@makoojs/core';
 
 const logger: ILogger = {
 	info: console.info,
@@ -286,7 +286,7 @@ These types are useful for error identification, log grouping, or user-facing me
 
 ## Public Exports Overview
 
-The main `@makoo/core` entry exports these groups of capabilities:
+The main `@makoojs/core` entry exports these groups of capabilities:
 
 | Category | Representative exports |
 | --- | --- |
@@ -304,10 +304,10 @@ The full API reference will be moved to a dedicated documentation site later.
 
 | Package | Responsibility |
 | --- | --- |
-| `@makoo/core` | Framework-agnostic injection runtime core |
-| `@makoo/vue` | Vue adapter and Vue plugin registration helpers |
-| `@makoo/react` | React adapter |
-| `@makoo/cli` | Vite plugin, config resolution, scanning, code generation, and userscript build integration |
-| `@makoo/create-makoo` | Project scaffold |
+| `@makoojs/core` | Framework-agnostic injection runtime core |
+| `@makoojs/vue` | Vue adapter and Vue plugin registration helpers |
+| `@makoojs/react` | React adapter |
+| `@makoojs/cli` | Vite plugin, config resolution, scanning, code generation, and userscript build integration |
+| `@makoojs/create-makoo` | Project scaffold |
 
-If you are building a regular userscript project, prefer `@makoo/cli` + `@makoo/core`. If you want to extend Makoo's runtime capabilities, use `@makoo/core` directly.
+If you are building a regular userscript project, prefer `@makoojs/cli` + `@makoojs/core`. If you want to extend Makoo's runtime capabilities, use `@makoojs/core` directly.

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { MakooError } from '@makoo/core';
+import { MakooError } from '@makoojs/core';
 import cac from 'cac';
 import { addCommand } from './add';
 import { buildCommand } from './build';

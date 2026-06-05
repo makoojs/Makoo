@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { readdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ErrorCode } from '@makoo/core';
+import { ErrorCode } from '@makoojs/core';
 import { createJiti } from 'jiti';
 import { loadConfigFromFile } from 'vite';
 import { DEFAULT_SOURCE_DIR } from '../config/defaults';
@@ -35,7 +35,7 @@ export async function loadCliVersion(cliVersionCache: string | null): Promise<st
 			const content = await readFile(packagePath, 'utf-8');
 			const packageJson = JSON.parse(content) as { name?: string; version?: string };
 
-			if (packageJson.name === '@makoo/cli' && packageJson.version) {
+			if (packageJson.name === '@makoojs/cli' && packageJson.version) {
 				cliVersionCache = packageJson.version;
 				return cliVersionCache;
 			}
@@ -117,7 +117,7 @@ export async function updateManifest(
 		const newManifestPath = join(sourcePath, 'manifest.ts');
 		await writeFile(
 			newManifestPath,
-			`import { defineInjections } from "@makoo/cli";\nexport default defineInjections(${JSON.stringify(merged, null, 2)})\n`,
+			`import { defineInjections } from "@makoojs/cli";\nexport default defineInjections(${JSON.stringify(merged, null, 2)})\n`,
 			'utf-8'
 		);
 		return;

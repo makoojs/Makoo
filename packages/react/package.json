@@ -1,9 +1,21 @@
 {
-  "name": "@makoo/react",
+  "name": "@makoojs/react",
   "version": "0.1.0",
-  "description": "React adapter for makoo",
+  "description": "React adapter for the Makoo userscript development framework",
   "type": "module",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/makoojs/Makoo.git",
+    "directory": "packages/react"
+  },
+  "homepage": "https://github.com/makoojs/Makoo#readme",
+  "bugs": {
+    "url": "https://github.com/makoojs/Makoo/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "sideEffects": false,
   "files": [
     "dist"
@@ -19,7 +31,7 @@
     }
   },
   "dependencies": {
-    "@makoo/core": "workspace:*"
+    "@makoojs/core": "workspace:*"
   },
   "devDependencies": {
     "react": "^19.2.6",
