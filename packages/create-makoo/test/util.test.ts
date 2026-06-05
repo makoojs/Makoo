@@ -13,7 +13,7 @@ describe('resolveDependencyMode', () => {
 });
 
 describe('resolveMakooDependencies', () => {
-	it('returns npm package versions in npm mode', () => {
+	it('returns recommended package versions in npm mode', () => {
 		const result = resolveMakooDependencies('Vue', 'npm');
 
 		expect(result.dependencies['@makoojs/core']).toBe('^0.1.0');
