@@ -27,7 +27,11 @@ export async function loadManifest(
 			try {
 				raw = await jiti.import(fullPath, { default: true });
 			} catch (err) {
-				throw new ManifestLoadError(fullPath, undefined, err instanceof Error ? err : undefined);
+				throw new ManifestLoadError(
+					fullPath,
+					undefined,
+					err instanceof Error ? err : undefined
+				);
 			}
 
 			return {

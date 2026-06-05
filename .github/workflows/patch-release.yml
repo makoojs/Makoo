@@ -32,9 +32,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: "pnpm"
-          cache-dependency-path: pnpm-lock.yaml
-          registry-url: https://registry.npmjs.org
 
       - name: Detect changed packages
         id: versions
@@ -132,6 +129,15 @@ jobs:
       - name: Stop when no patch bump
         if: steps.versions.outputs.should_release != 'true'
         run: echo "No patch bump detected, skipping release."
+
+      - name: Setup Node.js with pnpm cache
+        if: steps.versions.outputs.should_release == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: "pnpm"
+          cache-dependency-path: pnpm-lock.yaml
+          registry-url: https://registry.npmjs.org
 
       - name: Prepare tag and release text
         if: steps.versions.outputs.should_release == 'true'

@@ -245,9 +245,7 @@ describe('Injector', () => {
 		const destroySpy = vi.spyOn(taskLifeCycle, 'destroy').mockImplementation(() => {});
 		const bindSpy = vi.spyOn(taskRunner, 'bindListenerSignal').mockReturnValue(true);
 		const controlSpy = vi.spyOn(taskRunner, 'controlListener').mockReturnValue(true);
-		let capturedApi:
-			| import('../src/adapter/types').MakooContext
-			| undefined;
+		let capturedApi: import('../src/adapter/types').MakooContext | undefined;
 
 		const artifact = { kind: 'custom-artifact', name: 'MakooApiArtifact' };
 		const result = injector

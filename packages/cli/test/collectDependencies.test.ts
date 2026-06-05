@@ -20,7 +20,9 @@ describe('collectDependencies', () => {
 			'injections/nested/helper.ts': `export const helper = () => 'ok';`
 		});
 
-		const dependencies = collectDependencies(path.join(root, 'injections/manifest.ts'), { root });
+		const dependencies = collectDependencies(path.join(root, 'injections/manifest.ts'), {
+			root
+		});
 
 		expect(dependencies).toEqual([
 			path.join(root, 'injections/hooks.ts'),
@@ -69,7 +71,9 @@ describe('collectDependencies', () => {
 			'injections/helper.js': `module.exports = () => 'ok';`
 		});
 
-		const dependencies = collectDependencies(path.join(root, 'injections/manifest.ts'), { root });
+		const dependencies = collectDependencies(path.join(root, 'injections/manifest.ts'), {
+			root
+		});
 
 		expect(dependencies).toEqual([
 			path.join(root, 'injections/hooks.js'),

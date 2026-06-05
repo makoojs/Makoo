@@ -25,7 +25,11 @@ export async function loadMeta(root: string): Promise<LoadMetaResult | null> {
 			try {
 				raw = await jiti.import(fullPath, { default: true });
 			} catch (err) {
-				throw new ModuleManifestLoadError(fullPath, undefined, err instanceof Error ? err : undefined);
+				throw new ModuleManifestLoadError(
+					fullPath,
+					undefined,
+					err instanceof Error ? err : undefined
+				);
 			}
 
 			return {

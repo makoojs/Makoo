@@ -59,7 +59,7 @@ describe('generateVueTemplate', () => {
 			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"@makoojs/core": "^0.1.0"');
 			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"@makoojs/vue": "^0.1.0"');
 			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"@makoojs/cli": "^0.1.0"');
-			expect(readFileSync(viteConfigPath, 'utf-8')).not.toContain('dedupe: [\'vue\']');
+			expect(readFileSync(viteConfigPath, 'utf-8')).not.toContain("dedupe: ['vue']");
 			expect(readFileSync(appPath, 'utf-8')).toContain(
 				'../../assets/makoo-icon-transparent.png'
 			);

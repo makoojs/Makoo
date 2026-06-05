@@ -9,7 +9,9 @@ const renderMatchUrlHelper = (): string => {
 		'  if (!match) return true;',
 		'  const matches = (patterns) => {',
 		'    if (!patterns) return false;',
+		// biome-ignore lint/suspicious/noTemplateCurlyInString: generated code intentionally contains template syntax.
 		"    const escape = (value) => value.replace(/[.+?^${}()|[\\]\\\\]/g, '\\\\$&');",
+		// biome-ignore lint/suspicious/noTemplateCurlyInString: generated code intentionally contains template syntax.
 		"    return patterns.some((pattern) => new RegExp(`^${pattern.split('*').map(escape).join('.*')}$`).test(url));",
 		'  };',
 		'  const included = match.include ? matches(match.include) : true;',

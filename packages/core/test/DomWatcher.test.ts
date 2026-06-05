@@ -259,10 +259,18 @@ describe('DOMWatcher', () => {
 				getLevel: vi.fn(() => 'info')
 			};
 
-			const stop = DOMWatcher.onDomAlive(target, '#detached', vi.fn(), vi.fn(), root, { once: true }, {
-				logger,
-				emit: vi.fn()
-			});
+			const stop = DOMWatcher.onDomAlive(
+				target,
+				'#detached',
+				vi.fn(),
+				vi.fn(),
+				root,
+				{ once: true },
+				{
+					logger,
+					emit: vi.fn()
+				}
+			);
 
 			expect(logger.error).toHaveBeenCalledWith(
 				'Failed to set up removal observer: observation target is detached from DOM'

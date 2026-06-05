@@ -56,7 +56,7 @@ export function makooMonkey(config: ResolvedConfig): MakooMonkeyPlugin {
 			await rescan();
 		},
 		resolveId(id: string) {
-			if (id === VIRTUAL_MODULE_ID ) {
+			if (id === VIRTUAL_MODULE_ID) {
 				return RESOLVED_ID;
 			}
 			if (id === FAKE_ENTRY || id === `./${FAKE_ENTRY}` || id === `/${FAKE_ENTRY}`) {

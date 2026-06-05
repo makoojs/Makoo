@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ErrorCode } from '@makoojs/core';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
 	getExtName,
 	loadCliVersion,
