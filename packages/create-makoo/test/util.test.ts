@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { recommendedMakooVersions } from '../src/template/makooVersion';
 import { resolveDependencyMode, resolveMakooDependencies } from '../src/template/util';
 
 describe('resolveDependencyMode', () => {
@@ -13,6 +14,16 @@ describe('resolveDependencyMode', () => {
 });
 
 describe('resolveMakooDependencies', () => {
+	it('tracks every Makoo package version in the recommendation table', () => {
+		expect(Object.keys(recommendedMakooVersions).sort()).toEqual([
+			'cli',
+			'core',
+			'create-makoo',
+			'react',
+			'vue'
+		]);
+	});
+
 	it('returns recommended package versions in npm mode', () => {
 		const result = resolveMakooDependencies('Vue', 'npm');
 
