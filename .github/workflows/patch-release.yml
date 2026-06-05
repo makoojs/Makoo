@@ -149,16 +149,16 @@ jobs:
           NEW_TAG="v${{ steps.versions.outputs.tag_version }}"
           PREV_TAG=$(git tag --sort=-v:refname | head -n 1 || true)
 
-          if [ -n "$PREV_TAG" ]; then
-            RELEASE_BODY="Changed packages: ${{ steps.versions.outputs.packages }}
-          View this change: https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${NEW_TAG}"
-          else
-            RELEASE_BODY="First release, view repository: https://github.com/${{ github.repository }}"
-          fi
-
           {
             echo "new_tag=$NEW_TAG"
-            echo "release_body=$RELEASE_BODY"
+            echo "release_body<<EOF"
+            if [ -n "$PREV_TAG" ]; then
+              echo "Changed packages: ${{ steps.versions.outputs.packages }}"
+              echo "View this change: https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${NEW_TAG}"
+            else
+              echo "First release, view repository: https://github.com/${{ github.repository }}"
+            fi
+            echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
       - name: Install dependencies
