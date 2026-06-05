@@ -55,6 +55,7 @@ describe('generateVueTemplate', () => {
 			expect(readFileSync(gitignorePath, 'utf-8')).toContain('pnpm-debug.log*');
 			expect(readFileSync(gitignorePath, 'utf-8')).toContain('!.vscode/extensions.json');
 			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"typecheck": "vue-tsc -b"');
+			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"esbuild": "^0.27.0"');
 			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"@types/node": "^25.9.1"');
 			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"@makoojs/core": "^0.1.0"');
 			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"@makoojs/vue": "^0.1.0"');

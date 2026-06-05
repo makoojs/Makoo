@@ -45,6 +45,7 @@ describe('generateReactTemplate', () => {
 			expect(existsSync(stylePath)).toBe(true);
 
 			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"@vitejs/plugin-react"');
+			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"esbuild": "^0.27.0"');
 			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"@types/react": "^19.2.15"');
 			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"@makoojs/core": "^0.1.0"');
 			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"@makoojs/react": "^0.1.0"');

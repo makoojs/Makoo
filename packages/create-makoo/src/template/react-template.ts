@@ -11,6 +11,7 @@ import {
 
 function packageJsonTemplate(data: InitData): string {
 	const devDeps: Record<string, string> = {
+		esbuild: '^0.27.0',
 		vite: '^8.0.14',
 		'@vitejs/plugin-react': '^5.2.0'
 	};
