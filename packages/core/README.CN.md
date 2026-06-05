@@ -1,11 +1,11 @@
-# @makoo/core
+# @makoojs/core
 
-`@makoo/core` 是 Makoo 的框架无关运行时内核。它负责注入任务的注册与调度、等待目标 DOM、挂载 artifact、管理 alive 重注入、绑定事件监听器，并提供生命周期观察事件、日志和错误基础设施。
+`@makoojs/core` 是 Makoo 的框架无关运行时内核。它负责注入任务的注册与调度、等待目标 DOM、挂载 artifact、管理 alive 重注入、绑定事件监听器，并提供生命周期观察事件、日志和错误基础设施。
 
-项目应该从 `@makoo/cli` 开始，它负责提供 Vite 插件、扫描 `injections` 目录、解析 manifest、生成userscript 入口代码，并把配置透传给 [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) 完成开发、构建和安装流程。`@makoo/core` 是更底层的运行时包，只有在你想脱离 Makoo 的 CLI 流程，手动集成注入运行时时，才需要直接使用它。`@makoo/vue` 和 `@makoo/react` 则是组件挂载适配器，用来把 Vue 或 React 组件接入 `@makoo/core` 的注入流程。
+项目应该从 `@makoojs/cli` 开始，它负责提供 Vite 插件、扫描 `injections` 目录、解析 manifest、生成userscript 入口代码，并把配置透传给 [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) 完成开发、构建和安装流程。`@makoojs/core` 是更底层的运行时包，只有在你想脱离 Makoo 的 CLI 流程，手动集成注入运行时时，才需要直接使用它。`@makoojs/vue` 和 `@makoojs/react` 则是组件挂载适配器，用来把 Vue 或 React 组件接入 `@makoojs/core` 的注入流程。
 
 > [!NOTE]
-> `@makoo/core`包是其他包的父包，其他的包都直接或间接的依赖该包的类型或功能
+> `@makoojs/core`包是其他包的父包，其他的包都直接或间接的依赖该包的类型或功能
 
 ## 适用场景
 
@@ -17,9 +17,9 @@
 ## 安装
 
 ```bash
-// npm install @makoo/core
-// yarn add @makoo/core
-pnpm add @makoo/core
+// npm install @makoojs/core
+// yarn add @makoojs/core
+pnpm add @makoojs/core
 ```
 
 ## 最小运行时示例
@@ -27,7 +27,7 @@ pnpm add @makoo/core
 下面的示例展示了 core 的基本路径：创建 `Injector`，注册 adapter，注册 artifact，然后调用 `run()` 等待目标 DOM 并挂载。
 
 ```ts
-import { Injector, type ResolvableMountAdapter } from '@makoo/core';
+import { Injector, type ResolvableMountAdapter } from '@makoojs/core';
 
 type TextArtifact = {
 	kind: 'text';
@@ -93,7 +93,7 @@ injector.run();
 core 不关心 artifact 是 Vue 组件、React 组件还是其他对象。它只要求 adapter 实现统一的挂载协议。
 
 ```ts
-import type { ResolvableMountAdapter } from '@makoo/core';
+import type { ResolvableMountAdapter } from '@makoojs/core';
 
 const adapter: ResolvableMountAdapter<MyArtifact, MyHandle, MyInstance> = {
 	name: 'my-adapter',
@@ -171,7 +171,7 @@ result.enableAlive();
 除了挂载 artifact，`Injector` 也可以注册独立 DOM 事件监听任务。
 
 ```ts
-import { createActivityStore } from '@makoo/core';
+import { createActivityStore } from '@makoojs/core';
 
 const enabled = createActivityStore(true);
 
@@ -193,7 +193,7 @@ enabled.set(true);
 `createActivityStore()` 返回一个简单的可订阅布尔状态。传入 listener 后，Makoo 会根据状态自动 attach 或 detach 事件监听器。
 
 > [!NOTE]
-> 现在`@makoo/cli`是无法解析这种listener的挂载形式，只支持**`component+listener`**的形式
+> 现在`@makoojs/cli`是无法解析这种listener的挂载形式，只支持**`component+listener`**的形式
 
 ## 观察事件
 
@@ -238,7 +238,7 @@ off();
 在自定义运行时中，可以直接使用：
 
 ```ts
-import { DOMWatcher } from '@makoo/core';
+import { DOMWatcher } from '@makoojs/core';
 
 const stop = DOMWatcher.onDomReady(
 	'#app',
@@ -262,7 +262,7 @@ stop();
 core 默认使用 `Logger` 输出带 `[Makoo]` 前缀的日志。你可以传入自定义 logger。
 
 ```ts
-import { Injector, type ILogger } from '@makoo/core';
+import { Injector, type ILogger } from '@makoojs/core';
 
 const logger: ILogger = {
 	info: console.info,
@@ -286,7 +286,7 @@ core 还导出以下错误相关类型：
 
 ## 公开能力概览
 
-`@makoo/core` 的主入口导出以下几类能力：
+`@makoojs/core` 的主入口导出以下几类能力：
 
 | 类别 | 代表导出 |
 | --- | --- |
@@ -304,10 +304,10 @@ core 还导出以下错误相关类型：
 
 | 包 | 职责 |
 | --- | --- |
-| `@makoo/core` | 框架无关的注入运行时内核 |
-| `@makoo/vue` | Vue adapter 与 Vue 插件注册辅助 |
-| `@makoo/react` | React adapter |
-| `@makoo/cli` | Vite 插件、配置解析、扫描、代码生成和 userscript 构建接入 |
-| `@makoo/create-makoo` | 项目脚手架 |
+| `@makoojs/core` | 框架无关的注入运行时内核 |
+| `@makoojs/vue` | Vue adapter 与 Vue 插件注册辅助 |
+| `@makoojs/react` | React adapter |
+| `@makoojs/cli` | Vite 插件、配置解析、扫描、代码生成和 userscript 构建接入 |
+| `@makoojs/create-makoo` | 项目脚手架 |
 
-如果你只是开发普通 userscript 项目，优先使用 `@makoo/cli`+`@makoo/core`。如果你要扩展 Makoo 的运行时能力，再直接使用 `@makoo/core`。
+如果你只是开发普通 userscript 项目，优先使用 `@makoojs/cli`+`@makoojs/core`。如果你要扩展 Makoo 的运行时能力，再直接使用 `@makoojs/core`。

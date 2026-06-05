@@ -1,4 +1,4 @@
-import type { MakooContext } from '@makoo/core';
+import type { MakooContext } from '@makoojs/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h } from 'vue';
 import { createVueAdapter } from '../src/VueAdapter';

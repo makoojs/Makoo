@@ -1,8 +1,8 @@
-# @makoo/cli
+# @makoojs/cli
 
-`@makoo/cli` 是 Makoo 项目的主要入口。它提供 Vite 插件、CLI 命令、manifest 类型辅助、injection 扫描、虚拟入口生成，并把 userscript 的开发、构建和安装流程接到 [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey)。
+`@makoojs/cli` 是 Makoo 项目的主要入口。它提供 Vite 插件、CLI 命令、manifest 类型辅助、injection 扫描、虚拟入口生成，并把 userscript 的开发、构建和安装流程接到 [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey)。
 
-如果你在开发普通 Makoo userscript 项目，通常应该从这个包开始。`@makoo/core` 负责底层注入运行时，`@makoo/vue` 和 `@makoo/react` 负责组件挂载适配器，而 `@makoo/cli` 负责把它们组织进 Vite 和 userscript 构建流程。
+如果你在开发普通 Makoo userscript 项目，通常应该从这个包开始。`@makoojs/core` 负责底层注入运行时，`@makoojs/vue` 和 `@makoojs/react` 负责组件挂载适配器，而 `@makoojs/cli` 负责把它们组织进 Vite 和 userscript 构建流程。
 
 ## 适用场景
 
@@ -11,17 +11,17 @@
 - 编写 `injections/manifest.ts` 和模块级 `manifest.ts`。
 - 通过 [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) 生成 userscript 元信息、开发入口和构建产物。
 - 使用 `makoo dev`、`makoo build`、`makoo add`、`makoo inspect` 等命令。
-- 通过 `@makoo/cli/monkey` 使用 GM API 的 Makoo 稳定入口。
+- 通过 `@makoojs/cli/monkey` 使用 GM API 的 Makoo 稳定入口。
 
 ## 安装
 
 ```bash
-// npm install @makoo/cli
-// yarn add @makoo/cli
-pnpm add @makoo/cli
+// npm install @makoojs/cli
+// yarn add @makoojs/cli
+pnpm add @makoojs/cli
 ```
 
-如果你使用 `@makoo/create-makoo` 创建项目，通常会自动配置好 `@makoo/cli`。
+如果你使用 `@makoojs/create-makoo` 创建项目，通常会自动配置好 `@makoojs/cli`。
 
 ## 最小 Vite 配置
 
@@ -29,7 +29,7 @@ pnpm add @makoo/cli
 
 ```ts
 import { defineConfig } from 'vite';
-import { makoo } from '@makoo/cli';
+import { makoo } from '@makoojs/cli';
 import vue from '@vitejs/plugin-vue';
 
 export default defineConfig({
@@ -75,12 +75,12 @@ Makoo 默认扫描项目根目录下的 `injections` 目录。
 
 ## Manifest 基础
 
-`@makoo/cli` 导出 `defineInjections()` 和 `defineInjection()`，用于给 manifest 提供类型约束。
+`@makoojs/cli` 导出 `defineInjections()` 和 `defineInjection()`，用于给 manifest 提供类型约束。
 
 对象形式适合多数项目：
 
 ```ts
-import { defineInjections } from '@makoo/cli';
+import { defineInjections } from '@makoojs/cli';
 
 export default defineInjections({
 	globalInjector: {
@@ -110,7 +110,7 @@ export default defineInjections({
 数组形式适合动态生成，或需要显式声明 `name` 的场景：
 
 ```ts
-import { defineInjections } from '@makoo/cli';
+import { defineInjections } from '@makoojs/cli';
 
 export default defineInjections({
 	injections: [
@@ -127,7 +127,7 @@ export default defineInjections({
 模块级 manifest 可以使用 `defineInjection()`：
 
 ```ts
-import { defineInjection } from '@makoo/cli';
+import { defineInjection } from '@makoojs/cli';
 
 export default defineInjection({
 	injectAt: '#app',
@@ -149,7 +149,7 @@ export default defineInjection({
 | `alive` | 目标 DOM 被移除后是否尝试重注入 |
 | `scope` | alive 观察范围，支持 `local` 和 `global` |
 | `timeout` | 等待目标 DOM 的超时时间 |
-| `hooks` | 传给 `@makoo/core` 的生命周期观察 hooks |
+| `hooks` | 传给 `@makoojs/core` 的生命周期观察 hooks |
 
 `match` 支持数组简写：
 
@@ -203,7 +203,7 @@ makoo({
 | --- | --- |
 | `app` | 用于生成 userscript 的 `name`、`version`、`description` |
 | `source` | 控制扫描哪些 injection 模块目录 |
-| `injector` | 传给 `@makoo/core` 的全局注入默认值 |
+| `injector` | 传给 `@makoojs/core` 的全局注入默认值 |
 | `runtime` | 控制 Makoo 生成入口里的运行时前置 setup import |
 | `monkey` | 大多数配置会透传给 [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) |
 
@@ -270,7 +270,7 @@ Makoo 的 Vite 插件会在启动和构建时执行以下流程：
 ```ts
 // vite.config.ts
 import { defineConfig } from 'vite';
-import { makoo } from '@makoo/cli';
+import { makoo } from '@makoojs/cli';
 
 export default defineConfig({
 	plugins: [
@@ -294,7 +294,7 @@ export default defineConfig({
 
 ```ts
 // injections/vue-setup.ts
-import { VuePlugin } from '@makoo/vue';
+import { VuePlugin } from '@makoojs/vue';
 import router from './router';
 import i18n from './i18n';
 
@@ -316,10 +316,10 @@ runtime: {
 
 ## 使用 GM API
 
-`@makoo/cli` 提供 `@makoo/cli/monkey` 子入口，作为 [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) GM API 的 Makoo 稳定封装。
+`@makoojs/cli` 提供 `@makoojs/cli/monkey` 子入口，作为 [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) GM API 的 Makoo 稳定封装。
 
 ```ts
-import { gmStorage, gmStyle } from '@makoo/cli/monkey';
+import { gmStorage, gmStyle } from '@makoojs/cli/monkey';
 
 gmStyle.add('.makoo-panel { z-index: 999999; }');
 gmStorage.set('enabled', true);
@@ -328,7 +328,7 @@ gmStorage.set('enabled', true);
 也可以使用聚合入口：
 
 ```ts
-import { GMapi } from '@makoo/cli/monkey';
+import { GMapi } from '@makoojs/cli/monkey';
 
 GMapi.storage.set('enabled', true);
 ```
@@ -337,11 +337,11 @@ GMapi.storage.set('enabled', true);
 
 ## 减小构建体积
 
-`@makoo/cli` 重新导出了 [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) 的 `cdn` 辅助方法。你可以配合 `monkey.build.externalGlobals` 使用 CDN 外部依赖，减小 userscript 构建体积。
+`@makoojs/cli` 重新导出了 [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) 的 `cdn` 辅助方法。你可以配合 `monkey.build.externalGlobals` 使用 CDN 外部依赖，减小 userscript 构建体积。
 
 ```ts
 import { defineConfig } from 'vite';
-import { cdn, makoo } from '@makoo/cli';
+import { cdn, makoo } from '@makoojs/cli';
 
 export default defineConfig({
 	plugins: makoo({
@@ -364,10 +364,10 @@ export default defineConfig({
 
 | 包 | 职责 |
 | --- | --- |
-| `@makoo/cli` | Vite 插件、CLI 命令、扫描、代码生成和 userscript 构建接入 |
-| `@makoo/core` | 框架无关的注入运行时内核 |
-| `@makoo/vue` | Vue adapter 与 Vue 插件注册辅助 |
-| `@makoo/react` | React adapter |
-| `@makoo/create-makoo` | 项目脚手架 |
+| `@makoojs/cli` | Vite 插件、CLI 命令、扫描、代码生成和 userscript 构建接入 |
+| `@makoojs/core` | 框架无关的注入运行时内核 |
+| `@makoojs/vue` | Vue adapter 与 Vue 插件注册辅助 |
+| `@makoojs/react` | React adapter |
+| `@makoojs/create-makoo` | 项目脚手架 |
 
-`@makoo/cli` 本身并不是完整的运行时实现，很多功能无法单独存在，需要依赖 `@makoo/core` 提供的注入调度能力才能真正工作。
+`@makoojs/cli` 本身并不是完整的运行时实现，很多功能无法单独存在，需要依赖 `@makoojs/core` 提供的注入调度能力才能真正工作。

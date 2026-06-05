@@ -1,32 +1,32 @@
-# @makoo/react
+# @makoojs/react
 
-`@makoo/react` is Makoo's React mount adapter. It connects React components to the `@makoo/core` adapter protocol, allowing `Injector` to create React roots after target DOM nodes appear, render components, and unmount them correctly when tasks are destroyed or reset.
+`@makoojs/react` is Makoo's React mount adapter. It connects React components to the `@makoojs/core` adapter protocol, allowing `Injector` to create React roots after target DOM nodes appear, render components, and unmount them correctly when tasks are destroyed or reset.
 
-Most Makoo projects use this package through `@makoo/cli`: when a manifest module is recognized as React, the CLI imports the React adapter in the generated virtual entry. You only need to call `createReactAdapter()` explicitly when wiring a runtime manually with `@makoo/core`.
+Most Makoo projects use this package through `@makoojs/cli`: when a manifest module is recognized as React, the CLI imports the React adapter in the generated virtual entry. You only need to call `createReactAdapter()` explicitly when wiring a runtime manually with `@makoojs/core`.
 
 ## Use Cases
 
 - Inject React components in a Makoo project.
-- Let the `@makoo/core` `Injector` recognize and mount React artifacts.
+- Let the `@makoojs/core` `Injector` recognize and mount React artifacts.
 - Register the React adapter manually when using the core runtime directly.
 - Read the Makoo task context `makoo` inside React components.
 
 ## Installation
 
 ```bash
-// npm install @makoo/react
-// yarn add @makoo/react
-pnpm add @makoo/react
+// npm install @makoojs/react
+// yarn add @makoojs/react
+pnpm add @makoojs/react
 ```
 
-`@makoo/react` depends on `@makoo/core` and declares `react` and `react-dom` as peer dependencies, so make sure both `react` and `react-dom` are installed before using this package.
+`@makoojs/react` depends on `@makoojs/core` and declares `react` and `react-dom` as peer dependencies, so make sure both `react` and `react-dom` are installed before using this package.
 
 ## Usage In CLI Projects
 
 In most cases, you only need to declare a React component in the manifest.
 
 ```ts
-import { defineInjections } from '@makoo/cli';
+import { defineInjections } from '@makoojs/cli';
 
 export default defineInjections({
 	injections: {
@@ -46,7 +46,7 @@ If `framework` is omitted or set to `auto`, Makoo infers React from the `.tsx` /
 The React adapter passes `makoo` to the component as props. Components can use it to read the current task ID, target selector, logger, or control the current task lifecycle.
 
 ```tsx
-import type { ReactMountProps } from '@makoo/react';
+import type { ReactMountProps } from '@makoojs/react';
 
 export default function Badge({ makoo }: ReactMountProps) {
 	return (
@@ -62,7 +62,7 @@ export default function Badge({ makoo }: ReactMountProps) {
 }
 ```
 
-`makoo` comes from `@makoo/core`'s `MakooContext`. Common capabilities include:
+`makoo` comes from `@makoojs/core`'s `MakooContext`. Common capabilities include:
 
 | Capability | Description |
 | --- | --- |
@@ -73,13 +73,13 @@ export default function Badge({ makoo }: ReactMountProps) {
 | `on()` / `onTask()` | Listen to lifecycle observation events |
 | `getLogger()` | Get the current injector logger |
 
-## Direct Usage With @makoo/core
+## Direct Usage With @makoojs/core
 
-If you are not using `@makoo/cli`, register the React adapter manually on `Injector`.
+If you are not using `@makoojs/cli`, register the React adapter manually on `Injector`.
 
 ```tsx
-import { Injector } from '@makoo/core';
-import { createReactAdapter } from '@makoo/react';
+import { Injector } from '@makoojs/core';
+import { createReactAdapter } from '@makoojs/react';
 import Badge from './Badge';
 
 const injector = new Injector({
@@ -101,7 +101,7 @@ The adapter returned by `createReactAdapter()` will:
 
 ## Type Exports
 
-`@makoo/react` exports these commonly used types:
+`@makoojs/react` exports these commonly used types:
 
 | Type | Description |
 | --- | --- |
@@ -121,8 +121,8 @@ The complete API reference will live in a separate documentation site later.
 
 | Package | Responsibility |
 | --- | --- |
-| `@makoo/react` | React mount adapter |
-| `@makoo/core` | Provides `Injector`, the adapter protocol, and Makoo runtime context |
-| `@makoo/cli` | Scans manifests, generates the virtual entry, and imports the React adapter when needed |
+| `@makoojs/react` | React mount adapter |
+| `@makoojs/core` | Provides `Injector`, the adapter protocol, and Makoo runtime context |
+| `@makoojs/cli` | Scans manifests, generates the virtual entry, and imports the React adapter when needed |
 
-`@makoo/react` is not a complete runtime by itself. It works with `@makoo/core`'s injection scheduler, or with runtime code generated automatically by `@makoo/cli`.
+`@makoojs/react` is not a complete runtime by itself. It works with `@makoojs/core`'s injection scheduler, or with runtime code generated automatically by `@makoojs/cli`.

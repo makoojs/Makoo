@@ -3,16 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "packageManager": "pnpm@11.5.1",
-  "description": "A Vue 3 component injection framework for userscripts",
+  "description": "A userscript development framework for Tampermonkey, Violentmonkey, and ScriptCat",
   "type": "module",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/FlowingInk/makoo.git"
+    "url": "git+https://github.com/makoojs/Makoo.git"
   },
-  "homepage": "https://github.com/FlowingInk/makoo#readme",
+  "homepage": "https://github.com/makoojs/Makoo#readme",
   "bugs": {
-    "url": "https://github.com/FlowingInk/makoo/issues"
+    "url": "https://github.com/makoojs/Makoo/issues"
   },
   "keywords": [
     "vue",
@@ -21,18 +21,24 @@
     "component-injection",
     "userscript",
     "tampermonkey",
+    "violentmonkey",
+    "scriptcat",
     "greasemonkey",
+    "development-framework",
+    "browser-script",
+    "vite",
     "dom",
     "typescript"
   ],
   "scripts": {
+    "release": "pnpm build && pnpm test && pnpm publish -r --access public",
     "build": "pnpm build:packages",
     "build:core": "vite build --config packages/core/vite.config.ts",
     "build:vue": "vite build --config packages/vue/vite.config.ts",
     "build:react": "vite build --config packages/react/vite.config.ts",
     "build:cli": "vite build --config packages/cli/vite.config.ts && pnpm build:cli-bin",
-    "build:cli-bin": "pnpm --filter @makoo/cli exec tsup --config packages/cli/tsup.config.ts",
-    "build:create-makoo": "pnpm --filter @makoo/create-makoo exec tsup --config packages/create-makoo/tsup.config.ts",
+    "build:cli-bin": "pnpm --filter @makoojs/cli exec tsup --config packages/cli/tsup.config.ts",
+    "build:create-makoo": "pnpm --filter @makoojs/create-makoo exec tsup --config packages/create-makoo/tsup.config.ts",
     "build:packages": "pnpm build:core && pnpm build:vue && pnpm build:react && pnpm build:cli && pnpm build:create-makoo",
     "demo:dev": "vite --config vite.demo.config.ts",
     "demo:build": "vite build --config vite.demo.config.ts",
@@ -55,12 +61,12 @@
     "jsdom": "^28.1.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "tsup": "^8.5.0",
     "typescript": "~5.9.3",
-    "vue": "^3.5.35",
     "vite": "^8.0.14",
     "vite-plugin-dts": "^4.5.4",
     "vitest": "^4.1.7",
-    "vue-tsc": "^3.3.2",
-    "tsup": "^8.5.0"
+    "vue": "^3.5.35",
+    "vue-tsc": "^3.3.2"
   }
 }

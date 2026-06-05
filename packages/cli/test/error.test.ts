@@ -1,4 +1,4 @@
-import { ErrorCode, MakooError } from '@makoo/core';
+import { ErrorCode, MakooError } from '@makoojs/core';
 import { describe, expect, it } from 'vitest';
 import {
 	ComponentNotFoundError,

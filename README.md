@@ -39,7 +39,7 @@ It focuses on the parts of userscript development that tend to get messy: waitin
 Create a project with the scaffold:
 
 ```bash
-pnpm dlx @makoo/create-makoo
+pnpm dlx @makoojs/create-makoo
 ```
 
 Then enter the project and start the dev server:
@@ -68,7 +68,7 @@ A minimal project usually looks like this:
 
 `Manifest` is the declarative injection configuration. The top-level `injections/manifest.ts` describes which modules should be injected; module-level files such as `injections/foo/manifest.ts` can override a single module.
 
-`Adapter` is the component mounting bridge. Makoo supports Vue and React through `@makoo/vue` and `@makoo/react`, and the adapter model can support other mountable artifacts later.
+`Adapter` is the component mounting bridge. Makoo supports Vue and React through `@makoojs/vue` and `@makoojs/react`, and the adapter model can support other mountable artifacts later.
 
 ## Project Structure
 
@@ -129,7 +129,7 @@ The top-level manifest supports both object and array forms.
 Object form is recommended for most projects:
 
 ```ts
-import { defineInjections } from '@makoo/cli';
+import { defineInjections } from '@makoojs/cli';
 
 export default defineInjections({
 	globalInjector: {
@@ -158,7 +158,7 @@ export default defineInjections({
 Array form is useful when entries are generated or need an explicit `name`:
 
 ```ts
-import { defineInjections } from '@makoo/cli';
+import { defineInjections } from '@makoojs/cli';
 
 export default defineInjections({
 	injections: [
@@ -229,7 +229,7 @@ Makoo tracks local chains such as `manifest -> hooks -> helper`. Dynamic `import
 ### Enable a Module by URL
 
 ```ts
-import { defineInjections } from '@makoo/cli';
+import { defineInjections } from '@makoojs/cli';
 
 export default defineInjections({
 	injections: {
@@ -248,7 +248,7 @@ export default defineInjections({
 ### Use a Vue Module
 
 ```ts
-import { defineInjections } from '@makoo/cli';
+import { defineInjections } from '@makoojs/cli';
 
 export default defineInjections({
 	injections: {
@@ -275,7 +275,7 @@ export const hooks = {
 ```ts
 // injections/manifest.ts
 import { hooks } from './hooks';
-import { defineInjections } from '@makoo/cli';
+import { defineInjections } from '@makoojs/cli';
 
 export default defineInjections({
 	globalInjector: {
@@ -296,7 +296,7 @@ export default defineInjections({
 
 ```ts
 import { defineConfig } from 'vite';
-import { cdn, makoo } from '@makoo/cli';
+import { cdn, makoo } from '@makoojs/cli';
 
 export default defineConfig({
 	plugins: makoo({
@@ -317,10 +317,10 @@ export default defineConfig({
 
 ### Use GM APIs
 
-Makoo exposes `@makoo/cli/monkey` as a stable entry for [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) GM APIs. Prefer capability-level imports so the final userscript only references the GM APIs it actually uses:
+Makoo exposes `@makoojs/cli/monkey` as a stable entry for [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) GM APIs. Prefer capability-level imports so the final userscript only references the GM APIs it actually uses:
 
 ```ts
-import { gmRequest, gmStorage, gmStyle } from '@makoo/cli/monkey';
+import { gmRequest, gmStorage, gmStyle } from '@makoojs/cli/monkey';
 
 gmStyle.add('.makoo-panel { z-index: 999999; }');
 
@@ -338,7 +338,7 @@ gmRequest.get('https://api.example.com/data', {
 You can also use the grouped entry. Prefer capability-level imports when you want the smallest generated `@grant` surface; `GMapi` is a convenience entry for shared or exploratory code:
 
 ```ts
-import { GMapi } from '@makoo/cli/monkey';
+import { GMapi } from '@makoojs/cli/monkey';
 
 GMapi.storage.set('enabled', true);
 ```
@@ -349,13 +349,13 @@ When `monkey.build.autoGrant` is enabled, which is the default, `@grant` is stil
 
 | Package | Responsibility |
 | --- | --- |
-| `@makoo/core` | Framework-agnostic injection runtime |
-| `@makoo/vue` | Vue mount adapter |
-| `@makoo/react` | React mount adapter |
-| `@makoo/cli` | Vite plugin, config resolution, scanning, and code generation |
-| `@makoo/create-makoo` | Project scaffold |
+| `@makoojs/core` | Framework-agnostic injection runtime |
+| `@makoojs/vue` | Vue mount adapter |
+| `@makoojs/react` | React mount adapter |
+| `@makoojs/cli` | Vite plugin, config resolution, scanning, and code generation |
+| `@makoojs/create-makoo` | Project scaffold |
 
-Most userscript projects should start with `@makoo/cli`. You usually only need to touch `@makoo/core`, `@makoo/vue`, or `@makoo/react` for custom runtime integrations.
+Most userscript projects should start with `@makoojs/cli`. You usually only need to touch `@makoojs/core`, `@makoojs/vue`, or `@makoojs/react` for custom runtime integrations.
 
 ## Special Thanks
 

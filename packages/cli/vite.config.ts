@@ -17,7 +17,7 @@ export default defineConfig({
 		rollupOptions: {
 			treeshake: true,
 			external: [
-				'@makoo/core',
+				'@makoojs/core',
 				'jiti',
 				'vite',
 				'vite-plugin-monkey',

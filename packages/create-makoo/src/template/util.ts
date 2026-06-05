@@ -145,11 +145,11 @@ export function resolveMakooDependencies(
 
 	return {
 		dependencies: {
-			'@makoo/core': packagePath('core'),
-			[`@makoo/${framework.toLowerCase()}`]: packagePath(framework.toLowerCase())
+			'@makoojs/core': packagePath('core'),
+			[`@makoojs/${framework.toLowerCase()}`]: packagePath(framework.toLowerCase())
 		},
 		devDependencies: {
-			'@makoo/cli': packagePath('cli')
+			'@makoojs/cli': packagePath('cli')
 		}
 	};
 }

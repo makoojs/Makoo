@@ -1,4 +1,4 @@
-import { OBSERVE_EVENT_NAMES } from '@makoo/core';
+import { OBSERVE_EVENT_NAMES } from '@makoojs/core';
 import { z } from 'zod';
 import { ManifestValidationError } from '../error/error';
 

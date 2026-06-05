@@ -3,9 +3,9 @@ defineOptions({ name: 'DemoPage' })
 
 import { createElement} from 'react'
 import { onMounted, onUnmounted, provide, ref, watch } from 'vue'
-import { createActivityStore, Injector } from '@makoo/core'
-import { createReactAdapter } from '@makoo/react'
-import { createVueAdapter } from '@makoo/vue'
+import { createActivityStore, Injector } from '@makoojs/core'
+import { createReactAdapter } from '@makoojs/react'
+import { createVueAdapter } from '@makoojs/vue'
 
 import { InjectedBadge, InjectedCounter, InjectedTooltip } from './injectedWidgets'
 import { InjectedReactBadge } from './injectedWidgets/InjectedReactBadge'

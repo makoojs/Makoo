@@ -150,9 +150,9 @@ describe('makoo build integration', () => {
 				}),
 				resolve: {
 					alias: {
-						'@makoo/core': path.resolve(__dirname, '../../core/src/index.ts'),
-						'@makoo/react': path.resolve(__dirname, '../../react/src/index.ts'),
-						'@makoo/vue': path.resolve(__dirname, '../../vue/src/index.ts')
+						'@makoojs/core': path.resolve(__dirname, '../../core/src/index.ts'),
+						'@makoojs/react': path.resolve(__dirname, '../../react/src/index.ts'),
+						'@makoojs/vue': path.resolve(__dirname, '../../vue/src/index.ts')
 					}
 				},
 				build: {

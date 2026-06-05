@@ -25,16 +25,16 @@
     "forceConsistentCasingInFileNames": true,
     "jsx": "react-jsx",
     "paths": {
-      "@makoo/core": [
+      "@makoojs/core": [
         "./packages/core/src/index.ts"
       ],
-      "@makoo/vue": [
+      "@makoojs/vue": [
         "./packages/vue/src/index.ts"
       ],
-      "@makoo/react": [
+      "@makoojs/react": [
         "./packages/react/src/index.ts"
       ],
-      "@makoo/cli": [
+      "@makoojs/cli": [
         "./packages/cli/src/index.ts"
       ]
     }

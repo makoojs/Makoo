@@ -1,8 +1,8 @@
-# @makoo/create-makoo
+# @makoojs/create-makoo
 
-`@makoo/create-makoo` is Makoo's project scaffolding tool. It creates a ready-to-run userscript project through an interactive command and generates either a Vue or React template based on your choices.
+`@makoojs/create-makoo` is Makoo's project scaffolding tool. It creates a ready-to-run userscript project through an interactive command and generates either a Vue or React template based on your choices.
 
-The generated project uses `@makoo/cli` as its development and build entry. Use `makoo dev` to start the development server and `makoo build` to build the final userscript.
+The generated project uses `@makoojs/cli` as its development and build entry. Use `makoo dev` to start the development server and `makoo build` to build the final userscript.
 
 ## Use Cases
 
@@ -16,14 +16,14 @@ The generated project uses `@makoo/cli` as its development and build entry. Use 
 Run the scaffolder through your package manager's temporary execution command:
 
 ```bash
-pnpm dlx @makoo/create-makoo
+pnpm dlx @makoojs/create-makoo
 ```
 
 You can also use npm or yarn:
 
 ```bash
-npx @makoo/create-makoo
-yarn dlx @makoo/create-makoo
+npx @makoojs/create-makoo
+yarn dlx @makoojs/create-makoo
 ```
 
 The scaffolder asks for:
@@ -120,10 +120,10 @@ The React template configures `@vitejs/plugin-react`. Because React 19 related p
 
 | Package | Responsibility |
 | --- | --- |
-| `@makoo/create-makoo` | Interactive Makoo project creation |
-| `@makoo/cli` | dev/build command entry in generated projects |
-| `@makoo/core` | Injection scheduling runtime |
-| `@makoo/vue` | Mount adapter used by the Vue template |
-| `@makoo/react` | Mount adapter used by the React template |
+| `@makoojs/create-makoo` | Interactive Makoo project creation |
+| `@makoojs/cli` | dev/build command entry in generated projects |
+| `@makoojs/core` | Injection scheduling runtime |
+| `@makoojs/vue` | Mount adapter used by the Vue template |
+| `@makoojs/react` | Mount adapter used by the React template |
 
-`@makoo/create-makoo` only creates the project. Later development, manifest scanning, virtual entry generation, and userscript builds are handled by `@makoo/cli` in the generated project.
+`@makoojs/create-makoo` only creates the project. Later development, manifest scanning, virtual entry generation, and userscript builds are handled by `@makoojs/cli` in the generated project.

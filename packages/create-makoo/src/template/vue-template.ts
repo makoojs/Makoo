@@ -66,7 +66,7 @@ function viteConfigTemplate(data: InitData): string {
 			: '';
 
 	return `import { defineConfig } from 'vite';
-import { cdn, makoo } from '@makoo/cli';
+import { cdn, makoo } from '@makoojs/cli';
 import vue from '@vitejs/plugin-vue';
 
 export default defineConfig({
@@ -97,7 +97,7 @@ export default defineConfig({
 }
 
 function manifestTemplate(): string {
-	return `import { defineInjections } from '@makoo/cli';
+	return `import { defineInjections } from '@makoojs/cli';
 
 export default defineInjections({
   injections: {

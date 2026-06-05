@@ -1,5 +1,5 @@
-import type { MakooIssue } from '@makoo/core';
-import { AdapterError, ErrorCode } from '@makoo/core';
+import type { MakooIssue } from '@makoojs/core';
+import { AdapterError, ErrorCode } from '@makoojs/core';
 
 export class VueAdapterError extends AdapterError {
 	constructor(message: string, issues?: MakooIssue[], code?: string, cause?: Error) {

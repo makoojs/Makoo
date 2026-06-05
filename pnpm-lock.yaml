@@ -59,7 +59,7 @@ importers:
 
   packages/cli:
     dependencies:
-      '@makoo/core':
+      '@makoojs/core':
         specifier: workspace:*
         version: link:../core
       jiti:
@@ -95,7 +95,7 @@ importers:
 
   packages/react:
     dependencies:
-      '@makoo/core':
+      '@makoojs/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -108,7 +108,7 @@ importers:
 
   packages/vue:
     dependencies:
-      '@makoo/core':
+      '@makoojs/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:

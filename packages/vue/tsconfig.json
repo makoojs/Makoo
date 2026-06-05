@@ -7,7 +7,7 @@
         "rootDir": "src",
         "tsBuildInfoFile": "../../node_modules/.tmp/tsconfig.package-vue.tsbuildinfo",
         "paths": {
-            "@makoo/core": [
+            "@makoojs/core": [
                 "../core"
             ]
         }

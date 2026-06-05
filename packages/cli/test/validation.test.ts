@@ -1,4 +1,4 @@
-import { MakooError } from '@makoo/core';
+import { MakooError } from '@makoojs/core';
 import { describe, expect, it } from 'vitest';
 import { ManifestValidationError } from '../src/error/error';
 import {

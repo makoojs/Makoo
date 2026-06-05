@@ -1,4 +1,4 @@
-import { ErrorCode, Injector } from '@makoo/core';
+import { ErrorCode, Injector } from '@makoojs/core';
 import { isValidElement } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ReactAdapterError } from '../src/error';

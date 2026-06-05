@@ -1,4 +1,4 @@
-import { ErrorCode } from '@makoo/core';
+import { ErrorCode } from '@makoojs/core';
 import { createElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { ReactAdapterError } from './error';

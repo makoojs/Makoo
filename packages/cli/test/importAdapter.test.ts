@@ -9,8 +9,8 @@ describe('renderImportAdapter', () => {
 			{ framework: 'React' }
 		] as never);
 
-		expect(result.code).toContain('import { createReactAdapter } from "@makoo/react";');
-		expect(result.code).toContain('import { createVueAdapter } from "@makoo/vue";');
+		expect(result.code).toContain('import { createReactAdapter } from "@makoojs/react";');
+		expect(result.code).toContain('import { createVueAdapter } from "@makoojs/vue";');
 		expect(result.importsName).toEqual(['React', 'Vue']);
 	});
 

@@ -1,9 +1,18 @@
 {
-  "name": "@makoo/cli",
+  "name": "@makoojs/cli",
   "version": "0.1.0",
-  "description": "CLI and build integration for makoo",
+  "description": "CLI and Vite integration for the Makoo userscript development framework",
   "type": "module",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/makoojs/Makoo.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/makoojs/Makoo#readme",
+  "bugs": {
+    "url": "https://github.com/makoojs/Makoo/issues"
+  },
   "files": [
     "dist"
   ],
@@ -26,7 +35,7 @@
     }
   },
   "dependencies": {
-    "@makoo/core": "workspace:*",
+    "@makoojs/core": "workspace:*",
     "jiti": "^2.6.1",
     "picomatch": "^4.0.4",
     "vite-plugin-monkey": "^7.1.9",
