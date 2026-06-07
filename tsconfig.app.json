@@ -42,9 +42,6 @@
   "include": [
     "packages/*/src/**/*.ts",
     "packages/*/src/**/*.tsx",
-    "packages/*/src/**/*.vue",
-    "demo/**/*.ts",
-    "demo/**/*.tsx",
-    "demo/**/*.vue"
+    "packages/*/src/**/*.vue"
   ]
 }

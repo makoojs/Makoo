@@ -1,5 +1,5 @@
 <p align="center">
-  <img width="250"  src="./demo/assets/makoo-icon-transparent.png">
+  <img width="250"  src="./apps/docs-website/docs/public/makoo-icon-transparent.png">
 </p>
 
 <h1 align="center">Makoo</h1>
@@ -385,8 +385,8 @@ pnpm test
 | --- | --- |
 | `pnpm build` | 构建所有 package |
 | `pnpm test` | 运行测试 |
-| `pnpm demo:dev` | 启动 demo |
-| `pnpm demo:build` | 构建 demo 到 `docs/` |
+| `pnpm docs:dev` | 启动文档站 |
+| `pnpm docs:build` | 构建文档站 |
 | `pnpm lint:fix` | 运行 Biome 检查并修复 |
 
 ## 许可证
