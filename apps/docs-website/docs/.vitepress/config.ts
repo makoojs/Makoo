@@ -64,6 +64,7 @@ export default defineConfig({
 	title: 'Makoo',
 	description: 'A userscript development framework for component-driven injection apps.',
 	lang: 'en-US',
+	base: process.env.VITEPRESS_BASE ?? '/',
 	cleanUrls: true,
 	locales: {
 		root: {
