@@ -1,0 +1,67 @@
+name: Changesets Release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".changeset/**"
+      - "packages/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".github/workflows/changesets-release.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+concurrency:
+  group: changesets-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Create version PR or publish packages
+    if: github.repository == 'makoojs/makoo' || github.repository == 'makoojs/Makoo'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.5.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: "pnpm"
+          cache-dependency-path: pnpm-lock.yaml
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Create version PR or publish to npm
+        id: changesets
+        uses: changesets/action@v1
+        with:
+          version: pnpm version-packages
+          publish: pnpm release
+          title: Version Packages
+          commit: Version Packages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Print published packages
+        if: steps.changesets.outputs.published == 'true'
+        run: echo '${{ steps.changesets.outputs.publishedPackages }}'

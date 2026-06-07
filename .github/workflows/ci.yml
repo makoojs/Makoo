@@ -2,14 +2,58 @@ name: CI Workflow
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "LICENSE"
+      - ".gitignore"
   pull_request:
     branches:
       - main
     paths-ignore:
-      - "**.md"
       - "LICENSE"
       - ".gitignore"
 jobs:
+  changeset-check:
+    if: github.event_name == 'pull_request' && github.event.pull_request.title != 'Version Packages'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check required changeset
+        shell: bash
+        run: |
+          git fetch origin "${{ github.base_ref }}" --depth=1
+
+          changed_files=$(git diff --name-only "origin/${{ github.base_ref }}"...HEAD)
+          publishable_changes=$(printf '%s\n' "$changed_files" | grep -E '^packages/[^/]+/(src/|package\.json$|vite\.config\.ts$|tsup\.config\.ts$)' || true)
+
+          if [ -z "$publishable_changes" ]; then
+            echo "No publishable package changes detected."
+            exit 0
+          fi
+
+          changeset_files=$(printf '%s\n' "$changed_files" | grep -E '^\.changeset/[^/]+\.md$' | grep -v '^\.changeset/README\.md$' || true)
+
+          if [ -n "$changeset_files" ]; then
+            echo "Changeset found:"
+            printf '%s\n' "$changeset_files"
+            exit 0
+          fi
+
+          echo "Publishable package changes require a changeset."
+          echo
+          echo "Changed publishable files:"
+          printf '%s\n' "$publishable_changes"
+          echo
+          echo "Run 'pnpm changeset' and commit the generated .changeset/*.md file."
+          exit 1
+
   build-and-test:
     runs-on: ubuntu-latest
 
