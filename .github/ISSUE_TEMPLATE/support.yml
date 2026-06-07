@@ -1,0 +1,74 @@
+name: Support request
+description: Ask for help using Makoo.
+title: "support: "
+labels:
+  - question
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reaching out. Please provide enough context so the owner can understand what you are trying to do.
+
+  - type: dropdown
+    id: package
+    attributes:
+      label: Related package
+      description: Select the package or area related to your question.
+      options:
+        - "@makoojs/core"
+        - "@makoojs/cli"
+        - "@makoojs/vue"
+        - "@makoojs/react"
+        - "@makoojs/create-makoo"
+        - docs website
+        - unsure
+    validations:
+      required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: What do you need help with?
+      placeholder: Describe your question clearly.
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Explain what you are building and what you expected to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: tried
+    attributes:
+      label: What have you tried?
+      description: Share docs pages, commands, examples, or approaches you already tried.
+    validations:
+      required: false
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include Node.js, pnpm, browser, userscript manager, framework, and OS when relevant.
+      placeholder: |
+        Node.js:
+        pnpm:
+        Browser:
+        Userscript manager:
+        Framework:
+        OS:
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Add logs, screenshots, links, or any other useful context.
+    validations:
+      required: false

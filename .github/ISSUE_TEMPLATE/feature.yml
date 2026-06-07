@@ -1,0 +1,72 @@
+name: Feature request
+description: Suggest a new feature or improvement for Makoo.
+title: "feat: "
+labels:
+  - feature
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement. Please explain the problem, the desired behavior, and the package or workflow it affects.
+
+  - type: dropdown
+    id: package
+    attributes:
+      label: Target package
+      description: Select the package or area this feature targets.
+      options:
+        - "@makoojs/core"
+        - "@makoojs/cli"
+        - "@makoojs/vue"
+        - "@makoojs/react"
+        - "@makoojs/create-makoo"
+        - docs website
+        - unsure
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or motivation
+      description: What problem does this feature solve?
+      placeholder: Describe the user need or limitation.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the behavior or API you would like to see.
+      placeholder: Describe your proposal.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Mention any workarounds or alternative designs you considered.
+    validations:
+      required: false
+
+  - type: textarea
+    id: examples
+    attributes:
+      label: Example usage
+      description: Add code snippets, commands, or docs examples if useful.
+      placeholder: |
+        ```ts
+        // Example
+        ```
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Add links, screenshots, related issues, or other useful context.
+    validations:
+      required: false

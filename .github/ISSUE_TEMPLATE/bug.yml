@@ -1,0 +1,95 @@
+name: Bug report
+description: Report a reproducible problem in Makoo.
+title: "fix: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Please provide enough detail for the owner to reproduce and verify the issue.
+
+  - type: dropdown
+    id: package
+    attributes:
+      label: Affected package
+      description: Select the package or area where the problem appears.
+      options:
+        - "@makoojs/core"
+        - "@makoojs/cli"
+        - "@makoojs/vue"
+        - "@makoojs/react"
+        - "@makoojs/create-makoo"
+        - docs website
+        - unsure
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: Briefly describe the bug.
+      placeholder: Describe what went wrong.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      description: Provide the smallest steps needed to reproduce the issue.
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      placeholder: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      placeholder: What actually happened?
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Makoo version
+      placeholder: "0.1.0"
+    validations:
+      required: false
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include Node.js, pnpm, browser, userscript manager, framework, and OS when relevant.
+      placeholder: |
+        Node.js:
+        pnpm:
+        Browser:
+        Userscript manager:
+        Framework:
+        OS:
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Add logs, screenshots, links, or any other useful context.
+    validations:
+      required: false
+
