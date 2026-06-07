@@ -1,5 +1,5 @@
 <p align="center">
-  <img width="150" src="./demo/assets/makoo-icon-transparent.png">
+  <img width="150" src="./apps/docs-website/docs/public/makoo-icon-transparent.png">
 </p>
 
 <h1 align="center">Makoo</h1>
@@ -385,8 +385,8 @@ Common commands:
 | --- | --- |
 | `pnpm build` | Build all packages |
 | `pnpm test` | Run tests |
-| `pnpm demo:dev` | Start the demo |
-| `pnpm demo:build` | Build the demo into `docs/` |
+| `pnpm docs:dev` | Start the documentation site |
+| `pnpm docs:build` | Build the documentation site |
 | `pnpm lint:fix` | Run Biome checks and fixes |
 
 ## License

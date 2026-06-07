@@ -127,6 +127,43 @@ describe('scanner', () => {
 		expect(result.frameworks).toEqual(['React', 'Vue']);
 	});
 
+	it('uses project injector defaults when manifest does not override them', async () => {
+		const root = await trackProject({
+			'injections/manifest.ts': `
+				export default {
+					injections: {
+						widget: { injectAt: '#app', component: './widget/index.tsx', framework: 'React' }
+					}
+				};
+			`,
+			'injections/widget/index.tsx': 'export default function Widget() { return null; }'
+		});
+		const config = resolveConfig(
+			{
+				app: { name: 'project-injector-defaults', version: '0.0.1' },
+				injector: {
+					alive: true,
+					scope: 'global',
+					timeout: 9000
+				}
+			},
+			root
+		);
+
+		const result = await withCwd(root, () => scanner(config));
+
+		expect(result.config.injector).toMatchObject({
+			alive: true,
+			scope: 'global',
+			timeout: 9000
+		});
+		expect(result.injections[0]).toMatchObject({
+			alive: true,
+			scope: 'global',
+			timeout: 9000
+		});
+	});
+
 	it('collects runtime setup files and local dependencies', async () => {
 		const root = await trackProject({
 			'injections/manifest.ts': `

@@ -5,10 +5,7 @@ on:
     branches:
       - main
     paths:
-      - "demo/**"
-      - "packages/**/src/**"
-      - "src/**"
-      - "vite.demo.config.ts"
+      - "apps/docs-website/**"
       - "package.json"
       - "pnpm-workspace.yaml"
       - "pnpm-lock.yaml"
@@ -23,6 +20,9 @@ permissions:
 concurrency:
   group: pages
   cancel-in-progress: true
+
+env:
+  VITEPRESS_BASE: /Makoo/
 
 jobs:
   build-and-deploy:
@@ -50,8 +50,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build demo static site
-        run: pnpm demo:build
+      - name: Build docs static site
+        run: pnpm docs:build
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -59,7 +59,7 @@ jobs:
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: docs
+          path: apps/docs-website/docs/.vitepress/dist
 
       - name: Deploy to GitHub Pages
         id: deployment

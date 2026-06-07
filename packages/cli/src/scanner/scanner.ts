@@ -30,7 +30,10 @@ export async function scanner(config: ResolvedConfig): Promise<ScannerResult> {
 			runtimeDependencies.add(dependency);
 		}
 	}
-	const resolveInjector = resolveInjectorConfig(loadedManifest.manifest.globalInjector);
+	const resolveInjector = resolveInjectorConfig({
+		...config.injector,
+		...loadedManifest.manifest.globalInjector
+	});
 	const resolveManifest = resolveInjections(loadedManifest.manifest, {
 		root: config.root,
 		source: config.source,
