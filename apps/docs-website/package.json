@@ -1,0 +1,16 @@
+{
+	"name": "@makoojs/docs-website",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "vitepress dev docs --host 127.0.0.1",
+		"build": "vitepress build docs",
+		"preview": "vitepress preview docs --host 127.0.0.1"
+	},
+	"dependencies": {
+		"@tailwindcss/vite": "^4.1.17",
+		"tailwindcss": "^4.1.17",
+		"vitepress": "^1.6.4"
+	}
+}
