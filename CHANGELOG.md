@@ -102,3 +102,47 @@
 - Add coverage for custom adapter registration, React adapter mount/unmount behavior, activity signal stores and ref compatibility, ObserverHub propagation control, and updated artifact task runtime state.
 - Update English and Chinese README content for adapter usage, React support, activity signals, `VuePlugin`, hook propagation control, exported types, and artifact-oriented payload fields.
 - Refresh the demo with a React injection scenario and updated adapter usage examples.
+
+### 📦 Package Publishing & Versioning
+
+- **chore(package names):** align package metadata, package READMEs, generated imports, tests, and template output around the `@makoojs/*` package namespace by @FlowingInk in https://github.com/makoojs/Makoo/pull/31.
+- **chore(publish):** remove the Changesets dependency and add public `publishConfig` entries to `@makoojs/core`, `@makoojs/cli`, `@makoojs/react`, `@makoojs/vue`, and `@makoojs/create-makoo` by @FlowingInk in https://github.com/makoojs/Makoo/pull/31.
+- **chore(versions):** centralize the `create-makoo` template package version object so scaffolded projects can use maintained `@makoojs/*` versions without reading workspace-local package metadata.
+- **chore(cli):** bump `@makoojs/cli` to `0.1.1` and update scaffold template version expectations for the current package set.
+
+### 🛠 Fixes
+
+- **fix(ci):** make the patch-release workflow tolerate `package.json` files with a BOM before reading and rewriting package metadata.
+- **fix(create-makoo):** fix local debug mode package version lookup by using the template version map instead of relying on local package `package.json` resolution by @FlowingInk in https://github.com/makoojs/Makoo/pull/32.
+- **fix(create-makoo):** add `esbuild` to generated React and Vue templates for Vite 8 compatibility, with template tests updated to cover the dependency.
+
+### 📚 Docs Website
+
+- **feat(docs):** add a VitePress docs website under `apps/docs-website`, including English and Chinese guides for getting started, concepts, configuration, manifest usage, HMR, recipes, and API references for core, CLI, React, and Vue by @FlowingInk in https://github.com/makoojs/Makoo/pull/33.
+- **feat(docs):** replace the legacy `demo` app with the new documentation site and move the Makoo icon asset into the docs/create-makoo asset flow by @FlowingInk in https://github.com/makoojs/Makoo/pull/33.
+- **chore(docs):** update README links and docs copy after the package namespace and website changes.
+
+### 🧰 Tooling & CI
+
+- **chore(release):** adjust patch-release workflow behavior after package namespace changes, including package JSON parsing, release flow updates, and version maintenance.
+- **chore(ci):** update Pages deployment to build the new docs website path and remove the old demo build configuration.
+- **chore(lint):** clean lint/format drift across workflow, CLI scanner/generator, error classes, and tests after the package-name migration.
+
+### 🧾 Commit Coverage Since PR #30
+
+- `9687499` - fix patch-release package JSON BOM handling.
+- `4aac633` - update docs after the app framework CLI changes.
+- `65a7d14` - remove Changesets dependency and align package-name references.
+- `520dc8e` - add public publish configuration for published packages.
+- `3c4405f` - merge PR #31, `chore/update-package-name`.
+- `50f71cf` - clean lint and formatting issues introduced around release/package updates.
+- `d941f3d` - fix create-makoo local debug package version lookup.
+- `616b445` - merge PR #32, `fix/create-makoo_local_debug_mode`.
+- `8cc5d02` - modify patch-release flow.
+- `04e2834` - maintain the `@makoojs/*` package version object for create-makoo templates.
+- `e571f93` - add template `esbuild` dependency for Vite 8 compatibility.
+- `8b1c344` - add the docs website and delete the legacy demo app.
+- `f419466` - update Pages CI for the docs website.
+- `635ed83` - clean remaining demo files and references.
+- `fa8ab47` - merge PR #33, `feat/docs-website`.
+- `0296090` - update the CLI package version and scaffold template version tests.
