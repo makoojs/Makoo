@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { recommendedMakooVersions } from '../src/template/makooVersion';
 import { generateReactTemplate } from '../src/template/react-template';
 import type { InitData } from '../src/template/types';
 import { cleanupTempProjects, trackProject, withCwd } from './utils/tempProject';
@@ -18,6 +19,13 @@ function createInitData(variant: 'ts' | 'js', dependencyMode: 'npm' | 'local' = 
 		framework: 'React',
 		dependencyMode
 	};
+}
+
+function readPackageJson(pathname: string): {
+	dependencies: Record<string, string>;
+	devDependencies: Record<string, string>;
+} {
+	return JSON.parse(readFileSync(pathname, 'utf-8'));
 }
 
 describe('generateReactTemplate', () => {
@@ -44,12 +52,14 @@ describe('generateReactTemplate', () => {
 			expect(existsSync(makooAssetPath)).toBe(true);
 			expect(existsSync(stylePath)).toBe(true);
 
-			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"@vitejs/plugin-react"');
-			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"esbuild": "^0.27.0"');
-			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"@types/react": "^19.2.15"');
-			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"@makoojs/core": "^0.1.0"');
-			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"@makoojs/react": "^0.1.0"');
-			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"@makoojs/cli": "^0.1.0"');
+			const packageJson = readPackageJson(packageJsonPath);
+
+			expect(packageJson.devDependencies['@vitejs/plugin-react']).toBeDefined();
+			expect(packageJson.devDependencies.esbuild).toBe('^0.27.0');
+			expect(packageJson.devDependencies['@types/react']).toBe('^19.2.15');
+			expect(packageJson.dependencies['@makoojs/core']).toBe(recommendedMakooVersions.core);
+			expect(packageJson.dependencies['@makoojs/react']).toBe(recommendedMakooVersions.react);
+			expect(packageJson.devDependencies['@makoojs/cli']).toBe(recommendedMakooVersions.cli);
 			expect(readFileSync(appTsconfigPath, 'utf-8')).toContain('"jsx": "react-jsx"');
 			expect(readFileSync(viteConfigPath, 'utf-8')).not.toContain(
 				"dedupe: ['react', 'react-dom']"

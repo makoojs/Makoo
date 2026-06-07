@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { recommendedMakooVersions } from '../src/template/makooVersion';
 import type { InitData } from '../src/template/types';
 import { generateVueTemplate } from '../src/template/vue-template';
 import { cleanupTempProjects, trackProject, withCwd } from './utils/tempProject';
@@ -18,6 +19,14 @@ function createInitData(variant: 'ts' | 'js', dependencyMode: 'npm' | 'local' = 
 		framework: 'Vue',
 		dependencyMode
 	};
+}
+
+function readPackageJson(pathname: string): {
+	scripts: Record<string, string>;
+	dependencies: Record<string, string>;
+	devDependencies: Record<string, string>;
+} {
+	return JSON.parse(readFileSync(pathname, 'utf-8'));
 }
 
 describe('generateVueTemplate', () => {
@@ -54,12 +63,14 @@ describe('generateVueTemplate', () => {
 			expect(readFileSync(nodeTsconfigPath, 'utf-8')).toContain('"skipLibCheck": true');
 			expect(readFileSync(gitignorePath, 'utf-8')).toContain('pnpm-debug.log*');
 			expect(readFileSync(gitignorePath, 'utf-8')).toContain('!.vscode/extensions.json');
-			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"typecheck": "vue-tsc -b"');
-			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"esbuild": "^0.27.0"');
-			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"@types/node": "^25.9.1"');
-			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"@makoojs/core": "^0.1.0"');
-			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"@makoojs/vue": "^0.1.0"');
-			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"@makoojs/cli": "^0.1.0"');
+			const packageJson = readPackageJson(packageJsonPath);
+
+			expect(packageJson.scripts.typecheck).toBe('vue-tsc -b');
+			expect(packageJson.devDependencies.esbuild).toBe('^0.27.0');
+			expect(packageJson.devDependencies['@types/node']).toBe('^25.9.1');
+			expect(packageJson.dependencies['@makoojs/core']).toBe(recommendedMakooVersions.core);
+			expect(packageJson.dependencies['@makoojs/vue']).toBe(recommendedMakooVersions.vue);
+			expect(packageJson.devDependencies['@makoojs/cli']).toBe(recommendedMakooVersions.cli);
 			expect(readFileSync(viteConfigPath, 'utf-8')).not.toContain("dedupe: ['vue']");
 			expect(readFileSync(appPath, 'utf-8')).toContain(
 				'../../assets/makoo-icon-transparent.png'
@@ -94,9 +105,11 @@ describe('generateVueTemplate', () => {
 			generateVueTemplate(createInitData('ts'));
 
 			const packageJsonPath = path.join(root, 'demo-app', 'package.json');
-			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"@makoojs/core": "^0.1.0"');
-			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"@makoojs/vue": "^0.1.0"');
-			expect(readFileSync(packageJsonPath, 'utf-8')).toContain('"@makoojs/cli": "^0.1.0"');
+			const packageJson = readPackageJson(packageJsonPath);
+
+			expect(packageJson.dependencies['@makoojs/core']).toBe(recommendedMakooVersions.core);
+			expect(packageJson.dependencies['@makoojs/vue']).toBe(recommendedMakooVersions.vue);
+			expect(packageJson.devDependencies['@makoojs/cli']).toBe(recommendedMakooVersions.cli);
 		});
 	});
 
