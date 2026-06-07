@@ -31,7 +31,9 @@
     "typescript"
   ],
   "scripts": {
-    "release": "pnpm build && pnpm test && pnpm publish -r --access public",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "pnpm build && pnpm test && changeset publish",
     "build": "pnpm build:packages",
     "build:core": "vite build --config packages/core/vite.config.ts",
     "build:vue": "vite build --config packages/vue/vite.config.ts",
@@ -54,6 +56,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.16",
+    "@changesets/cli": "^2.31.0",
     "@types/node": "^25.9.1",
     "@types/react": "^19.2.15",
     "@types/react-dom": "^19.2.3",
