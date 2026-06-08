@@ -1,0 +1,4 @@
+interface:
+  display_name: "Makoo Framework Development"
+  short_description: "Makoo framework and monorepo development guardrails"
+  default_prompt: "Use $makoo-framework-development when developing the Makoo framework or monorepo itself."

@@ -1,11 +1,13 @@
 ---
-name: makoo-project-style
-description: Keep code changes aligned with the Makoo monorepo's TypeScript library and CLI conventions. Use when creating or editing files in this repository, especially under packages/core, packages/cli, packages/react, packages/vue, packages/create-makoo, or shared config files, and when an agent needs guidance on project structure, naming, exports, testing, errors, or formatting.
+name: makoo-framework-development
+description: Use when developing the Makoo framework/monorepo itself, especially when changing packages/core, packages/cli, packages/react, packages/vue, packages/create-makoo, repository config, tests, package APIs, generators, adapters, or internal documentation. Do not use for ordinary downstream projects that only consume Makoo.
 ---
 
-# Makoo Project Style
+# Makoo Framework Development
 
-Follow this skill when changing code in the Makoo repository. Preserve the repo's current library-first architecture, naming, and testing style instead of introducing generic app-framework patterns.
+Follow this skill when developing Makoo itself: the framework monorepo, its packages, adapters, CLI, scaffolding templates, tests, docs, or shared configuration. Preserve the repo's current library-first architecture, naming, and testing style instead of introducing generic app-framework patterns.
+
+Do not use this skill for ordinary downstream projects that only use Makoo to build userscripts. For injection module and manifest work in a Makoo-powered project, use the Makoo injection workflow skill instead.
 
 ## Start Here
 

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Makoo Injection Workflow"
+  short_description: "Makoo injection module and manifest workflow"
+  default_prompt: "Use $makoo-injection-workflow to create or revise Makoo injection modules, manifests, adapter choices, URL matches, and runtime options."

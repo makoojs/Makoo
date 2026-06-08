@@ -1,0 +1,4 @@
+interface:
+  display_name: "Makoo Best Practices"
+  short_description: "Best practices for downstream Makoo userscript projects"
+  default_prompt: "Use $makoo-best-practices to keep Makoo-powered userscript projects idiomatic and avoid manual DOM injection pipelines."
