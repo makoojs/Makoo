@@ -20,8 +20,23 @@ Makoo is a userscript development framework for building maintainable Vue / Reac
 
 It focuses on the parts of userscript development that tend to get messy: waiting for target DOM nodes, mounting components, handling page redraws, managing injection modules, and keeping structural changes hot-updated during development. Build output, userscript metadata, and install flows are still handled by [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey); Makoo adds a structured framework layer for component-driven userscript projects.
 
+## When To Use Makoo
+
+Makoo is not meant for simple userscripts. If your script only changes a button, hides an element, or injects a small style block, plain userscript code is often enough.
+
+Makoo is a better fit for userscripts that start behaving like small frontend applications:
+
+- building injected UI with Vue or React to modify existing web pages
+- multiple injection points or feature modules on the same page
+- host pages that redraw or partially refresh, requiring stable remount behavior
+- modules that need to be enabled by URL or page state
+- growing codebases that need clear structure, configuration, and development workflow
+
+Makoo becomes useful when lifecycle, module boundaries, and long-term maintenance start to matter.
+
 ## Table of Contents
 
+- [When To Use Makoo](#when-to-use-makoo)
 - [Quick Start](#quick-start)
 - [Core Concepts](#core-concepts)
 - [Project Structure](#project-structure)
