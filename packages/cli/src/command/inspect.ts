@@ -1,7 +1,9 @@
 import type { ResolvedConfig } from '../config/types';
 import { scanner } from '../scanner/scanner';
 import type { ScannerResult } from '../scanner/types';
-import { ansi, colorize, loadMakooConfig } from './_util';
+import { ansi, colorize } from '../shared/terminalColor';
+import { loadMakooConfig } from './_util';
+
 export async function inspectCommand() {
 	const resolveViteMakooConfig: ResolvedConfig = await loadMakooConfig();
 	const resolveManifest: ScannerResult = await scanner(resolveViteMakooConfig);

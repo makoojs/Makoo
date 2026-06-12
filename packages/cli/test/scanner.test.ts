@@ -164,7 +164,7 @@ describe('scanner', () => {
 		});
 	});
 
-	it('collects runtime setup files and local dependencies', async () => {
+	it('separates runtime setup files from local dependencies', async () => {
 		const root = await trackProject({
 			'injections/manifest.ts': `
 				export default {
@@ -189,10 +189,8 @@ describe('scanner', () => {
 
 		const result = await withCwd(root, () => scanner(config));
 
-		expect(result.runtimeDependencies).toEqual([
-			path.join(root, 'injections/router.ts'),
-			path.join(root, 'injections/vue-setup.ts')
-		]);
+		expect(result.runtimeSetupFiles).toEqual([path.join(root, 'injections/vue-setup.ts')]);
+		expect(result.runtimeDependencies).toEqual([path.join(root, 'injections/router.ts')]);
 	});
 
 	it('throws when runtime setup file is missing', async () => {

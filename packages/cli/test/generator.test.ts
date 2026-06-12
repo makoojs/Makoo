@@ -46,6 +46,7 @@ describe('generate', () => {
 			config,
 			manifestFile: path.join(root, 'injections/manifest.ts'),
 			manifestDependencies: [],
+			runtimeSetupFiles: [],
 			runtimeDependencies: [],
 			injections: [injection],
 			frameworks: ['React']
@@ -115,6 +116,7 @@ describe('generate', () => {
 			config,
 			manifestFile: path.join(root, 'injections/manifest.ts'),
 			manifestDependencies: [],
+			runtimeSetupFiles: [],
 			runtimeDependencies: [],
 			injections: [matchedInjection, plainInjection],
 			frameworks: ['React']
@@ -161,6 +163,7 @@ describe('generate', () => {
 			config,
 			manifestFile: path.join(root, 'injections/manifest.ts'),
 			manifestDependencies: [],
+			runtimeSetupFiles: [],
 			runtimeDependencies: [],
 			injections: [injection],
 			frameworks: ['Vue']

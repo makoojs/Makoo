@@ -20,12 +20,13 @@ export async function scanner(config: ResolvedConfig): Promise<ScannerResult> {
 		throw new ManifestNotFoundError(config.source.dir);
 	}
 	const manifestDependencies = new Set<string>(loadedManifest.dependencies);
+	const runtimeSetupFiles = new Set<string>();
 	const runtimeDependencies = new Set<string>();
 	for (const setupFile of config.runtime.setup) {
 		if (!existsSync(setupFile)) {
 			throw new RuntimeSetupNotFoundError(setupFile);
 		}
-		runtimeDependencies.add(setupFile);
+		runtimeSetupFiles.add(setupFile);
 		for (const dependency of collectDependencies(setupFile, { root: config.root })) {
 			runtimeDependencies.add(dependency);
 		}
@@ -87,6 +88,7 @@ export async function scanner(config: ResolvedConfig): Promise<ScannerResult> {
 		config: { ...config, injector: resolveInjector },
 		manifestFile: loadedManifest.manifestFile,
 		manifestDependencies: [...manifestDependencies].sort(),
+		runtimeSetupFiles: [...runtimeSetupFiles].sort(),
 		runtimeDependencies: [...runtimeDependencies].sort(),
 		injections,
 		frameworks
