@@ -91,7 +91,7 @@ function resolveRepoRoot(): string {
 }
 
 function resolveLocalPackagePath(packageName: string): string {
-	return `${join(resolveRepoRoot(), 'packages', packageName)}`;
+	return join(resolveRepoRoot(), 'packages', packageName).replace(/\\/g, '/');
 }
 
 export function writeTemplateFiles(root: string, files: Record<string, string>): void {

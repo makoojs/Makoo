@@ -89,7 +89,7 @@ export function makooMonkey(config: ResolvedConfig): MakooMonkeyPlugin {
 				const ok = await rescan();
 				if (!ok) return;
 
-				const relativeFile = path.relative(config.root, changedFile);
+				const relativeFile = path.relative(config.root, changedFile).replace(/\\/g, '/');
 				server.config.logger.info(
 					`[makoo] ${colorize('structural HMR', ansi.green)} ${colorize(reason, ansi.cyan)}: ${colorize(relativeFile, ansi.dim)}`
 				);
