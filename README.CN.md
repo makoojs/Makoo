@@ -116,11 +116,6 @@ makoo({
 		include: ['*'],
 		exclude: []
 	},
-	injector: {
-		alive: false,
-		scope: 'local',
-		timeout: 5000
-	},
 	monkey: {
 		userscript: {
 			match: ['https://example.com/*']
@@ -133,13 +128,13 @@ makoo({
 
 `source` 控制 Makoo 从哪里扫描注入模块。当前 `include` / `exclude` 是模块目录扫描过滤，不是 URL 路由匹配。
 
-`injector` 是全局注入默认值，模块没有显式配置时会继承这里的 `alive`、`scope`、`timeout` 和 `hooks`。
-
 大多数 `monkey` 配置会透传给 [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey)，用于配置 userscript 元信息、开发服务和构建行为。Makoo 会内部管理 `clientAlias` 和 `server.mountGmApi`，因此这两个选项不支持用户配置。
 
 ## Manifest 参考
 
 顶层 manifest 支持数组和对象两种写法。
+
+`injectionDefaults` 用来定义当前 manifest 下共享的注入运行时默认值。模块没有显式配置时，会继承这里的 `alive`、`scope`、`timeout` 和 `hooks`；模块自己写了这些字段时，则以模块配置为准。
 
 对象写法适合多数项目：
 
@@ -147,7 +142,7 @@ makoo({
 import { defineInjections } from '@makoojs/cli';
 
 export default defineInjections({
-	globalInjector: {
+	injectionDefaults: {
 		alive: false,
 		scope: 'local'
 	},
@@ -215,8 +210,6 @@ match: {
 ```
 
 没有配置 `match` 时，模块会在 userscript 生效的页面上正常注册；配置 `match` 后，Makoo 会在运行时根据 `location.href` 判断是否注册该模块。
-
-完整 API 后续会迁移到独立文档站。README 只保留常用配置和使用路径。
 
 ## HMR 行为说明
 
@@ -293,7 +286,7 @@ import { hooks } from './hooks';
 import { defineInjections } from '@makoojs/cli';
 
 export default defineInjections({
-	globalInjector: {
+	injectionDefaults: {
 		hooks
 	},
 	injections: {

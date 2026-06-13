@@ -19,7 +19,7 @@ export function generate(sannerResult: ScannerResult): GeneratorResult {
 	const importAdapter: RenderImportResult = renderImportAdapter(sannerResult.injections);
 	const initInjector: RenderInitResult = renderInitInjector(
 		sannerResult.frameworks,
-		sannerResult.config.injector
+		sannerResult.injector
 	);
 	const initComponetnRegister: RenderInitResult = renderRegisterComponent(
 		initInjector.instanceName,

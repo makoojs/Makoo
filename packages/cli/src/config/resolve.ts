@@ -392,7 +392,6 @@ export const resolveConfig = (config: CliConfig, root: string = process.cwd()): 
 	const projectRoot = resolveProjectRoot(root);
 	const app = resolveAppConfig(config.app);
 	const source = resolveSourceConfig(config.source, root);
-	const injector = resolveInjectorConfig(config.injector);
 	const monkey = resolveMonkeyConfig(app, config.monkey);
 	const runtime = resolveRuntimeConfig(config.runtime, projectRoot);
 
@@ -401,7 +400,6 @@ export const resolveConfig = (config: CliConfig, root: string = process.cwd()): 
 		app,
 		monkey,
 		source,
-		injector,
 		runtime
 	};
 };

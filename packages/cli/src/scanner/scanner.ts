@@ -31,10 +31,7 @@ export async function scanner(config: ResolvedConfig): Promise<ScannerResult> {
 			runtimeDependencies.add(dependency);
 		}
 	}
-	const resolveInjector = resolveInjectorConfig({
-		...config.injector,
-		...loadedManifest.manifest.globalInjector
-	});
+	const resolveInjector = resolveInjectorConfig(loadedManifest.manifest.injectionDefaults);
 	const resolveManifest = resolveInjections(loadedManifest.manifest, {
 		root: config.root,
 		source: config.source,
@@ -85,7 +82,8 @@ export async function scanner(config: ResolvedConfig): Promise<ScannerResult> {
 	const frameworks = [...new Set(injections.map((m) => m.framework))];
 
 	return {
-		config: { ...config, injector: resolveInjector },
+		config,
+		injector: resolveInjector,
 		manifestFile: loadedManifest.manifestFile,
 		manifestDependencies: [...manifestDependencies].sort(),
 		runtimeSetupFiles: [...runtimeSetupFiles].sort(),

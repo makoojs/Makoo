@@ -74,7 +74,6 @@ type CliConfig = {
 	app: AppConfig;
 	monkey?: MonkeyConfig;
 	source?: SourceConfig;
-	injector?: InjectorConfig;
 	runtime?: RuntimeConfig;
 };
 ```
@@ -158,37 +157,6 @@ source: {
 
 These `include` / `exclude` rules filter module directories, not URLs.
 
-### injector
-
-`injector` sets project-level runtime defaults.
-
-```ts
-type InjectorConfig = {
-	alive?: boolean;
-	scope?: 'local' | 'global';
-	timeout?: number;
-	hooks?: LifecycleHookMap;
-};
-```
-
-Example:
-
-```ts
-makoo({
-	app: {
-		name: 'my-tool',
-		version: '0.0.1'
-	},
-	injector: {
-		alive: false,
-		scope: 'local',
-		timeout: 5000
-	}
-});
-```
-
-Module-level manifests can override these defaults.
-
 ### runtime
 
 `runtime.setup` imports side-effect files before Makoo creates and runs the injector.
@@ -219,11 +187,13 @@ Use it for project-level runtime preparation, such as creating a dedicated host 
 
 `defineInjections()` is a type helper for top-level manifests. It does not transform the runtime value.
 
+`injectionDefaults` defines shared injection runtime defaults for the current manifest. Modules inherit `alive`, `scope`, `timeout`, and `hooks` from it unless they override those fields themselves.
+
 ```ts
 import { defineInjections } from '@makoojs/cli';
 
 export default defineInjections({
-	globalInjector: {
+	injectionDefaults: {
 		alive: true,
 		scope: 'global'
 	},
@@ -270,7 +240,7 @@ Top-level manifest:
 
 ```ts
 type InjectionManifest = {
-	globalInjector?: InjectorConfig;
+	injectionDefaults?: InjectorConfig;
 	injections: InjectionModuleConfig[] | Record<string, Omit<InjectionModuleConfig, 'name'>>;
 };
 ```

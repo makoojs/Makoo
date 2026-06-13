@@ -71,11 +71,13 @@ Makoo 默认扫描项目根目录下的 `injections` 目录。
       └─ manifest.ts
 ```
 
-顶层 `injections/manifest.ts` 用来声明全局注入配置和模块列表。模块级 `injections/<module>/manifest.ts` 可以覆盖或补充单个模块的配置，适合让模块自己维护 `injectAt`、`component`、`framework`、`match` 或生命周期 hooks。
+顶层 `injections/manifest.ts` 用来声明 manifest 级的注入默认值和模块列表。模块级 `injections/<module>/manifest.ts` 可以覆盖或补充单个模块的配置，适合让模块自己维护 `injectAt`、`component`、`framework`、`match` 或生命周期 hooks。
 
 ## Manifest 基础
 
 `@makoojs/cli` 导出 `defineInjections()` 和 `defineInjection()`，用于给 manifest 提供类型约束。
+
+`injectionDefaults` 用来定义当前 manifest 下共享的注入运行时默认值。模块没有显式配置时，会继承这里的 `alive`、`scope`、`timeout` 和 `hooks`；模块自己写了这些字段时，则以模块配置为准。
 
 对象形式适合多数项目：
 
@@ -83,7 +85,7 @@ Makoo 默认扫描项目根目录下的 `injections` 目录。
 import { defineInjections } from '@makoojs/cli';
 
 export default defineInjections({
-	globalInjector: {
+	injectionDefaults: {
 		alive: false,
 		scope: 'local',
 		timeout: 5000
@@ -183,11 +185,6 @@ makoo({
 		include: ['*'],
 		exclude: []
 	},
-	injector: {
-		alive: false,
-		scope: 'local',
-		timeout: 5000
-	},
 	runtime: {
 		setup: ['./injections/vue-setup.ts']
 	},
@@ -203,7 +200,6 @@ makoo({
 | --- | --- |
 | `app` | 用于生成 userscript 的 `name`、`version`、`description` |
 | `source` | 控制扫描哪些 injection 模块目录 |
-| `injector` | 传给 `@makoojs/core` 的全局注入默认值 |
 | `runtime` | 控制 Makoo 生成入口里的运行时前置 setup import |
 | `monkey` | 大多数配置会透传给 [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) |
 

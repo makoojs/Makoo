@@ -45,7 +45,7 @@ export const hooks = { 'run:start': () => helper() };`,
 			'injections/manifest.ts': `
 				import { hooks } from './hooks';
 				export default {
-					globalInjector: { hooks },
+					injectionDefaults: { hooks },
 					injections: [{ name: 'widget', injectAt: '#old', component: './widget.tsx', framework: 'React' }]
 				};
 			`
@@ -67,7 +67,7 @@ export const hooks = { 'run:start': () => helper() };`,
 			`
 				import { hooks } from './hooks';
 				export default {
-					globalInjector: { hooks },
+					injectionDefaults: { hooks },
 					injections: [{ name: 'widget', injectAt: '#new', component: './widget.tsx', framework: 'React' }]
 				};
 			`

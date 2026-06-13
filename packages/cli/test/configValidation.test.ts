@@ -67,4 +67,31 @@ describe('validateCliConfig', () => {
 			});
 		}
 	});
+
+	it('rejects injector in CLI config', () => {
+		try {
+			validateCliConfig({
+				app: {
+					name: 'demo-script',
+					version: '1.0.0'
+				},
+				injector: {
+					alive: true
+				}
+			});
+			throw new Error('expected validation to throw');
+		} catch (error) {
+			expect(error).toBeInstanceOf(ConfigValidationError);
+			expect(error).toMatchObject({
+				name: 'ConfigValidationError',
+				issues: [
+					{
+						path: 'injector',
+						message:
+							'injector is not supported in vite config; use manifest injectionDefaults instead'
+					}
+				]
+			});
+		}
+	});
 });

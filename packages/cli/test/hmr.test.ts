@@ -210,7 +210,7 @@ describe('makooMonkey dev HMR', () => {
 			'injections/manifest.ts': `
 				import { hooks } from './hooks';
 				export default {
-					globalInjector: { hooks },
+					injectionDefaults: { hooks },
 					injections: {
 						widget: { injectAt: '#old', component: './widget/App.tsx', framework: 'React' }
 					}

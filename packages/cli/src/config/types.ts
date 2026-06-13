@@ -124,7 +124,7 @@ export type InjectionModuleConfig = ArtifactOptions & {
 
 export type InjectionManifestRecord = Record<string, Omit<InjectionModuleConfig, 'name'>>;
 export type InjectionManifest = {
-	globalInjector?: InjectorConfig;
+	injectionDefaults?: InjectorConfig;
 	injections: InjectionModuleConfig[] | InjectionManifestRecord;
 };
 
@@ -179,7 +179,6 @@ export type CliConfig = {
 	app: AppConfig;
 	monkey?: MonkeyConfig;
 	source?: SourceConfig;
-	injector?: InjectorConfig;
 	runtime?: RuntimeConfig;
 };
 // CliConfig -> ResolvedConfig
@@ -189,7 +188,6 @@ export type ResolvedConfig = {
 	app: AppConfig; // user script meta message  app <=> Tampermonkey header
 	monkey: ResolvedMonkeyConfig; // vite-plugin-monkey build config
 	source: ResolvedSourceConfig; // tell cli where find the injection components
-	injector: ResolvedInjectorConfig; // global `Injector` runtime config
 	runtime: ResolvedRuntimeConfig; // runtime side-effect imports before injector setup
 };
 export type MonkeyUserscriptOption = NonNullable<MonkeyOption['userscript']>;

@@ -56,7 +56,7 @@ describe('scanner', () => {
 		const root = await trackProject({
 			'injections/manifest.ts': `
 				export default {
-					globalInjector: { timeout: 777 },
+					injectionDefaults: { timeout: 777 },
 					injections: {
 						fromManifest: { injectAt: 'body', component: './fromManifest/index.tsx', framework: 'React' },
 						overridden: { injectAt: '#old', component: './overridden/old.tsx', framework: 'React', timeout: 1 }
@@ -127,7 +127,7 @@ describe('scanner', () => {
 		expect(result.frameworks).toEqual(['React', 'Vue']);
 	});
 
-	it('uses project injector defaults when manifest does not override them', async () => {
+	it('uses Makoo defaults when manifest does not define injectionDefaults', async () => {
 		const root = await trackProject({
 			'injections/manifest.ts': `
 				export default {
@@ -140,27 +140,65 @@ describe('scanner', () => {
 		});
 		const config = resolveConfig(
 			{
-				app: { name: 'project-injector-defaults', version: '0.0.1' },
-				injector: {
-					alive: true,
-					scope: 'global',
-					timeout: 9000
-				}
+				app: { name: 'makoo-injector-defaults', version: '0.0.1' }
 			},
 			root
 		);
 
 		const result = await withCwd(root, () => scanner(config));
 
-		expect(result.config.injector).toMatchObject({
+		expect(result.injector).toMatchObject({
+			alive: false,
+			scope: 'local',
+			timeout: 5000
+		});
+		expect(result.injections[0]).toMatchObject({
+			alive: false,
+			scope: 'local',
+			timeout: 5000
+		});
+	});
+
+	it('uses manifest injectionDefaults unless module config overrides them', async () => {
+		const root = await trackProject({
+			'injections/manifest.ts': `
+				export default {
+					injectionDefaults: { alive: true, scope: 'global', timeout: 9000 },
+					injections: {
+						widget: { injectAt: '#app', component: './widget/index.tsx', framework: 'React' },
+						fast: { injectAt: '#fast', component: './fast/index.tsx', framework: 'React', timeout: 1000 }
+					}
+				};
+			`,
+			'injections/widget/index.tsx': 'export default function Widget() { return null; }',
+			'injections/fast/index.tsx': 'export default function Fast() { return null; }'
+		});
+		const config = resolveConfig(
+			{
+				app: { name: 'manifest-defaults', version: '0.0.1' }
+			},
+			root
+		);
+
+		const result = await withCwd(root, () => scanner(config));
+		const modules = Object.fromEntries(
+			result.injections.map((injection) => [injection.moduleId, injection])
+		);
+
+		expect(result.injector).toMatchObject({
 			alive: true,
 			scope: 'global',
 			timeout: 9000
 		});
-		expect(result.injections[0]).toMatchObject({
+		expect(modules.widget).toMatchObject({
 			alive: true,
 			scope: 'global',
 			timeout: 9000
+		});
+		expect(modules.fast).toMatchObject({
+			alive: true,
+			scope: 'global',
+			timeout: 1000
 		});
 	});
 

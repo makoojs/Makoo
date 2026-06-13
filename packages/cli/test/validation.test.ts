@@ -204,12 +204,20 @@ describe('InjectionManifestSchema', () => {
 		expect(result.success).toBe(true);
 	});
 
-	it('accepts manifest with globalInjector', () => {
+	it('accepts manifest with injectionDefaults', () => {
+		const result = InjectionManifestSchema.safeParse({
+			injectionDefaults: { alive: true, scope: 'global', timeout: 3000 },
+			injections: [{ name: 'a', injectAt: '#a', component: './a.tsx' }]
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects manifest with old globalInjector field', () => {
 		const result = InjectionManifestSchema.safeParse({
 			globalInjector: { alive: true, scope: 'global', timeout: 3000 },
 			injections: [{ name: 'a', injectAt: '#a', component: './a.tsx' }]
 		});
-		expect(result.success).toBe(true);
+		expect(result.success).toBe(false);
 	});
 
 	it('rejects missing injections', () => {

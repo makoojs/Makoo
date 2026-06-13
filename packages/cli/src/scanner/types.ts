@@ -3,7 +3,8 @@ import type {
 	InjectionModuleConfig,
 	ResolvedConfig,
 	ResolvedInjectionFramework,
-	ResolvedInjectionModule
+	ResolvedInjectionModule,
+	ResolvedInjectorConfig
 } from '../config/types';
 
 export type ScannerResult = {
@@ -12,6 +13,7 @@ export type ScannerResult = {
 	runtimeSetupFiles: string[];
 	runtimeDependencies: string[];
 	config: ResolvedConfig;
+	injector: ResolvedInjectorConfig;
 	injections: ResolvedInjectionModule[];
 	frameworks: ResolvedInjectionFramework[];
 };

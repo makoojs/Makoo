@@ -37,7 +37,6 @@ describe('resolveConfig', () => {
 		expect(config.source.dir).toBe(path.join(root, 'injections'));
 		expect(config.source.include).toEqual(['*']);
 		expect(config.source.exclude).toEqual([]);
-		expect(config.injector).toMatchObject({ alive: false, scope: 'local', timeout: 5000 });
 		expect(config.runtime.setup).toEqual([]);
 		expect(config.monkey.userscript).toMatchObject({
 			name: 'demo-script',

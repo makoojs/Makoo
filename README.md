@@ -116,11 +116,6 @@ makoo({
 		include: ['*'],
 		exclude: []
 	},
-	injector: {
-		alive: false,
-		scope: 'local',
-		timeout: 5000
-	},
 	monkey: {
 		userscript: {
 			match: ['https://example.com/*']
@@ -133,13 +128,13 @@ makoo({
 
 `source` controls where Makoo scans injection modules. Its current `include` and `exclude` fields filter module directories, not page URLs.
 
-`injector` defines global defaults. Modules inherit `alive`, `scope`, `timeout`, and `hooks` when they do not set them explicitly.
-
 Most `monkey` options are passed through to [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) for userscript metadata, dev server behavior, and build behavior. Makoo manages `clientAlias` and `server.mountGmApi` internally, so those options are not user-configurable.
 
 ## Manifest Reference
 
 The top-level manifest supports both object and array forms.
+
+`injectionDefaults` defines shared injection runtime defaults for the current manifest. Modules inherit `alive`, `scope`, `timeout`, and `hooks` from it unless they override those fields themselves.
 
 Object form is recommended for most projects:
 
@@ -147,7 +142,7 @@ Object form is recommended for most projects:
 import { defineInjections } from '@makoojs/cli';
 
 export default defineInjections({
-	globalInjector: {
+	injectionDefaults: {
 		alive: false,
 		scope: 'local'
 	},
@@ -215,8 +210,6 @@ match: {
 ```
 
 When `match` is omitted, the module is registered on pages where the userscript itself runs. When `match` is provided, Makoo checks `location.href` at runtime before registering that module.
-
-The complete API reference will move to a dedicated documentation site. This README keeps only the common configuration and usage path.
 
 ## HMR Behavior
 
@@ -293,7 +286,7 @@ import { hooks } from './hooks';
 import { defineInjections } from '@makoojs/cli';
 
 export default defineInjections({
-	globalInjector: {
+	injectionDefaults: {
 		hooks
 	},
 	injections: {

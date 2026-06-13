@@ -24,6 +24,11 @@ const runtimeDependencyFile = path.join(sourceDir, 'router.ts');
 
 const scanResult: ScannerResult = {
 	config,
+	injector: {
+		alive: false,
+		scope: 'local',
+		timeout: 5000
+	},
 	manifestFile,
 	manifestDependencies: [path.join(sourceDir, 'hooks.ts')],
 	runtimeSetupFiles: [runtimeSetupFile],
