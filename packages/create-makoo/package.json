@@ -1,6 +1,6 @@
 {
   "name": "@makoojs/create-makoo",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Scaffold Makoo userscript development framework projects",
   "type": "module",
   "license": "MIT",
