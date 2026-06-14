@@ -66,8 +66,10 @@ describe('scanner', () => {
 			'injections/fromManifest/index.tsx':
 				'export default function FromManifest() { return null; }',
 			'injections/overridden/manifest.ts': `
+				import { selector } from './selector';
 				export default { injectAt: '#new', component: './index.tsx', framework: 'Vue', alive: true };
 			`,
+			'injections/overridden/selector.ts': "export const selector = '#new';",
 			'injections/overridden/index.tsx': 'export default { name: "Overridden" };',
 			'injections/includedOnly/manifest.ts': `
 				export default { injectAt: '#included', component: './index.tsx', framework: 'React' };
@@ -123,6 +125,10 @@ describe('scanner', () => {
 		expect(modules.overridden.overridePath).toBe(
 			path.join(root, 'injections/overridden/manifest.ts')
 		);
+		expect(result.manifestDependencies).toEqual([]);
+		expect(result.moduleManifestDependencies).toEqual([
+			path.join(root, 'injections/overridden/selector.ts')
+		]);
 		expect(modules.skipMe).toBeUndefined();
 		expect(result.frameworks).toEqual(['React', 'Vue']);
 	});

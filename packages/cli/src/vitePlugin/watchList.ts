@@ -4,14 +4,23 @@ import type { ScannerResult } from '../scanner/types';
 import type { StructuralChangeKind, WatchTargets } from './types';
 
 export function getWatchTargets(scanResult: ScannerResult): WatchTargets {
-	const { config, injections, manifestDependencies, runtimeSetupFiles, runtimeDependencies } =
-		scanResult;
+	const {
+		config,
+		injections,
+		manifestDependencies,
+		moduleManifestDependencies,
+		runtimeSetupFiles,
+		runtimeDependencies
+	} = scanResult;
 
 	const files = new Set<string>();
 	const dirs = new Set<string>();
 
 	files.add(scanResult.manifestFile);
 	for (const dependency of manifestDependencies) {
+		files.add(dependency);
+	}
+	for (const dependency of moduleManifestDependencies) {
 		files.add(dependency);
 	}
 	for (const file of runtimeSetupFiles) {
@@ -52,6 +61,9 @@ export function classifyStructuralChange(
 	}
 	if (scanResult.manifestDependencies.includes(changedFile)) {
 		return 'manifest-dependency';
+	}
+	if (scanResult.moduleManifestDependencies.includes(changedFile)) {
+		return 'module-manifest-dependency';
 	}
 	if (scanResult.runtimeDependencies.includes(changedFile)) {
 		return 'runtime-dependency';

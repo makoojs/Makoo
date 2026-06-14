@@ -19,6 +19,7 @@ const config = resolveConfig(
 const sourceDir = path.join(root, 'injections');
 const manifestFile = path.join(sourceDir, 'manifest.ts');
 const moduleManifestFile = path.join(sourceDir, 'widget/manifest.ts');
+const moduleManifestDependencyFile = path.join(sourceDir, 'widget/constants.ts');
 const runtimeSetupFile = path.join(sourceDir, 'vue-setup.ts');
 const runtimeDependencyFile = path.join(sourceDir, 'router.ts');
 
@@ -31,6 +32,7 @@ const scanResult: ScannerResult = {
 	},
 	manifestFile,
 	manifestDependencies: [path.join(sourceDir, 'hooks.ts')],
+	moduleManifestDependencies: [moduleManifestDependencyFile],
 	runtimeSetupFiles: [runtimeSetupFile],
 	runtimeDependencies: [runtimeDependencyFile],
 	injections: [
@@ -48,6 +50,7 @@ describe('watchList', () => {
 		expect(targets.files).toEqual([
 			manifestFile,
 			path.join(sourceDir, 'hooks.ts'),
+			moduleManifestDependencyFile,
 			runtimeSetupFile,
 			runtimeDependencyFile,
 			moduleManifestFile
@@ -59,6 +62,7 @@ describe('watchList', () => {
 		expect(isStructuralChange(manifestFile, scanResult)).toBe(true);
 		expect(isStructuralChange(moduleManifestFile, scanResult)).toBe(true);
 		expect(isStructuralChange(path.join(sourceDir, 'hooks.ts'), scanResult)).toBe(true);
+		expect(isStructuralChange(moduleManifestDependencyFile, scanResult)).toBe(true);
 		expect(isStructuralChange(runtimeSetupFile, scanResult)).toBe(true);
 		expect(isStructuralChange(runtimeDependencyFile, scanResult)).toBe(true);
 		expect(isStructuralChange(path.join(sourceDir, 'widget/App.tsx'), scanResult)).toBe(false);
@@ -73,6 +77,9 @@ describe('watchList', () => {
 		).toBe('module-manifest');
 		expect(classifyStructuralChange(path.join(sourceDir, 'hooks.ts'), scanResult)).toBe(
 			'manifest-dependency'
+		);
+		expect(classifyStructuralChange(moduleManifestDependencyFile, scanResult)).toBe(
+			'module-manifest-dependency'
 		);
 		expect(classifyStructuralChange(runtimeSetupFile, scanResult)).toBe('runtime-setup');
 		expect(classifyStructuralChange(runtimeDependencyFile, scanResult)).toBe(

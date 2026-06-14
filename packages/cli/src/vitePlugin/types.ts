@@ -13,6 +13,7 @@ export type MakooOptions = CliConfig & {
 export type StructuralChangeKind =
 	| 'top-level-manifest'
 	| 'manifest-dependency'
+	| 'module-manifest-dependency'
 	| 'runtime-setup'
 	| 'runtime-dependency'
 	| 'module-manifest';

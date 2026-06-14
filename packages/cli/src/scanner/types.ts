@@ -10,6 +10,7 @@ import type {
 export type ScannerResult = {
 	manifestFile: string;
 	manifestDependencies: string[];
+	moduleManifestDependencies: string[];
 	runtimeSetupFiles: string[];
 	runtimeDependencies: string[];
 	config: ResolvedConfig;
