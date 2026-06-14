@@ -3,14 +3,18 @@ import type {
 	InjectionModuleConfig,
 	ResolvedConfig,
 	ResolvedInjectionFramework,
-	ResolvedInjectionModule
+	ResolvedInjectionModule,
+	ResolvedInjectorConfig
 } from '../config/types';
 
 export type ScannerResult = {
 	manifestFile: string;
 	manifestDependencies: string[];
+	moduleManifestDependencies: string[];
+	runtimeSetupFiles: string[];
 	runtimeDependencies: string[];
 	config: ResolvedConfig;
+	injector: ResolvedInjectorConfig;
 	injections: ResolvedInjectionModule[];
 	frameworks: ResolvedInjectionFramework[];
 };

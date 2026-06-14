@@ -74,7 +74,6 @@ type CliConfig = {
 	app: AppConfig;
 	monkey?: MonkeyConfig;
 	source?: SourceConfig;
-	injector?: InjectorConfig;
 	runtime?: RuntimeConfig;
 };
 ```
@@ -158,37 +157,6 @@ source: {
 
 这里的 `include` / `exclude` 是模块目录过滤规则，不是 URL 匹配规则。
 
-### injector
-
-`injector` 设置项目级运行时默认值。
-
-```ts
-type InjectorConfig = {
-	alive?: boolean;
-	scope?: 'local' | 'global';
-	timeout?: number;
-	hooks?: LifecycleHookMap;
-};
-```
-
-示例：
-
-```ts
-makoo({
-	app: {
-		name: 'my-tool',
-		version: '0.0.1'
-	},
-	injector: {
-		alive: false,
-		scope: 'local',
-		timeout: 5000
-	}
-});
-```
-
-模块级 manifest 可以覆盖这些默认值。
-
 ### runtime
 
 `runtime.setup` 会在 Makoo 创建并运行 injector 前导入副作用文件。
@@ -219,11 +187,13 @@ makoo({
 
 `defineInjections()` 是 manifest 的类型辅助函数。它不改变运行时值，只帮助 TypeScript 检查配置形状。
 
+`injectionDefaults` 用来定义当前 manifest 下共享的注入运行时默认值。模块没有显式配置时，会继承这里的 `alive`、`scope`、`timeout` 和 `hooks`；模块自己写了这些字段时，则以模块配置为准。
+
 ```ts
 import { defineInjections } from '@makoojs/cli';
 
 export default defineInjections({
-	globalInjector: {
+	injectionDefaults: {
 		alive: true,
 		scope: 'global'
 	},
@@ -270,7 +240,7 @@ function defineInjection<T extends InjectionModuleConfig>(config: T): T;
 
 ```ts
 type InjectionManifest = {
-	globalInjector?: InjectorConfig;
+	injectionDefaults?: InjectorConfig;
 	injections: InjectionModuleConfig[] | Record<string, Omit<InjectionModuleConfig, 'name'>>;
 };
 ```

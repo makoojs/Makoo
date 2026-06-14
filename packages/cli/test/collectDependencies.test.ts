@@ -10,7 +10,7 @@ describe('collectDependencies', () => {
 		const root = await trackProject({
 			'injections/manifest.ts': `
 				import { hooks } from './hooks';
-				export default { globalInjector: { hooks }, injections: {} };
+				export default { injectionDefaults: { hooks }, injections: {} };
 			`,
 			'injections/hooks.ts': `
 				import { helper } from './nested/helper';
@@ -59,7 +59,7 @@ describe('collectDependencies', () => {
 		const root = await trackProject({
 			'injections/manifest.ts': `
 				const hooks = require('./hooks');
-				module.exports = { globalInjector: { hooks }, injections: {} };
+				module.exports = { injectionDefaults: { hooks }, injections: {} };
 			`,
 			'injections/hooks.js': `
 				const helper = require('./helper');

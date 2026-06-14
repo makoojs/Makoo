@@ -47,13 +47,15 @@ export const InjectionModuleSchema = z.object({
 
 // --- Top-level manifest ---
 
-export const InjectionManifestSchema = z.object({
-	globalInjector: InjectorConfigSchema.optional(),
-	injections: z.union([
-		z.array(InjectionModuleSchema),
-		z.record(z.string(), InjectionModuleSchema.omit({ name: true }))
-	])
-});
+export const InjectionManifestSchema = z
+	.object({
+		injectionDefaults: InjectorConfigSchema.optional(),
+		injections: z.union([
+			z.array(InjectionModuleSchema),
+			z.record(z.string(), InjectionModuleSchema.omit({ name: true }))
+		])
+	})
+	.strict();
 
 // --- Validate helpers ---
 

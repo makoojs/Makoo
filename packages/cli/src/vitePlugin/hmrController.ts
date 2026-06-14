@@ -1,5 +1,6 @@
 import type { ViteDevServer } from 'vite';
 import { RESOLVED_ID } from '../config/defaults';
+import type { StructuralHmrPayload } from './types';
 
 export function invalidateVirtualModule(server: ViteDevServer): void {
 	const mod = server.moduleGraph.getModuleById(RESOLVED_ID);
@@ -39,5 +40,13 @@ export function triggerModuleHmr(server: ViteDevServer): void {
 				isWithinCircularImport: false
 			}
 		]
+	});
+}
+
+export function sendStructuralHmr(server: ViteDevServer, payload: StructuralHmrPayload): void {
+	server.hot.send({
+		type: 'custom',
+		event: 'makoo:structural-hmr',
+		data: payload
 	});
 }

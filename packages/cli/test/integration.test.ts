@@ -14,7 +14,7 @@ describe('scanner integration', () => {
 		const root = await trackProject({
 			'injections/manifest.ts': `
 				export default {
-					globalInjector: { timeout: 9000 },
+					injectionDefaults: { timeout: 9000 },
 					injections: [
 						{ name: 'from-manifest', injectAt: 'body', component: './from-manifest/index.tsx', framework: 'React' },
 						{ name: 'override-me', injectAt: '#old', component: './override-me/old.tsx', framework: 'React', timeout: 1 },

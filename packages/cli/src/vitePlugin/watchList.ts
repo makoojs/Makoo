@@ -1,10 +1,17 @@
 import path from 'node:path';
 import { DEFAULT_MANIFEST_FILE_NAME } from '../config/defaults';
 import type { ScannerResult } from '../scanner/types';
-import type { WatchTargets } from './types';
+import type { StructuralChangeKind, WatchTargets } from './types';
 
 export function getWatchTargets(scanResult: ScannerResult): WatchTargets {
-	const { config, injections, manifestDependencies } = scanResult;
+	const {
+		config,
+		injections,
+		manifestDependencies,
+		moduleManifestDependencies,
+		runtimeSetupFiles,
+		runtimeDependencies
+	} = scanResult;
 
 	const files = new Set<string>();
 	const dirs = new Set<string>();
@@ -13,7 +20,13 @@ export function getWatchTargets(scanResult: ScannerResult): WatchTargets {
 	for (const dependency of manifestDependencies) {
 		files.add(dependency);
 	}
-	for (const dependency of scanResult.runtimeDependencies) {
+	for (const dependency of moduleManifestDependencies) {
+		files.add(dependency);
+	}
+	for (const file of runtimeSetupFiles) {
+		files.add(file);
+	}
+	for (const dependency of runtimeDependencies) {
 		files.add(dependency);
 	}
 
@@ -35,15 +48,34 @@ export function getWatchTargets(scanResult: ScannerResult): WatchTargets {
 }
 
 export function isStructuralChange(changedFile: string, scanResult: ScannerResult): boolean {
+	return classifyStructuralChange(changedFile, scanResult) !== null;
+}
+
+export function classifyStructuralChange(
+	changedFile: string,
+	scanResult: ScannerResult
+): StructuralChangeKind | null {
 	const { config } = scanResult;
-	if (changedFile === scanResult.manifestFile) return true;
-	if (scanResult.manifestDependencies.includes(changedFile)) return true;
-	if (scanResult.runtimeDependencies.includes(changedFile)) return true;
+	if (changedFile === scanResult.manifestFile) {
+		return 'top-level-manifest';
+	}
+	if (scanResult.manifestDependencies.includes(changedFile)) {
+		return 'manifest-dependency';
+	}
+	if (scanResult.moduleManifestDependencies.includes(changedFile)) {
+		return 'module-manifest-dependency';
+	}
+	if (scanResult.runtimeDependencies.includes(changedFile)) {
+		return 'runtime-dependency';
+	}
+	if (scanResult.runtimeSetupFiles.includes(changedFile)) {
+		return 'runtime-setup';
+	}
 
 	const rel = path.relative(config.source.dir, changedFile);
 	if (!rel.startsWith('..')) {
 		const basename = path.basename(changedFile, path.extname(changedFile));
-		if (basename === DEFAULT_MANIFEST_FILE_NAME) return true;
+		if (basename === DEFAULT_MANIFEST_FILE_NAME) return 'module-manifest';
 	}
-	return false;
+	return null;
 }

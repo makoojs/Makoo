@@ -71,11 +71,13 @@ Makoo scans the `injections` directory under the project root by default.
       └─ manifest.ts
 ```
 
-The top-level `injections/manifest.ts` declares global injection config and the module list. A module-level `injections/<module>/manifest.ts` can override or add config for a single module, which is useful when a module should own fields such as `injectAt`, `component`, `framework`, `match`, or lifecycle hooks.
+The top-level `injections/manifest.ts` declares manifest-scoped injection defaults and the module list. A module-level `injections/<module>/manifest.ts` can override or add config for a single module, which is useful when a module should own fields such as `injectAt`, `component`, `framework`, `match`, or lifecycle hooks.
 
 ## Manifest Basics
 
 `@makoojs/cli` exports `defineInjections()` and `defineInjection()` to provide type constraints for manifests.
+
+`injectionDefaults` defines shared injection runtime defaults for the current manifest. Modules inherit `alive`, `scope`, `timeout`, and `hooks` from it unless they override those fields themselves.
 
 Object form is suitable for most projects:
 
@@ -83,7 +85,7 @@ Object form is suitable for most projects:
 import { defineInjections } from '@makoojs/cli';
 
 export default defineInjections({
-	globalInjector: {
+	injectionDefaults: {
 		alive: false,
 		scope: 'local',
 		timeout: 5000
@@ -183,11 +185,6 @@ makoo({
 		include: ['*'],
 		exclude: []
 	},
-	injector: {
-		alive: false,
-		scope: 'local',
-		timeout: 5000
-	},
 	runtime: {
 		setup: ['./injections/vue-setup.ts']
 	},
@@ -203,7 +200,6 @@ makoo({
 | --- | --- |
 | `app` | Generates userscript `name`, `version`, and `description` |
 | `source` | Controls which injection module directories are scanned |
-| `injector` | Global injection defaults passed to `@makoojs/core` |
 | `runtime` | Controls runtime setup imports in the Makoo-generated entry |
 | `monkey` | Most options are passed through to [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) |
 

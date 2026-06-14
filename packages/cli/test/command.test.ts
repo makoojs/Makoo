@@ -41,7 +41,6 @@ describe('loadMakooConfig', () => {
 		const makooConfig = {
 			app: { name: 'demo', version: '0.0.1' },
 			source: { include: ['*'], exclude: [] },
-			injector: { alive: false, scope: 'local', timeout: 5000 },
 			monkey: { userscript: { match: ['https://example.com/*'] } }
 		};
 		const loadConfigFromFile = vi.fn().mockResolvedValue({

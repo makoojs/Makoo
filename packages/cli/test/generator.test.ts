@@ -1,10 +1,16 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { resolveConfig, resolveInjection } from '../src/config/resolve';
+import type { ResolvedInjectorConfig } from '../src/config/types';
 import { generate } from '../src/generator/generator';
 import type { ScannerResult } from '../src/scanner/types';
 
 const root = path.resolve('/project');
+const defaultInjector: ResolvedInjectorConfig = {
+	alive: false,
+	scope: 'local',
+	timeout: 5000
+};
 
 describe('generate', () => {
 	it('generates imports, injector initialization, component registration and injector.run()', () => {
@@ -13,15 +19,16 @@ describe('generate', () => {
 				app: {
 					name: 'demo-script',
 					version: '1.0.0'
-				},
-				injector: {
-					hooks: {
-						'run:start': () => 'run-start'
-					}
 				}
 			},
 			root
 		);
+		const injector: ResolvedInjectorConfig = {
+			...defaultInjector,
+			hooks: {
+				'run:start': () => 'run-start'
+			}
+		};
 		const injection = resolveInjection(
 			{
 				name: 'hello-card',
@@ -38,14 +45,17 @@ describe('generate', () => {
 			{
 				root,
 				source: config.source,
-				injector: config.injector,
+				injector,
 				componentPath: path.join(root, 'injections/hello/index.tsx')
 			}
 		);
 		const scanResult: ScannerResult = {
 			config,
+			injector,
 			manifestFile: path.join(root, 'injections/manifest.ts'),
 			manifestDependencies: [],
+			moduleManifestDependencies: [],
+			runtimeSetupFiles: [],
 			runtimeDependencies: [],
 			injections: [injection],
 			frameworks: ['React']
@@ -93,7 +103,7 @@ describe('generate', () => {
 			{
 				root,
 				source: config.source,
-				injector: config.injector,
+				injector: defaultInjector,
 				componentPath: path.join(root, 'injections/hello/index.tsx')
 			}
 		);
@@ -107,14 +117,17 @@ describe('generate', () => {
 			{
 				root,
 				source: config.source,
-				injector: config.injector,
+				injector: defaultInjector,
 				componentPath: path.join(root, 'injections/plain/index.tsx')
 			}
 		);
 		const scanResult: ScannerResult = {
 			config,
+			injector: defaultInjector,
 			manifestFile: path.join(root, 'injections/manifest.ts'),
 			manifestDependencies: [],
+			moduleManifestDependencies: [],
+			runtimeSetupFiles: [],
 			runtimeDependencies: [],
 			injections: [matchedInjection, plainInjection],
 			frameworks: ['React']
@@ -153,14 +166,17 @@ describe('generate', () => {
 			{
 				root,
 				source: config.source,
-				injector: config.injector,
+				injector: defaultInjector,
 				componentPath: path.join(root, 'injections/panel/App.vue')
 			}
 		);
 		const scanResult: ScannerResult = {
 			config,
+			injector: defaultInjector,
 			manifestFile: path.join(root, 'injections/manifest.ts'),
 			manifestDependencies: [],
+			moduleManifestDependencies: [],
+			runtimeSetupFiles: [],
 			runtimeDependencies: [],
 			injections: [injection],
 			frameworks: ['Vue']

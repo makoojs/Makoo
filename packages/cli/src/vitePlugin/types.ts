@@ -10,3 +10,16 @@ export type WatchTargets = {
 export type MakooOptions = CliConfig & {
 	root?: string;
 };
+export type StructuralChangeKind =
+	| 'top-level-manifest'
+	| 'manifest-dependency'
+	| 'module-manifest-dependency'
+	| 'runtime-setup'
+	| 'runtime-dependency'
+	| 'module-manifest';
+
+export type StructuralHmrPayload = {
+	file: string;
+	reason: StructuralChangeKind;
+	timestamp: number;
+};

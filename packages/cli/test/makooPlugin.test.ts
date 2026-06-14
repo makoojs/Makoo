@@ -109,6 +109,9 @@ describe('makooMonkey', () => {
 
 			expect(String(code)).toContain('register("#app"');
 			expect(String(code)).toContain('import.meta.hot.accept');
+			expect(String(code)).toContain("import.meta.hot.on('makoo:structural-hmr'");
+			expect(String(code)).toContain('%c[makoo]%c structural HMR');
+			expect(String(code)).toContain('color:#42b883');
 		});
 	});
 

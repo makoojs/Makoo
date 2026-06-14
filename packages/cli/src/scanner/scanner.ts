@@ -20,20 +20,19 @@ export async function scanner(config: ResolvedConfig): Promise<ScannerResult> {
 		throw new ManifestNotFoundError(config.source.dir);
 	}
 	const manifestDependencies = new Set<string>(loadedManifest.dependencies);
+	const moduleManifestDependencies = new Set<string>();
+	const runtimeSetupFiles = new Set<string>();
 	const runtimeDependencies = new Set<string>();
 	for (const setupFile of config.runtime.setup) {
 		if (!existsSync(setupFile)) {
 			throw new RuntimeSetupNotFoundError(setupFile);
 		}
-		runtimeDependencies.add(setupFile);
+		runtimeSetupFiles.add(setupFile);
 		for (const dependency of collectDependencies(setupFile, { root: config.root })) {
 			runtimeDependencies.add(dependency);
 		}
 	}
-	const resolveInjector = resolveInjectorConfig({
-		...config.injector,
-		...loadedManifest.manifest.globalInjector
-	});
+	const resolveInjector = resolveInjectorConfig(loadedManifest.manifest.injectionDefaults);
 	const resolveManifest = resolveInjections(loadedManifest.manifest, {
 		root: config.root,
 		source: config.source,
@@ -57,7 +56,7 @@ export async function scanner(config: ResolvedConfig): Promise<ScannerResult> {
 			continue;
 		}
 		for (const dependency of meta.dependencies) {
-			manifestDependencies.add(dependency);
+			moduleManifestDependencies.add(dependency);
 		}
 		const resolveMeta = resolveInjection(meta.moduleConfig, {
 			root: config.root,
@@ -84,9 +83,12 @@ export async function scanner(config: ResolvedConfig): Promise<ScannerResult> {
 	const frameworks = [...new Set(injections.map((m) => m.framework))];
 
 	return {
-		config: { ...config, injector: resolveInjector },
+		config,
+		injector: resolveInjector,
 		manifestFile: loadedManifest.manifestFile,
 		manifestDependencies: [...manifestDependencies].sort(),
+		moduleManifestDependencies: [...moduleManifestDependencies].sort(),
+		runtimeSetupFiles: [...runtimeSetupFiles].sort(),
 		runtimeDependencies: [...runtimeDependencies].sort(),
 		injections,
 		frameworks

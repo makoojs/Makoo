@@ -1,12 +1,19 @@
+import path from 'node:path';
 import type { ConfigEnv, ViteDevServer } from 'vite';
 import { FAKE_ENTRY, FAKE_RESOLVED_ID, RESOLVED_ID, VIRTUAL_MODULE_ID } from '../config/defaults';
 import type { ResolvedConfig } from '../config/types';
 import { scanner } from '../scanner/scanner';
 import type { ScannerResult } from '../scanner/types';
-import { invalidateVirtualModule, sendScanError, triggerModuleHmr } from './hmrController';
+import { ansi, colorize } from '../shared/terminalColor';
+import {
+	invalidateVirtualModule,
+	sendScanError,
+	sendStructuralHmr,
+	triggerModuleHmr
+} from './hmrController';
 import type { MakooMonkeyPlugin } from './types';
 import { buildVirtualMouduleCode } from './virtualModule';
-import { getWatchTargets, isStructuralChange } from './watchList';
+import { classifyStructuralChange, getWatchTargets, isStructuralChange } from './watchList';
 
 export function makooMonkey(config: ResolvedConfig): MakooMonkeyPlugin {
 	let scanResult: ScannerResult | null = null;
@@ -76,12 +83,23 @@ export function makooMonkey(config: ResolvedConfig): MakooMonkeyPlugin {
 			const onChange = async (changedFile: string) => {
 				if (!scanResult) return;
 				if (!isStructuralChange(changedFile, scanResult)) return;
+				const reason = classifyStructuralChange(changedFile, scanResult);
+				if (!reason) return;
 
 				const ok = await rescan();
 				if (!ok) return;
 
+				const relativeFile = path.relative(config.root, changedFile).replace(/\\/g, '/');
+				server.config.logger.info(
+					`[makoo] ${colorize('structural HMR', ansi.green)} ${colorize(reason, ansi.cyan)}: ${colorize(relativeFile, ansi.dim)}`
+				);
 				syncWatchTargets(server);
 				invalidateVirtualModule(server);
+				sendStructuralHmr(server, {
+					file: changedFile,
+					reason,
+					timestamp: Date.now()
+				});
 				triggerModuleHmr(server);
 			};
 			server.watcher.on('change', onChange);

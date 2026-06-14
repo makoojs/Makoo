@@ -30,13 +30,24 @@ const MonkeyConfigSchema = z
 		}
 	});
 
-export const CliConfigSchema = z.object({
-	app: AppConfigSchema,
-	monkey: MonkeyConfigSchema.optional(),
-	source: z.object({}).passthrough().optional(),
-	injector: z.object({}).passthrough().optional(),
-	runtime: z.object({}).passthrough().optional()
-});
+export const CliConfigSchema = z
+	.object({
+		app: AppConfigSchema,
+		monkey: MonkeyConfigSchema.optional(),
+		source: z.object({}).passthrough().optional(),
+		runtime: z.object({}).passthrough().optional()
+	})
+	.loose()
+	.superRefine((value, context) => {
+		if ('injector' in value) {
+			context.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ['injector'],
+				message:
+					'injector is not supported in vite config; use manifest injectionDefaults instead'
+			});
+		}
+	});
 
 export function validateCliConfig(data: unknown): asserts data is z.infer<typeof CliConfigSchema> {
 	const result = CliConfigSchema.safeParse(data);

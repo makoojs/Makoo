@@ -29,6 +29,7 @@ const createDevServer = () => {
 	const virtualModule = { id: RESOLVED_ID };
 	const invalidateModule = vi.fn();
 	const hotSend = vi.fn();
+	const loggerInfo = vi.fn();
 	const watcherAdd = vi.fn();
 	const watcherOn = vi.fn((event: string, handler: WatchHandler) => {
 		const current = handlers.get(event) ?? [];
@@ -47,6 +48,11 @@ const createDevServer = () => {
 		},
 		hot: {
 			send: hotSend
+		},
+		config: {
+			logger: {
+				info: loggerInfo
+			}
 		}
 	} as unknown as ViteDevServer;
 
@@ -54,6 +60,7 @@ const createDevServer = () => {
 		server,
 		invalidateModule,
 		hotSend,
+		loggerInfo,
 		watcherAdd,
 		async emit(event: string, file: string) {
 			for (const handler of handlers.get(event) ?? []) {
@@ -138,6 +145,19 @@ describe('makooMonkey dev HMR', () => {
 					]
 				})
 			);
+			expect(dev.hotSend).toHaveBeenCalledWith({
+				type: 'custom',
+				event: 'makoo:structural-hmr',
+				data: expect.objectContaining({
+					file: manifestFile,
+					reason: 'top-level-manifest'
+				})
+			});
+			const logMessage = dev.loggerInfo.mock.calls[0]?.[0] as string;
+			expect(logMessage).toContain('[makoo]');
+			expect(logMessage).toContain('\x1B[32mstructural HMR\x1B[0m');
+			expect(logMessage).toContain('\x1B[36mtop-level-manifest\x1B[0m');
+			expect(logMessage).toContain('\x1B[2minjections/manifest.ts\x1B[0m');
 		});
 	});
 
@@ -190,7 +210,7 @@ describe('makooMonkey dev HMR', () => {
 			'injections/manifest.ts': `
 				import { hooks } from './hooks';
 				export default {
-					globalInjector: { hooks },
+					injectionDefaults: { hooks },
 					injections: {
 						widget: { injectAt: '#old', component: './widget/App.tsx', framework: 'React' }
 					}
