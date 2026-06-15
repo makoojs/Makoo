@@ -1,3 +1,16 @@
+# Changelog
+
+> This root changelog is a legacy project-level archive from before Makoo adopted
+> package-level Changesets changelogs.
+>
+> Current release notes are maintained per published package:
+>
+> - `packages/core/CHANGELOG.md`
+> - `packages/cli/CHANGELOG.md`
+> - `packages/vue/CHANGELOG.md`
+> - `packages/react/CHANGELOG.md`
+> - `packages/create-makoo/CHANGELOG.md`
+
 ## [1.0.0] - 2026-03-21
 
 ### 🚀 Key Features
