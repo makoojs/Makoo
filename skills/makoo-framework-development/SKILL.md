@@ -83,6 +83,33 @@ If the task touches multiple areas or you need a fuller package map, read `refer
 - For generator, config, and resolver work, assert concrete output shape and edge cases.
 - Do not run `pnpm exec tsc -p packages/*/tsconfig.json` or similar package-level `tsc -p` commands as routine verification because these package tsconfig files emit `.d.ts` files into source directories. Prefer Vitest coverage, targeted runtime checks, or the package's actual build pipeline instead.
 
+## CLI Scanner And Inspect Rules
+
+- Keep scanner result fields semantically separated; do not merge unrelated dependency sources for convenience.
+- Track top-level manifest dependencies separately from module manifest dependencies.
+- Keep runtime setup files separate from dependencies imported by runtime setup files.
+- Avoid dumping raw resolved config objects in `makoo inspect` when they duplicate scanner output.
+- Prefer grouped inspect output for project, source, runtime, monkey, injector, injections, and frameworks.
+- Keep display-only inspect formatting close to `packages/cli/src/command/inspect.ts` unless another command actually reuses it.
+- Use `packages/cli/src/shared/terminalColor.ts` for CLI colors instead of introducing another coloring helper.
+
+## Injector Defaults
+
+- Injector defaults belong to manifest scanning via `injectionDefaults`, not Vite config.
+- Module injection config resolves defaults field-by-field: module config overrides manifest defaults, and manifest defaults override Makoo defaults.
+- Reject unsupported Vite-level injector config with a clear CLI validation error instead of silently accepting or migrating it.
+
+## Release And Changesets
+
+- Makoo uses Changesets for published package versioning and changelogs.
+- Published packages maintain package-level changelogs under `packages/*/CHANGELOG.md`.
+- The root `CHANGELOG.md` is a legacy project-level archive, not the current release changelog source.
+- When one PR affects multiple published packages and each package needs different release notes, create one changeset per package instead of selecting multiple packages in one changeset.
+- Do not manually edit package versions except in Changesets-generated version PRs.
+- The release workflow is `.github/workflows/changesets-release.yml`: it creates a `Version Packages` PR first, then publishes after that PR merges.
+- For npm publishing in Actions, keep `NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}` available to publish steps that run npm commands.
+- If Actions cannot create the version PR, check repository or organization workflow permissions for pull request creation before changing release code.
+
 ## Change Workflow
 
 When implementing a change, follow this sequence:

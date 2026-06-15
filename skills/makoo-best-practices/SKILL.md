@@ -72,6 +72,8 @@ Do not put UI state, rendering logic, component trees, network workflows, or bus
 
 Use module-level `manifest.ts` when a module should own its own injection configuration. Keep top-level `injections/manifest.ts` focused on registration and shared defaults.
 
+Use `injectionDefaults` in the top-level manifest for shared injector defaults such as `alive`, `scope`, `timeout`, and hooks. Individual modules should override only the fields that differ from those defaults.
+
 ## Put Component Logic In Framework Files
 
 Use the module entry component as the UI boundary:
@@ -143,7 +145,7 @@ Structural changes are the ones that should cause Makoo to rescan or regenerate 
 
 - top-level `injections/manifest.ts`
 - module-level `injections/<module>/manifest.ts`
-- hooks or helpers statically imported by a manifest
+- hooks or helpers statically imported by a top-level or module-level manifest
 - `vite.config.ts` Makoo config
 - `source.include`, `source.exclude`, `runtime.setup`, or userscript metadata that changes the generated runtime
 

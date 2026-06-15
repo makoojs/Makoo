@@ -13,7 +13,7 @@ Also use this skill when the user is working inside a Makoo project and needs to
 
 First confirm that the current project is a Makoo project, then read the nearest relevant files:
 
-- `vite.config.ts`: check `makoo(...)`, `monkey.userscript.match`, `source`, `injector`, and `runtime.setup`.
+- `vite.config.ts`: check `makoo(...)`, `monkey.userscript.match`, `source`, and `runtime.setup`.
 - `injections/manifest.ts` or `injections/manifest.js`: check the top-level manifest style.
 - Target module directory: if `injections/<module>/manifest.ts` already exists, respect the module-level configuration first.
 - Neighboring component files: check whether the project uses Vue, React, TypeScript, or JavaScript, and how styles are organized.
@@ -66,7 +66,7 @@ Use `defineInjections()` from `@makoojs/cli` in the top-level manifest. Prefer t
 import { defineInjections } from '@makoojs/cli';
 
 export default defineInjections({
-	globalInjector: {
+	injectionDefaults: {
 		alive: false,
 		scope: 'local',
 		timeout: 5000
@@ -96,7 +96,7 @@ export default defineInjections({
 });
 ```
 
-Put only true collection-level defaults in `globalInjector`. Override them on individual modules when a module needs different behavior.
+Put only true collection-level defaults in `injectionDefaults`. Override them on individual modules when a module needs different behavior.
 
 ## How To Organize An Injection Module Internally
 
@@ -176,9 +176,9 @@ export default {
 
 **Module definition source priority**: if a module-level manifest and the top-level manifest define the same module id, the module-level manifest replaces the top-level resolved result for that module. Do not maintain the same module's core configuration in both places.
 
-**Default field inheritance priority**: `module config` > `manifest.globalInjector` > `vite.config.ts injector` > `Makoo default`.
+**Default field inheritance priority**: `module config` > `manifest.injectionDefaults` > `Makoo default`.
 
-This priority only applies to default field inheritance within a module configuration, such as `alive`, `scope`, `timeout`, and `hooks`. Explicit module fields have the highest priority; missing fields are filled from global config or defaults.
+This priority only applies to default field inheritance within a module configuration, such as `alive`, `scope`, `timeout`, and `hooks`. Explicit module fields have the highest priority; missing fields are filled from manifest defaults or Makoo defaults.
 
 ## How To Choose The React / Vue Adapter
 
@@ -277,7 +277,7 @@ Guidance:
 
 ## Hooks And Dependency Tracking
 
-Hooks can live in `globalInjector.hooks` or in module config:
+Hooks can live in `injectionDefaults.hooks` or in module config:
 
 - Global hooks: project-level logging, observation, and debugging.
 - Module hooks: lifecycle work, analytics, or cleanup that belongs only to one module.
@@ -296,6 +296,7 @@ Makoo tracks local dependency chains such as `manifest -> hooks -> helper`. Do n
 - Use `enabled: false` to keep a module config in the manifest while excluding it from the generated runtime.
 - `source.include` and `source.exclude` filter module directory scanning; they are not URL matching rules.
 - Changes to the top-level manifest, module-level manifests, and static relative imports from manifests trigger structural updates.
+- Top-level manifest dependencies and module manifest dependencies are tracked separately by Makoo, so keep imports static and local to the manifest that owns them.
 - Ordinary component changes are handled by Vite HMR.
 
 ## Implementation Checklist
