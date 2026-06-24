@@ -237,7 +237,7 @@ Makoo 的 Vite 插件会在启动和构建时执行以下流程：
 3. 读取模块级 `manifest.ts`，并与顶层 manifest 合并。
 4. 解析组件路径、模块 ID、framework、match、alive、scope、timeout 等配置。
 5. 根据实际使用到的 framework 生成 adapter import。
-6. 生成虚拟入口，创建 `Injector`，注册组件并执行 `run()`。
+6. 生成虚拟入口，创建 Makoo runtime，声明任务并执行 `start()`。
 7. 把虚拟入口交给 [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) 打包成 userscript。
 
 如果没有找到顶层 manifest、没有可用注入模块，或无法推断 framework，CLI 会抛出 Makoo 自己的错误类型，方便定位问题。
@@ -259,7 +259,7 @@ Makoo 的 Vite 插件会在启动和构建时执行以下流程：
 
 ## Runtime Setup
 
-`runtime.setup` 用来导入一批只负责副作用初始化的运行时文件。它们会在 Makoo 初始化 adapter、注册 injection、执行 `injector.run()` 前进入最终 userscript bundle。
+`runtime.setup` 用来导入一批只负责副作用初始化的运行时文件。它们会在 Makoo 初始化 adapter、声明 injection、执行 `makoo.start(...)` 前进入最终 userscript bundle。
 
 这个能力适合注册 Vue 插件、初始化 GM helper、导入全局样式或执行埋点初始化。
 

@@ -77,7 +77,7 @@ pnpm dev
 
 ## 核心概念
 
-`Injector` 是 Makoo 的运行时调度器。它负责注册注入任务、等待目标节点、调用对应适配器挂载组件，并在需要时处理重注入。
+`createMakoo()` 会创建 Makoo 的运行时调度器。它负责启动声明式注入任务、等待目标节点、调用对应适配器挂载组件，并在需要时处理重注入。
 
 `Injection Module` 是一个注入模块。一个模块通常对应 `injections/<module-name>/` 下的一个组件，也可以有自己的模块级 `manifest.ts` 覆盖配置。
 
@@ -274,7 +274,7 @@ export default defineInjections({
 ```ts
 // injections/hooks.ts
 export const hooks = {
-	'run:start': () => {
+	'start:start': () => {
 		console.log('[makoo] injector started');
 	}
 };

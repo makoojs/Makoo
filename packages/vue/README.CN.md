@@ -1,13 +1,13 @@
 # @makoojs/vue
 
-`@makoojs/vue` 是 Makoo 的 Vue 挂载适配器。它把 Vue 组件接入 `@makoojs/core` 的 adapter 协议，让 `Injector` 可以在目标 DOM 出现后创建 Vue app、挂载组件，并在任务销毁或重置时正确卸载。
+`@makoojs/vue` 是 Makoo 的 Vue 挂载适配器。它把 Vue 组件接入 `@makoojs/core` 的 adapter 协议，让 Makoo runtime 可以在目标 DOM 出现后创建 Vue app、挂载组件，并在任务销毁或重置时正确卸载。
 
 普通 Makoo 项目通常通过 `@makoojs/cli` 使用这个包：当 manifest 中的模块被识别为 Vue 时，CLI 会在生成的虚拟入口中引入 Vue adapter。只有在你直接使用 `@makoojs/core` 手动搭建运行时时，才需要显式调用 `createVueAdapter()`。
 
 ## 适用场景
 
 - 在 Makoo 项目中注入 Vue 组件。
-- 让 `@makoojs/core` 的 `Injector` 能识别并挂载 Vue artifact。
+- 让 `@makoojs/core` runtime 能识别并挂载 Vue artifact。
 - 直接使用 core runtime 时手动注册 Vue adapter。
 - 在 Vue 组件中读取 Makoo 传入的任务上下文 `makoo`。
 - 给 Makoo 创建的 Vue app 注册共享插件。
@@ -71,25 +71,27 @@ function handleClick() {
 | `enableAlive()` / `disableAlive()` | 控制当前任务的 alive 重注入 |
 | `reset()` / `destroy()` | 重置或销毁当前任务 |
 | `on()` / `onTask()` | 监听生命周期观察事件 |
-| `getLogger()` | 获取当前 injector 的 logger |
+| `getLogger()` | 获取当前 runtime 的 logger |
 
 ## 直接配合 @makoojs/core 使用
 
-如果你不经过 `@makoojs/cli`，可以手动把 Vue adapter 注册到 `Injector`。
+如果你不经过 `@makoojs/cli`，可以把 Vue adapter 传给 `createMakoo()`。
 
 ```ts
-import { Injector } from '@makoojs/core';
+import { createMakoo, inject } from '@makoojs/core';
 import { createVueAdapter } from '@makoojs/vue';
 import Panel from './Panel.vue';
 
-const injector = new Injector({
-	alive: true,
-	scope: 'local',
-	timeout: 5000
-}).applyAdapter(createVueAdapter());
+const makoo = createMakoo({
+	defaults: {
+		alive: true,
+		scope: 'local',
+		timeout: 5000
+	},
+	adapters: [createVueAdapter()]
+});
 
-injector.register('#app', Panel);
-injector.run();
+makoo.start([inject('#app', Panel)]);
 ```
 
 `createVueAdapter()` 返回的 adapter 会：
@@ -187,7 +189,7 @@ setup 文件中应当从 `@makoojs/vue` 导入 `VuePlugin`，不要从源码路�
 | 包 | 职责 |
 | --- | --- |
 | `@makoojs/vue` | Vue 挂载适配器与 Vue 插件注册辅助 |
-| `@makoojs/core` | 提供 `Injector`、adapter 协议和 Makoo runtime context |
+| `@makoojs/core` | 提供 runtime API、adapter 协议和 Makoo runtime context |
 | `@makoojs/cli` | 扫描 manifest、生成虚拟入口，并在需要时引入 Vue adapter |
 
 `@makoojs/vue` 本身不是完整运行时。它需要配合 `@makoojs/core` 的注入调度能力，或通过 `@makoojs/cli` 自动生成的运行时代码来工作。
