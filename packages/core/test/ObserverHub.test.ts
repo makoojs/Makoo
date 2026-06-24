@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { ObserverHub } from '../src/hooks/ObserverHub';
+import { createObserverHub } from '../src/hooks/ObserverHub';
 import type { ObserveEvent } from '../src/hooks/types';
 
 const makeEvent = (name: ObserveEvent['name']): ObserveEvent => ({
@@ -11,11 +11,11 @@ const makeEvent = (name: ObserveEvent['name']): ObserveEvent => ({
 
 describe('ObserverHub', () => {
 	it('should trigger event-specific hooks', () => {
-		const hub = new ObserverHub();
+		const hub = createObserverHub();
 		const hook = vi.fn();
-		hub.on('run:start', hook);
+		hub.on('start:requested', hook);
 
-		const event = makeEvent('run:start');
+		const event = makeEvent('start:requested');
 		hub.emit(event);
 
 		expect(hook).toHaveBeenCalledOnce();
@@ -29,33 +29,33 @@ describe('ObserverHub', () => {
 	});
 
 	it('should trigger onAny hooks for any event', () => {
-		const hub = new ObserverHub();
+		const hub = createObserverHub();
 		const hook = vi.fn();
 		hub.onAny(hook);
 
-		hub.emit(makeEvent('run:start'));
+		hub.emit(makeEvent('start:requested'));
 		hub.emit(makeEvent('artifact:mountSuccess'));
 
 		expect(hook).toHaveBeenCalledTimes(2);
 	});
 
 	it('should trigger task-scoped hooks on emitOnTask()', () => {
-		const hub = new ObserverHub();
+		const hub = createObserverHub();
 		const task1Hook = vi.fn();
 		const task2Hook = vi.fn();
 
-		hub.onTask('task-1', 'run:start', task1Hook);
-		hub.onTask('task-2', 'run:start', task2Hook);
+		hub.onTask('task-1', 'start:requested', task1Hook);
+		hub.onTask('task-2', 'start:requested', task2Hook);
 
 		hub.emitOnTask('task-1', {
-			name: 'run:start',
+			name: 'start:requested',
 			ts: Date.now()
 		});
 
 		expect(task1Hook).toHaveBeenCalledOnce();
 		expect(task1Hook).toHaveBeenCalledWith(
 			expect.objectContaining({
-				name: 'run:start',
+				name: 'start:requested',
 				taskId: 'task-1'
 			}),
 			expect.objectContaining({
@@ -67,16 +67,16 @@ describe('ObserverHub', () => {
 	});
 
 	it('should dispatch task, scoped and any hooks when taskId exists', () => {
-		const hub = new ObserverHub();
+		const hub = createObserverHub();
 		const taskHook = vi.fn();
 		const scopedHook = vi.fn();
 		const anyHook = vi.fn();
 
-		hub.onTask('task-1', 'run:start', taskHook);
-		hub.on('run:start', scopedHook);
+		hub.onTask('task-1', 'start:requested', taskHook);
+		hub.on('start:requested', scopedHook);
 		hub.onAny(anyHook);
 
-		hub.emit(makeEvent('run:start'));
+		hub.emit(makeEvent('start:requested'));
 
 		expect(taskHook).toHaveBeenCalledOnce();
 		expect(scopedHook).toHaveBeenCalledOnce();
@@ -84,7 +84,7 @@ describe('ObserverHub', () => {
 	});
 
 	it('should stop propagation from task hooks to scoped and any hooks', () => {
-		const hub = new ObserverHub();
+		const hub = createObserverHub();
 		const taskHook = vi.fn((_, ctrl) => {
 			ctrl.stopPropagation();
 		});
@@ -92,13 +92,13 @@ describe('ObserverHub', () => {
 		const scopedHook = vi.fn();
 		const anyHook = vi.fn();
 
-		hub.onTask('task-1', 'run:start', taskHook);
-		hub.onTask('task-1', 'run:start', nextTaskHook);
-		hub.on('run:start', scopedHook);
+		hub.onTask('task-1', 'start:requested', taskHook);
+		hub.onTask('task-1', 'start:requested', nextTaskHook);
+		hub.on('start:requested', scopedHook);
 		hub.onAny(anyHook);
 
 		hub.emitOnTask('task-1', {
-			name: 'run:start',
+			name: 'start:requested',
 			ts: Date.now()
 		});
 
@@ -109,19 +109,19 @@ describe('ObserverHub', () => {
 	});
 
 	it('should stop propagation from scoped hooks to any hooks', () => {
-		const hub = new ObserverHub();
+		const hub = createObserverHub();
 		const scopedHook = vi.fn((_, ctrl) => {
 			ctrl.stopPropagation();
 		});
 		const nextScopedHook = vi.fn();
 		const anyHook = vi.fn();
 
-		hub.on('run:start', scopedHook);
-		hub.on('run:start', nextScopedHook);
+		hub.on('start:requested', scopedHook);
+		hub.on('start:requested', nextScopedHook);
 		hub.onAny(anyHook);
 
 		hub.emit({
-			name: 'run:start',
+			name: 'start:requested',
 			ts: Date.now()
 		});
 
@@ -131,7 +131,7 @@ describe('ObserverHub', () => {
 	});
 
 	it('should stop immediate propagation within the current hook scope', () => {
-		const hub = new ObserverHub();
+		const hub = createObserverHub();
 		const taskHook = vi.fn((_, ctrl) => {
 			ctrl.stopImmediatePropagation();
 		});
@@ -139,13 +139,13 @@ describe('ObserverHub', () => {
 		const scopedHook = vi.fn();
 		const anyHook = vi.fn();
 
-		hub.onTask('task-1', 'run:start', taskHook);
-		hub.onTask('task-1', 'run:start', nextTaskHook);
-		hub.on('run:start', scopedHook);
+		hub.onTask('task-1', 'start:requested', taskHook);
+		hub.onTask('task-1', 'start:requested', nextTaskHook);
+		hub.on('start:requested', scopedHook);
 		hub.onAny(anyHook);
 
 		hub.emitOnTask('task-1', {
-			name: 'run:start',
+			name: 'start:requested',
 			ts: Date.now()
 		});
 
@@ -156,7 +156,7 @@ describe('ObserverHub', () => {
 	});
 
 	it('should support unsubscribe from on()', () => {
-		const hub = new ObserverHub();
+		const hub = createObserverHub();
 		const hook = vi.fn();
 		const off = hub.on('artifact:mountFail', hook);
 
@@ -168,7 +168,7 @@ describe('ObserverHub', () => {
 	});
 
 	it('should support unsubscribe from onAny()', () => {
-		const hub = new ObserverHub();
+		const hub = createObserverHub();
 		const hook = vi.fn();
 		const off = hub.onAny(hook);
 
@@ -180,7 +180,7 @@ describe('ObserverHub', () => {
 	});
 
 	it('should support unsubscribe and cleanup with offTask()', () => {
-		const hub = new ObserverHub();
+		const hub = createObserverHub();
 		const hookA = vi.fn();
 		const hookB = vi.fn();
 
@@ -212,15 +212,15 @@ describe('ObserverHub', () => {
 	});
 
 	it('should remove specific event hooks with off(event)', () => {
-		const hub = new ObserverHub();
+		const hub = createObserverHub();
 		const runHook = vi.fn();
 		const injectHook = vi.fn();
 
-		hub.on('run:start', runHook);
+		hub.on('start:requested', runHook);
 		hub.on('artifact:mountSuccess', injectHook);
-		hub.off('run:start');
+		hub.off('start:requested');
 
-		hub.emit(makeEvent('run:start'));
+		hub.emit(makeEvent('start:requested'));
 		hub.emit(makeEvent('artifact:mountSuccess'));
 
 		expect(runHook).not.toHaveBeenCalled();
@@ -228,7 +228,7 @@ describe('ObserverHub', () => {
 	});
 
 	it('should clear all hooks', () => {
-		const hub = new ObserverHub();
+		const hub = createObserverHub();
 		const eventHook = vi.fn();
 		const anyHook = vi.fn();
 
@@ -243,7 +243,7 @@ describe('ObserverHub', () => {
 	});
 
 	it('should report hook existence with hasHooks()', () => {
-		const hub = new ObserverHub();
+		const hub = createObserverHub();
 		expect(hub.hasHooks()).toBe(false);
 		expect(hub.hasHooks('artifact:mountSuccess')).toBe(false);
 
@@ -254,7 +254,7 @@ describe('ObserverHub', () => {
 	});
 
 	it('should consider onAny in hasHooks(event)', () => {
-		const hub = new ObserverHub();
+		const hub = createObserverHub();
 		hub.onAny(() => {});
 
 		expect(hub.hasHooks('register:start')).toBe(true);
@@ -262,7 +262,7 @@ describe('ObserverHub', () => {
 	});
 
 	it('should include task-scoped hooks in hasHooks()', () => {
-		const hub = new ObserverHub();
+		const hub = createObserverHub();
 		hub.onTask('task-1', 'artifact:mountSuccess', () => {});
 
 		expect(hub.hasHooks('artifact:mountSuccess')).toBe(true);
@@ -270,7 +270,7 @@ describe('ObserverHub', () => {
 	});
 
 	it('should support task:statusChange hooks', () => {
-		const hub = new ObserverHub();
+		const hub = createObserverHub();
 		const hook = vi.fn();
 		hub.on('task:statusChange', hook);
 
@@ -286,21 +286,21 @@ describe('ObserverHub', () => {
 			error: vi.fn(),
 			debug: vi.fn()
 		};
-		const hub = new ObserverHub(logger);
+		const hub = createObserverHub(logger);
 		const badHook = vi.fn(() => {
 			throw new Error('boom');
 		});
 		const goodHook = vi.fn();
 
-		hub.on('run:start', badHook);
-		hub.on('run:start', goodHook);
+		hub.on('start:requested', badHook);
+		hub.on('start:requested', goodHook);
 
-		hub.emit(makeEvent('run:start'));
+		hub.emit(makeEvent('start:requested'));
 
 		expect(badHook).toHaveBeenCalledOnce();
 		expect(goodHook).toHaveBeenCalledOnce();
 		expect(logger.error).toHaveBeenCalledWith(
-			expect.stringContaining('Hook execution failed for event "run:start".'),
+			expect.stringContaining('Hook execution failed for event "start:requested".'),
 			expect.any(Error)
 		);
 	});

@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { WatchHandle } from 'vue';
-import { ObserverHub } from '../src/hooks/ObserverHub';
+import { createObserverHub } from '../src/hooks/ObserverHub';
 import type { ObserveEvent } from '../src/hooks/types';
-import { TaskContext } from '../src/Task/TaskContext';
+import type { SignalUnsubscribe } from '../src/signal/types';
+import { createTaskContext, type TaskContext } from '../src/Task/TaskContext';
 import type { ArtifactTask, Task } from '../src/Task/types';
 import {
 	createArtifactTask,
@@ -14,7 +14,7 @@ import {
 describe('TaskContext', () => {
 	let taskContext: TaskContext;
 	beforeEach(() => {
-		taskContext = new TaskContext();
+		taskContext = createTaskContext();
 	});
 	afterEach(() => {
 		vi.restoreAllMocks();
@@ -103,8 +103,8 @@ describe('TaskContext', () => {
 		});
 
 		it('should emit normalized task status change payloads', () => {
-			const observer = new ObserverHub();
-			const observed = new TaskContext((name, payload) => {
+			const observer = createObserverHub();
+			const observed = createTaskContext((name, payload) => {
 				observer.emit({
 					name,
 					ts: Date.now(),
@@ -192,7 +192,7 @@ describe('TaskContext', () => {
 		it('should destroy context of watcher correctly', () => {
 			const spy = vi.fn(() => {});
 
-			const mockWatcher = spy as unknown as WatchHandle;
+			const mockWatcher = spy as unknown as SignalUnsubscribe;
 
 			const context: Task = createArtifactTask({
 				taskId: 'test',
@@ -267,7 +267,7 @@ describe('TaskContext', () => {
 			expect(taskContext.get('test')).toBeUndefined();
 		});
 		it('should only release watchers and listeners when artifactName is missing', () => {
-			const mockWatcher = vi.fn() as unknown as WatchHandle;
+			const mockWatcher = vi.fn() as unknown as SignalUnsubscribe;
 			const mockAbort = vi.fn();
 			const mockUnmount = vi.fn();
 			const mockRemove = vi.fn();
@@ -337,8 +337,8 @@ describe('TaskContext', () => {
 			expect(taskContext.get('destroy-all-b')).toBeUndefined();
 		});
 		it('should destroy all contexts with watchers and listeners correctly', () => {
-			const mockWatcher1 = vi.fn() as unknown as WatchHandle;
-			const mockWatcher2 = vi.fn() as unknown as WatchHandle;
+			const mockWatcher1 = vi.fn() as unknown as SignalUnsubscribe;
+			const mockWatcher2 = vi.fn() as unknown as SignalUnsubscribe;
 			const mockAbort1 = vi.fn();
 			const mockAbort2 = vi.fn();
 
@@ -562,7 +562,7 @@ describe('TaskContext', () => {
 	});
 	describe('releaseWatcher', () => {
 		it('should stop watcher', () => {
-			const mockWatcher = vi.fn() as unknown as WatchHandle;
+			const mockWatcher = vi.fn() as unknown as SignalUnsubscribe;
 			const component = createVueComponent('TestComponent');
 			const context: Task = createArtifactTask({
 				taskId: 'test',
@@ -593,7 +593,7 @@ describe('TaskContext', () => {
 		it('should log error if stopping watcher fails', () => {
 			const mockWatcher = vi.fn().mockImplementation(() => {
 				throw new Error('Stop failed');
-			}) as unknown as WatchHandle;
+			}) as unknown as SignalUnsubscribe;
 			const context: Task = createTask({
 				taskId: 'test',
 				kind: 'component',
@@ -614,7 +614,7 @@ describe('TaskContext', () => {
 	});
 	describe('reset', () => {
 		it('should reset all context properties except taskId', () => {
-			const mockWatcher = vi.fn() as unknown as WatchHandle;
+			const mockWatcher = vi.fn() as unknown as SignalUnsubscribe;
 			const mockAbort = vi.fn();
 			const mockUnmount = vi.fn();
 			const mockRemove = vi.fn();
@@ -690,6 +690,94 @@ describe('TaskContext', () => {
 				isObserver: false
 			});
 		});
+
+		it('should emit resource release events during reset', () => {
+			const observer = createObserverHub();
+			const observed = createTaskContext((name, payload) => {
+				observer.emit({
+					name,
+					ts: Date.now(),
+					...(payload ?? {})
+				});
+			}, undefined);
+			const released: Record<string, ObserveEvent> = {};
+			observer.onAny((event) => {
+				if (
+					event.name === 'signal:watcherReleased' ||
+					event.name === 'resource:listenerReleased' ||
+					event.name === 'artifact:unmounted'
+				) {
+					released[event.name] = event;
+				}
+			});
+
+			const watcher = vi.fn() as unknown as SignalUnsubscribe;
+			const abort = vi.fn();
+			const unmount = vi.fn();
+			const remove = vi.fn();
+			observed.set(
+				'reset-observe',
+				createArtifactTask({
+					taskId: 'reset-observe',
+					taskStatus: 'active',
+					timeout: 5000,
+					artifactName: 'ResetObserveComp',
+					injectAt: '#reset-observe',
+					artifact: createVueComponent('ResetObserveComp'),
+					alive: false,
+					scope: 'local',
+					withEvent: true,
+					listener: {
+						listenAt: '#reset-btn',
+						event: 'click',
+						callback: vi.fn(),
+						controller: { abort } as unknown as AbortController
+					},
+					mountHandle: { unmount },
+					appRoot: { remove } as unknown as HTMLElement,
+					watcher: {
+						watcher,
+						watchSource: { get: () => true, subscribe: () => () => {} }
+					}
+				})
+			);
+
+			observed.reset('reset-observe');
+
+			expect(released['signal:watcherReleased']).toMatchObject({
+				name: 'signal:watcherReleased',
+				taskId: 'reset-observe',
+				kind: 'component',
+				injectAt: '#reset-observe',
+				status: 'idle',
+				meta: {
+					resource: 'watcher'
+				}
+			});
+			expect(released['resource:listenerReleased']).toMatchObject({
+				name: 'resource:listenerReleased',
+				taskId: 'reset-observe',
+				kind: 'component',
+				injectAt: '#reset-observe',
+				status: 'idle',
+				meta: {
+					resource: 'listener',
+					listenerEvent: 'click',
+					listenAt: '#reset-btn'
+				}
+			});
+			expect(released['artifact:unmounted']).toMatchObject({
+				name: 'artifact:unmounted',
+				taskId: 'reset-observe',
+				kind: 'component',
+				injectAt: '#reset-observe',
+				status: 'idle',
+				meta: {
+					resource: 'component',
+					artifactName: 'ResetObserveComp'
+				}
+			});
+		});
 	});
 
 	describe('resetAll', () => {
@@ -700,8 +788,8 @@ describe('TaskContext', () => {
 			const removeB = vi.fn();
 			const abortA = vi.fn();
 			const abortB = vi.fn();
-			const watcherA = vi.fn() as unknown as WatchHandle;
-			const watcherB = vi.fn() as unknown as WatchHandle;
+			const watcherA = vi.fn() as unknown as SignalUnsubscribe;
+			const watcherB = vi.fn() as unknown as SignalUnsubscribe;
 
 			taskContext.set(
 				'a',
@@ -785,8 +873,8 @@ describe('TaskContext', () => {
 
 	describe('observability resource events', () => {
 		it('should emit resource release events from TaskContext', () => {
-			const observer = new ObserverHub();
-			const observed = new TaskContext((name, payload) => {
+			const observer = createObserverHub();
+			const observed = createTaskContext((name, payload) => {
 				observer.emit({
 					name,
 					ts: Date.now(),
@@ -798,7 +886,7 @@ describe('TaskContext', () => {
 				events.push(event.name);
 			});
 
-			const watcher = vi.fn() as unknown as WatchHandle;
+			const watcher = vi.fn() as unknown as SignalUnsubscribe;
 			const abort = vi.fn();
 			const unmount = vi.fn();
 			observed.set(
@@ -838,8 +926,8 @@ describe('TaskContext', () => {
 		});
 
 		it('should emit normalized resource payload fields', () => {
-			const observer = new ObserverHub();
-			const observed = new TaskContext((name, payload) => {
+			const observer = createObserverHub();
+			const observed = createTaskContext((name, payload) => {
 				observer.emit({
 					name,
 					ts: Date.now(),
@@ -858,7 +946,7 @@ describe('TaskContext', () => {
 				}
 			});
 
-			const watcher = vi.fn() as unknown as WatchHandle;
+			const watcher = vi.fn() as unknown as SignalUnsubscribe;
 			const abort = vi.fn();
 			const unmount = vi.fn();
 			observed.set(

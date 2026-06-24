@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
+import { ErrorCode } from '../src/error/ErrorCode';
+import { SignalError } from '../src/error/SignalError';
 import {
 	createActivityStore,
 	observeActivitySignal,
@@ -45,7 +47,12 @@ describe('observeActivitySignal', () => {
 
 		expect(() =>
 			observeActivitySignal({ value: false } as unknown as ActivitySignalSource, listener)
-		).toThrow(TypeError);
+		).toThrow(SignalError);
+		try {
+			observeActivitySignal({ value: false } as unknown as ActivitySignalSource, listener);
+		} catch (error) {
+			expect((error as SignalError).code).toBe(ErrorCode.TASK_SIGNAL_INVALID);
+		}
 		expect(listener).not.toHaveBeenCalled();
 	});
 });

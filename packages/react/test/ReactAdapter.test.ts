@@ -1,4 +1,4 @@
-import { ErrorCode, Injector } from '@makoojs/core';
+import { createMakoo, ErrorCode, inject } from '@makoojs/core';
 import { isValidElement } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ReactAdapterError } from '../src/error';
@@ -12,7 +12,7 @@ const reactDomClientMock = vi.hoisted(() => {
 	};
 	return {
 		root,
-		createRoot: vi.fn(() => root)
+		createRoot: vi.fn((_container: HTMLElement) => root)
 	};
 });
 
@@ -25,10 +25,7 @@ function Badge() {
 }
 
 describe('ReactAdapter', () => {
-	let injector: Injector;
-
 	beforeEach(() => {
-		injector = new Injector().applyAdapter(createReactAdapter());
 		document.body.innerHTML = '';
 	});
 
@@ -43,22 +40,24 @@ describe('ReactAdapter', () => {
 		host.id = 'react-adapter';
 		document.body.appendChild(host);
 		const artifact: ReactMountArtifact = Badge;
-		const result = injector.register('#react-adapter', artifact);
+		const makoo = createMakoo({
+			adapters: [createReactAdapter()]
+		});
 
-		injector.run();
+		const started = makoo.start([inject('#react-adapter', artifact)]);
 
-		const context = injector.getContext();
-		if (!context) throw new Error('context is undefined');
-		expect(context?.getTaskStatus(result.taskId)).toBe('active');
-		expect(context?.get(result.taskId, 'component')?.adapter.name).toBe('react');
-		expect(reactDomClientMock.createRoot).toHaveBeenCalledWith(
-			context.get(result.taskId, 'component')?.appRoot
-		);
+		expect(started.get('Badge@#react-adapter')).toMatchObject({
+			kind: 'component',
+			taskId: 'Badge@#react-adapter'
+		});
+		expect(reactDomClientMock.createRoot).toHaveBeenCalledWith(expect.any(HTMLElement));
+		const mountPoint = reactDomClientMock.createRoot.mock.calls[0]?.[0] as HTMLElement;
+		expect(mountPoint.parentElement).toBe(host);
 		const rendered = reactDomClientMock.root.render.mock.calls[0]?.[0];
 		expect(isValidElement(rendered)).toBe(true);
 		expect(rendered?.type).toBe(artifact);
 		expect(rendered?.props.makoo).toMatchObject({
-			taskId: result.taskId,
+			taskId: 'Badge@#react-adapter',
 			injectAt: '#react-adapter'
 		});
 	});
@@ -68,10 +67,12 @@ describe('ReactAdapter', () => {
 		host.id = 'react-adapter';
 		document.body.appendChild(host);
 		const artifact: ReactMountArtifact = Badge;
-		const result = injector.register('#react-adapter', artifact);
+		const makoo = createMakoo({
+			adapters: [createReactAdapter()]
+		});
 
-		injector.run();
-		injector.destroy(result.taskId);
+		const started = makoo.start([inject('#react-adapter', artifact)]);
+		started.get('Badge@#react-adapter')?.destroy();
 
 		expect(reactDomClientMock.root.unmount).toHaveBeenCalledOnce();
 	});

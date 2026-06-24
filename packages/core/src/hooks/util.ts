@@ -1,9 +1,9 @@
-import type { ObserverHub } from './ObserverHub';
 import type {
 	LifecycleHookMap,
 	ObserveEmitter,
 	ObserveEventName,
 	ObserveHook,
+	ObserverHub,
 	PropagationState
 } from './types';
 

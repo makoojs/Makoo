@@ -1,14 +1,10 @@
-import type { AdapterResolver } from '../adapter/types';
 import { AdapterError } from '../error/AdapterError';
 import { ErrorCode } from '../error/ErrorCode';
-import type { ObserveEmitter } from '../hooks/types';
 import { registerHooks } from '../hooks/util';
-import type { ArtifactOptions, InjectionConfig } from '../Injector/types';
-import { Logger } from '../logger/Logger';
-import type { ILogger } from '../logger/types';
+import type { ArtifactOptions } from '../Makoo/types';
 import { buildRegisterObservePayload } from '../payload/buildRegisterObservePayload';
+import type { MakooRuntimeState } from '../runtime/types';
 import { getArtifactName } from '../util/getArtifactName';
-import type { TaskContext } from './TaskContext';
 import type {
 	_RegisterResult,
 	ArtifactTask,
@@ -18,41 +14,79 @@ import type {
 	TaskListenerFeature
 } from './types';
 
-export class TaskRegister {
-	private readonly taskContext: TaskContext;
-	private readonly injectConfig: InjectionConfig;
-	private readonly logger: ILogger;
-	private readonly emit: ObserveEmitter;
-	private readonly resolveMountAdapter: AdapterResolver;
+export type InjectionDeclaration<TArtifact = unknown> = {
+	injectAt: string;
+	artifact: TArtifact;
+	options?: ArtifactOptions;
+};
 
-	constructor(
-		taskContext: TaskContext,
-		injectConfig: InjectionConfig,
-		emitter: ObserveEmitter,
-		adapterResolver: AdapterResolver,
-		logger?: ILogger
-	) {
-		this.taskContext = taskContext;
-		this.injectConfig = injectConfig;
-		this.emit = emitter;
-		this.logger = logger ?? injectConfig.logger ?? new Logger();
-		this.resolveMountAdapter = adapterResolver;
-	}
+export type ListenerDeclaration = {
+	listenAt: string;
+	event: string;
+	callback: EventListener;
+	activitySignal?: TaskActivitySignal;
+};
 
-	private getTaskId(artifactName: string, selector: string): string {
-		return artifactName ? `${artifactName}@${selector}` : `artifact-${selector}`;
-	}
+export function registerListener(
+	runtime: MakooRuntimeState,
+	declaration: ListenerDeclaration
+): ListenerRegisterResult {
+	const { listenAt, event, callback, activitySignal } = declaration;
+	const id: string = `listener-${listenAt}-${event}`;
 
-	public registerListener(
-		listenAt: string,
-		event: string,
-		callback: EventListener,
-		activitySignal?: TaskActivitySignal
-	): ListenerRegisterResult {
-		const id: string = `listener-${listenAt}-${event}`;
-		this.emit(
-			'register:start',
-			buildRegisterObservePayload('register:start', {
+	runtime.emit(
+		'register:start',
+		buildRegisterObservePayload('register:start', {
+			taskId: id,
+			kind: 'listener',
+			injectAt: listenAt,
+			status: 'idle',
+			listenerEvent: event,
+			listenAt,
+			withEvent: true
+		})
+	);
+
+	try {
+		if (runtime.taskContext.has(id)) {
+			runtime.logger.warn(`Listener "${id}" is already registered, skipping`);
+			runtime.emit(
+				'register:duplicate',
+				buildRegisterObservePayload('register:duplicate', {
+					taskId: id,
+					kind: 'listener',
+					injectAt: listenAt,
+					status: runtime.taskContext.getTaskStatus(id) ?? 'idle',
+					listenerEvent: event
+				})
+			);
+			return {
+				taskId: id,
+				isSuccess: true,
+				isDuplicate: true
+			};
+		}
+
+		const context: Task = {
+			taskId: id,
+			kind: 'listener',
+			taskStatus: 'idle',
+			timeout: runtime.config.timeout,
+			withEvent: true,
+			listenAt,
+			event,
+			callback
+		};
+		if (activitySignal) {
+			context.activitySignal = activitySignal;
+		}
+
+		runtime.taskContext.set(id, context);
+		runtime.taskContext.taskRecords.push({ taskId: id, injectAt: listenAt });
+		runtime.logger.info(`Listener "${id}" registered`);
+		runtime.emit(
+			'register:success',
+			buildRegisterObservePayload('register:success', {
 				taskId: id,
 				kind: 'listener',
 				injectAt: listenAt,
@@ -62,103 +96,136 @@ export class TaskRegister {
 				withEvent: true
 			})
 		);
-		// Standalone method for registering event listeners without component injection
-		try {
-			if (this.taskContext.has(id)) {
-				this.logger.warn(`Listener "${id}" is already registered, skipping`);
-				this.emit(
-					'register:duplicate',
-					buildRegisterObservePayload('register:duplicate', {
-						taskId: id,
-						kind: 'listener',
-						injectAt: listenAt,
-						status: this.taskContext.getTaskStatus(id) ?? 'idle',
-						listenerEvent: event
-					})
-				);
-				return {
-					taskId: id,
-					isSuccess: true
-				};
-			}
 
-			const context: Task = {
+		return {
+			taskId: id,
+			isSuccess: true
+		};
+	} catch (error) {
+		runtime.emit(
+			'register:error',
+			buildRegisterObservePayload('register:error', {
 				taskId: id,
 				kind: 'listener',
-				taskStatus: 'idle',
-				timeout: this.injectConfig.timeout,
-				withEvent: true,
-				listenAt,
-				event,
-				callback
-			};
-			// Retrieve external activity signal
-			if (activitySignal) {
-				context.activitySignal = activitySignal;
-			}
-			this.taskContext.set(id, context);
-			this.taskContext.taskRecords.push({ taskId: id, injectAt: listenAt });
-			this.logger.info(`Listener "${id}" registered`);
-			this.emit(
-				'register:success',
-				buildRegisterObservePayload('register:success', {
-					taskId: id,
-					kind: 'listener',
-					injectAt: listenAt,
-					status: 'idle',
-					listenerEvent: event,
-					listenAt,
-					withEvent: true
-				})
-			);
+				injectAt: listenAt,
+				status: runtime.taskContext.getTaskStatus(id) ?? 'idle',
+				error,
+				listenerEvent: event
+			})
+		);
+		return {
+			taskId: id,
+			isSuccess: false
+		};
+	}
+}
 
-			return {
-				taskId: id,
-				isSuccess: true
-			};
-		} catch (error) {
-			this.emit(
-				'register:error',
-				buildRegisterObservePayload('register:error', {
-					taskId: id,
-					kind: 'listener',
-					injectAt: listenAt,
-					status: this.taskContext.getTaskStatus(id) ?? 'idle',
-					error,
-					listenerEvent: event
-				})
-			);
-			return {
-				taskId: id,
-				isSuccess: false
-			};
-		}
+export function registerInjection<TArtifact>(
+	runtime: MakooRuntimeState,
+	declaration: InjectionDeclaration<TArtifact>
+): _RegisterResult {
+	const { injectAt, artifact, options } = declaration;
+	const artifactName = getArtifactName(artifact);
+	const taskId: string = artifactName ? `${artifactName}@${injectAt}` : `artifact-${injectAt}`;
+	const withEvent = Boolean(options?.on);
+	const listenerEvent = options?.on?.type;
+	const listenAt = options?.on?.listenAt;
+	const alive = options?.alive ?? runtime.config.alive;
+	const scope = options?.scope ?? runtime.config.scope;
+	const timeout = options?.timeout ?? runtime.config.timeout;
+	const mountAdapter = runtime.adapterRegistry.resolve(artifact);
+
+	if (!mountAdapter) {
+		throw new AdapterError(
+			`No adapter found for artifact: ${artifactName}`,
+			[{ path: 'artifact', message: artifactName }],
+			ErrorCode.ADAPTER_NOT_FOUND
+		);
 	}
 
-	public register<TArtifact>(
-		injectAt: string,
-		artifact: TArtifact,
-		option?: ArtifactOptions
-	): _RegisterResult {
-		const artifactName = getArtifactName(artifact);
-		const taskId: string = this.getTaskId(artifactName, injectAt);
-		const withEvent = Boolean(option?.on);
-		const listenerEvent = option?.on?.type;
-		const listenAt = option?.on?.listenAt;
-		const alive = option?.alive ?? this.injectConfig.alive;
-		const scope = option?.scope ?? this.injectConfig.scope;
-		const timeout = option?.timeout ?? this.injectConfig.timeout;
-		const mountAdapter = this.resolveMountAdapter(artifact);
-		if (!mountAdapter) {
-			throw new AdapterError(
-				`No adapter found for artifact: ${artifactName}`,
-				[{ path: 'artifact', message: artifactName }],
-				ErrorCode.ADAPTER_NOT_FOUND
+	runtime.emit(
+		'register:start',
+		buildRegisterObservePayload('register:start', {
+			taskId,
+			kind: 'component',
+			injectAt,
+			status: 'idle',
+			artifactName,
+			listenerEvent,
+			listenAt,
+			alive,
+			scope,
+			timeout,
+			withEvent
+		})
+	);
+
+	try {
+		if (runtime.taskContext.has(taskId)) {
+			runtime.logger.warn(`Task "${taskId}" is already registered, skipping`);
+			runtime.emit(
+				'register:duplicate',
+				buildRegisterObservePayload('register:duplicate', {
+					taskId,
+					kind: 'component',
+					injectAt,
+					status: runtime.taskContext.getTaskStatus(taskId) ?? 'idle',
+					artifactName
+				})
 			);
+			return {
+				taskId,
+				isSuccess: true,
+				isDuplicate: true
+			};
 		}
-		this.emit(
-			'register:start',
-			buildRegisterObservePayload('register:start', {
+
+		const context: ArtifactTask<TArtifact> = {
+			taskId,
+			taskStatus: 'idle',
+			kind: 'component',
+			artifactName,
+			injectAt,
+			artifact,
+			adapter: mountAdapter,
+			withEvent: false,
+			alive,
+			scope,
+			timeout,
+			isObserver: false,
+			hooks: options?.hooks
+		};
+
+		if (options?.on) {
+			const listener: TaskListenerFeature = {
+				listenAt: options.on.listenAt,
+				event: options.on.type,
+				callback: options.on.callback
+			};
+			context.withEvent = true;
+
+			if (options.on.activitySignal) {
+				listener.activitySignal = options.on.activitySignal;
+			}
+
+			context.listener = listener;
+		}
+
+		if (runtime.config.observer && options?.hooks) {
+			registerHooks(runtime.config.observer, options.hooks, taskId);
+		}
+
+		runtime.taskContext.set(taskId, context as Task);
+		runtime.taskContext.taskRecords.push({
+			taskId,
+			injectAt
+		});
+
+		runtime.logger.info(`Task "${taskId}" registered`);
+
+		runtime.emit(
+			'register:success',
+			buildRegisterObservePayload('register:success', {
 				taskId,
 				kind: 'component',
 				injectAt,
@@ -173,105 +240,25 @@ export class TaskRegister {
 			})
 		);
 
-		try {
-			if (this.taskContext.has(taskId)) {
-				this.logger.warn(`Task "${taskId}" is already registered, skipping`);
-				this.emit(
-					'register:duplicate',
-					buildRegisterObservePayload('register:duplicate', {
-						taskId,
-						kind: 'component',
-						injectAt,
-						status: this.taskContext.getTaskStatus(taskId) ?? 'idle',
-						artifactName
-					})
-				);
-				return {
-					taskId,
-					isSuccess: true
-				};
-			}
-
-			const context: ArtifactTask<TArtifact> = {
+		return {
+			taskId,
+			isSuccess: true
+		};
+	} catch (error) {
+		runtime.emit(
+			'register:error',
+			buildRegisterObservePayload('register:error', {
 				taskId,
-				taskStatus: 'idle',
 				kind: 'component',
-				artifactName,
 				injectAt,
-				artifact,
-				adapter: mountAdapter,
-				withEvent: false,
-				alive,
-				scope,
-				timeout,
-				isObserver: false,
-				hooks: option?.hooks
-			};
-
-			if (option?.on) {
-				const listener: TaskListenerFeature = {
-					listenAt: option.on.listenAt,
-					event: option.on.type,
-					callback: option.on.callback
-				};
-				context.withEvent = true;
-
-				if (option.on.activitySignal) {
-					listener.activitySignal = option.on.activitySignal;
-				}
-
-				context.listener = listener;
-			}
-
-			if (this.injectConfig.observer && option?.hooks) {
-				registerHooks(this.injectConfig.observer, option.hooks, taskId);
-			}
-
-			this.taskContext.set(taskId, context as Task);
-			this.taskContext.taskRecords.push({
-				taskId,
-				injectAt
-			});
-
-			this.logger.info(`Task "${taskId}" registered`);
-
-			this.emit(
-				'register:success',
-				buildRegisterObservePayload('register:success', {
-					taskId,
-					kind: 'component',
-					injectAt,
-					status: 'idle',
-					artifactName,
-					listenerEvent,
-					listenAt,
-					alive,
-					scope,
-					timeout,
-					withEvent
-				})
-			);
-
-			return {
-				taskId,
-				isSuccess: true
-			};
-		} catch (error) {
-			this.emit(
-				'register:error',
-				buildRegisterObservePayload('register:error', {
-					taskId,
-					kind: 'component',
-					injectAt,
-					status: this.taskContext.getTaskStatus(taskId) ?? 'idle',
-					error,
-					artifactName
-				})
-			);
-			return {
-				taskId,
-				isSuccess: false
-			};
-		}
+				status: runtime.taskContext.getTaskStatus(taskId) ?? 'idle',
+				error,
+				artifactName
+			})
+		);
+		return {
+			taskId,
+			isSuccess: false
+		};
 	}
 }

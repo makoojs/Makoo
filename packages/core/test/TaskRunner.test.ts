@@ -1,18 +1,26 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { WatchHandle } from 'vue';
 import { createVueAdapter } from '../../vue/src/VueAdapter';
 import { VuePlugin } from '../../vue/src/VuePlugin';
+import { Action } from '../src';
+import { createAdapterRegistry } from '../src/adapter/Adapter';
 import type { MakooContext } from '../src/adapter/types';
+import { AdapterError } from '../src/error/AdapterError';
 import { ErrorCode } from '../src/error/ErrorCode';
 import { TaskError } from '../src/error/TaskError';
-import { ObserverHub } from '../src/hooks/ObserverHub';
+import { createObserverHub } from '../src/hooks/ObserverHub';
 import type { ObserveEvent } from '../src/hooks/types';
 import { createObserveEmitter } from '../src/hooks/util';
-import { Action } from '../src/Injector/types';
 import { Logger } from '../src/logger/Logger';
+import type { MakooRuntimeState } from '../src/runtime/types';
 import { createActivityStore } from '../src/signal/observeActivitySignal';
-import { TaskContext } from '../src/Task/TaskContext';
-import { TaskRunner } from '../src/Task/TaskRunner';
+import type { SignalUnsubscribe } from '../src/signal/types';
+import { createTaskContext, type TaskContext } from '../src/Task/TaskContext';
+import {
+	bindListenerSignal,
+	controlListener,
+	onTargetReady,
+	startTasks
+} from '../src/Task/TaskRunner';
 import type { ArtifactTask, ListenerTask } from '../src/Task/types';
 import { DOMWatcher } from '../src/watcher/DomWatcher';
 import { createArtifactTask, createListenerTask, createVueComponent } from './factory/TaskFactor';
@@ -37,24 +45,33 @@ function createMakooContext(taskId: string, injectAt: string): MakooContext {
 
 describe('TaskRunner', () => {
 	let taskContext: TaskContext;
-	let taskRunner: TaskRunner;
+	let runtime: MakooRuntimeState;
 	let vueAdapter: ReturnType<typeof createVueAdapter>;
 
-	beforeEach(() => {
-		const observer = new ObserverHub();
-		taskContext = new TaskContext();
-		vueAdapter = createVueAdapter();
-		taskRunner = new TaskRunner(
-			taskContext,
-			{
+	function createRuntime(observer = createObserverHub()): MakooRuntimeState {
+		const logger = new Logger();
+
+		return {
+			config: {
 				alive: false,
 				scope: 'local',
 				timeout: 5000,
-				logger: new Logger()
+				logger,
+				observer
 			},
-			createObserveEmitter(observer),
-			createMakooContext
-		);
+			logger,
+			emit: createObserveEmitter(observer),
+			taskContext,
+			adapterRegistry: createAdapterRegistry(),
+			makooContext: createMakooContext
+		};
+	}
+
+	beforeEach(() => {
+		const observer = createObserverHub();
+		taskContext = createTaskContext();
+		vueAdapter = createVueAdapter();
+		runtime = createRuntime(observer);
 		document.body.innerHTML = '';
 		vi.spyOn(console, 'info').mockImplementation(() => {});
 	});
@@ -65,10 +82,14 @@ describe('TaskRunner', () => {
 		document.body.innerHTML = '';
 	});
 
+	function getRegisteredTaskIds(): string[] {
+		return taskContext.taskRecords.map(({ taskId }) => taskId);
+	}
+
 	it('should throw when no task exists on run', () => {
-		expect(() => taskRunner.run()).toThrow(TaskError);
+		expect(() => startTasks(runtime, [])).toThrow(TaskError);
 		try {
-			taskRunner.run();
+			startTasks(runtime, []);
 		} catch (err) {
 			expect(err).toBeInstanceOf(TaskError);
 			const e = err as TaskError;
@@ -79,19 +100,8 @@ describe('TaskRunner', () => {
 	});
 
 	it('should emit normalized run payloads for start, skipped and scheduled', () => {
-		const observer = new ObserverHub();
-		taskRunner = new TaskRunner(
-			taskContext,
-			{
-				alive: false,
-				scope: 'local',
-				timeout: 5000,
-				logger: new Logger(),
-				observer
-			},
-			createObserveEmitter(observer),
-			createMakooContext
-		);
+		const observer = createObserverHub();
+		runtime = createRuntime(observer);
 
 		taskContext.set(
 			'run-idle-task',
@@ -130,15 +140,15 @@ describe('TaskRunner', () => {
 
 		const runEvents: ObserveEvent[] = [];
 		observer.onAny((event) => {
-			if (event.name.startsWith('run:')) {
+			if (event.name.startsWith('start:')) {
 				runEvents.push(event);
 			}
 		});
 
-		taskRunner.run();
+		startTasks(runtime, getRegisteredTaskIds());
 
-		expect(runEvents.find((event) => event.name === 'run:start')).toMatchObject({
-			name: 'run:start',
+		expect(runEvents.find((event) => event.name === 'start:requested')).toMatchObject({
+			name: 'start:requested',
 			meta: {
 				totalTasks: 3,
 				idleTasks: 1,
@@ -149,10 +159,10 @@ describe('TaskRunner', () => {
 
 		expect(
 			runEvents.find(
-				(event) => event.name === 'run:taskSkipped' && event.taskId === 'run-pending-task'
+				(event) => event.name === 'start:taskSkipped' && event.taskId === 'run-pending-task'
 			)
 		).toMatchObject({
-			name: 'run:taskSkipped',
+			name: 'start:taskSkipped',
 			taskId: 'run-pending-task',
 			kind: 'listener',
 			injectAt: '#run-pending',
@@ -164,10 +174,10 @@ describe('TaskRunner', () => {
 
 		expect(
 			runEvents.find(
-				(event) => event.name === 'run:taskSkipped' && event.taskId === 'run-active-task'
+				(event) => event.name === 'start:taskSkipped' && event.taskId === 'run-active-task'
 			)
 		).toMatchObject({
-			name: 'run:taskSkipped',
+			name: 'start:taskSkipped',
 			taskId: 'run-active-task',
 			kind: 'component',
 			injectAt: '#run-active',
@@ -179,10 +189,10 @@ describe('TaskRunner', () => {
 
 		expect(
 			runEvents.find(
-				(event) => event.name === 'run:taskScheduled' && event.taskId === 'run-idle-task'
+				(event) => event.name === 'start:taskScheduled' && event.taskId === 'run-idle-task'
 			)
 		).toMatchObject({
-			name: 'run:taskScheduled',
+			name: 'start:taskScheduled',
 			taskId: 'run-idle-task',
 			kind: 'component',
 			injectAt: '#run-idle',
@@ -206,7 +216,7 @@ describe('TaskRunner', () => {
 
 		const spy = vi.spyOn(DOMWatcher, 'onDomReady').mockReturnValue(() => {});
 
-		taskRunner.run();
+		startTasks(runtime, getRegisteredTaskIds());
 
 		expect(spy).toHaveBeenCalledWith(
 			'#app',
@@ -243,7 +253,7 @@ describe('TaskRunner', () => {
 
 		const spy = vi.spyOn(DOMWatcher, 'onDomReady').mockReturnValue(() => {});
 
-		taskRunner.run();
+		startTasks(runtime, getRegisteredTaskIds());
 
 		expect(spy).not.toHaveBeenCalled();
 	});
@@ -262,7 +272,7 @@ describe('TaskRunner', () => {
 		});
 
 		taskContext.set(task.taskId, task);
-		taskRunner.onTargetReady(host, task.taskId);
+		onTargetReady(runtime, host, task.taskId);
 
 		expect(task.mountHandle).toBeDefined();
 		expect(task.appRoot?.parentElement).toBe(host);
@@ -270,19 +280,8 @@ describe('TaskRunner', () => {
 	});
 
 	it('should emit normalized target ready payload', () => {
-		const observer = new ObserverHub();
-		taskRunner = new TaskRunner(
-			taskContext,
-			{
-				alive: false,
-				scope: 'local',
-				timeout: 5000,
-				logger: new Logger(),
-				observer
-			},
-			createObserveEmitter(observer),
-			createMakooContext
-		);
+		const observer = createObserverHub();
+		runtime = createRuntime(observer);
 
 		taskContext.set(
 			'target-ready-listener',
@@ -303,7 +302,7 @@ describe('TaskRunner', () => {
 			}
 		});
 
-		taskRunner.onTargetReady(document.createElement('div'), 'target-ready-listener');
+		onTargetReady(runtime, document.createElement('div'), 'target-ready-listener');
 
 		expect(targetEvents[0]).toMatchObject({
 			name: 'task:targetReady',
@@ -315,19 +314,8 @@ describe('TaskRunner', () => {
 	});
 
 	it('should emit normalized inject start and success payloads', () => {
-		const observer = new ObserverHub();
-		taskRunner = new TaskRunner(
-			taskContext,
-			{
-				alive: false,
-				scope: 'local',
-				timeout: 5000,
-				logger: new Logger(),
-				observer
-			},
-			createObserveEmitter(observer),
-			createMakooContext
-		);
+		const observer = createObserverHub();
+		runtime = createRuntime(observer);
 
 		const host = document.createElement('div');
 		host.id = 'inject-observe-host';
@@ -363,7 +351,7 @@ describe('TaskRunner', () => {
 			}
 		});
 
-		taskRunner.onTargetReady(host, 'inject-observe-task');
+		onTargetReady(runtime, host, 'inject-observe-task');
 
 		expect(injectEvents[0]).toMatchObject({
 			name: 'artifact:mountStart',
@@ -393,20 +381,54 @@ describe('TaskRunner', () => {
 		});
 	});
 
-	it('should emit normalized inject fail payload', () => {
-		const observer = new ObserverHub();
-		taskRunner = new TaskRunner(
-			taskContext,
-			{
-				alive: false,
-				scope: 'local',
-				timeout: 5000,
-				logger: new Logger(),
-				observer
-			},
-			createObserveEmitter(observer),
-			createMakooContext
+	it('should emit alive observer started when alive component starts after mount', () => {
+		const observer = createObserverHub();
+		runtime = createRuntime(observer);
+
+		const host = document.createElement('div');
+		host.id = 'alive-observe-host';
+		document.body.appendChild(host);
+		vi.spyOn(DOMWatcher, 'onDomAlive').mockReturnValue(() => {});
+
+		taskContext.set(
+			'alive-observe-task',
+			createArtifactTask({
+				taskId: 'alive-observe-task',
+				taskStatus: 'idle',
+				artifactName: 'AliveObserveComp',
+				injectAt: '#alive-observe-host',
+				artifact: createVueComponent('AliveObserveComp'),
+				alive: true,
+				scope: 'global',
+				isObserver: false
+			})
 		);
+
+		const aliveEvents: ObserveEvent[] = [];
+		observer.onAny((event) => {
+			if (event.name.startsWith('alive:')) {
+				aliveEvents.push(event);
+			}
+		});
+
+		onTargetReady(runtime, host, 'alive-observe-task');
+
+		expect(aliveEvents.find((event) => event.name === 'alive:observerStarted')).toMatchObject({
+			name: 'alive:observerStarted',
+			taskId: 'alive-observe-task',
+			kind: 'component',
+			injectAt: '#alive-observe-host',
+			status: 'idle',
+			meta: {
+				scope: 'global',
+				observerMode: 'mounted'
+			}
+		});
+	});
+
+	it('should emit normalized inject fail payload', () => {
+		const observer = createObserverHub();
+		runtime = createRuntime(observer);
 
 		taskContext.set(
 			'inject-fail-task',
@@ -428,7 +450,7 @@ describe('TaskRunner', () => {
 			}
 		});
 
-		taskRunner.onTargetReady(document.createElement('div'), 'inject-fail-task');
+		onTargetReady(runtime, document.createElement('div'), 'inject-fail-task');
 
 		expect(injectEvents[0]).toMatchObject({
 			name: 'artifact:mountStart',
@@ -455,24 +477,15 @@ describe('TaskRunner', () => {
 			}
 		});
 		expect(injectEvents[1].error).toBeDefined();
+		expect(injectEvents[1].error).toBeInstanceOf(TaskError);
+		expect((injectEvents[1].error as TaskError).code).toBe(ErrorCode.TASK_TARGET_DETACHED);
 	});
 
 	it('should emit task:statusChange with status active when a task becomes active', () => {
-		const observer = new ObserverHub();
+		const observer = createObserverHub();
 		const statusEvents: ObserveEvent[] = [];
-		taskContext = new TaskContext(createObserveEmitter(observer), new Logger());
-		taskRunner = new TaskRunner(
-			taskContext,
-			{
-				alive: false,
-				scope: 'local',
-				timeout: 5000,
-				logger: new Logger(),
-				observer
-			},
-			createObserveEmitter(observer),
-			createMakooContext
-		);
+		taskContext = createTaskContext(createObserveEmitter(observer), new Logger());
+		runtime = createRuntime(observer);
 		observer.on('task:statusChange', (event) => {
 			statusEvents.push(event);
 		});
@@ -492,7 +505,7 @@ describe('TaskRunner', () => {
 			})
 		);
 
-		taskRunner.onTargetReady(host, 'active-event-task');
+		onTargetReady(runtime, host, 'active-event-task');
 
 		expect(statusEvents.find((e) => e.status === 'active')).toMatchObject({
 			name: 'task:statusChange',
@@ -512,7 +525,6 @@ describe('TaskRunner', () => {
 		const pluginB = { install: vi.fn() };
 
 		VuePlugin.usePlugins(pluginA, pluginB);
-		const plugins = VuePlugin.getPlugins();
 		taskContext.set(
 			'plugin-task',
 			createArtifactTask({
@@ -525,7 +537,7 @@ describe('TaskRunner', () => {
 			})
 		);
 
-		taskRunner.onTargetReady(host, 'plugin-task');
+		onTargetReady(runtime, host, 'plugin-task');
 
 		expect(pluginA.install).toHaveBeenCalledOnce();
 		expect(pluginB.install).toHaveBeenCalledOnce();
@@ -536,8 +548,7 @@ describe('TaskRunner', () => {
 		host.id = 'route-signal';
 		document.body.appendChild(host);
 
-		const bindSpy = vi.spyOn(taskRunner, 'bindListenerSignal').mockReturnValue(true);
-		const controlSpy = vi.spyOn(taskRunner, 'controlListener').mockReturnValue(true);
+		vi.spyOn(DOMWatcher, 'onDomReady').mockReturnValue(() => {});
 		const signal = createActivityStore(true);
 
 		taskContext.set(
@@ -553,10 +564,9 @@ describe('TaskRunner', () => {
 			})
 		);
 
-		taskRunner.onTargetReady(host, 'route-task');
+		onTargetReady(runtime, host, 'route-task');
 
-		expect(bindSpy).toHaveBeenCalledOnce();
-		expect(controlSpy).not.toHaveBeenCalledWith('route-task', Action.OPEN);
+		expect(taskContext.get<ListenerTask>('route-task')?.watcher).toBeDefined();
 	});
 
 	it('should route to controlListener OPEN without activitySignal on onTargetReady', () => {
@@ -564,7 +574,9 @@ describe('TaskRunner', () => {
 		host.id = 'route-open';
 		document.body.appendChild(host);
 
-		const controlSpy = vi.spyOn(taskRunner, 'controlListener').mockReturnValue(true);
+		const button = document.createElement('button');
+		button.id = 'btn';
+		document.body.appendChild(button);
 
 		taskContext.set(
 			'open-task',
@@ -583,15 +595,19 @@ describe('TaskRunner', () => {
 			})
 		);
 
-		taskRunner.onTargetReady(host, 'open-task');
+		onTargetReady(runtime, host, 'open-task');
 
-		expect(controlSpy).toHaveBeenCalledWith('open-task', Action.OPEN);
+		expect(taskContext.get<ArtifactTask>('open-task')?.listener?.controller).toBeInstanceOf(
+			AbortController
+		);
 	});
 
 	it('should stop previous watcher and respond immediately on bindListenerSignal', () => {
-		const oldWatcher = vi.fn() as unknown as WatchHandle;
+		const oldWatcher = vi.fn() as unknown as SignalUnsubscribe;
 		const source = createActivityStore(false);
-		const controlSpy = vi.spyOn(taskRunner, 'controlListener').mockReturnValue(true);
+		const button = document.createElement('button');
+		button.id = 'btn';
+		document.body.appendChild(button);
 
 		taskContext.set(
 			'signal-task',
@@ -608,12 +624,14 @@ describe('TaskRunner', () => {
 			})
 		);
 
-		taskRunner.bindListenerSignal('signal-task', source);
+		bindListenerSignal(runtime, 'signal-task', source);
 		expect(oldWatcher).toHaveBeenCalledOnce();
-		expect(controlSpy).toHaveBeenCalledWith('signal-task', Action.CLOSE);
+		expect(taskContext.get<ListenerTask>('signal-task')?.controller).toBeUndefined();
 
 		source.set(true);
-		expect(controlSpy).toHaveBeenCalledWith('signal-task', Action.OPEN);
+		expect(taskContext.get<ListenerTask>('signal-task')?.controller).toBeInstanceOf(
+			AbortController
+		);
 	});
 
 	it('should attach and detach event on controlListener open and close', () => {
@@ -633,29 +651,18 @@ describe('TaskRunner', () => {
 			})
 		);
 
-		expect(taskRunner.controlListener('listener-task', Action.OPEN)).toBe(true);
+		expect(controlListener(runtime, 'listener-task', Action.OPEN)).toBe(true);
 		btn.click();
 		expect(callback).toHaveBeenCalledOnce();
 
-		expect(taskRunner.controlListener('listener-task', Action.CLOSE)).toBe(true);
+		expect(controlListener(runtime, 'listener-task', Action.CLOSE)).toBe(true);
 		btn.click();
 		expect(callback).toHaveBeenCalledOnce();
 	});
 
 	it('should emit normalized listener open and close payloads', () => {
-		const observer = new ObserverHub();
-		taskRunner = new TaskRunner(
-			taskContext,
-			{
-				alive: false,
-				scope: 'local',
-				timeout: 5000,
-				logger: new Logger(),
-				observer
-			},
-			createObserveEmitter(observer),
-			createMakooContext
-		);
+		const observer = createObserverHub();
+		runtime = createRuntime(observer);
 
 		const btn = document.createElement('button');
 		btn.id = 'listener-observe-btn';
@@ -680,8 +687,8 @@ describe('TaskRunner', () => {
 			}
 		});
 
-		expect(taskRunner.controlListener('listener-observe-task', Action.OPEN)).toBe(true);
-		expect(taskRunner.controlListener('listener-observe-task', Action.CLOSE)).toBe(true);
+		expect(controlListener(runtime, 'listener-observe-task', Action.OPEN)).toBe(true);
+		expect(controlListener(runtime, 'listener-observe-task', Action.CLOSE)).toBe(true);
 
 		expect(
 			listenerEvents.find(
@@ -719,31 +726,14 @@ describe('TaskRunner', () => {
 	});
 
 	it('should emit normalized listener attachFail payload', () => {
-		const observer = new ObserverHub();
-		taskRunner = new TaskRunner(
-			taskContext,
-			{
-				alive: false,
-				scope: 'local',
-				timeout: 5000,
-				logger: new Logger(),
-				observer
-			},
-			createObserveEmitter(observer),
-			createMakooContext
-		);
-
-		vi.spyOn(
-			taskRunner as unknown as {
-				attachEvent: (
-					id: string,
-					listenAt: string,
-					event: string,
-					callback: EventListener
-				) => AbortController | null;
-			},
-			'attachEvent'
-		).mockImplementation(() => null);
+		const observer = createObserverHub();
+		runtime = createRuntime(observer);
+		const brokenSignal = {
+			get: () => true,
+			subscribe: () => {
+				throw new Error('signal failed');
+			}
+		};
 
 		taskContext.set(
 			'listener-fail-task',
@@ -753,7 +743,8 @@ describe('TaskRunner', () => {
 				withEvent: true,
 				listenAt: '#listener-fail-btn',
 				event: 'mouseenter',
-				callback: vi.fn()
+				callback: vi.fn(),
+				activitySignal: () => brokenSignal
 			})
 		);
 
@@ -764,7 +755,7 @@ describe('TaskRunner', () => {
 			}
 		});
 
-		expect(taskRunner.controlListener('listener-fail-task', Action.OPEN)).toBe(false);
+		onTargetReady(runtime, document.createElement('div'), 'listener-fail-task');
 
 		const failEvent = listenerEvents.find(
 			(event) => event.name === 'listener:attachFail' && event.taskId === 'listener-fail-task'
@@ -774,40 +765,70 @@ describe('TaskRunner', () => {
 			taskId: 'listener-fail-task',
 			kind: 'listener',
 			injectAt: '#listener-fail-btn',
-			status: 'pending',
+			status: 'idle',
 			meta: {
 				listenerEvent: 'mouseenter',
 				listenAt: '#listener-fail-btn'
 			}
 		});
 		expect(failEvent?.error).toBeInstanceOf(Error);
+		expect(failEvent?.error).toBeInstanceOf(TaskError);
+		expect((failEvent?.error as TaskError).code).toBe(ErrorCode.TASK_LISTENER_ATTACH_FAIL);
 	});
 
-	it('should warn and return false when attachEvent fails', () => {
-		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-		const attachEventSpy = vi
-			.spyOn(
-				taskRunner as unknown as { attachEvent: (taskId: string) => void },
-				'attachEvent'
-			)
-			.mockImplementation(() => null);
+	it('should stop previous watcher without emitting watcher release when rebinding listener activity signal', () => {
+		const observer = createObserverHub();
+		taskContext = createTaskContext(createObserveEmitter(observer), new Logger());
+		runtime = createRuntime(observer);
+		const previousWatcher = vi.fn();
+		const source = createActivityStore(true);
+
+		taskContext.set(
+			'rebind-signal-task',
+			createListenerTask({
+				taskId: 'rebind-signal-task',
+				taskStatus: 'active',
+				withEvent: true,
+				listenAt: '#rebind-signal-btn',
+				event: 'click',
+				callback: vi.fn(),
+				watcher: {
+					watcher: previousWatcher,
+					watchSource: createActivityStore(false)
+				}
+			})
+		);
+
+		const resourceEvents: ObserveEvent[] = [];
+		observer.onAny((event) => {
+			if (event.name === 'signal:watcherReleased') {
+				resourceEvents.push(event);
+			}
+		});
+
+		expect(bindListenerSignal(runtime, 'rebind-signal-task', source)).toBe(true);
+
+		expect(previousWatcher).toHaveBeenCalledOnce();
+		expect(resourceEvents).toHaveLength(0);
+	});
+
+	it('should warn and return false when listener config is missing', () => {
+		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 		taskContext.set(
 			'invalid-event',
 			createListenerTask({
 				taskId: 'invalid-event',
 				withEvent: true,
-				listenAt: '#listener-btn',
+				listenAt: '',
 				event: 'invalid-event',
-				callback: vi.fn()
+				callback: undefined
 			})
 		);
 
-		const result = taskRunner.controlListener('invalid-event', Action.OPEN);
+		const result = controlListener(runtime, 'invalid-event', Action.OPEN);
 		expect(result).toBe(false);
-		expect(errorSpy).toHaveBeenCalledWith(
-			expect.stringContaining(
-				'Failed to attach event "invalid-event" for task "invalid-event"'
-			)
+		expect(warnSpy).toHaveBeenCalledWith(
+			expect.stringContaining('Task "invalid-event" has no event binding configured')
 		);
 	});
 
@@ -824,7 +845,7 @@ describe('TaskRunner', () => {
 			})
 		);
 
-		const result = taskRunner.controlListener('invalid-action', 'UNKNOWN' as Action);
+		const result = controlListener(runtime, 'invalid-action', 'UNKNOWN' as Action);
 		expect(result).toBe(false);
 		expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Unknown action type'));
 	});
@@ -850,7 +871,7 @@ describe('TaskRunner', () => {
 			})
 		);
 
-		taskRunner.onTargetReady(host, 'alive-task');
+		onTargetReady(runtime, host, 'alive-task');
 
 		expect(onDomAliveSpy).toHaveBeenCalledOnce();
 		expect(stopHandler).not.toHaveBeenCalled();
@@ -873,7 +894,7 @@ describe('TaskRunner', () => {
 			})
 		);
 
-		taskRunner.onTargetReady(detached, 'detached-task');
+		onTargetReady(runtime, detached, 'detached-task');
 
 		expect(taskContext.get('detached-task')?.taskStatus).toBe('idle');
 		expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('detached from DOM'));
@@ -881,7 +902,7 @@ describe('TaskRunner', () => {
 
 	it('should warn and return when task is missing on onTargetReady', () => {
 		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-		taskRunner.onTargetReady(document.createElement('div'), 'missing-task');
+		onTargetReady(runtime, document.createElement('div'), 'missing-task');
 		expect(errorSpy).toHaveBeenCalledWith(
 			expect.stringContaining('Task "missing-task" not found')
 		);
@@ -901,16 +922,20 @@ describe('TaskRunner', () => {
 			})
 		);
 
-		const controlSpy = vi.spyOn(taskRunner, 'controlListener');
-		taskRunner.onTargetReady(host, 'active-short-circuit');
+		onTargetReady(runtime, host, 'active-short-circuit');
 
-		expect(controlSpy).not.toHaveBeenCalled();
+		expect(taskContext.get('active-short-circuit')?.taskStatus).toBe('active');
 	});
 
 	it('should set task idle when event binding fails on onTargetReady', () => {
 		const host = document.createElement('div');
 		document.body.appendChild(host);
-		vi.spyOn(taskRunner, 'controlListener').mockReturnValue(false);
+		const brokenSignal = {
+			get: () => true,
+			subscribe: () => {
+				throw new Error('signal failed');
+			}
+		};
 
 		taskContext.set(
 			'event-fail-task',
@@ -920,17 +945,19 @@ describe('TaskRunner', () => {
 				withEvent: true,
 				listenAt: '#btn',
 				event: 'click',
-				callback: vi.fn()
+				callback: vi.fn(),
+				activitySignal: () => brokenSignal
 			})
 		);
 
-		taskRunner.onTargetReady(host, 'event-fail-task');
+		onTargetReady(runtime, host, 'event-fail-task');
 		expect(taskContext.get('event-fail-task')?.taskStatus).toBe('idle');
 	});
 
 	it('should return false when bindListenerSignal task is missing', () => {
 		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-		const result = taskRunner.bindListenerSignal(
+		const result = bindListenerSignal(
+			runtime,
 			'missing-signal-task',
 			createActivityStore(true)
 		);
@@ -952,12 +979,12 @@ describe('TaskRunner', () => {
 			})
 		);
 
-		vi.spyOn(taskRunner, 'controlListener').mockImplementation(() => {
+		vi.spyOn(document, 'querySelector').mockImplementation(() => {
 			throw new Error('watch failed');
 		});
 		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-		const result = taskRunner.bindListenerSignal('watch-error-task', createActivityStore(true));
+		const result = bindListenerSignal(runtime, 'watch-error-task', createActivityStore(true));
 
 		expect(result).toBe(false);
 		expect(errorSpy).toHaveBeenCalledWith(
@@ -968,7 +995,7 @@ describe('TaskRunner', () => {
 
 	it('should return false when task is missing in controlListener', () => {
 		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-		const result = taskRunner.controlListener('missing-listener-task', Action.OPEN);
+		const result = controlListener(runtime, 'missing-listener-task', Action.OPEN);
 		expect(result).toBe(false);
 		expect(errorSpy).toHaveBeenCalledWith(
 			expect.stringContaining('unable to manage listener state')
@@ -988,7 +1015,7 @@ describe('TaskRunner', () => {
 			})
 		);
 
-		const result = taskRunner.controlListener('incomplete-listener-task', Action.OPEN);
+		const result = controlListener(runtime, 'incomplete-listener-task', Action.OPEN);
 		expect(result).toBe(false);
 		expect(warnSpy).toHaveBeenCalledWith(
 			expect.stringContaining('has no event binding configured')
@@ -1009,7 +1036,7 @@ describe('TaskRunner', () => {
 			})
 		);
 
-		const result = taskRunner.controlListener('opened-task', Action.OPEN);
+		const result = controlListener(runtime, 'opened-task', Action.OPEN);
 		expect(result).toBe(false);
 		expect(addEventSpy).not.toHaveBeenCalled();
 	});
@@ -1026,7 +1053,7 @@ describe('TaskRunner', () => {
 			})
 		);
 
-		const result = taskRunner.controlListener('closed-task', Action.CLOSE);
+		const result = controlListener(runtime, 'closed-task', Action.CLOSE);
 		expect(result).toBe(false);
 	});
 
@@ -1047,7 +1074,7 @@ describe('TaskRunner', () => {
 			})
 		);
 
-		const result = taskRunner.controlListener('fallback-open-task', Action.OPEN);
+		const result = controlListener(runtime, 'fallback-open-task', Action.OPEN);
 		expect(result).toBe(true);
 		expect(readySpy).toHaveBeenCalledOnce();
 		expect(taskContext.get<ListenerTask>('fallback-open-task')?.controller).toBeInstanceOf(
@@ -1071,7 +1098,7 @@ describe('TaskRunner', () => {
 			})
 		);
 
-		taskRunner.onTargetReady(host, 'broken-task-key');
+		onTargetReady(runtime, host, 'broken-task-key');
 		expect(taskContext.get('broken-task-key')?.taskStatus).toBe('idle');
 		expect(errorSpy).toHaveBeenCalledWith(
 			expect.stringContaining('No artifact found for task')
@@ -1099,12 +1126,13 @@ describe('TaskRunner', () => {
 			})
 		);
 
-		taskRunner.onTargetReady(host, 'mount-error-task');
+		onTargetReady(runtime, host, 'mount-error-task');
 		expect(taskContext.get('mount-error-task')?.taskStatus).toBe('idle');
 		expect(errorSpy).toHaveBeenCalledWith(
 			expect.stringContaining('Artifact mount failed for task'),
-			expect.any(Error)
+			expect.any(AdapterError)
 		);
+		expect((errorSpy.mock.calls[0][1] as AdapterError).code).toBe(ErrorCode.ADAPTER_MOUNT_FAIL);
 	});
 
 	it('should use document root for onDomAlive when scope is global', () => {
@@ -1127,7 +1155,7 @@ describe('TaskRunner', () => {
 			})
 		);
 
-		taskRunner.onTargetReady(host, 'global-alive-task');
+		onTargetReady(runtime, host, 'global-alive-task');
 
 		expect(aliveSpy).toHaveBeenCalledOnce();
 		expect(aliveSpy.mock.calls[0][4]).toBe(document);
@@ -1161,7 +1189,7 @@ describe('TaskRunner', () => {
 			return stopHandler;
 		});
 
-		taskRunner.onTargetReady(host, 'stale-alive-task');
+		onTargetReady(runtime, host, 'stale-alive-task');
 
 		expect(stopHandler).toHaveBeenCalledOnce();
 		expect(taskContext.get<ArtifactTask>('stale-alive-task')?.isObserver).toBe(false);
@@ -1188,7 +1216,7 @@ describe('TaskRunner', () => {
 			})
 		);
 
-		taskRunner.onTargetReady(host, 'cancel-alive-task');
+		onTargetReady(runtime, host, 'cancel-alive-task');
 		const context = taskContext.get<ArtifactTask>('cancel-alive-task');
 
 		expect(onDomAliveSpy).toHaveBeenCalledOnce();
@@ -1228,7 +1256,7 @@ describe('TaskRunner', () => {
 			}
 		);
 
-		taskRunner.onTargetReady(host, 'alive-callback-task');
+		onTargetReady(runtime, host, 'alive-callback-task');
 
 		expect(resetSpy).toHaveBeenCalledWith('alive-callback-task');
 		expect(taskContext.get('alive-callback-task')?.taskStatus).toBe('active');
@@ -1245,7 +1273,7 @@ describe('TaskRunner', () => {
 		);
 		taskContext.taskRecords.push({ taskId: 'timeout-task', injectAt: '#app' });
 
-		taskRunner.run();
+		startTasks(runtime, getRegisteredTaskIds());
 
 		expect(onDomReadySpy).toHaveBeenCalledWith(
 			'#app',

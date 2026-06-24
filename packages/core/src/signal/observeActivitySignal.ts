@@ -1,3 +1,5 @@
+import { ErrorCode } from '../error/ErrorCode';
+import { SignalError } from '../error/SignalError';
 import type {
 	ActivitySignalListener,
 	ActivitySignalSource,
@@ -27,7 +29,11 @@ function normalizeActivitySignal<T>(source: ActivitySignalSource<T>): ActivitySi
 		return source;
 	}
 
-	throw new TypeError('Invalid activity signal source');
+	throw new SignalError(
+		'Invalid activity signal source',
+		[{ path: 'activitySignal', message: 'must provide get() and subscribe() methods' }],
+		ErrorCode.TASK_SIGNAL_INVALID
+	);
 }
 
 export function createActivityStore<T>(initialValue: T): WritableActivitySignalStore<T> {
@@ -64,10 +70,6 @@ export function createActivityStore<T>(initialValue: T): WritableActivitySignalS
 	};
 }
 
-/**
- * @deprecated Passing a `ref`-like source will be removed in 2.0.
- * Use `ActivitySignalStore` instead.
- */
 export function observeActivitySignal<T>(
 	source: ActivitySignalSource<T>,
 	listener: (value: T) => void
