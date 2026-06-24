@@ -33,7 +33,7 @@ export async function loadMeta(root: string): Promise<LoadMetaResult | null> {
 			}
 
 			return {
-				overridePath: fullPath,
+				moduleManifestFile: fullPath,
 				moduleConfig: validateModuleMeta(raw, fullPath),
 				dependencies: collectDependencies(fullPath, {
 					root: path.resolve(root, '..', '..')

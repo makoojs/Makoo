@@ -1,4 +1,3 @@
-import type { ArtifactOptions } from '@makoojs/core';
 import type { Component, RenderInitResult } from '../../../generator/types';
 import { renderInlineValue } from '../util/value';
 
@@ -28,14 +27,14 @@ export function renderRegisterComponent(
 ): RenderInitResult {
 	const useMatchHelper = components.some((item) => item.componentMeta.match);
 	const registerCode = components.map((item) => {
-		const config: ArtifactOptions = {
+		const config = {
 			alive: item.componentMeta.alive,
 			scope: item.componentMeta.scope,
 			timeout: item.componentMeta.timeout,
-			on: item.componentMeta.on,
 			hooks: item.componentMeta.hooks
 		};
-		const register = `${instanceName}.register(${JSON.stringify(item.componentMeta.injectAt)}, ${item.componentName}, ${renderInlineValue(config)});`;
+		const options = renderArtifactOptions(config, item.componentMeta.on);
+		const register = `${instanceName}Tasks.push(inject(${JSON.stringify(item.componentMeta.injectAt)}, ${item.componentName}, ${options}));`;
 
 		if (!item.componentMeta.match) {
 			return register;
@@ -54,4 +53,24 @@ export function renderRegisterComponent(
 			.join('\n'),
 		instanceName
 	};
+}
+
+function renderArtifactOptions(
+	config: Record<string, unknown>,
+	on?: Component['componentMeta']['on']
+): string {
+	const entries = Object.entries(config)
+		.filter(([, value]) => typeof value !== 'undefined')
+		.map(([key, value]) => `${JSON.stringify(key)}:${renderInlineValue(value)}`);
+
+	if (on) {
+		const listenOptions = on.activitySignal
+			? `, { "activitySignal":${renderInlineValue(on.activitySignal)} }`
+			: '';
+		entries.push(
+			`"on":listen(${JSON.stringify(on.listenAt)}, ${JSON.stringify(on.type)}, ${renderInlineValue(on.callback)}${listenOptions})`
+		);
+	}
+
+	return `{${entries.join(',')}}`;
 }

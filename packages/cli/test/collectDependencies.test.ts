@@ -15,7 +15,7 @@ describe('collectDependencies', () => {
 			'injections/hooks.ts': `
 				import { helper } from './nested/helper';
 				import { debounce } from 'lodash';
-				export const hooks = { 'run:start': () => debounce(helper, 10) };
+				export const hooks = { 'start:requested': () => debounce(helper, 10) };
 			`,
 			'injections/nested/helper.ts': `export const helper = () => 'ok';`
 		});
@@ -65,7 +65,7 @@ describe('collectDependencies', () => {
 				const helper = require('./helper');
 				const external = require('lodash');
 				module.exports = {
-					'run:start': () => [helper(), Boolean(external)]
+					'start:requested': () => [helper(), Boolean(external)]
 				};
 			`,
 			'injections/helper.js': `module.exports = () => 'ok';`

@@ -25,7 +25,7 @@ const runtimeDependencyFile = path.join(sourceDir, 'router.ts');
 
 const scanResult: ScannerResult = {
 	config,
-	injector: {
+	injectionDefaults: {
 		alive: false,
 		scope: 'local',
 		timeout: 5000
@@ -35,11 +35,7 @@ const scanResult: ScannerResult = {
 	moduleManifestDependencies: [moduleManifestDependencyFile],
 	runtimeSetupFiles: [runtimeSetupFile],
 	runtimeDependencies: [runtimeDependencyFile],
-	injections: [
-		{ overridePath: moduleManifestFile },
-		{ overridePath: moduleManifestFile },
-		{}
-	] as ResolvedInjectionModule[],
+	injections: [{ moduleManifestFile }, { moduleManifestFile }, {}] as ResolvedInjectionModule[],
 	frameworks: ['React']
 };
 

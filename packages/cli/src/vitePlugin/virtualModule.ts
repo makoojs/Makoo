@@ -20,7 +20,7 @@ export function buildVirtualMouduleCode(scanResult: ScannerResult, isDev: boolea
         );
       });
       import.meta.hot.dispose(()=>{
-        ${generatorResult.instanceName}.destroyAll()
+        ${generatorResult.instanceName}?.destroyAll()
       });
       import.meta.hot.accept();
     }

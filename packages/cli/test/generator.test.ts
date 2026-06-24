@@ -1,19 +1,19 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { resolveConfig, resolveInjection } from '../src/config/resolve';
-import type { ResolvedInjectorConfig } from '../src/config/types';
+import type { ResolvedInjectionDefaults } from '../src/config/types';
 import { generate } from '../src/generator/generator';
 import type { ScannerResult } from '../src/scanner/types';
 
 const root = path.resolve('/project');
-const defaultInjector: ResolvedInjectorConfig = {
+const defaultInjectionDefaults: ResolvedInjectionDefaults = {
 	alive: false,
 	scope: 'local',
 	timeout: 5000
 };
 
 describe('generate', () => {
-	it('generates imports, injector initialization, component registration and injector.run()', () => {
+	it('generates imports, makoo initialization, task declarations and makoo.start()', () => {
 		const config = resolveConfig(
 			{
 				app: {
@@ -23,10 +23,10 @@ describe('generate', () => {
 			},
 			root
 		);
-		const injector: ResolvedInjectorConfig = {
-			...defaultInjector,
+		const injectionDefaults: ResolvedInjectionDefaults = {
+			...defaultInjectionDefaults,
 			hooks: {
-				'run:start': () => 'run-start'
+				'start:requested': () => 'run-start'
 			}
 		};
 		const injection = resolveInjection(
@@ -45,13 +45,13 @@ describe('generate', () => {
 			{
 				root,
 				source: config.source,
-				injector,
+				injectionDefaults,
 				componentPath: path.join(root, 'injections/hello/index.tsx')
 			}
 		);
 		const scanResult: ScannerResult = {
 			config,
-			injector,
+			injectionDefaults,
 			manifestFile: path.join(root, 'injections/manifest.ts'),
 			manifestDependencies: [],
 			moduleManifestDependencies: [],
@@ -63,20 +63,23 @@ describe('generate', () => {
 
 		const result = generate(scanResult);
 
-		expect(result.instanceName).toBe('injector');
+		expect(result.instanceName).toBe('makoo');
 		expect(result.code).toContain(
 			`import Injection_hello_card from '${path.join(root, 'injections/hello/index.tsx').replace(/\\/g, '/')}';`
 		);
-		expect(result.code).toContain("import { Injector } from '@makoojs/core';");
+		expect(result.code).toContain(
+			"import { createMakoo, inject, listen } from '@makoojs/core';"
+		);
 		expect(result.code).toContain('import { createReactAdapter } from "@makoojs/react";');
-		expect(result.code).toContain('const injector = new Injector(');
-		expect(result.code).toContain('"run:start":(() => "run-start")');
-		expect(result.code).toContain('injector.applyAdapter(createReactAdapter());');
-		expect(result.code).toContain('injector.register("#app", Injection_hello_card,');
-		expect(result.code).toContain('"listenAt":"#app"');
-		expect(result.code).toContain('"type":"click"');
-		expect(result.code).toContain('"callback":(() => "clicked")');
-		expect(result.code).toContain('injector.run()');
+		expect(result.code).toContain('let makoo;');
+		expect(result.code).toContain('makoo = createMakoo({');
+		expect(result.code).toContain('defaults:');
+		expect(result.code).toContain('"start:requested":(() => "run-start")');
+		expect(result.code).toContain('adapters: [createReactAdapter()]');
+		expect(result.code).toContain('const makooTasks = [];');
+		expect(result.code).toContain('makooTasks.push(inject("#app", Injection_hello_card,');
+		expect(result.code).toContain('listen("#app", "click", (() => "clicked"))');
+		expect(result.code).toContain('makoo.start(makooTasks)');
 	});
 
 	it('wraps matched modules in runtime URL checks', () => {
@@ -103,7 +106,7 @@ describe('generate', () => {
 			{
 				root,
 				source: config.source,
-				injector: defaultInjector,
+				injectionDefaults: defaultInjectionDefaults,
 				componentPath: path.join(root, 'injections/hello/index.tsx')
 			}
 		);
@@ -117,13 +120,13 @@ describe('generate', () => {
 			{
 				root,
 				source: config.source,
-				injector: defaultInjector,
+				injectionDefaults: defaultInjectionDefaults,
 				componentPath: path.join(root, 'injections/plain/index.tsx')
 			}
 		);
 		const scanResult: ScannerResult = {
 			config,
-			injector: defaultInjector,
+			injectionDefaults: defaultInjectionDefaults,
 			manifestFile: path.join(root, 'injections/manifest.ts'),
 			manifestDependencies: [],
 			moduleManifestDependencies: [],
@@ -139,8 +142,8 @@ describe('generate', () => {
 		expect(result.code).toContain(
 			'if (matchUrl(location.href, {"include":["https://example.com/*"],"exclude":["https://example.com/admin/*"]})) {'
 		);
-		expect(result.code).toContain('injector.register("#app", Injection_matched_card,');
-		expect(result.code).toContain('injector.register("#plain", Injection_plain_card,');
+		expect(result.code).toContain('makooTasks.push(inject("#app", Injection_matched_card,');
+		expect(result.code).toContain('makooTasks.push(inject("#plain", Injection_plain_card,');
 	});
 
 	it('renders runtime setup imports before component imports', () => {
@@ -166,13 +169,13 @@ describe('generate', () => {
 			{
 				root,
 				source: config.source,
-				injector: defaultInjector,
+				injectionDefaults: defaultInjectionDefaults,
 				componentPath: path.join(root, 'injections/panel/App.vue')
 			}
 		);
 		const scanResult: ScannerResult = {
 			config,
-			injector: defaultInjector,
+			injectionDefaults: defaultInjectionDefaults,
 			manifestFile: path.join(root, 'injections/manifest.ts'),
 			manifestDependencies: [],
 			moduleManifestDependencies: [],

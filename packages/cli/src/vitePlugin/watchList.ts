@@ -32,9 +32,9 @@ export function getWatchTargets(scanResult: ScannerResult): WatchTargets {
 
 	// module level manifest file
 	for (const injection of injections) {
-		const override: string | undefined = injection.overridePath;
-		if (override) {
-			files.add(override);
+		const moduleManifestFile: string | undefined = injection.moduleManifestFile;
+		if (moduleManifestFile) {
+			files.add(moduleManifestFile);
 		}
 	}
 

@@ -174,11 +174,11 @@ describe('makoo build integration', () => {
 		expect(header).toMatch(/\/\/ @version\s+0\.0\.7/);
 		expect(header).toMatch(/\/\/ @description\s+build integration test/);
 		expect(header).toMatch(/\/\/ @match\s+https:\/\/example\.com\/\*/);
-		expect(userscript).toContain('new Injector');
 		expect(userscript).toContain('__makooRuntimeSetup');
 		expect(userscript).toContain('createReactAdapter');
-		expect(userscript).toContain('register("body"');
-		expect(userscript).toContain('.run()');
+		expect(userscript).toContain('createMakoo');
+		expect(userscript).toContain('inject("body"');
+		expect(userscript).toContain('makoo.start(makooTasks)');
 		expect(userscript).not.toContain('virtual:makoo/entry');
 	});
 });

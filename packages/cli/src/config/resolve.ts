@@ -11,7 +11,7 @@ import type { MonkeyOption } from 'vite-plugin-monkey';
 import { ComponentNotFoundError, UnknownFrameworkError } from '../error/error';
 import {
 	DEFAULT_FILE_NAME_SUFFIX,
-	DEFAULT_INJECTOR_CONFIG,
+	DEFAULT_INJECTION_DEFAULTS,
 	DEFAULT_MANIFEST_FILE_NAME,
 	DEFAULT_MONKEY_BUILD_CONFIG,
 	DEFAULT_MONKEY_CONFIG,
@@ -25,21 +25,21 @@ import {
 import type {
 	AppConfig,
 	CliConfig,
+	InjectionDefaults,
 	InjectionFramework,
 	InjectionManifest,
 	InjectionMatchConfig,
 	InjectionMatchObject,
 	InjectionModuleConfig,
-	InjectorConfig,
 	MonkeyBuildConfig,
 	MonkeyConfig,
 	MonkeyUserscriptOption,
 	ResolveConfigOptions,
 	ResolvedConfig,
+	ResolvedInjectionDefaults,
 	ResolvedInjectionFramework,
 	ResolvedInjectionManifest,
 	ResolvedInjectionModule,
-	ResolvedInjectorConfig,
 	ResolvedMonkeyBuildConfig,
 	ResolvedMonkeyConfig,
 	ResolvedMonkeyServerConfig,
@@ -216,13 +216,13 @@ export const resolveSourceConfig = (
 	};
 };
 
-export const resolveInjectorConfig = (
-	config: InjectorConfig | undefined
-): ResolvedInjectorConfig => {
+export const resolveInjectionDefaults = (
+	config: InjectionDefaults | undefined
+): ResolvedInjectionDefaults => {
 	return {
-		alive: config?.alive ?? DEFAULT_INJECTOR_CONFIG.alive,
-		scope: config?.scope ?? DEFAULT_INJECTOR_CONFIG.scope,
-		timeout: config?.timeout ?? DEFAULT_INJECTOR_CONFIG.timeout,
+		alive: config?.alive ?? DEFAULT_INJECTION_DEFAULTS.alive,
+		scope: config?.scope ?? DEFAULT_INJECTION_DEFAULTS.scope,
+		timeout: config?.timeout ?? DEFAULT_INJECTION_DEFAULTS.timeout,
 		hooks: config?.hooks
 	};
 };
@@ -305,7 +305,7 @@ export const resolveInjection = (
 ): ResolvedInjectionModule => {
 	const root = resolveProjectRoot(options.root);
 	const source = options.source ?? resolveSourceConfig(undefined, root);
-	const injector = options.injector ?? resolveInjectorConfig(undefined);
+	const injectionDefaults = options.injectionDefaults ?? resolveInjectionDefaults(undefined);
 	const componentBaseDir = options.moduleDir
 		? resolveFileSystemPath(root, options.moduleDir)
 		: source.dir;
@@ -345,8 +345,8 @@ export const resolveInjection = (
 			options.index
 		);
 	const framework = resolveFramework(config.framework, componentPath);
-	const overridePath = options.overridePath
-		? resolveFileSystemPath(root, options.overridePath)
+	const moduleManifestFile = options.moduleManifestFile
+		? resolveFileSystemPath(root, options.moduleManifestFile)
 		: undefined;
 
 	return {
@@ -355,11 +355,11 @@ export const resolveInjection = (
 		componentPath,
 		framework,
 		moduleDir,
-		overridePath,
+		moduleManifestFile,
 		enabled: config.enabled ?? true,
-		alive: config.alive ?? injector.alive,
-		scope: config.scope ?? injector.scope,
-		timeout: config.timeout ?? injector.timeout,
+		alive: config.alive ?? injectionDefaults.alive,
+		scope: config.scope ?? injectionDefaults.scope,
+		timeout: config.timeout ?? injectionDefaults.timeout,
 		match: resolveMatchConfig(config.match)
 	};
 };
@@ -368,7 +368,7 @@ export const resolveInjections = (
 	injections: InjectionManifest | undefined,
 	options: ResolveConfigOptions & {
 		source: ResolvedSourceConfig;
-		injector: ResolvedInjectorConfig;
+		injectionDefaults: ResolvedInjectionDefaults;
 	}
 ): ResolvedInjectionModule[] => {
 	const root = resolveProjectRoot(options.root);
@@ -378,7 +378,7 @@ export const resolveInjections = (
 		resolveInjection(injection, {
 			root,
 			source: options.source,
-			injector: options.injector,
+			injectionDefaults: options.injectionDefaults,
 			componentPath: resolvePath(options.source.dir, injection.component),
 			// `index` was a name of element
 			index

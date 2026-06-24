@@ -6,10 +6,10 @@ export {
 export type {
 	AppConfig,
 	CliConfig,
+	InjectionDefaults,
 	InjectionFramework,
 	InjectionManifest,
 	InjectionModuleConfig,
-	InjectorConfig,
 	MonkeyBuildConfig,
 	MonkeyConfig,
 	MonkeyServerConfig,

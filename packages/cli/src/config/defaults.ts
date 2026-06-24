@@ -1,6 +1,6 @@
 import process from 'node:process';
 import type {
-	InjectorConfig,
+	InjectionDefaults,
 	MonkeyBuildConfig,
 	MonkeyConfig,
 	MonkeyServerConfig,
@@ -49,7 +49,7 @@ export const DEFAULT_RUNTIME_CONFIG: ResolvedRuntimeConfig = {
 	setup: []
 };
 
-export const DEFAULT_INJECTOR_CONFIG: Required<InjectorConfig> = {
+export const DEFAULT_INJECTION_DEFAULTS: Required<InjectionDefaults> = {
 	alive: false,
 	scope: 'local',
 	timeout: 5000,
