@@ -30,11 +30,11 @@
     "dom",
     "typescript"
   ],
-  "scripts": {
-    "changeset": "changeset",
-    "version-packages": "changeset version",
-    "release": "pnpm build && pnpm test && changeset publish",
-    "build": "pnpm build:packages",
+	"scripts": {
+		"changeset": "changeset",
+		"version-packages": "changeset version",
+		"release": "pnpm build && pnpm test && changeset publish",
+		"build": "pnpm build:packages",
     "build:core": "vite build --config packages/core/vite.config.ts",
     "build:vue": "vite build --config packages/vue/vite.config.ts",
     "build:react": "vite build --config packages/react/vite.config.ts",
