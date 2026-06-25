@@ -2,10 +2,10 @@ import { MakooError } from '@makoojs/core';
 import { describe, expect, it } from 'vitest';
 import { ManifestValidationError } from '../src/error/error';
 import {
+	InjectionDefaultsSchema,
 	InjectionManifestSchema,
 	InjectionMatchSchema,
 	InjectionModuleSchema,
-	InjectorConfigSchema,
 	LifecycleHookMapSchema,
 	ObserveEventNameSchema,
 	validateManifest,
@@ -29,7 +29,7 @@ describe('LifecycleHookMapSchema', () => {
 	it('accepts valid hook map with function values', () => {
 		const result = LifecycleHookMapSchema.safeParse({
 			'register:start': () => {},
-			'run:start': [() => {}, () => {}]
+			'start:requested': [() => {}, () => {}]
 		});
 		expect(result.success).toBe(true);
 	});
@@ -53,9 +53,9 @@ describe('LifecycleHookMapSchema', () => {
 	});
 });
 
-describe('InjectorConfigSchema', () => {
-	it('accepts valid injector config with hooks', () => {
-		const result = InjectorConfigSchema.safeParse({
+describe('InjectionDefaultsSchema', () => {
+	it('accepts valid injection defaults with hooks', () => {
+		const result = InjectionDefaultsSchema.safeParse({
 			alive: true,
 			scope: 'global',
 			timeout: 3000,
@@ -66,12 +66,12 @@ describe('InjectorConfigSchema', () => {
 		expect(result.success).toBe(true);
 	});
 
-	it('accepts empty injector config', () => {
-		expect(InjectorConfigSchema.safeParse({}).success).toBe(true);
+	it('accepts empty injection defaults', () => {
+		expect(InjectionDefaultsSchema.safeParse({}).success).toBe(true);
 	});
 
 	it('rejects invalid scope', () => {
-		expect(InjectorConfigSchema.safeParse({ scope: 'invalid' }).success).toBe(false);
+		expect(InjectionDefaultsSchema.safeParse({ scope: 'invalid' }).success).toBe(false);
 	});
 });
 

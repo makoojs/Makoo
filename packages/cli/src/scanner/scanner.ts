@@ -1,7 +1,7 @@
 import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import picomatch from 'picomatch';
-import { resolveInjection, resolveInjections, resolveInjectorConfig } from '../config/resolve';
+import { resolveInjection, resolveInjectionDefaults, resolveInjections } from '../config/resolve';
 import type { ResolvedConfig, ResolvedInjectionModule } from '../config/types';
 import {
 	ManifestNotFoundError,
@@ -32,11 +32,11 @@ export async function scanner(config: ResolvedConfig): Promise<ScannerResult> {
 			runtimeDependencies.add(dependency);
 		}
 	}
-	const resolveInjector = resolveInjectorConfig(loadedManifest.manifest.injectionDefaults);
+	const injectionDefaults = resolveInjectionDefaults(loadedManifest.manifest.injectionDefaults);
 	const resolveManifest = resolveInjections(loadedManifest.manifest, {
 		root: config.root,
 		source: config.source,
-		injector: resolveInjector
+		injectionDefaults
 	});
 
 	const folder = readdirSync(config.source.dir, { withFileTypes: true })
@@ -61,11 +61,11 @@ export async function scanner(config: ResolvedConfig): Promise<ScannerResult> {
 		const resolveMeta = resolveInjection(meta.moduleConfig, {
 			root: config.root,
 			source: config.source,
-			injector: resolveInjector,
+			injectionDefaults,
 			moduleDir: modulePath,
 			componentPath: path.join(modulePath, meta.moduleConfig.component),
 			fallbackName: module,
-			overridePath: meta.overridePath
+			moduleManifestFile: meta.moduleManifestFile
 		});
 		injectionsMeta.push(resolveMeta);
 	}
@@ -84,7 +84,7 @@ export async function scanner(config: ResolvedConfig): Promise<ScannerResult> {
 
 	return {
 		config,
-		injector: resolveInjector,
+		injectionDefaults,
 		manifestFile: loadedManifest.manifestFile,
 		manifestDependencies: [...manifestDependencies].sort(),
 		moduleManifestDependencies: [...moduleManifestDependencies].sort(),

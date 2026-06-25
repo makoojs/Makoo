@@ -1,5 +1,5 @@
 import type {
-	ArtifactOptions,
+	ActivitySignalSource,
 	LifecycleHookMap,
 	InjectionConfig as RuntimeInjectionConfig
 } from '@makoojs/core';
@@ -22,11 +22,11 @@ export type ResolveConfigOptions = {
 export type ResolveInjectionOptions = {
 	root?: string;
 	source?: ResolvedSourceConfig;
-	injector?: ResolvedInjectorConfig;
+	injectionDefaults?: ResolvedInjectionDefaults;
 	moduleId?: string;
 	moduleDir?: string;
 	componentPath?: string;
-	overridePath?: string;
+	moduleManifestFile?: string;
 	fallbackName?: string;
 	index?: number;
 };
@@ -94,11 +94,14 @@ export type ResolvedSourceConfig = {
 	manifest: string; // manifest file basename (no extension), e.g. 'manifest'
 };
 
-export type InjectorConfig = Partial<
+export type InjectionDefaults = Partial<
 	Pick<RuntimeInjectionConfig, 'alive' | 'scope' | 'timeout' | 'hooks'>
 >;
 
-export type ResolvedInjectorConfig = Pick<RuntimeInjectionConfig, 'alive' | 'scope' | 'timeout'> & {
+export type ResolvedInjectionDefaults = Pick<
+	RuntimeInjectionConfig,
+	'alive' | 'scope' | 'timeout'
+> & {
 	hooks?: LifecycleHookMap;
 };
 
@@ -113,7 +116,20 @@ export type InjectionMatchObject = {
 
 export type InjectionMatchConfig = string[] | InjectionMatchObject;
 
-export type InjectionModuleConfig = ArtifactOptions & {
+export type InjectionModuleListenerConfig = {
+	listenAt: string;
+	type: string;
+	callback: EventListener;
+	activitySignal?: () => ActivitySignalSource<boolean>;
+};
+
+export type InjectionModuleOptions = Partial<
+	Pick<RuntimeInjectionConfig, 'alive' | 'scope' | 'timeout' | 'hooks'>
+> & {
+	on?: InjectionModuleListenerConfig;
+};
+
+export type InjectionModuleConfig = InjectionModuleOptions & {
 	name?: string;
 	injectAt: string;
 	component: string;
@@ -124,7 +140,7 @@ export type InjectionModuleConfig = ArtifactOptions & {
 
 export type InjectionManifestRecord = Record<string, Omit<InjectionModuleConfig, 'name'>>;
 export type InjectionManifest = {
-	injectionDefaults?: InjectorConfig;
+	injectionDefaults?: InjectionDefaults;
 	injections: InjectionModuleConfig[] | InjectionManifestRecord;
 };
 
@@ -138,11 +154,11 @@ export type ResolvedInjectionModule = Omit<
 	componentPath: string;
 	framework: ResolvedInjectionFramework;
 	moduleDir: string;
-	overridePath?: string;
+	moduleManifestFile?: string;
 	enabled: boolean;
-	alive: ResolvedInjectorConfig['alive'];
-	scope: ResolvedInjectorConfig['scope'];
-	timeout: ResolvedInjectorConfig['timeout'];
+	alive: ResolvedInjectionDefaults['alive'];
+	scope: ResolvedInjectionDefaults['scope'];
+	timeout: ResolvedInjectionDefaults['timeout'];
 	match?: InjectionMatchObject;
 };
 
@@ -188,6 +204,6 @@ export type ResolvedConfig = {
 	app: AppConfig; // user script meta message  app <=> Tampermonkey header
 	monkey: ResolvedMonkeyConfig; // vite-plugin-monkey build config
 	source: ResolvedSourceConfig; // tell cli where find the injection components
-	runtime: ResolvedRuntimeConfig; // runtime side-effect imports before injector setup
+	runtime: ResolvedRuntimeConfig; // runtime side-effect imports before Makoo setup
 };
 export type MonkeyUserscriptOption = NonNullable<MonkeyOption['userscript']>;

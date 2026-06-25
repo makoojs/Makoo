@@ -1,43 +1,69 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ObserverHub } from '../src/hooks/ObserverHub';
+import { createAdapterRegistry } from '../src/adapter/Adapter';
+import type { MakooContext } from '../src/adapter/types';
+import { createObserverHub } from '../src/hooks/ObserverHub';
 import type { ObserveEvent } from '../src/hooks/types';
 import { createObserveEmitter } from '../src/hooks/util';
 import { Logger } from '../src/logger/Logger';
-import { TaskContext } from '../src/Task/TaskContext';
-import { TaskLifeCycle } from '../src/Task/TaskLifeCycle';
+import type { MakooRuntimeState } from '../src/runtime/types';
+import { createTaskContext, type TaskContext } from '../src/Task/TaskContext';
+import * as lifecycle from '../src/Task/TaskLifeCycle';
 import type { ArtifactTask } from '../src/Task/types';
 import { DOMWatcher } from '../src/watcher/DomWatcher';
 import { createArtifactTask, createListenerTask, createVueComponent } from './factory/TaskFactor';
 
+function createMakooContext(taskId: string, injectAt: string): MakooContext {
+	return {
+		taskId,
+		injectAt,
+		enableAlive: vi.fn(),
+		disableAlive: vi.fn(),
+		reset: vi.fn(),
+		destroy: vi.fn(),
+		on: vi.fn(() => vi.fn()),
+		onTask: vi.fn(() => vi.fn()),
+		off: vi.fn(),
+		offTask: vi.fn(),
+		getLogger: vi.fn(() => new Logger()),
+		bindListenerSignal: vi.fn(() => false),
+		controlListener: vi.fn(() => false)
+	};
+}
+
 describe('TaskLifeCycle', () => {
 	let taskContext: TaskContext;
-	let onTargetReady: ReturnType<
-		typeof vi.fn<(targetElement: HTMLElement, taskId: string) => void>
-	>;
-	let lifeCycle: TaskLifeCycle;
+	let runtime: MakooRuntimeState;
 
-	beforeEach(() => {
-		const observer = new ObserverHub();
-		taskContext = new TaskContext();
-		onTargetReady = vi.fn<(targetElement: HTMLElement, taskId: string) => void>();
-		lifeCycle = new TaskLifeCycle(
-			taskContext,
-			onTargetReady,
-			{
+	function createRuntime(observer = createObserverHub()): MakooRuntimeState {
+		const logger = new Logger();
+
+		return {
+			config: {
 				alive: false,
 				scope: 'local',
 				timeout: 5000,
-				logger: new Logger()
+				logger,
+				observer
 			},
-			createObserveEmitter(observer)
-		);
+			logger,
+			emit: createObserveEmitter(observer),
+			taskContext,
+			adapterRegistry: createAdapterRegistry(),
+			makooContext: createMakooContext
+		};
+	}
+
+	beforeEach(() => {
+		const observer = createObserverHub();
+		taskContext = createTaskContext();
+		runtime = createRuntime(observer);
 		document.body.innerHTML = '';
 		vi.restoreAllMocks();
 	});
 
 	it('should warn for non-existent task on enableAlive', () => {
 		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-		lifeCycle.enableAlive('missing');
+		lifecycle.enableAlive(runtime, 'missing');
 		expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Task "missing" not found'));
 	});
 
@@ -54,7 +80,7 @@ describe('TaskLifeCycle', () => {
 			})
 		);
 
-		lifeCycle.enableAlive('listener-task');
+		lifecycle.enableAlive(runtime, 'listener-task');
 		expect(warnSpy).toHaveBeenCalledWith(
 			expect.stringContaining('enableAlive is not applicable to non-component task')
 		);
@@ -74,7 +100,7 @@ describe('TaskLifeCycle', () => {
 			})
 		);
 
-		lifeCycle.enableAlive('already-alive');
+		lifecycle.enableAlive(runtime, 'already-alive');
 		expect(warnSpy).toHaveBeenCalledWith(
 			expect.stringContaining('already has an active alive observer')
 		);
@@ -107,7 +133,7 @@ describe('TaskLifeCycle', () => {
 		const stopHandler = vi.fn();
 		const aliveSpy = vi.spyOn(DOMWatcher, 'onDomAlive').mockReturnValue(stopHandler);
 
-		lifeCycle.enableAlive('mounted-task');
+		lifecycle.enableAlive(runtime, 'mounted-task');
 
 		expect(aliveSpy).toHaveBeenCalledOnce();
 		expect(taskContext.get<ArtifactTask>('mounted-task')?.disableAlive).toBe(stopHandler);
@@ -139,22 +165,24 @@ describe('TaskLifeCycle', () => {
 		);
 
 		const resetSpy = vi.spyOn(taskContext, 'reset');
+		let aliveObserverCalls = 0;
 		const aliveSpy = vi
 			.spyOn(DOMWatcher, 'onDomAlive')
 			.mockImplementation((_matchedElement, _injectAt, onRemove, onRestore) => {
-				onRemove();
-				onRestore(document.createElement('div'));
+				aliveObserverCalls += 1;
+				if (aliveObserverCalls === 1) {
+					onRemove();
+					onRestore(host);
+				}
 				return () => {};
 			});
 
-		lifeCycle.enableAlive('mounted-callback-task');
+		lifecycle.enableAlive(runtime, 'mounted-callback-task');
 
-		expect(aliveSpy).toHaveBeenCalledOnce();
+		expect(aliveSpy).toHaveBeenCalledTimes(2);
 		expect(resetSpy).toHaveBeenCalledWith('mounted-callback-task');
-		expect(onTargetReady).toHaveBeenCalledWith(
-			expect.any(HTMLElement),
-			'mounted-callback-task'
-		);
+		expect(taskContext.get<ArtifactTask>('mounted-callback-task')?.taskStatus).toBe('active');
+		expect(taskContext.get<ArtifactTask>('mounted-callback-task')?.mountHandle).toBeDefined();
 	});
 
 	it('should warn and return when appRoot is connected but parentElement is missing', () => {
@@ -184,7 +212,7 @@ describe('TaskLifeCycle', () => {
 		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 		const aliveSpy = vi.spyOn(DOMWatcher, 'onDomAlive').mockReturnValue(() => {});
 
-		lifeCycle.enableAlive('shadow-task');
+		lifecycle.enableAlive(runtime, 'shadow-task');
 
 		expect(warnSpy).toHaveBeenCalledWith(
 			expect.stringContaining('host element not found, unable to activate alive observer')
@@ -215,8 +243,8 @@ describe('TaskLifeCycle', () => {
 			})
 		);
 
-		lifeCycle.enableAlive('alive-task');
-		lifeCycle.disableAlive('alive-task');
+		lifecycle.enableAlive(runtime, 'alive-task');
+		lifecycle.disableAlive(runtime, 'alive-task');
 
 		expect(onDomAliveSpy).toHaveBeenCalledOnce();
 		expect(stopHandler).toHaveBeenCalledOnce();
@@ -246,7 +274,7 @@ describe('TaskLifeCycle', () => {
 		const fakeStopHandler = vi.fn();
 		const onDomAliveSpy = vi.spyOn(DOMWatcher, 'onDomAlive').mockReturnValue(fakeStopHandler);
 
-		lifeCycle.enableAlive('alive-task');
+		lifecycle.enableAlive(runtime, 'alive-task');
 
 		expect(onDomAliveSpy).toHaveBeenCalledOnce();
 		expect(fakeStopHandler).not.toHaveBeenCalled();
@@ -278,7 +306,7 @@ describe('TaskLifeCycle', () => {
 		const resetSpy = vi.spyOn(taskContext, 'reset');
 		const readySpy = vi.spyOn(DOMWatcher, 'onDomReady').mockReturnValue(() => {});
 
-		lifeCycle.enableAlive('detached-task');
+		lifecycle.enableAlive(runtime, 'detached-task');
 
 		expect(resetSpy).toHaveBeenCalledWith('detached-task');
 		expect(readySpy).toHaveBeenCalled();
@@ -301,14 +329,16 @@ describe('TaskLifeCycle', () => {
 
 		const readySpy = vi.spyOn(DOMWatcher, 'onDomReady').mockImplementation((_, cb) => {
 			const el = document.createElement('div');
+			document.body.appendChild(el);
 			cb(el);
 			return () => {};
 		});
 
-		lifeCycle.enableAlive('case3-task');
+		lifecycle.enableAlive(runtime, 'case3-task');
 
 		expect(readySpy).toHaveBeenCalledOnce();
-		expect(onTargetReady).toHaveBeenCalledOnce();
+		expect(taskContext.get<ArtifactTask>('case3-task')?.taskStatus).toBe('active');
+		expect(taskContext.get<ArtifactTask>('case3-task')?.mountHandle).toBeDefined();
 		expect(taskContext.get<ArtifactTask>('case3-task')?.isObserver).toBe(true);
 	});
 
@@ -333,14 +363,15 @@ describe('TaskLifeCycle', () => {
 		});
 		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-		lifeCycle.enableAlive('case3-cancelled-task');
+		lifecycle.enableAlive(runtime, 'case3-cancelled-task');
 		taskContext.get<ArtifactTask>('case3-cancelled-task')?.disableAlive?.();
 		readyCallback?.(document.createElement('div'));
 
 		expect(warnSpy).toHaveBeenCalledWith(
 			expect.stringContaining('alive state changed before element appears')
 		);
-		expect(onTargetReady).not.toHaveBeenCalled();
+		expect(taskContext.get<ArtifactTask>('case3-cancelled-task')?.taskStatus).toBe('idle');
+		expect(taskContext.get<ArtifactTask>('case3-cancelled-task')?.mountHandle).toBeUndefined();
 	});
 
 	it('should warn and skip onTargetReady when case 3 callback sees inactive alive state', () => {
@@ -364,7 +395,7 @@ describe('TaskLifeCycle', () => {
 		});
 		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-		lifeCycle.enableAlive('case3-stale-task');
+		lifecycle.enableAlive(runtime, 'case3-stale-task');
 		const context = taskContext.get<ArtifactTask>('case3-stale-task');
 		if (context) {
 			context.alive = false;
@@ -374,7 +405,8 @@ describe('TaskLifeCycle', () => {
 		expect(warnSpy).toHaveBeenCalledWith(
 			expect.stringContaining('alive state changed before element appears')
 		);
-		expect(onTargetReady).not.toHaveBeenCalled();
+		expect(taskContext.get<ArtifactTask>('case3-stale-task')?.taskStatus).toBe('idle');
+		expect(taskContext.get<ArtifactTask>('case3-stale-task')?.mountHandle).toBeUndefined();
 	});
 
 	it('should stop ready observer in enableAlive case 3 cancel path', () => {
@@ -394,7 +426,7 @@ describe('TaskLifeCycle', () => {
 			})
 		);
 
-		lifeCycle.enableAlive('cancel-task');
+		lifecycle.enableAlive(runtime, 'cancel-task');
 		const disable = taskContext.get<ArtifactTask>('cancel-task')?.disableAlive;
 		disable?.();
 
@@ -416,7 +448,7 @@ describe('TaskLifeCycle', () => {
 			})
 		);
 
-		lifeCycle.disableAlive('disable-task');
+		lifecycle.disableAlive(runtime, 'disable-task');
 		const context = taskContext.get<ArtifactTask>('disable-task');
 
 		expect(stop).toHaveBeenCalledOnce();
@@ -427,7 +459,7 @@ describe('TaskLifeCycle', () => {
 
 	it('should warn when disableAlive task is missing', () => {
 		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-		lifeCycle.disableAlive('missing-disable-task');
+		lifecycle.disableAlive(runtime, 'missing-disable-task');
 		expect(errorSpy).toHaveBeenCalledWith(
 			expect.stringContaining('Task "missing-disable-task" not found')
 		);
@@ -446,7 +478,7 @@ describe('TaskLifeCycle', () => {
 			})
 		);
 
-		lifeCycle.disableAlive('not-alive-task');
+		lifecycle.disableAlive(runtime, 'not-alive-task');
 		expect(warnSpy).toHaveBeenCalledWith(
 			expect.stringContaining('has no active alive observer to stop')
 		);
@@ -468,7 +500,7 @@ describe('TaskLifeCycle', () => {
 		const destroySpy = vi.spyOn(taskContext, 'destroy');
 		const resetSpy = vi.spyOn(taskContext, 'reset');
 
-		lifeCycle.destroy('life-task');
+		lifecycle.destroy(runtime, 'life-task');
 		expect(destroySpy).toHaveBeenCalledWith('life-task');
 
 		taskContext.set(
@@ -483,11 +515,12 @@ describe('TaskLifeCycle', () => {
 			})
 		);
 
-		lifeCycle.reset('life-task');
+		lifecycle.reset(runtime, 'life-task');
 		expect(resetSpy).toHaveBeenCalledWith('life-task');
 	});
 
 	it('should disable alive tasks then call destroyAll', () => {
+		const stopAlive = vi.fn();
 		taskContext.set(
 			'alive-destroy-all',
 			createArtifactTask({
@@ -496,7 +529,7 @@ describe('TaskLifeCycle', () => {
 				injectAt: '#app',
 				artifact: createVueComponent('AliveDestroyAllComp'),
 				alive: true,
-				disableAlive: vi.fn()
+				disableAlive: stopAlive
 			})
 		);
 		taskContext.set(
@@ -510,17 +543,16 @@ describe('TaskLifeCycle', () => {
 			})
 		);
 
-		const disableSpy = vi.spyOn(lifeCycle, 'disableAlive');
 		const destroyAllSpy = vi.spyOn(taskContext, 'destroyAll');
 
-		lifeCycle.destroyAll();
+		lifecycle.destroyAll(runtime);
 
-		expect(disableSpy).toHaveBeenCalledTimes(1);
-		expect(disableSpy).toHaveBeenCalledWith('alive-destroy-all');
+		expect(stopAlive).toHaveBeenCalledOnce();
 		expect(destroyAllSpy).toHaveBeenCalledOnce();
 	});
 
 	it('should disable alive tasks then call resetAll', () => {
+		const stopAlive = vi.fn();
 		taskContext.set(
 			'alive-reset-all',
 			createArtifactTask({
@@ -529,7 +561,7 @@ describe('TaskLifeCycle', () => {
 				injectAt: '#app',
 				artifact: createVueComponent('AliveResetAllComp'),
 				alive: true,
-				disableAlive: vi.fn()
+				disableAlive: stopAlive
 			})
 		);
 		taskContext.set(
@@ -543,34 +575,22 @@ describe('TaskLifeCycle', () => {
 			})
 		);
 
-		const disableSpy = vi.spyOn(lifeCycle, 'disableAlive');
 		const resetAllSpy = vi.spyOn(taskContext, 'resetAll');
 
-		lifeCycle.resetAll();
+		lifecycle.resetAll(runtime);
 
-		expect(disableSpy).toHaveBeenCalledTimes(1);
-		expect(disableSpy).toHaveBeenCalledWith('alive-reset-all');
+		expect(stopAlive).toHaveBeenCalledOnce();
 		expect(resetAllSpy).toHaveBeenCalledOnce();
 	});
 
 	it('should emit alive and task lifecycle events', () => {
-		const observer = new ObserverHub();
+		const observer = createObserverHub();
 		const events: string[] = [];
 		observer.onAny((event) => {
 			events.push(event.name);
 		});
 
-		const lifecycleWithObserver = new TaskLifeCycle(
-			taskContext,
-			onTargetReady,
-			{
-				alive: false,
-				scope: 'local',
-				timeout: 5000,
-				logger: new Logger()
-			},
-			createObserveEmitter(observer)
-		);
+		const runtimeWithObserver = createRuntime(observer);
 
 		const host = document.createElement('div');
 		host.id = 'obs-life-host';
@@ -596,10 +616,10 @@ describe('TaskLifeCycle', () => {
 
 		vi.spyOn(DOMWatcher, 'onDomAlive').mockReturnValue(() => {});
 
-		lifecycleWithObserver.enableAlive('obs-life-task');
-		lifecycleWithObserver.disableAlive('obs-life-task');
-		lifecycleWithObserver.reset('obs-life-task');
-		lifecycleWithObserver.destroy('obs-life-task');
+		lifecycle.enableAlive(runtimeWithObserver, 'obs-life-task');
+		lifecycle.disableAlive(runtimeWithObserver, 'obs-life-task');
+		lifecycle.reset(runtimeWithObserver, 'obs-life-task');
+		lifecycle.destroy(runtimeWithObserver, 'obs-life-task');
 
 		expect(events).toContain('alive:enabled');
 		expect(events).toContain('alive:observerStarted');
@@ -612,18 +632,8 @@ describe('TaskLifeCycle', () => {
 	});
 
 	it('should emit normalized alive payloads for mounted observer mode', () => {
-		const observer = new ObserverHub();
-		const lifecycleWithObserver = new TaskLifeCycle(
-			taskContext,
-			onTargetReady,
-			{
-				alive: false,
-				scope: 'local',
-				timeout: 5000,
-				logger: new Logger()
-			},
-			createObserveEmitter(observer)
-		);
+		const observer = createObserverHub();
+		const runtimeWithObserver = createRuntime(observer);
 
 		const host = document.createElement('div');
 		host.id = 'alive-mounted-host';
@@ -657,8 +667,8 @@ describe('TaskLifeCycle', () => {
 			}
 		});
 
-		lifecycleWithObserver.enableAlive('alive-mounted-task');
-		lifecycleWithObserver.disableAlive('alive-mounted-task');
+		lifecycle.enableAlive(runtimeWithObserver, 'alive-mounted-task');
+		lifecycle.disableAlive(runtimeWithObserver, 'alive-mounted-task');
 
 		expect(aliveEvents.find((event) => event.name === 'alive:enabled')).toMatchObject({
 			name: 'alive:enabled',
@@ -718,18 +728,8 @@ describe('TaskLifeCycle', () => {
 	});
 
 	it('should emit normalized alive payloads for await-target observer mode', () => {
-		const observer = new ObserverHub();
-		const lifecycleWithObserver = new TaskLifeCycle(
-			taskContext,
-			onTargetReady,
-			{
-				alive: false,
-				scope: 'local',
-				timeout: 5000,
-				logger: new Logger()
-			},
-			createObserveEmitter(observer)
-		);
+		const observer = createObserverHub();
+		const runtimeWithObserver = createRuntime(observer);
 
 		taskContext.set(
 			'alive-await-task',
@@ -754,8 +754,8 @@ describe('TaskLifeCycle', () => {
 			}
 		});
 
-		lifecycleWithObserver.enableAlive('alive-await-task');
-		lifecycleWithObserver.disableAlive('alive-await-task');
+		lifecycle.enableAlive(runtimeWithObserver, 'alive-await-task');
+		lifecycle.disableAlive(runtimeWithObserver, 'alive-await-task');
 
 		expect(
 			aliveEvents.find(
@@ -806,18 +806,8 @@ describe('TaskLifeCycle', () => {
 	});
 
 	it('should emit normalized task reset and destroy payloads', () => {
-		const observer = new ObserverHub();
-		const lifecycleWithObserver = new TaskLifeCycle(
-			taskContext,
-			onTargetReady,
-			{
-				alive: false,
-				scope: 'local',
-				timeout: 5000,
-				logger: new Logger()
-			},
-			createObserveEmitter(observer)
-		);
+		const observer = createObserverHub();
+		const runtimeWithObserver = createRuntime(observer);
 
 		taskContext.set(
 			'task-life-observe',
@@ -839,7 +829,7 @@ describe('TaskLifeCycle', () => {
 			}
 		});
 
-		lifecycleWithObserver.reset('task-life-observe');
+		lifecycle.reset(runtimeWithObserver, 'task-life-observe');
 
 		expect(
 			taskEvents.find(
@@ -880,7 +870,7 @@ describe('TaskLifeCycle', () => {
 		);
 
 		taskEvents.length = 0;
-		lifecycleWithObserver.destroy('task-life-observe');
+		lifecycle.destroy(runtimeWithObserver, 'task-life-observe');
 
 		expect(
 			taskEvents.find(

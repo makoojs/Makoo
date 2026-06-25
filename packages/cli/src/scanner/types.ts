@@ -2,9 +2,9 @@ import type {
 	InjectionManifest,
 	InjectionModuleConfig,
 	ResolvedConfig,
+	ResolvedInjectionDefaults,
 	ResolvedInjectionFramework,
-	ResolvedInjectionModule,
-	ResolvedInjectorConfig
+	ResolvedInjectionModule
 } from '../config/types';
 
 export type ScannerResult = {
@@ -14,7 +14,7 @@ export type ScannerResult = {
 	runtimeSetupFiles: string[];
 	runtimeDependencies: string[];
 	config: ResolvedConfig;
-	injector: ResolvedInjectorConfig;
+	injectionDefaults: ResolvedInjectionDefaults;
 	injections: ResolvedInjectionModule[];
 	frameworks: ResolvedInjectionFramework[];
 };
@@ -26,7 +26,7 @@ export type LoadManifestResult = {
 };
 
 export type LoadMetaResult = {
-	overridePath: string;
+	moduleManifestFile: string;
 	moduleConfig: InjectionModuleConfig;
 	dependencies: string[];
 };

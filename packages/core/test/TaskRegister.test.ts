@@ -1,37 +1,70 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createVueAdapter } from '../../vue/src/VueAdapter';
+import { listen } from '../src';
+import { createAdapterRegistry } from '../src/adapter/Adapter';
+import type { MakooContext } from '../src/adapter/types';
 import { AdapterError } from '../src/error/AdapterError';
 import { ErrorCode } from '../src/error/ErrorCode';
-import { ObserverHub } from '../src/hooks/ObserverHub';
+import { createObserverHub } from '../src/hooks/ObserverHub';
 import type { ObserveEvent } from '../src/hooks/types';
 import { createObserveEmitter } from '../src/hooks/util';
 import { Logger } from '../src/logger/Logger';
+import type { MakooRuntimeState } from '../src/runtime/types';
 import { createActivityStore } from '../src/signal/observeActivitySignal';
-import { TaskContext } from '../src/Task/TaskContext';
-import { TaskRegister } from '../src/Task/TaskRegister';
+import { createTaskContext, type TaskContext } from '../src/Task/TaskContext';
+import { registerInjection, registerListener } from '../src/Task/TaskRegister';
 import type { ArtifactTask } from '../src/Task/types';
 import { createTask, createVueComponent } from './factory/TaskFactor';
 
+function createMakooContext(taskId: string, injectAt: string): MakooContext {
+	return {
+		taskId,
+		injectAt,
+		enableAlive: vi.fn(),
+		disableAlive: vi.fn(),
+		reset: vi.fn(),
+		destroy: vi.fn(),
+		on: vi.fn(() => vi.fn()),
+		onTask: vi.fn(() => vi.fn()),
+		off: vi.fn(),
+		offTask: vi.fn(),
+		getLogger: vi.fn(() => new Logger()),
+		bindListenerSignal: vi.fn(() => false),
+		controlListener: vi.fn(() => false)
+	};
+}
+
 describe('TaskRegister', () => {
 	let taskContext: TaskContext;
-	let taskRegister: TaskRegister;
+	let runtime: MakooRuntimeState;
 	let vueAdapter: ReturnType<typeof createVueAdapter>;
 
-	beforeEach(() => {
-		const observer = new ObserverHub();
-		taskContext = new TaskContext();
-		vueAdapter = createVueAdapter();
-		taskRegister = new TaskRegister(
-			taskContext,
-			{
+	function createRuntime(observer = createObserverHub()): MakooRuntimeState {
+		const logger = new Logger();
+		const adapterRegistry = createAdapterRegistry();
+		adapterRegistry.use(vueAdapter);
+
+		return {
+			config: {
 				alive: false,
 				scope: 'local',
 				timeout: 5000,
-				logger: new Logger()
+				logger,
+				observer
 			},
-			createObserveEmitter(observer),
-			(artifact) => (vueAdapter.matches(artifact) ? vueAdapter : undefined)
-		);
+			logger,
+			emit: createObserveEmitter(observer),
+			taskContext,
+			adapterRegistry,
+			makooContext: createMakooContext
+		};
+	}
+
+	beforeEach(() => {
+		const observer = createObserverHub();
+		taskContext = createTaskContext();
+		vueAdapter = createVueAdapter();
+		runtime = createRuntime(observer);
 		document.body.innerHTML = '';
 		vi.restoreAllMocks();
 	});
@@ -40,9 +73,11 @@ describe('TaskRegister', () => {
 		function UnknownArtifact() {
 			return null;
 		}
-		expect(() => taskRegister.register('#target', UnknownArtifact)).toThrow(AdapterError);
+		expect(() =>
+			registerInjection(runtime, { injectAt: '#target', artifact: UnknownArtifact })
+		).toThrow(AdapterError);
 		try {
-			taskRegister.register('#target', UnknownArtifact);
+			registerInjection(runtime, { injectAt: '#target', artifact: UnknownArtifact });
 		} catch (err) {
 			const e = err as AdapterError;
 			expect(e.code).toBe(ErrorCode.ADAPTER_NOT_FOUND);
@@ -64,7 +99,7 @@ describe('TaskRegister', () => {
 
 	it('should register a component task with defaults', () => {
 		const component = createVueComponent('CompA');
-		const result = taskRegister.register('#app', component);
+		const result = registerInjection(runtime, { injectAt: '#app', artifact: component });
 		const context = taskContext.get(result.taskId);
 
 		expect(result).toEqual({ taskId: 'CompA@#app', isSuccess: true });
@@ -87,7 +122,11 @@ describe('TaskRegister', () => {
 
 	it('should use option override for alive and scope', () => {
 		const component = createVueComponent('CompB');
-		const result = taskRegister.register('#root', component, { alive: true, scope: 'global' });
+		const result = registerInjection(runtime, {
+			injectAt: '#root',
+			artifact: component,
+			options: { alive: true, scope: 'global' }
+		});
 		const context = taskContext.get(result.taskId);
 
 		expect(context).toMatchObject({
@@ -114,12 +153,11 @@ describe('TaskRegister', () => {
 		const activitySignal = () => signal;
 		const callback = vi.fn();
 
-		const result = taskRegister.register('#event-host', component, {
-			on: {
-				listenAt: '#btn',
-				type: 'click',
-				callback,
-				activitySignal
+		const result = registerInjection(runtime, {
+			injectAt: '#event-host',
+			artifact: component,
+			options: {
+				on: listen('#btn', 'click', callback, { activitySignal })
 			}
 		});
 
@@ -150,9 +188,13 @@ describe('TaskRegister', () => {
 	it('should register an artifact task with a custom adapter', () => {
 		const artifact = createVueComponent('NativeBadge');
 
-		const result = taskRegister.register('#native-host', artifact, {
-			alive: true,
-			scope: 'global'
+		const result = registerInjection(runtime, {
+			injectAt: '#native-host',
+			artifact,
+			options: {
+				alive: true,
+				scope: 'global'
+			}
 		});
 		const context = taskContext.get<ArtifactTask>(result.taskId);
 
@@ -179,25 +221,30 @@ describe('TaskRegister', () => {
 		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 		const component = createVueComponent('CompDup');
-		const first = taskRegister.register('#dup', component);
-		const second = taskRegister.register('#dup', component);
+		const first = registerInjection(runtime, { injectAt: '#dup', artifact: component });
+		const second = registerInjection(runtime, { injectAt: '#dup', artifact: component });
 
-		expect(second).toEqual(first);
+		expect(first).toEqual({ taskId: 'CompDup@#dup', isSuccess: true });
+		expect(second).toEqual({
+			taskId: 'CompDup@#dup',
+			isSuccess: true,
+			isDuplicate: true
+		});
 		expect(taskContext.taskRecords).toHaveLength(1);
 		expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('already registered'));
 	});
 
 	it('should reuse generated anonymous name for same component reference', () => {
 		const anonymous = createVueComponent('anonymous');
-		const a = taskRegister.register('#a', anonymous);
-		const b = taskRegister.register('#b', anonymous);
+		const a = registerInjection(runtime, { injectAt: '#a', artifact: anonymous });
+		const b = registerInjection(runtime, { injectAt: '#b', artifact: anonymous });
 
 		expect(a.taskId.split('@')[0]).toBe(b.taskId.split('@')[0]);
 	});
 
 	it('should register listener-only task', () => {
 		const callback = vi.fn();
-		const result = taskRegister.registerListener('#btn', 'click', callback);
+		const result = registerListener(runtime, { listenAt: '#btn', event: 'click', callback });
 		const context = taskContext.get(result.taskId);
 
 		expect(result).toEqual({ taskId: 'listener-#btn-click', isSuccess: true });
@@ -217,28 +264,30 @@ describe('TaskRegister', () => {
 	it('should return existing result for duplicate listener registration', () => {
 		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-		const first = taskRegister.registerListener('#btn', 'click', vi.fn());
-		const second = taskRegister.registerListener('#btn', 'click', vi.fn());
+		const first = registerListener(runtime, {
+			listenAt: '#btn',
+			event: 'click',
+			callback: vi.fn()
+		});
+		const second = registerListener(runtime, {
+			listenAt: '#btn',
+			event: 'click',
+			callback: vi.fn()
+		});
 
-		expect(second).toEqual(first);
+		expect(first).toEqual({ taskId: 'listener-#btn-click', isSuccess: true });
+		expect(second).toEqual({
+			taskId: 'listener-#btn-click',
+			isSuccess: true,
+			isDuplicate: true
+		});
 		expect(taskContext.taskRecords).toHaveLength(1);
 		expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('already registered'));
 	});
 
 	it('should emit normalized register payloads for component registration', () => {
-		const observer = new ObserverHub();
-		const registerWithObserver = new TaskRegister(
-			taskContext,
-			{
-				alive: false,
-				scope: 'local',
-				timeout: 5000,
-				logger: new Logger(),
-				observer
-			},
-			createObserveEmitter(observer),
-			(artifact) => (vueAdapter.matches(artifact) ? vueAdapter : undefined)
-		);
+		const observer = createObserverHub();
+		const runtimeWithObserver = createRuntime(observer);
 		const events: ObserveEvent[] = [];
 		observer.onAny((event) => {
 			if (event.name.startsWith('register:')) {
@@ -247,8 +296,11 @@ describe('TaskRegister', () => {
 		});
 
 		const component = createVueComponent('ObsComp');
-		const first = registerWithObserver.register('#obs', component);
-		registerWithObserver.register('#obs', component);
+		const first = registerInjection(runtimeWithObserver, {
+			injectAt: '#obs',
+			artifact: component
+		});
+		registerInjection(runtimeWithObserver, { injectAt: '#obs', artifact: component });
 
 		expect(events).toHaveLength(4);
 
@@ -319,19 +371,8 @@ describe('TaskRegister', () => {
 	});
 
 	it('should emit normalized register payloads for listener registration', () => {
-		const observer = new ObserverHub();
-		const registerWithObserver = new TaskRegister(
-			taskContext,
-			{
-				alive: false,
-				scope: 'local',
-				timeout: 5000,
-				logger: new Logger(),
-				observer
-			},
-			createObserveEmitter(observer),
-			(artifact) => (vueAdapter.matches(artifact) ? vueAdapter : undefined)
-		);
+		const observer = createObserverHub();
+		const runtimeWithObserver = createRuntime(observer);
 		const events: ObserveEvent[] = [];
 		observer.onAny((event) => {
 			if (event.name.startsWith('register:')) {
@@ -339,8 +380,16 @@ describe('TaskRegister', () => {
 			}
 		});
 
-		const first = registerWithObserver.registerListener('#btn-obs', 'click', vi.fn());
-		registerWithObserver.registerListener('#btn-obs', 'click', vi.fn());
+		const first = registerListener(runtimeWithObserver, {
+			listenAt: '#btn-obs',
+			event: 'click',
+			callback: vi.fn()
+		});
+		registerListener(runtimeWithObserver, {
+			listenAt: '#btn-obs',
+			event: 'click',
+			callback: vi.fn()
+		});
 
 		expect(events).toHaveLength(4);
 
@@ -411,19 +460,8 @@ describe('TaskRegister', () => {
 	});
 
 	it('should emit register:error with normalized payload', () => {
-		const observer = new ObserverHub();
-		const registerWithObserver = new TaskRegister(
-			taskContext,
-			{
-				alive: false,
-				scope: 'local',
-				timeout: 5000,
-				logger: new Logger(),
-				observer
-			},
-			createObserveEmitter(observer),
-			(artifact) => (vueAdapter.matches(artifact) ? vueAdapter : undefined)
-		);
+		const observer = createObserverHub();
+		const runtimeWithObserver = createRuntime(observer);
 
 		vi.spyOn(taskContext, 'set').mockImplementation((_k, _v) => {
 			throw new Error('set error');
@@ -436,7 +474,10 @@ describe('TaskRegister', () => {
 			}
 		});
 
-		registerWithObserver.register('#obs', createVueComponent('ObsComp'));
+		registerInjection(runtimeWithObserver, {
+			injectAt: '#obs',
+			artifact: createVueComponent('ObsComp')
+		});
 
 		const errorEvent = events.find((event) => event.name === 'register:error');
 		expect(errorEvent).toBeDefined();
@@ -454,19 +495,8 @@ describe('TaskRegister', () => {
 	});
 
 	it('should emit register:error with listener identity payload', () => {
-		const observer = new ObserverHub();
-		const registerWithObserver = new TaskRegister(
-			taskContext,
-			{
-				alive: false,
-				scope: 'local',
-				timeout: 5000,
-				logger: new Logger(),
-				observer
-			},
-			createObserveEmitter(observer),
-			(artifact) => (vueAdapter.matches(artifact) ? vueAdapter : undefined)
-		);
+		const observer = createObserverHub();
+		const runtimeWithObserver = createRuntime(observer);
 
 		vi.spyOn(taskContext, 'set').mockImplementation((_k, _v) => {
 			throw new Error('set error');
@@ -479,7 +509,11 @@ describe('TaskRegister', () => {
 			}
 		});
 
-		registerWithObserver.registerListener('#btn-obs', 'click', vi.fn());
+		registerListener(runtimeWithObserver, {
+			listenAt: '#btn-obs',
+			event: 'click',
+			callback: vi.fn()
+		});
 
 		const errorEvent = events.find((event) => event.name === 'register:error');
 		expect(errorEvent).toBeDefined();

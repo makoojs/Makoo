@@ -1,13 +1,13 @@
 # @makoojs/vue
 
-`@makoojs/vue` is Makoo's Vue mount adapter. It connects Vue components to the `@makoojs/core` adapter protocol, allowing `Injector` to create Vue apps after target DOM nodes appear, mount components, and unmount them correctly when tasks are destroyed or reset.
+`@makoojs/vue` is Makoo's Vue mount adapter. It connects Vue components to the `@makoojs/core` adapter protocol, allowing the Makoo runtime to create Vue apps after target DOM nodes appear, mount components, and unmount them correctly when tasks are destroyed or reset.
 
 Most Makoo projects use this package through `@makoojs/cli`: when a manifest module is recognized as Vue, the CLI imports the Vue adapter in the generated virtual entry. You only need to call `createVueAdapter()` explicitly when wiring a runtime manually with `@makoojs/core`.
 
 ## Use Cases
 
 - Inject Vue components in a Makoo project.
-- Let the `@makoojs/core` `Injector` recognize and mount Vue artifacts.
+- Let the `@makoojs/core` runtime recognize and mount Vue artifacts.
 - Register the Vue adapter manually when using the core runtime directly.
 - Read the Makoo task context `makoo` inside Vue components.
 - Register shared plugins for Vue apps created by Makoo.
@@ -71,25 +71,27 @@ function handleClick() {
 | `enableAlive()` / `disableAlive()` | Control alive reinjection for the current task |
 | `reset()` / `destroy()` | Reset or destroy the current task |
 | `on()` / `onTask()` | Listen to lifecycle observation events |
-| `getLogger()` | Get the current injector logger |
+| `getLogger()` | Get the current runtime logger |
 
 ## Direct Usage With @makoojs/core
 
-If you are not using `@makoojs/cli`, register the Vue adapter manually on `Injector`.
+If you are not using `@makoojs/cli`, pass the Vue adapter to `createMakoo()`.
 
 ```ts
-import { Injector } from '@makoojs/core';
+import { createMakoo, inject } from '@makoojs/core';
 import { createVueAdapter } from '@makoojs/vue';
 import Panel from './Panel.vue';
 
-const injector = new Injector({
-	alive: true,
-	scope: 'local',
-	timeout: 5000
-}).applyAdapter(createVueAdapter());
+const makoo = createMakoo({
+	defaults: {
+		alive: true,
+		scope: 'local',
+		timeout: 5000
+	},
+	adapters: [createVueAdapter()]
+});
 
-injector.register('#app', Panel);
-injector.run();
+makoo.start([inject('#app', Panel)]);
 ```
 
 The adapter returned by `createVueAdapter()` will:
@@ -187,7 +189,7 @@ The complete API reference will live in a separate documentation site later.
 | Package | Responsibility |
 | --- | --- |
 | `@makoojs/vue` | Vue mount adapter and Vue plugin registration helper |
-| `@makoojs/core` | Provides `Injector`, the adapter protocol, and Makoo runtime context |
+| `@makoojs/core` | Provides the runtime API, adapter protocol, and Makoo runtime context |
 | `@makoojs/cli` | Scans manifests, generates the virtual entry, and imports the Vue adapter when needed |
 
 `@makoojs/vue` is not a complete runtime by itself. It works with `@makoojs/core`'s injection scheduler, or with runtime code generated automatically by `@makoojs/cli`.

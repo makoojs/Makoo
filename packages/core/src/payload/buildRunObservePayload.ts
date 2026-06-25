@@ -3,9 +3,9 @@ import type { TaskKind, TaskStatus } from '../Task/types';
 import { buildObservePayload, type ObservePayloadBuilderMap } from './buildObservePayload';
 
 type RunObserveEventName =
-	| 'run:start'
-	| 'run:taskScheduled'
-	| 'run:taskSkipped'
+	| 'start:requested'
+	| 'start:taskScheduled'
+	| 'start:taskSkipped'
 	| 'task:targetReady';
 
 type RunObserveTaskBase = {
@@ -16,18 +16,18 @@ type RunObserveTaskBase = {
 };
 
 type RunObserveInputByName = {
-	'run:start': {
+	'start:requested': {
 		totalTasks: number;
 		idleTasks: number;
 		pendingTasks: number;
 		activeTasks: number;
 	};
-	'run:taskScheduled': Omit<RunObserveTaskBase, 'status'> & {
+	'start:taskScheduled': Omit<RunObserveTaskBase, 'status'> & {
 		status: 'pending';
 		preStatus: 'idle';
 		timeout: number;
 	};
-	'run:taskSkipped': RunObserveTaskBase & {
+	'start:taskSkipped': RunObserveTaskBase & {
 		status: 'active' | 'pending';
 		skipReason: 'already-active' | 'already-pending';
 	};
@@ -35,7 +35,7 @@ type RunObserveInputByName = {
 };
 
 type RunObservePayloadByName = {
-	'run:start': Omit<ObserveEvent, 'name' | 'ts'> & {
+	'start:requested': Omit<ObserveEvent, 'name' | 'ts'> & {
 		meta: {
 			totalTasks: number;
 			idleTasks: number;
@@ -43,7 +43,7 @@ type RunObservePayloadByName = {
 			activeTasks: number;
 		};
 	};
-	'run:taskScheduled': Omit<ObserveEvent, 'name' | 'ts'> & {
+	'start:taskScheduled': Omit<ObserveEvent, 'name' | 'ts'> & {
 		kind: TaskKind;
 		status: 'pending';
 		preStatus: 'idle';
@@ -51,7 +51,7 @@ type RunObservePayloadByName = {
 			timeout: number;
 		};
 	};
-	'run:taskSkipped': Omit<ObserveEvent, 'name' | 'ts'> & {
+	'start:taskSkipped': Omit<ObserveEvent, 'name' | 'ts'> & {
 		kind: TaskKind;
 		status: 'active' | 'pending';
 		meta: {
@@ -64,7 +64,7 @@ type RunObservePayloadByName = {
 };
 
 const runObservePayloadBuilders = {
-	'run:start': (input) => ({
+	'start:requested': (input) => ({
 		meta: {
 			totalTasks: input.totalTasks,
 			idleTasks: input.idleTasks,
@@ -72,7 +72,7 @@ const runObservePayloadBuilders = {
 			activeTasks: input.activeTasks
 		}
 	}),
-	'run:taskScheduled': (input) => ({
+	'start:taskScheduled': (input) => ({
 		taskId: input.taskId,
 		kind: input.kind,
 		injectAt: input.injectAt,
@@ -82,7 +82,7 @@ const runObservePayloadBuilders = {
 			timeout: input.timeout
 		}
 	}),
-	'run:taskSkipped': (input) => ({
+	'start:taskSkipped': (input) => ({
 		taskId: input.taskId,
 		kind: input.kind,
 		injectAt: input.injectAt,

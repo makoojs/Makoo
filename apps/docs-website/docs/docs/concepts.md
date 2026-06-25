@@ -2,7 +2,7 @@
 
 Makoo has a small set of concepts, but they work together as one pipeline: project config
 describes how Makoo should scan and build, the manifest describes what should be injected,
-the generated runtime registers those injections, and the injector mounts them when the
+the generated runtime declares those injections, and the Makoo runtime starts them when the
 target page is ready.
 
 ```txt
@@ -30,11 +30,6 @@ makoo({
 	source: {
 		include: ['*']
 	},
-	injector: {
-		alive: false,
-		scope: 'local',
-		timeout: 5000
-	},
 	monkey: {
 		userscript: {
 			match: ['https://example.com/*']
@@ -47,7 +42,6 @@ Use this file for project-wide behavior:
 
 - `app` describes the Makoo app metadata.
 - `source` controls which injection modules Makoo scans.
-- `injector` sets runtime defaults shared by modules.
 - `monkey` is passed to `vite-plugin-monkey` for userscript metadata, dev server behavior,
   and build behavior.
 
@@ -63,6 +57,11 @@ The manifest is the declaration of what gets injected. The top-level
 import { defineInjections } from '@makoojs/cli';
 
 export default defineInjections({
+	injectionDefaults: {
+		alive: false,
+		scope: 'local',
+		timeout: 5000
+	},
 	injections: {
 		header: {
 			injectAt: '#header',
@@ -86,8 +85,8 @@ Use the manifest for module-level behavior:
 - which DOM selector each module waits for
 - whether a module is enabled
 - module-level URL matching
-- module-level runtime options such as `alive`, `scope`, `timeout`, `hooks`, and event
-  binding
+- shared `injectionDefaults` and module-level runtime options such as `alive`, `scope`,
+  `timeout`, `hooks`, and event binding
 
 In short: `vite.config.ts` configures the project, while `injections/manifest.ts` configures
 the injection modules.
@@ -138,14 +137,14 @@ defineInjections({
 });
 ```
 
-## Injector
+## Makoo Runtime
 
-`Injector` is Makoo's runtime scheduler. It is responsible for turning resolved modules into
-running tasks.
+The Makoo runtime is the scheduler created by the generated entry. It turns resolved
+modules into task declarations and starts them through `createMakoo().start(...)`.
 
-At runtime, the injector:
+At runtime, Makoo:
 
-- registers component tasks and listener tasks
+- declares component tasks and listener tasks with `inject()` and `listen()`
 - waits for each `injectAt` selector to appear
 - marks tasks as `idle`, `pending`, or `active`
 - asks the matching adapter to mount the component
@@ -153,9 +152,10 @@ At runtime, the injector:
 - resets or destroys tasks when needed
 - enables reinjection when `alive` is active
 
-Most users do not instantiate `Injector` manually in a normal Makoo project. The Vite plugin
-generates the runtime entry that creates and runs it. You interact with the injector through
-manifest options and, when needed, the `makoo` context passed through the adapter.
+Most users do not create the runtime manually in a normal Makoo project. The Vite plugin
+generates the runtime entry, imports the required adapters, builds a task list, and calls
+`makoo.start(makooTasks)`. You interact with that runtime through manifest options and,
+when needed, the `makoo` context passed through the adapter.
 
 ## Task
 
@@ -177,7 +177,7 @@ coordinate DOM readiness, mount behavior, listeners, and cleanup.
 ## Adapter
 
 An adapter is the bridge between Makoo's runtime and a component framework. Makoo does not
-hard-code Vue or React mounting inside the injector. Instead, an adapter says:
+hard-code Vue or React mounting inside the runtime scheduler. Instead, an adapter says:
 
 - whether it can handle a component artifact
 - how to mount that artifact into a Makoo-created mount point
@@ -212,15 +212,15 @@ Hooks let you observe Makoo's lifecycle events. They are useful for logging, deb
 analytics, or coordinating behavior around registration, run, mount, listener, and DOM
 events.
 
-Hooks can be configured globally through the project injector config, or per module through
+Hooks can be configured through manifest-level `injectionDefaults`, or per module through
 the manifest:
 
 ```ts
 defineInjections({
-	globalInjector: {
+	injectionDefaults: {
 		hooks: {
-			'run:start': (payload) => {
-				console.log('[makoo] run started', payload);
+			'start:requested': (payload) => {
+				console.log('[makoo] start requested', payload);
 			}
 		}
 	},
@@ -247,9 +247,9 @@ The main boundary to remember is:
 
 | Layer | File | Responsibility |
 | --- | --- | --- |
-| Project config | `vite.config.ts` | Build, scan, global defaults, userscript metadata |
+| Project config | `vite.config.ts` | Build, scan, setup imports, userscript metadata |
 | Injection config | `injections/manifest.ts` | Modules, targets, components, module behavior |
-| Runtime | Generated entry and `Injector` | Register, wait, mount, reinject, cleanup |
+| Runtime | Generated entry and Makoo runtime | Declare, start, wait, mount, reinject, cleanup |
 | Framework bridge | Vue or React adapter | Mount and unmount framework components |
 
 This separation is what makes Makoo a framework layer rather than only a helper library. It

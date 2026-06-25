@@ -182,11 +182,18 @@ This priority only applies to default field inheritance within a module configur
 
 ## How To Choose The React / Vue Adapter
 
-Most Makoo projects do not need manual adapter registration. The CLI generates imports from the final injection list's `framework` values and calls:
+Most Makoo projects do not need manual adapter registration. The CLI generates imports from the final injection list's `framework` values, passes those adapters into `createMakoo(...)`, declares tasks with `inject(...)` / `listen(...)`, and starts the generated task list.
 
 ```ts
-injector.applyAdapter(createVueAdapter());
-injector.applyAdapter(createReactAdapter());
+const makoo = createMakoo({
+	adapters: [createVueAdapter(), createReactAdapter()]
+});
+
+const makooTasks = [
+	inject('.profile', ProfileCard)
+];
+
+makoo.start(makooTasks);
 ```
 
 Selection rules:

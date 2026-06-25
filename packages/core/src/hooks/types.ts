@@ -4,9 +4,9 @@ export const OBSERVE_EVENT_NAMES = [
 	'register:success',
 	'register:duplicate',
 	'register:error',
-	'run:start',
-	'run:taskScheduled',
-	'run:taskSkipped',
+	'start:requested',
+	'start:taskScheduled',
+	'start:taskSkipped',
 	'artifact:mountStart',
 	'artifact:mountSuccess',
 	'artifact:mountFail',
@@ -31,6 +31,19 @@ export const OBSERVE_EVENT_NAMES = [
 	'dom:targetRemoved',
 	'dom:targetRestored'
 ] as const;
+
+export type ObserverHub = {
+	on(event: ObserveEventName, hook: ObserveHook): () => void;
+	onTask(taskId: string, event: ObserveEventName, hook: ObserveHook): () => void;
+	onAny(hook: ObserveHook): () => void;
+	off(event: ObserveEventName, hook?: ObserveHook): void;
+	offTask(taskId: string, event?: ObserveEventName, hook?: ObserveHook): void;
+	offAny(hook: ObserveHook): void;
+	clear(): void;
+	hasHooks(event?: ObserveEventName): boolean;
+	emit(event: ObserveEvent): void;
+	emitOnTask(taskId: string, event: ObserveEvent): void;
+};
 
 export type ObserveEventName = (typeof OBSERVE_EVENT_NAMES)[number];
 

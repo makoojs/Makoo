@@ -115,7 +115,8 @@ describe('makooMonkey dev HMR', () => {
 
 			const load = getHook(plugin.load);
 			const initialCode = await load?.call({}, RESOLVED_ID, {});
-			expect(String(initialCode)).toContain('register("#old"');
+			expect(String(initialCode)).toContain('makooTasks.push(inject("#old"');
+			expect(String(initialCode)).toContain('makoo.start(makooTasks)');
 
 			const manifestFile = path.join(root, 'injections/manifest.ts');
 			await writeFile(
@@ -131,7 +132,7 @@ describe('makooMonkey dev HMR', () => {
 			await dev.emit('change', manifestFile);
 
 			const updatedCode = await load?.call({} as never, RESOLVED_ID, {} as never);
-			expect(String(updatedCode)).toContain('register("#new"');
+			expect(String(updatedCode)).toContain('makooTasks.push(inject("#new"');
 			expect(dev.invalidateModule).toHaveBeenCalledTimes(1);
 			expect(dev.hotSend).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -171,7 +172,8 @@ describe('makooMonkey dev HMR', () => {
 
 			const load = getHook(plugin.load);
 			const initialCode = await load?.call({} as never, RESOLVED_ID, {} as never);
-			expect(String(initialCode)).toContain('register("#old"');
+			expect(String(initialCode)).toContain('makooTasks.push(inject("#old"');
+			expect(String(initialCode)).toContain('makoo.start(makooTasks)');
 
 			const manifestFile = path.join(root, 'injections/manifest.ts');
 			await writeFile(
@@ -199,7 +201,8 @@ describe('makooMonkey dev HMR', () => {
 			const currentCode = await load?.call({} as never, RESOLVED_ID, {} as never);
 
 			expect(result).toEqual([componentModule]);
-			expect(String(currentCode)).toContain('register("#old"');
+			expect(String(currentCode)).toContain('makooTasks.push(inject("#old"');
+			expect(String(currentCode)).toContain('makoo.start(makooTasks)');
 			expect(dev.invalidateModule).not.toHaveBeenCalled();
 			expect(dev.hotSend).not.toHaveBeenCalled();
 		});
@@ -219,7 +222,7 @@ describe('makooMonkey dev HMR', () => {
 			'injections/hooks.ts': `
 				import { helper } from './helper';
 				export const hooks = {
-					'run:start': () => helper()
+					'start:requested': () => helper()
 				};
 			`,
 			'injections/helper.ts': `export const helper = () => 'old-helper';`,

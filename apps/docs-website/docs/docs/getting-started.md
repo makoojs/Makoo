@@ -74,7 +74,7 @@ import { makoo } from '@makoojs/cli';
 
 export default defineConfig({
 	plugins: [
-		makoo({
+		...makoo({
 			app: {
 				name: 'makoo-project',
 				version: '0.0.1'
@@ -188,7 +188,7 @@ While the dev server is running:
 
 ## Next Steps
 
-Continue with [Core Concepts](./concepts.md) to understand how injectors, modules,
+Continue with [Core Concepts](./concepts.md) to understand how the runtime, modules,
 manifests, and adapters fit together. Then use [Manifest Reference](./manifest.md) when you
 need module-level options such as `match`, `alive`, `timeout`, `scope`, and lifecycle
 `hooks`.

@@ -174,7 +174,7 @@ describe('resolve helpers', () => {
 		expect(normalizeInjectionManifest({ injections: [] })).toEqual([]);
 	});
 
-	it('resolves injection module id, framework, override path, and injector defaults', () => {
+	it('resolves injection module id, framework, module manifest file, and injection defaults', () => {
 		const result = resolveInjection(
 			{
 				injectAt: '#root',
@@ -188,8 +188,8 @@ describe('resolve helpers', () => {
 				root,
 				moduleDir: 'features/profile',
 				componentPath: 'features/profile/widgets/Card.tsx',
-				overridePath: 'overrides/card.css',
-				injector: {
+				moduleManifestFile: 'overrides/card.css',
+				injectionDefaults: {
 					alive: true,
 					scope: 'global',
 					timeout: 9000
@@ -210,7 +210,7 @@ describe('resolve helpers', () => {
 			},
 			moduleDir: path.join(root, 'features/profile'),
 			componentPath: path.join(root, 'features/profile/widgets/Card.tsx'),
-			overridePath: path.join(root, 'overrides/card.css')
+			moduleManifestFile: path.join(root, 'overrides/card.css')
 		});
 	});
 

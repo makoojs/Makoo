@@ -40,7 +40,7 @@ describe('loadManifest', () => {
 	it('loads manifest file and reads fresh content on repeated loads', async () => {
 		const root = await trackProject({
 			'injections/hooks.ts': `import { helper } from './helper';
-export const hooks = { 'run:start': () => helper() };`,
+export const hooks = { 'start:requested': () => helper() };`,
 			'injections/helper.ts': `export const helper = () => 'hooked';`,
 			'injections/manifest.ts': `
 				import { hooks } from './hooks';
@@ -117,7 +117,7 @@ export const onMounted = () => helper();`,
 		const manifestFile = path.join(moduleDir, 'manifest.ts');
 
 		const first = await loadMeta(moduleDir);
-		expect(first?.overridePath).toBe(manifestFile);
+		expect(first?.moduleManifestFile).toBe(manifestFile);
 		expect(first?.moduleConfig).toMatchObject({ name: 'widget', injectAt: '#old' });
 		expect(first?.dependencies).toEqual([
 			path.join(root, 'injections/widget/other.ts'),

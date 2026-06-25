@@ -47,7 +47,7 @@ Makoo 的价值会在生命周期、模块边界和长期维护开始变重要�
 | --- | --- |
 | Manifest | 声明有哪些模块、挂载到哪里、什么时候运行 |
 | 注入模块 | `injections/` 下一个独立功能或挂载点 |
-| Injector | 等待目标、注册任务、挂载模块，并管理重新注入 |
+| Makoo runtime | 声明任务、等待目标、挂载模块，并管理重新注入 |
 | Adapter | 把 Makoo 的运行时连接到 Vue 或 React 的挂载方式 |
 | Vite 插件 | 扫描 manifest、生成虚拟入口，并集成 `vite-plugin-monkey` |
 
@@ -57,7 +57,7 @@ Makoo 的价值会在生命周期、模块边界和长期维护开始变重要�
 ## Makoo 提供什么
 
 - 声明式注入 manifest
-- 用于组件挂载的运行时 injector
+- 用于组件挂载的运行时调度器
 - DOM 监听和 alive 重新注入
 - Vue 和 React 适配器
 - 面向开发和构建流程的 Vite 插件集成
@@ -67,7 +67,7 @@ Makoo 的价值会在生命周期、模块边界和长期维护开始变重要�
 如果你是第一次使用 Makoo，推荐按这个顺序阅读：
 
 1. [快速开始](./getting-started.md)：创建项目并定义第一个注入任务。
-2. [核心概念](./concepts.md)：理解 injector、模块、manifest 和 adapter。
+2. [核心概念](./concepts.md)：理解 runtime、模块、manifest 和 adapter。
 3. [配置](./configuration.md)：了解 Makoo、Vite 和 `vite-plugin-monkey` 如何协作。
 4. [Manifest 参考](./manifest.md)：查询模块行为相关的具体字段。
 5. [HMR](./hmr.md)：了解开发时哪些变化会自动更新。

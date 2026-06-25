@@ -1,17 +1,17 @@
 import type {
 	ResolvedConfig,
-	ResolvedInjectionModule,
-	ResolvedInjectorConfig
+	ResolvedInjectionDefaults,
+	ResolvedInjectionModule
 } from '../config/types';
 import { scanner } from '../scanner/scanner';
 import type { ScannerResult } from '../scanner/types';
 import { ansi, colorize } from '../shared/terminalColor';
 import { loadMakooConfig } from './_util';
 
-type InspectInjectorFields = Pick<ResolvedInjectionModule, 'alive' | 'scope' | 'timeout'>;
-type InspectInjection = Omit<ResolvedInjectionModule, keyof InspectInjectorFields> & {
-	injectionDefault: InspectInjectorFields;
-	injectorOverrides?: Partial<InspectInjectorFields>;
+type InspectInjectionDefaultsFields = Pick<ResolvedInjectionModule, 'alive' | 'scope' | 'timeout'>;
+type InspectInjection = Omit<ResolvedInjectionModule, keyof InspectInjectionDefaultsFields> & {
+	injectionDefaults: InspectInjectionDefaultsFields;
+	injectionDefaultsOverrides?: Partial<InspectInjectionDefaultsFields>;
 };
 type InspectResult = {
 	project: {
@@ -32,42 +32,42 @@ type InspectResult = {
 		dependencies: ScannerResult['runtimeDependencies'];
 	};
 	monkey: ResolvedConfig['monkey'];
-	injector: ScannerResult['injector'];
+	injectionDefaults: ScannerResult['injectionDefaults'];
 	injections: InspectInjection[];
 	frameworks: ScannerResult['frameworks'];
 };
 export function formatInspectInjection(
 	injection: ResolvedInjectionModule,
-	injectorDefault: ResolvedInjectorConfig
+	injectionDefaults: ResolvedInjectionDefaults
 ): InspectInjection {
 	const { alive, scope, timeout, ...rest } = injection;
-	const injectionDefault = { alive, scope, timeout };
-	const injectorOverrides: Partial<InspectInjectorFields> = {
-		...(alive !== injectorDefault.alive ? { alive } : {}),
-		...(scope !== injectorDefault.scope ? { scope } : {}),
-		...(timeout !== injectorDefault.timeout ? { timeout } : {})
+	const resolvedInjectionDefaults = { alive, scope, timeout };
+	const injectionDefaultsOverrides: Partial<InspectInjectionDefaultsFields> = {
+		...(alive !== injectionDefaults.alive ? { alive } : {}),
+		...(scope !== injectionDefaults.scope ? { scope } : {}),
+		...(timeout !== injectionDefaults.timeout ? { timeout } : {})
 	};
 
-	if (Object.keys(injectorOverrides).length === 0) {
+	if (Object.keys(injectionDefaultsOverrides).length === 0) {
 		return {
 			...rest,
-			injectionDefault
+			injectionDefaults: resolvedInjectionDefaults
 		};
 	}
 
 	return {
 		...rest,
-		injectionDefault,
-		injectorOverrides
+		injectionDefaults: resolvedInjectionDefaults,
+		injectionDefaultsOverrides
 	};
 }
 
 export function formatInspectResult(result: ScannerResult): InspectResult {
-	const { config, injector: injectorDefault, injections } = result;
+	const { config, injectionDefaults, injections } = result;
 	const moduleManifestFiles = [
 		...new Set(
 			injections
-				.map((injection) => injection.overridePath)
+				.map((injection) => injection.moduleManifestFile)
 				.filter((file): file is string => typeof file === 'string')
 		)
 	].sort();
@@ -91,9 +91,9 @@ export function formatInspectResult(result: ScannerResult): InspectResult {
 			dependencies: result.runtimeDependencies
 		},
 		monkey: config.monkey,
-		injector: injectorDefault,
+		injectionDefaults,
 		injections: injections.map((injection) =>
-			formatInspectInjection(injection, injectorDefault)
+			formatInspectInjection(injection, injectionDefaults)
 		),
 		frameworks: result.frameworks
 	};
@@ -108,7 +108,7 @@ export async function inspectCommand() {
 		['Source', inspectResult.source],
 		['Runtime', inspectResult.runtime],
 		['Monkey', inspectResult.monkey],
-		['Injector', inspectResult.injector],
+		['Injection Defaults', inspectResult.injectionDefaults],
 		['Injections', inspectResult.injections],
 		['Frameworks', inspectResult.frameworks]
 	];

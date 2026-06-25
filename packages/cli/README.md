@@ -237,7 +237,7 @@ Makoo's Vite plugin runs this flow during dev startup and build:
 3. Read module-level `manifest.ts` files and merge them with the top-level manifest.
 4. Resolve component paths, module IDs, framework, match, alive, scope, timeout, and related config.
 5. Generate adapter imports based on the frameworks actually used.
-6. Generate a virtual entry, create an `Injector`, register components, and call `run()`.
+6. Generate a virtual entry, create a Makoo runtime, declare tasks, and call `start()`.
 7. Hand the virtual entry to [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) so it can be bundled as a userscript.
 
 If the top-level manifest is missing, no enabled injection modules are found, or the framework cannot be inferred, the CLI throws Makoo's own error types to make the issue easier to locate.
@@ -259,7 +259,7 @@ Structural changes update the virtual entry. Changes inside regular components k
 
 ## Runtime Setup
 
-`runtime.setup` imports side-effect-only runtime files before Makoo initializes adapters, registers injections, and calls `injector.run()`.
+`runtime.setup` imports side-effect-only runtime files before Makoo initializes adapters, declares injections, and calls `makoo.start(...)`.
 
 Use it to register Vue plugins, initialize GM helpers, import global styles, or run analytics setup.
 

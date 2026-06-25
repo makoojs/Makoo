@@ -13,29 +13,41 @@ export type { ErrorCodeValue } from './error/ErrorCode';
 export { ErrorCode } from './error/ErrorCode';
 export type { MakooIssue } from './error/MakooError';
 export { MakooError } from './error/MakooError';
+export { SignalError } from './error/SignalError';
 export { TaskError } from './error/TaskError';
-export { ObserverHub } from './hooks/ObserverHub';
+export { createObserverHub } from './hooks/ObserverHub';
 export type {
 	LifecycleHookMap,
 	ObserveEvent,
 	ObserveEventName,
-	ObserveHook
+	ObserveHook,
+	ObserverHub
 } from './hooks/types';
 export { OBSERVE_EVENT_NAMES } from './hooks/types';
-export { Injector } from './Injector/Injector';
+export { Logger } from './logger/Logger';
+export type { ILogger, LoggerLevel } from './logger/types';
+export { createMakoo, inject, listen } from './Makoo/createMakoo';
 export type {
 	ActionEvent,
 	ArtifactOptions,
-	InjectionConfig
-} from './Injector/types';
-export { Action } from './Injector/types';
-export { Logger } from './logger/Logger';
-export type { ILogger, LoggerLevel } from './logger/types';
+	CreateMakooOptions,
+	InjectionConfig,
+	MakooDefaults,
+	MakooInjectionDeclaration,
+	MakooListenerDeclaration,
+	MakooListenerOptions,
+	MakooRuntime,
+	MakooTaskDeclaration,
+	StartedComponentTask,
+	StartedListenerTask,
+	StartedTask,
+	StartedTasks
+} from './Makoo/types';
+export { Action } from './Makoo/types';
 export { createActivityStore } from './signal/observeActivitySignal';
 export type {
 	ActivitySignalSource,
 	ActivitySignalSubscribable,
 	SignalUnsubscribe
 } from './signal/types';
-export type { ListenerRegisterResult, RegisterResult } from './Task/types';
 export { DOMWatcher } from './watcher/DomWatcher';

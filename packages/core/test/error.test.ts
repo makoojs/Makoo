@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { AdapterError } from '../src/error/AdapterError';
 import { ErrorCode } from '../src/error/ErrorCode';
 import { MakooError } from '../src/error/MakooError';
+import { SignalError } from '../src/error/SignalError';
 import { TaskError } from '../src/error/TaskError';
 
 describe('MakooError', () => {
@@ -75,6 +76,19 @@ describe('TaskError', () => {
 
 	it('is an instance of MakooError and Error', () => {
 		const err = new TaskError('msg', undefined, ErrorCode.TASK_NO_REGISTERED);
+		expect(err).toBeInstanceOf(MakooError);
+		expect(err).toBeInstanceOf(Error);
+	});
+});
+
+describe('SignalError', () => {
+	it('defaults code to TASK_SIGNAL_INVALID when no code is provided', () => {
+		const err = new SignalError('signal failed');
+		expect(err.code).toBe(ErrorCode.TASK_SIGNAL_INVALID);
+	});
+
+	it('is an instance of MakooError and Error', () => {
+		const err = new SignalError('msg');
 		expect(err).toBeInstanceOf(MakooError);
 		expect(err).toBeInstanceOf(Error);
 	});

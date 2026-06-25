@@ -1,9 +1,14 @@
 import type { ObserveEventName, ObserveHook } from '../hooks/types';
-import type { ActionEvent } from '../Injector/types';
 import type { ILogger } from '../logger/types';
+import type { ActionEvent } from '../Makoo/types';
 import type { ActivitySignalSource } from '../signal/types';
 
 export type AdapterUnmountReason = 'destroy' | 'reset' | 'remount' | 'manual';
+
+export type AdapterRegistry = {
+	resolve(artifact: unknown): MountAdapter | undefined;
+	use(adapter: ResolvableMountAdapter): void;
+};
 
 export type MakooContext = {
 	taskId: string;

@@ -77,7 +77,7 @@ A minimal project usually looks like this:
 
 ## Core Concepts
 
-`Injector` is Makoo's runtime scheduler. It registers injection tasks, waits for target nodes, asks the matching adapter to mount components, and handles reinjection when needed.
+`createMakoo()` creates Makoo's runtime scheduler. It starts declared injection tasks, waits for target nodes, asks the matching adapter to mount components, and handles reinjection when needed.
 
 `Injection Module` is a single injection unit. A module usually maps to a component under `injections/<module-name>/`, and it may also provide its own module-level `manifest.ts`.
 
@@ -274,7 +274,7 @@ export default defineInjections({
 ```ts
 // injections/hooks.ts
 export const hooks = {
-	'run:start': () => {
+	'start:start': () => {
 		console.log('[makoo] injector started');
 	}
 };

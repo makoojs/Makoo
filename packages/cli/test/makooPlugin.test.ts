@@ -88,7 +88,8 @@ describe('makooMonkey', () => {
 			await buildStart?.call({} as never, {} as never);
 			const code = await load?.call({} as never, RESOLVED_ID, {} as never);
 
-			expect(String(code)).toContain('register("#app"');
+			expect(String(code)).toContain('makooTasks.push(inject("#app"');
+			expect(String(code)).toContain('makoo.start(makooTasks)');
 			expect(String(code)).not.toContain('import.meta.hot.accept');
 		});
 	});
@@ -107,11 +108,39 @@ describe('makooMonkey', () => {
 			await buildStart?.call({} as never, {} as never);
 			const code = await load?.call({} as never, RESOLVED_ID, {} as never);
 
-			expect(String(code)).toContain('register("#app"');
+			expect(String(code)).toContain('makooTasks.push(inject("#app"');
+			expect(String(code)).toContain('makoo.start(makooTasks)');
 			expect(String(code)).toContain('import.meta.hot.accept');
 			expect(String(code)).toContain("import.meta.hot.on('makoo:structural-hmr'");
 			expect(String(code)).toContain('%c[makoo]%c structural HMR');
 			expect(String(code)).toContain('color:#42b883');
+		});
+	});
+
+	it('keeps the generated runtime visible to dev HMR dispose handlers', async () => {
+		const { root, plugin } = await createProject();
+		const configHook = getHook(plugin.config);
+		const buildStart = getHook(plugin.buildStart);
+		const load = getHook(plugin.load);
+
+		await withCwd(root, async () => {
+			await configHook?.call({} as never, {}, {
+				command: 'serve',
+				mode: 'development'
+			} as ConfigEnv);
+			await buildStart?.call({} as never, {} as never);
+			const code = String(await load?.call({} as never, RESOLVED_ID, {} as never));
+
+			const declarationIndex = code.indexOf('let makoo;');
+			const tryIndex = code.indexOf('try {');
+			const assignmentIndex = code.indexOf('makoo = createMakoo({');
+			const disposeIndex = code.indexOf('import.meta.hot.dispose');
+
+			expect(declarationIndex).toBeGreaterThanOrEqual(0);
+			expect(declarationIndex).toBeLessThan(tryIndex);
+			expect(assignmentIndex).toBeGreaterThan(tryIndex);
+			expect(disposeIndex).toBeGreaterThan(assignmentIndex);
+			expect(code).toContain('makoo?.destroyAll()');
 		});
 	});
 

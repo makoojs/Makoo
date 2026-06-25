@@ -1,13 +1,13 @@
 # @makoojs/react
 
-`@makoojs/react` is Makoo's React mount adapter. It connects React components to the `@makoojs/core` adapter protocol, allowing `Injector` to create React roots after target DOM nodes appear, render components, and unmount them correctly when tasks are destroyed or reset.
+`@makoojs/react` is Makoo's React mount adapter. It connects React components to the `@makoojs/core` adapter protocol, allowing the Makoo runtime to create React roots after target DOM nodes appear, render components, and unmount them correctly when tasks are destroyed or reset.
 
 Most Makoo projects use this package through `@makoojs/cli`: when a manifest module is recognized as React, the CLI imports the React adapter in the generated virtual entry. You only need to call `createReactAdapter()` explicitly when wiring a runtime manually with `@makoojs/core`.
 
 ## Use Cases
 
 - Inject React components in a Makoo project.
-- Let the `@makoojs/core` `Injector` recognize and mount React artifacts.
+- Let the `@makoojs/core` runtime recognize and mount React artifacts.
 - Register the React adapter manually when using the core runtime directly.
 - Read the Makoo task context `makoo` inside React components.
 
@@ -71,25 +71,27 @@ export default function Badge({ makoo }: ReactMountProps) {
 | `enableAlive()` / `disableAlive()` | Control alive reinjection for the current task |
 | `reset()` / `destroy()` | Reset or destroy the current task |
 | `on()` / `onTask()` | Listen to lifecycle observation events |
-| `getLogger()` | Get the current injector logger |
+| `getLogger()` | Get the current runtime logger |
 
 ## Direct Usage With @makoojs/core
 
-If you are not using `@makoojs/cli`, register the React adapter manually on `Injector`.
+If you are not using `@makoojs/cli`, pass the React adapter to `createMakoo()`.
 
 ```tsx
-import { Injector } from '@makoojs/core';
+import { createMakoo, inject } from '@makoojs/core';
 import { createReactAdapter } from '@makoojs/react';
 import Badge from './Badge';
 
-const injector = new Injector({
-	alive: true,
-	scope: 'local',
-	timeout: 5000
-}).applyAdapter(createReactAdapter());
+const makoo = createMakoo({
+	defaults: {
+		alive: true,
+		scope: 'local',
+		timeout: 5000
+	},
+	adapters: [createReactAdapter()]
+});
 
-injector.register('#app', Badge);
-injector.run();
+makoo.start([inject('#app', Badge)]);
 ```
 
 The adapter returned by `createReactAdapter()` will:
@@ -122,7 +124,7 @@ The complete API reference will live in a separate documentation site later.
 | Package | Responsibility |
 | --- | --- |
 | `@makoojs/react` | React mount adapter |
-| `@makoojs/core` | Provides `Injector`, the adapter protocol, and Makoo runtime context |
+| `@makoojs/core` | Provides the runtime API, adapter protocol, and Makoo runtime context |
 | `@makoojs/cli` | Scans manifests, generates the virtual entry, and imports the React adapter when needed |
 
 `@makoojs/react` is not a complete runtime by itself. It works with `@makoojs/core`'s injection scheduler, or with runtime code generated automatically by `@makoojs/cli`.

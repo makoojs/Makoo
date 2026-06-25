@@ -72,7 +72,7 @@ Do not put UI state, rendering logic, component trees, network workflows, or bus
 
 Use module-level `manifest.ts` when a module should own its own injection configuration. Keep top-level `injections/manifest.ts` focused on registration and shared defaults.
 
-Use `injectionDefaults` in the top-level manifest for shared injector defaults such as `alive`, `scope`, `timeout`, and hooks. Individual modules should override only the fields that differ from those defaults.
+Use `injectionDefaults` in the top-level manifest for shared runtime defaults such as `alive`, `scope`, `timeout`, and hooks. Individual modules should override only the fields that differ from those defaults.
 
 ## Put Component Logic In Framework Files
 
@@ -89,7 +89,7 @@ Do not solve UI composition by writing imperative DOM creation in manifest files
 
 Do not manually call `createRoot`, `ReactDOM.render`, `createApp`, or `app.mount` as the primary injection flow in a Makoo project.
 
-Makoo resolves the framework from the component extension or explicit `framework` field, imports the needed adapter, and applies it to the injector. Use:
+Makoo resolves the framework from the component extension or explicit `framework` field, imports the needed adapter, and passes it into the generated Makoo runtime. Use:
 
 - `.vue` for Vue modules.
 - `.tsx` or `.jsx` for React modules.
@@ -174,7 +174,7 @@ Do not use `timeout` as a retry loop. Do not enable `alive` everywhere by defaul
 
 ## Keep Runtime Setup Small
 
-Use `runtime.setup` only for project-level side effects that must run before injector setup, such as global polyfills, shared styles, or framework/plugin registration required by the whole userscript.
+Use `runtime.setup` only for project-level side effects that must run before Makoo initializes adapters, declares tasks, and starts the generated runtime, such as global polyfills, shared styles, or framework/plugin registration required by the whole userscript.
 
 Do not put module-specific UI behavior, DOM mounting, or feature logic in runtime setup. If behavior belongs to one injected feature, keep it in that module.
 

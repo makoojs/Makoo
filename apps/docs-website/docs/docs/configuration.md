@@ -1,8 +1,8 @@
 # Configuration
 
 Makoo is configured through the `makoo()` Vite plugin. This file describes project-level
-behavior: how Makoo scans modules, which runtime defaults it should use, and how the final
-userscript is passed to `vite-plugin-monkey`.
+behavior: how Makoo scans modules, which setup files enter the generated runtime, and how
+the final userscript is passed to `vite-plugin-monkey`.
 
 ```ts
 import { defineConfig } from 'vite';
@@ -10,7 +10,7 @@ import { makoo } from '@makoojs/cli';
 
 export default defineConfig({
 	plugins: [
-		makoo({
+		...makoo({
 			app: {
 				name: 'my-script',
 				version: '0.0.1',
@@ -19,11 +19,6 @@ export default defineConfig({
 			source: {
 				include: ['*'],
 				exclude: []
-			},
-			injector: {
-				alive: false,
-				scope: 'local',
-				timeout: 5000
 			},
 			runtime: {
 				setup: ['./injections/setup.ts']
@@ -40,7 +35,7 @@ export default defineConfig({
 
 Use `vite.config.ts` for settings that affect the whole project. Use
 `injections/manifest.ts` for module-level behavior such as `injectAt`, `component`, `match`,
-`alive`, and hooks for a specific injection.
+`alive`, shared `injectionDefaults`, and hooks for a specific injection.
 
 ## Option Groups
 
@@ -48,8 +43,7 @@ Use `vite.config.ts` for settings that affect the whole project. Use
 | --- | --- |
 | `app` | Makoo app metadata and default userscript name/version |
 | `source` | Which module folders are scanned under `injections/` |
-| `injector` | Runtime defaults inherited by modules |
-| `runtime` | Side-effect setup files imported before injector setup |
+| `runtime` | Side-effect setup files imported before Makoo declares and starts tasks |
 | `monkey` | `vite-plugin-monkey` userscript, server, and build options |
 
 ## `app`
@@ -100,22 +94,27 @@ module-level files such as `injections/panel/manifest.ts`.
 These patterns filter module folders, not page URLs. For page URL matching, use
 `monkey.userscript.match` for the whole userscript or module-level `match` in the manifest.
 
-## `injector`
+## Runtime Defaults
 
-`injector` defines runtime defaults for modules.
+Runtime defaults belong to `injections/manifest.ts`, not `vite.config.ts`. Use
+`injectionDefaults` when multiple modules should share `alive`, `scope`, `timeout`, or
+`hooks`:
 
 ```ts
-makoo({
-	injector: {
+import { defineInjections } from '@makoojs/cli';
+
+export default defineInjections({
+	injectionDefaults: {
 		alive: false,
 		scope: 'local',
 		timeout: 5000,
 		hooks: {
-			'run:start': (payload) => {
-				console.log('[makoo] run started', payload);
+			'start:requested': (payload) => {
+				console.log('[makoo] start requested', payload);
 			}
 		}
-	}
+	},
+	injections: {}
 });
 ```
 
@@ -124,15 +123,15 @@ makoo({
 | `alive` | `false` | Whether modules should reinject when their mount disappears |
 | `scope` | `'local'` | Reinjection observation scope, either `'local'` or `'global'` |
 | `timeout` | `5000` | Time in milliseconds to wait for each target selector |
-| `hooks` | `{}` | Global lifecycle hooks |
+| `hooks` | `{}` | Shared lifecycle hooks for modules in this manifest |
 
 Modules inherit these defaults unless they set their own `alive`, `scope`, `timeout`, or
-`hooks` in the manifest. A top-level manifest can also provide `globalInjector`, which is
-resolved as the runtime injector config for the scanned injection set.
+`hooks`.
 
 ## `runtime`
 
-`runtime.setup` imports side-effect files before Makoo creates and runs the injector.
+`runtime.setup` imports side-effect files before Makoo initializes adapters, declares
+injections, and calls `makoo.start(...)`.
 
 ```ts
 makoo({
@@ -190,9 +189,6 @@ The main defaults are:
 | --- | --- |
 | `source.include` | `['*']` |
 | `source.exclude` | `[]` |
-| `injector.alive` | `false` |
-| `injector.scope` | `'local'` |
-| `injector.timeout` | `5000` |
 | `runtime.setup` | `[]` |
 | `monkey.align` | `2` |
 | `monkey.styleImport` | `true` |
@@ -207,8 +203,8 @@ Keep this split in mind:
 
 | File | Owns |
 | --- | --- |
-| `vite.config.ts` | Project metadata, scanning, global runtime defaults, userscript build/dev options |
-| `injections/manifest.ts` | Injection modules, target selectors, component paths, module URL rules |
+| `vite.config.ts` | Project metadata, scanning, setup imports, userscript build/dev options |
+| `injections/manifest.ts` | Injection modules, shared runtime defaults, target selectors, component paths, module URL rules |
 | `injections/<module>/` | Component code, module styles, module helpers, optional module manifest |
 
 This boundary keeps Makoo projects understandable as they grow.

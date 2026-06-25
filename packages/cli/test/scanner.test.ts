@@ -122,7 +122,7 @@ describe('scanner', () => {
 			alive: true,
 			timeout: 777
 		});
-		expect(modules.overridden.overridePath).toBe(
+		expect(modules.overridden.moduleManifestFile).toBe(
 			path.join(root, 'injections/overridden/manifest.ts')
 		);
 		expect(result.manifestDependencies).toEqual([]);
@@ -146,14 +146,14 @@ describe('scanner', () => {
 		});
 		const config = resolveConfig(
 			{
-				app: { name: 'makoo-injector-defaults', version: '0.0.1' }
+				app: { name: 'makoo-injection-defaults', version: '0.0.1' }
 			},
 			root
 		);
 
 		const result = await withCwd(root, () => scanner(config));
 
-		expect(result.injector).toMatchObject({
+		expect(result.injectionDefaults).toMatchObject({
 			alive: false,
 			scope: 'local',
 			timeout: 5000
@@ -191,7 +191,7 @@ describe('scanner', () => {
 			result.injections.map((injection) => [injection.moduleId, injection])
 		);
 
-		expect(result.injector).toMatchObject({
+		expect(result.injectionDefaults).toMatchObject({
 			alive: true,
 			scope: 'global',
 			timeout: 9000

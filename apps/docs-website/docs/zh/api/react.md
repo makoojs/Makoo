@@ -1,152 +1,130 @@
 # @makoojs/react
 
-`@makoojs/react` 提供 React adapter，让 Makoo 能把 React 组件挂载到注入任务中。
+`@makoojs/react` 是 Makoo 的 React 挂载适配器。它把 React 组件接入 `@makoojs/core` 的 adapter 协议，让 Makoo runtime 可以在目标 DOM 出现后创建 React root、渲染组件，并在任务销毁或重置时正确卸载。
 
-## 导出概览
+普通 Makoo 项目通常通过 `@makoojs/cli` 使用这个包：当 manifest 中的模块被识别为 React 时，CLI 会在生成的虚拟入口中引入 React adapter。只有在你直接使用 `@makoojs/core` 手动搭建运行时时，才需要显式调用 `createReactAdapter()`。
 
-```ts
-import { createReactAdapter, ReactAdapterError } from '@makoojs/react';
+## 适用场景
+
+- 在 Makoo 项目中注入 React 组件。
+- 让 `@makoojs/core` runtime 能识别并挂载 React artifact。
+- 直接使用 core runtime 时手动注册 React adapter。
+- 在 React 组件中读取 Makoo 传入的任务上下文 `makoo`。
+
+## 安装
+
+```bash
+// npm install @makoojs/react
+// yarn add @makoojs/react
+pnpm add @makoojs/react
 ```
 
-类型：
+`@makoojs/react` 依赖 `@makoojs/core`，并把 `react`、`react-dom` 作为 peer dependencies，所以使用该包之前要安装好`react`、`react-dom`
 
-```ts
-import type {
-	ReactMountAdapter,
-	ReactMountArtifact,
-	ReactMountProps,
-	ReactMountRoot
-} from '@makoojs/react';
-```
+## 在 CLI 项目中使用
 
-## createReactAdapter()
-
-创建 React 挂载适配器。
-
-```ts
-import { Injector } from '@makoojs/core';
-import { createReactAdapter } from '@makoojs/react';
-import Panel from './Panel';
-
-const injector = new Injector();
-
-injector.applyAdapter(createReactAdapter());
-injector.register('body', Panel);
-injector.run();
-```
-
-签名：
-
-```ts
-function createReactAdapter(): ReactMountAdapter;
-```
-
-adapter 会：
-
-1. 判断 artifact 是否是可挂载的 React 组件。
-2. 使用 `createRoot(mountPoint)` 创建 React root。
-3. 使用 `root.render(createElement(artifact, { makoo }))` 渲染组件。
-4. 在 reset、destroy 或 remount 时调用 `root.unmount()`。
-
-## 组件 props
-
-React 组件会收到一个 `makoo` prop：
-
-```tsx
-import type { ReactMountProps } from '@makoojs/react';
-
-export function Panel({ makoo }: ReactMountProps) {
-	return (
-		<button onClick={() => makoo.destroy()}>
-			Close
-		</button>
-	);
-}
-```
-
-类型：
-
-```ts
-type ReactMountProps = {
-	makoo: MakooContext;
-};
-```
-
-`MakooContext` 来自 `@makoojs/core`，包含当前任务 id、目标选择器、reset/destroy、hooks、logger 和监听器控制方法。
-
-## ReactMountArtifact
-
-React adapter 支持普通函数组件和 React exotic component：
-
-```ts
-type ReactMountArtifact = ComponentType<ReactMountProps> | ExoticComponent<ReactMountProps>;
-```
-
-因此下面几种形式都适合注册：
-
-```tsx
-function Toolbar(props: ReactMountProps) {
-	return <div />;
-}
-
-const MemoToolbar = memo(Toolbar);
-
-injector.register('#toolbar', Toolbar);
-injector.register('#toolbar', MemoToolbar);
-```
-
-## ReactMountAdapter
-
-```ts
-type ReactMountAdapter = ResolvableMountAdapter<
-	ReactMountArtifact,
-	ReactMountRoot,
-	undefined
->;
-```
-
-其中 `ReactMountRoot` 是 `react-dom/client` 的 `Root`。
-
-一般项目不需要直接操作这个类型，除非你在组合或测试 adapter。
-
-## Manifest 中使用
-
-通过 `@makoojs/cli` 使用 React 组件时，可以显式写 `framework: 'React'`：
+多数情况下，只需要在 manifest 中声明 React 组件即可。
 
 ```ts
 import { defineInjections } from '@makoojs/cli';
 
 export default defineInjections({
 	injections: {
-		panel: {
+		badge: {
 			injectAt: 'body',
-			component: './panel/app.jsx',
+			component: './badge/App.tsx',
 			framework: 'React'
 		}
 	}
 });
 ```
 
-如果组件扩展名是 `.jsx` 或 `.tsx`，Makoo 也可以自动推断 React。显式写出 `framework` 会让 manifest 更清楚。
+如果 `framework` 省略或设置为 `auto`，Makoo 会根据 `.tsx` / `.jsx` 扩展名推断为 React。
 
-## ReactAdapterError
+## React 组件中的 Makoo 上下文
 
-当 React adapter 挂载或卸载失败时，会抛出 `ReactAdapterError`。
+React adapter 会把 `makoo` 作为组件 props 传入。组件可以通过它读取当前任务 ID、目标选择器、logger，或控制当前任务生命周期。
 
-```ts
-import { ReactAdapterError } from '@makoojs/react';
+```tsx
+import type { ReactMountProps } from '@makoojs/react';
 
-try {
-	injector.run();
-} catch (error) {
-	if (error instanceof ReactAdapterError) {
-		console.error(error.code, error.issues);
-	}
+export default function Badge({ makoo }: ReactMountProps) {
+	return (
+		<button
+			type="button"
+			onClick={() => {
+				makoo.getLogger().info(`clicked ${makoo.taskId}`);
+			}}
+		>
+			Makoo Badge
+		</button>
+	);
 }
 ```
 
-`ReactAdapterError` 继承自 `AdapterError`，因此也可以按 `@makoojs/core` 的错误基类统一处理。
+`makoo` 来自 `@makoojs/core` 的 `MakooContext`，常用能力包括：
 
-## 注意事项
+| 能力 | 说明 |
+| --- | --- |
+| `taskId` | 当前注入任务 ID |
+| `injectAt` | 当前任务的目标选择器 |
+| `enableAlive()` / `disableAlive()` | 控制当前任务的 alive 重注入 |
+| `reset()` / `destroy()` | 重置或销毁当前任务 |
+| `on()` / `onTask()` | 监听生命周期观察事件 |
+| `getLogger()` | 获取当前 runtime 的 logger |
 
-React adapter 会直接在 Makoo 提供的 `mountPoint` 上调用 `createRoot()`。对于浮窗类工具，如果你把任务注册到 `body`，实际项目里建议先创建一个独立子节点作为挂载点，再把组件挂到这个子节点，避免和宿主页面已有 React 或复杂 DOM 结构冲突。
+## 直接配合 @makoojs/core 使用
+
+如果你不经过 `@makoojs/cli`，可以把 React adapter 传给 `createMakoo()`。
+
+```tsx
+import { createMakoo, inject } from '@makoojs/core';
+import { createReactAdapter } from '@makoojs/react';
+import Badge from './Badge';
+
+const makoo = createMakoo({
+	defaults: {
+		alive: true,
+		scope: 'local',
+		timeout: 5000
+	},
+	adapters: [createReactAdapter()]
+});
+
+makoo.start([inject('#app', Badge)]);
+```
+
+`createReactAdapter()` 返回的 adapter 会：
+
+- 使用 `react-dom/client` 的 `createRoot(mountPoint)` 创建 React root。
+- 使用 `root.render(createElement(artifact, { makoo }))` 渲染组件。
+- 在 unmount 时调用 `root.unmount()`。
+- 将 mount/unmount 错误包装成 `ReactAdapterError`。
+
+## 类型导出
+
+`@makoojs/react` 导出以下常用类型：
+
+| 类型 | 说明 |
+| --- | --- |
+| `ReactMountProps` | React 组件接收到的 props，包含 `makoo` |
+| `ReactMountArtifact` | Makoo 可识别的 React artifact 类型 |
+| `ReactMountAdapter` | React adapter 类型 |
+| `ReactMountRoot` | React root handle 类型 |
+
+也会导出：
+
+- `createReactAdapter`
+- `ReactAdapterError`
+
+上面的表格就是这个 adapter 包的公开 API 概览。
+
+## 与其他包的关系
+
+| 包 | 职责 |
+| --- | --- |
+| `@makoojs/react` | React 挂载适配器 |
+| `@makoojs/core` | 提供 runtime API、adapter 协议和 Makoo runtime context |
+| `@makoojs/cli` | 扫描 manifest、生成虚拟入口，并在需要时引入 React adapter |
+
+`@makoojs/react` 本身不是完整运行时。它需要配合 `@makoojs/core` 的注入调度能力，或通过 `@makoojs/cli` 自动生成的运行时代码来工作。

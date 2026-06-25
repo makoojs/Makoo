@@ -25,7 +25,7 @@ Use `defineInjections()` from `@makoojs/cli`:
 import { defineInjections } from '@makoojs/cli';
 
 export default defineInjections({
-	globalInjector: {
+	injectionDefaults: {
 		alive: false,
 		scope: 'local',
 		timeout: 5000
@@ -48,10 +48,10 @@ export default defineInjections({
 
 | Field | Description |
 | --- | --- |
-| `globalInjector` | Runtime defaults for this manifest's injection set |
+| `injectionDefaults` | Runtime defaults for this manifest's injection set |
 | `injections` | Object or array of injection module configs |
 
-`globalInjector` supports `alive`, `scope`, `timeout`, and `hooks`. These defaults are used
+`injectionDefaults` supports `alive`, `scope`, `timeout`, and `hooks`. These defaults are used
 when a module does not set the same field itself.
 
 ## Object Form
@@ -190,12 +190,12 @@ should register.
 
 ## Runtime Options
 
-Modules inherit `alive`, `scope`, and `timeout` from `globalInjector` or the project-level
-injector config. Set them on a module when that module needs different behavior:
+Modules inherit `alive`, `scope`, and `timeout` from manifest-level `injectionDefaults`.
+Set them on a module when that module needs different behavior:
 
 ```ts
 export default defineInjections({
-	globalInjector: {
+	injectionDefaults: {
 		alive: false,
 		timeout: 5000
 	},
@@ -218,13 +218,7 @@ export default defineInjections({
 `stable` inherits `alive: false` and `timeout: 5000`. `dynamic` overrides those values.
 
 > [!NOTE]
-> **Inheritance priority**: `module config` > `manifest.globalInjector` >
-> `vite.config.ts injector` > `Makoo default`.
-
-> [!WARNING]
-> This priority may change in a later version. The current names can be confusing, and the
-> responsibilities between project-level injector defaults and manifest-level injector
-> defaults may be adjusted or simplified.
+> **Inheritance priority**: `module config` > `manifest.injectionDefaults` > `Makoo default`.
 
 ## Hooks
 
@@ -232,9 +226,9 @@ Hooks can be global or module-level:
 
 ```ts
 export default defineInjections({
-	globalInjector: {
+	injectionDefaults: {
 		hooks: {
-			'run:start': (payload) => {
+			'start:requested': (payload) => {
 				console.log(payload);
 			}
 		}

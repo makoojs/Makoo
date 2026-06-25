@@ -14,9 +14,9 @@ export const LifecycleHookMapSchema = z
 		message: 'Invalid hook event name'
 	});
 
-// --- Injector config ---
+// --- Injection defaults config ---
 
-export const InjectorConfigSchema = z.object({
+export const InjectionDefaultsSchema = z.object({
 	alive: z.boolean().optional(),
 	scope: z.enum(['local', 'global']).optional(),
 	timeout: z.number().optional(),
@@ -49,7 +49,7 @@ export const InjectionModuleSchema = z.object({
 
 export const InjectionManifestSchema = z
 	.object({
-		injectionDefaults: InjectorConfigSchema.optional(),
+		injectionDefaults: InjectionDefaultsSchema.optional(),
 		injections: z.union([
 			z.array(InjectionModuleSchema),
 			z.record(z.string(), InjectionModuleSchema.omit({ name: true }))

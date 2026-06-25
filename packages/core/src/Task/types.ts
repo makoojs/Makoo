@@ -74,18 +74,13 @@ export type Task = ArtifactTask | ListenerTask;
 export type ListenerRegisterResult = {
 	taskId: string;
 	isSuccess: boolean;
-};
-
-export type RegisterResult = {
-	taskId: string;
-	isSuccess: boolean;
-	enableAlive: () => void;
-	disableAlive: () => void;
+	isDuplicate?: boolean;
 };
 
 export type _RegisterResult = {
 	taskId: string;
 	isSuccess: boolean;
+	isDuplicate?: boolean;
 };
 
 export type _InjectResult = {

@@ -2,16 +2,16 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { formatInspectInjection, formatInspectResult } from '../src/command/inspect';
 import { resolveConfig, resolveInjection } from '../src/config/resolve';
-import type { ResolvedInjectorConfig } from '../src/config/types';
+import type { ResolvedInjectionDefaults } from '../src/config/types';
 import type { ScannerResult } from '../src/scanner/types';
 
 const root = path.resolve('/project');
-const injector: ResolvedInjectorConfig = {
+const injectionDefaults: ResolvedInjectionDefaults = {
 	alive: true,
 	scope: 'global',
 	timeout: 9000,
 	hooks: {
-		'run:start': () => 'run-start'
+		'start:requested': () => 'run-start'
 	}
 };
 
@@ -45,13 +45,14 @@ describe('formatInspectResult', () => {
 			{
 				root,
 				source: config.source,
-				injector,
-				componentPath: path.join(root, 'injections/panel/index.tsx')
+				injectionDefaults,
+				componentPath: path.join(root, 'injections/panel/index.tsx'),
+				moduleManifestFile: path.join(root, 'injections/panel/manifest.ts')
 			}
 		);
 		const scanResult: ScannerResult = {
 			config,
-			injector,
+			injectionDefaults,
 			manifestFile: path.join(root, 'injections/manifest.ts'),
 			manifestDependencies: [path.join(root, 'injections/hooks.ts')],
 			moduleManifestDependencies: [path.join(root, 'injections/panel/options.ts')],
@@ -71,7 +72,7 @@ describe('formatInspectResult', () => {
 			source: {
 				config: config.source,
 				manifestFile: scanResult.manifestFile,
-				moduleManifestFiles: [],
+				moduleManifestFiles: [path.join(root, 'injections/panel/manifest.ts')],
 				dependencies: {
 					manifest: scanResult.manifestDependencies,
 					moduleManifests: scanResult.moduleManifestDependencies
@@ -82,17 +83,21 @@ describe('formatInspectResult', () => {
 				dependencies: scanResult.runtimeDependencies
 			},
 			monkey: config.monkey,
-			injector,
+			injectionDefaults,
 			frameworks: ['React']
 		});
 		expect(result).not.toHaveProperty('config');
 		expect(result.runtime).not.toHaveProperty('config');
 		expect(result.injections[0]).not.toHaveProperty('config');
+		expect(result.injections[0]).toMatchObject({
+			moduleManifestFile: path.join(root, 'injections/panel/manifest.ts')
+		});
+		expect(result.injections[0]).not.toHaveProperty('overridePath');
 	});
 });
 
 describe('formatInspectInjection', () => {
-	it('keeps listener, hooks and match data while separating resolved injector values', () => {
+	it('keeps listener, hooks and match data while separating resolved injection defaults', () => {
 		const config = resolveConfig(
 			{
 				app: {
@@ -127,12 +132,12 @@ describe('formatInspectInjection', () => {
 			{
 				root,
 				source: config.source,
-				injector,
+				injectionDefaults,
 				componentPath: path.join(root, 'injections/button/index.tsx')
 			}
 		);
 
-		const result = formatInspectInjection(injection, injector);
+		const result = formatInspectInjection(injection, injectionDefaults);
 
 		expect(result).toMatchObject({
 			moduleId: 'button-panel',
@@ -148,12 +153,12 @@ describe('formatInspectInjection', () => {
 				callback
 			},
 			hooks,
-			injectionDefault: {
+			injectionDefaults: {
 				alive: true,
 				scope: 'global',
 				timeout: 1000
 			},
-			injectorOverrides: {
+			injectionDefaultsOverrides: {
 				timeout: 1000
 			}
 		});
@@ -162,7 +167,7 @@ describe('formatInspectInjection', () => {
 		expect(result).not.toHaveProperty('timeout');
 	});
 
-	it('omits injectorOverrides when module values match injector defaults', () => {
+	it('omits injectionDefaultsOverrides when module values match injection defaults', () => {
 		const config = resolveConfig(
 			{
 				app: {
@@ -182,20 +187,20 @@ describe('formatInspectInjection', () => {
 			{
 				root,
 				source: config.source,
-				injector,
+				injectionDefaults,
 				componentPath: path.join(root, 'injections/default/index.tsx')
 			}
 		);
 
-		const result = formatInspectInjection(injection, injector);
+		const result = formatInspectInjection(injection, injectionDefaults);
 
 		expect(result).toMatchObject({
-			injectionDefault: {
+			injectionDefaults: {
 				alive: true,
 				scope: 'global',
 				timeout: 9000
 			}
 		});
-		expect(result).not.toHaveProperty('injectorOverrides');
+		expect(result).not.toHaveProperty('injectionDefaultsOverrides');
 	});
 });

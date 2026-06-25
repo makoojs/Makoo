@@ -22,7 +22,7 @@ Makoo 会先加载顶层 manifest，再扫描模块目录，并按 `moduleId` �
 import { defineInjections } from '@makoojs/cli';
 
 export default defineInjections({
-	globalInjector: {
+	injectionDefaults: {
 		alive: false,
 		scope: 'local',
 		timeout: 5000
@@ -45,10 +45,10 @@ export default defineInjections({
 
 | 字段 | 说明 |
 | --- | --- |
-| `globalInjector` | 当前 manifest 注入集合的运行时默认值 |
+| `injectionDefaults` | 当前 manifest 注入集合的运行时默认值 |
 | `injections` | 对象或数组形式的注入模块配置 |
 
-`globalInjector` 支持 `alive`、`scope`、`timeout` 和 `hooks`。模块没有显式设置同名字段时，会继承这些默认值。
+`injectionDefaults` 支持 `alive`、`scope`、`timeout` 和 `hooks`。模块没有显式设置同名字段时，会继承这些默认值。
 
 ## 对象写法
 
@@ -177,11 +177,11 @@ match: {
 
 ## 运行时选项
 
-模块会从 `globalInjector` 或项目级 injector 配置继承 `alive`、`scope` 和 `timeout`。当某个模块需要不同表现时，可以在模块级配置上覆盖：
+模块会从 manifest 级 `injectionDefaults` 继承 `alive`、`scope` 和 `timeout`。当某个模块需要不同表现时，可以在模块级配置上覆盖：
 
 ```ts
 export default defineInjections({
-	globalInjector: {
+	injectionDefaults: {
 		alive: false,
 		timeout: 5000
 	},
@@ -204,12 +204,7 @@ export default defineInjections({
 `stable` 会继承 `alive: false` 和 `timeout: 5000`。`dynamic` 会覆盖这些值。
 
 > [!NOTE]
-> **整体继承优先级**：`module config` > `manifest.globalInjector` >
-> `vite.config.ts injector` > `Makoo default`。
-
-> [!WARNING]
-> 这个优先级可能会在后续版本调整。当前命名容易让用户迷惑，项目级 injector 默认值和
-> manifest 级 injector 默认值之间的职责也可能会被调整或简化。
+> **整体继承优先级**：`module config` > `manifest.injectionDefaults` > `Makoo default`。
 
 ## Hooks
 
@@ -217,9 +212,9 @@ Hooks 可以是全局的，也可以是模块级的：
 
 ```ts
 export default defineInjections({
-	globalInjector: {
+	injectionDefaults: {
 		hooks: {
-			'run:start': (payload) => {
+			'start:requested': (payload) => {
 				console.log(payload);
 			}
 		}
