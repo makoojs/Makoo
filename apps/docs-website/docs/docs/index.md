@@ -55,7 +55,7 @@ A Makoo app is built from a few small pieces:
 | --- | --- |
 | Manifest | Declares which modules exist, where they mount, and when they run |
 | Injection module | Owns a single feature or mount point under `injections/` |
-| Injector | Waits for targets, registers tasks, mounts modules, and manages reinjection |
+| Makoo runtime | Declares tasks, waits for targets, mounts modules, and manages reinjection |
 | Adapter | Bridges Makoo's runtime to Vue or React mounting behavior |
 | Vite plugin | Scans manifests, generates the virtual entry, and integrates with `vite-plugin-monkey` |
 
@@ -66,7 +66,7 @@ those modules on matching pages.
 ## What Makoo Adds
 
 - A declarative injection manifest
-- A runtime injector for component mounting
+- A runtime scheduler for component mounting
 - DOM watching and alive reinjection
 - Vue and React adapters
 - Vite plugin integration for development and build flows
@@ -77,7 +77,7 @@ If you are new to Makoo, read the guide in this order:
 
 1. [Getting Started](./getting-started.md) to scaffold a project and define your first
    injection.
-2. [Core Concepts](./concepts.md) to understand injectors, modules, manifests, and adapters.
+2. [Core Concepts](./concepts.md) to understand the runtime, modules, manifests, and adapters.
 3. [Configuration](./configuration.md) to learn how Makoo, Vite, and `vite-plugin-monkey`
    fit together.
 4. [Manifest Reference](./manifest.md) when you need exact fields for module behavior.

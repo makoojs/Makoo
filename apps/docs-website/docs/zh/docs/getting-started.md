@@ -71,7 +71,7 @@ import { makoo } from '@makoojs/cli';
 
 export default defineConfig({
 	plugins: [
-		makoo({
+		...makoo({
 			app: {
 				name: 'makoo-project',
 				version: '0.0.1'
@@ -180,6 +180,6 @@ pnpm dev
 
 ## 下一步
 
-继续阅读 [核心概念](./concepts.md)，理解 injector、模块、manifest 和 adapter 如何配合。之后可以在
+继续阅读 [核心概念](./concepts.md)，理解 runtime、模块、manifest 和 adapter 如何配合。之后可以在
 [Manifest 参考](./manifest.md) 中查询 `match`、`alive`、`timeout`、`scope`、生命周期 `hooks`
 等模块级配置。

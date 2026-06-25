@@ -1,384 +1,239 @@
 # @makoojs/core
 
-`@makoojs/core` is Makoo's framework-agnostic runtime. It registers injection tasks, waits for DOM targets, delegates component mounting to adapters, manages alive reinjection, binds listeners, emits lifecycle hooks, and logs runtime activity.
+`@makoojs/core` is Makoo's framework-agnostic runtime core. It declares injection tasks, starts task batches, waits for target DOM nodes, mounts artifacts, manages alive reinjection, binds event listeners, and provides lifecycle observation, logging, and error infrastructure.
 
-Most projects use it indirectly through `@makoojs/cli`. Use core APIs directly when you build a custom runtime, test injection behavior, or write a new framework adapter.
+Projects should usually start with `@makoojs/cli`. Use core directly when you want to integrate Makoo's runtime without the CLI-generated entry.
 
-## Exports
+> [!NOTE]
+> `@makoojs/core` is the parent package for the rest of Makoo. Other packages depend on its types or runtime capabilities either directly or indirectly.
+
+## Use Cases
+
+- Write a custom `ResolvableMountAdapter` so Makoo can mount a new artifact type.
+- Create a Makoo runtime with `createMakoo()` and start explicit task declarations.
+- Listen to injection lifecycle events for debugging, analytics, error reporting, or visual devtools.
+- Use low-level tools such as `DOMWatcher` and `createActivityStore` for custom integrations.
+
+## Installation
+
+```bash
+// npm install @makoojs/core
+// yarn add @makoojs/core
+pnpm add @makoojs/core
+```
+
+## Minimal Runtime Example
 
 ```ts
 import {
-	Injector,
-	ObserverHub,
-	Logger,
-	createActivityStore,
-	DOMWatcher,
-	ErrorCode,
-	MakooError,
-	TaskError,
-	AdapterError
+	createMakoo,
+	inject,
+	type ResolvableMountAdapter
 } from '@makoojs/core';
-```
 
-Common types:
-
-```ts
-import type {
-	ArtifactOptions,
-	InjectionConfig,
-	RegisterResult,
-	ListenerRegisterResult,
-	MakooContext,
-	MountAdapter,
-	ResolvableMountAdapter,
-	LifecycleHookMap,
-	ObserveEvent,
-	ObserveEventName,
-	ObserveHook,
-	ActivitySignalSource
-} from '@makoojs/core';
-```
-
-## Injector
-
-`Injector` is the runtime scheduler. It registers tasks, resolves target nodes, mounts artifacts through adapters, and handles reset, destroy, and alive behavior.
-
-```ts
-const injector = new Injector({
-	alive: false,
-	scope: 'local',
-	timeout: 5000
-});
-```
-
-Constructor config:
-
-```ts
-type InjectionConfig = {
-	alive: boolean;
-	scope: 'local' | 'global';
-	timeout: number;
-	logger: ILogger;
-	observer?: ObserverHub;
-	hooks?: LifecycleHookMap;
+type TextArtifact = {
+	kind: 'text';
+	text: string;
 };
-```
 
-Common methods:
+const textAdapter: ResolvableMountAdapter<TextArtifact, HTMLElement> = {
+	name: 'text',
+	matches(artifact): artifact is TextArtifact {
+		return (
+			typeof artifact === 'object' &&
+			artifact !== null &&
+			(artifact as { kind?: unknown }).kind === 'text'
+		);
+	},
+	mount({ mountPoint, artifact }) {
+		const el = document.createElement('span');
+		el.textContent = artifact.text;
+		mountPoint.appendChild(el);
 
-| Method | Description |
-| --- | --- |
-| `applyAdapter(adapter)` | Register a Vue, React, or custom adapter |
-| `register(injectAt, artifact, options?)` | Register a component injection task |
-| `registerListener(listenAt, event, callback, activitySignal?)` | Register a listener-only task |
-| `run()` | Start all registered tasks |
-| `reset(taskId)` / `resetAll()` | Reset one task or all tasks |
-| `destroy(taskId)` / `destroyAll()` | Destroy one task or all tasks |
-| `enableAlive(taskId)` / `disableAlive(taskId)` | Enable or disable alive for one task |
-| `on(event, hook)` / `onTask(taskId, event, hook)` | Listen to global or task-scoped lifecycle events |
-| `onAny(hook)` | Listen to every lifecycle event |
-| `off(...)` / `offTask(...)` / `offAny(...)` | Remove hooks |
-| `getObserver()` | Get the current `ObserverHub` |
-| `getLogger()` | Get the current logger |
+		return { handle: el };
+	},
+	unmount({ handle }) {
+		handle.remove();
+	}
+};
 
-### Registering a Component
-
-```ts
-const result = injector.register('#toolbar', ToolbarWidget, {
-	alive: true,
-	scope: 'global',
-	timeout: 10000
+const makoo = createMakoo({
+	defaults: {
+		alive: true,
+		scope: 'local',
+		timeout: 5000
+	},
+	adapters: [textAdapter]
 });
 
-injector.run();
+makoo.start([
+	inject('#app', {
+		kind: 'text',
+		text: 'Hello from Makoo core'
+	})
+]);
 ```
 
-Return value:
+## Runtime Basics
+
+`inject()` and `listen()` are declaration helpers. They do not touch the DOM and do not register tasks by themselves. `makoo.start([...])` registers the declarations in the provided batch and immediately schedules those tasks.
 
 ```ts
-type RegisterResult = {
-	taskId: string;
-	isSuccess: boolean;
-	enableAlive: () => void;
-	disableAlive: () => void;
-};
-```
+import { createMakoo, inject, listen } from '@makoojs/core';
 
-### Registering a Listener
-
-```ts
-const result = injector.registerListener('#save', 'click', () => {
-	console.log('saved');
+const makoo = createMakoo({
+	defaults: {
+		alive: false,
+		scope: 'local',
+		timeout: 5000
+	},
+	adapters: [myAdapter],
+	hooks: {
+		'start:requested': (event) => {
+			console.log(event.name);
+		}
+	}
 });
+
+const started = makoo.start([
+	inject('#toolbar', toolbarArtifact, {
+		alive: true,
+		on: listen('#save', 'click', () => {
+			console.log('save clicked');
+		})
+	}),
+	listen('#escape', 'keydown', onEscape)
+]);
 ```
 
-Return value:
+`start()` returns `StartedTasks` for batch-scoped control:
 
 ```ts
-type ListenerRegisterResult = {
-	taskId: string;
-	isSuccess: boolean;
-};
-```
+const toolbar = started.get('Toolbar@#toolbar');
 
-### ArtifactOptions
-
-The third argument of `register()` overrides runtime behavior for one task:
-
-```ts
-type ArtifactOptions = {
-	alive?: boolean;
-	scope?: 'local' | 'global';
-	timeout?: number;
-	on?: {
-		listenAt: string;
-		type: string;
-		callback: EventListener;
-		activitySignal?: TaskActivitySignal;
-	};
-	hooks?: LifecycleHookMap;
-};
-```
-
-`on` is useful when a component task also needs to bind an event outside the component. For example, mount a panel into `#panel` while listening to the host page's `#refresh` button.
-
-## Adapter API
-
-Makoo does not hard-code a component framework. Adapters perform the actual mount and unmount work.
-
-```ts
-type MountAdapter<TArtifact = unknown, THandle = unknown, TInstance = unknown> = {
-	name: string;
-	mount(input: AdapterMountInput<TArtifact>): AdapterMountResult<THandle, TInstance>;
-	unmount(input: AdapterUnmountInput<THandle>): void;
-};
-
-type ResolvableMountAdapter<TArtifact = unknown, THandle = unknown, TInstance = unknown> =
-	MountAdapter<TArtifact, THandle, TInstance> & {
-		matches(artifact: unknown): artifact is TArtifact;
-	};
-```
-
-`ResolvableMountAdapter` adds `matches()` so the injector can choose the right adapter for an artifact.
-
-Mount input:
-
-```ts
-type AdapterMountInput<TArtifact = unknown> = {
-	host: HTMLElement;
-	mountPoint: HTMLElement;
-	artifact: TArtifact;
-	taskId: string;
-	injectAt: string;
-	makoo: MakooContext;
-};
-```
-
-Unmount input:
-
-```ts
-type AdapterUnmountInput<THandle = unknown> = {
-	host?: HTMLElement;
-	mountPoint: HTMLElement;
-	handle: THandle;
-	taskId: string;
-	injectAt: string;
-	reason: 'destroy' | 'reset' | 'remount' | 'manual';
-};
-```
-
-## MakooContext
-
-Mounted components receive a `makoo` context. The React adapter passes it as a prop, and the Vue adapter passes it as props as well.
-
-```ts
-type MakooContext = {
-	taskId: string;
-	injectAt: string;
-	enableAlive: () => void;
-	disableAlive: () => void;
-	reset: () => void;
-	destroy: () => void;
-	on: (event: ObserveEventName, hook: ObserveHook) => () => void;
-	onTask: (event: ObserveEventName, hook: ObserveHook) => () => void;
-	off: (event: ObserveEventName, hook?: ObserveHook) => void;
-	offTask: (event?: ObserveEventName, hook?: ObserveHook) => void;
-	getLogger: () => ILogger;
-	bindListenerSignal: (source: ActivitySignalSource<boolean>) => boolean;
-	controlListener: (event: 'OPEN' | 'CLOSE') => boolean;
-};
-```
-
-Example:
-
-```ts
-function Widget({ makoo }: { makoo: MakooContext }) {
-	return <button onClick={() => makoo.destroy()}>Close</button>;
+if (toolbar?.kind === 'component') {
+	toolbar.disableAlive();
+	toolbar.enableAlive();
 }
+
+started.destroyAll();
 ```
 
-## Lifecycle Hooks
+`started.destroyAll()` only affects tasks created by that start batch. `makoo.destroyAll()` affects the whole runtime.
 
-Makoo exports all runtime event names through `OBSERVE_EVENT_NAMES`.
+## Adapter Contract
 
-```ts
-import { OBSERVE_EVENT_NAMES } from '@makoojs/core';
-```
-
-Event payload:
+core does not care whether an artifact is a Vue component, a React component, or another object. It only requires adapters to implement a unified mounting protocol.
 
 ```ts
-type ObserveEvent = {
-	name: ObserveEventName;
-	ts: number;
-	taskId?: string;
-	kind?: 'component' | 'listener';
-	injectAt?: string;
-	status?: 'idle' | 'pending' | 'active';
-	durationMs?: number;
-	error?: unknown;
-	preStatus?: 'idle' | 'pending' | 'active';
-	meta?: Record<string, unknown>;
+import type { ResolvableMountAdapter } from '@makoojs/core';
+
+const adapter: ResolvableMountAdapter<MyArtifact, MyHandle, MyInstance> = {
+	name: 'my-adapter',
+	matches(artifact): artifact is MyArtifact {
+		return isMyArtifact(artifact);
+	},
+	mount(input) {
+		return {
+			handle,
+			instance
+		};
+	},
+	unmount(input) {
+		// Clean up according to input.reason.
+	}
 };
+```
+
+`mount(input)` receives the target host, generated mount point, artifact, task ID, selector, and task-scoped `makoo` context.
+
+## Listener And Activity Signal
+
+Standalone listeners are declared with `listen()`.
+
+```ts
+import { createActivityStore, createMakoo, listen } from '@makoojs/core';
+
+const enabled = createActivityStore(true);
+const makoo = createMakoo();
+
+makoo.start([
+	listen(
+		'#save',
+		'click',
+		() => {
+			console.log('save clicked');
+		},
+		{
+			activitySignal: () => enabled
+		}
+	)
+]);
+
+enabled.set(false);
+enabled.set(true);
+```
+
+## Observation Events
+
+core emits observation events during declaration registration, starting, mounting, listener work, alive mode, DOM watching, and task status changes.
+
+```ts
+const off = makoo.on('artifact:mountSuccess', (event) => {
+	console.log(event.taskId, event.injectAt);
+});
+
+makoo.onAny((event, ctrl) => {
+	if (event.name === 'artifact:mountFail') {
+		ctrl.stopPropagation();
+	}
+});
+
+off();
 ```
 
 Common events include:
 
 - `register:start`
 - `register:success`
-- `run:start`
-- `run:taskScheduled`
+- `start:requested`
+- `start:taskScheduled`
 - `artifact:mountStart`
 - `artifact:mountSuccess`
 - `artifact:mountFail`
 - `listener:attached`
 - `alive:enabled`
+- `alive:observerStarted`
 - `task:statusChange`
 - `dom:targetFound`
 - `dom:targetTimeout`
 
-Usage:
+The full event name list is available from `OBSERVE_EVENT_NAMES`.
 
-```ts
-const off = injector.on('artifact:mountSuccess', (event) => {
-	console.log(event.taskId, 'mounted');
-});
+## DOMWatcher
 
-off();
-```
+`DOMWatcher` is core's low-level DOM observation utility. You usually do not need to use it directly because `makoo.start()` and alive mode already wrap target waiting and restoration.
 
-Hooks receive a propagation controller as the second argument:
+## Logging And Errors
 
-```ts
-injector.onAny((event, ctrl) => {
-	if (event.name === 'artifact:mountFail') {
-		ctrl.stopImmediatePropagation();
-	}
-});
-```
+core uses `Logger` by default and prints logs with the `[Makoo]` prefix. You can pass a custom logger to `createMakoo({ logger })`.
 
-## ObserverHub
+core also exports these error-related types:
 
-`ObserverHub` is the lifecycle event hub. Most applications use it through `Injector`.
+- `MakooError`
+- `AdapterError`
+- `TaskError`
+- `ErrorCode`
+- `MakooIssue`
 
-```ts
-const hub = new ObserverHub();
+## Public Exports Overview
 
-const off = hub.on('run:start', (event) => {
-	console.log(event.name);
-});
-
-hub.emit({
-	name: 'run:start',
-	ts: Date.now()
-});
-
-off();
-```
-
-Methods:
-
-| Method | Description |
+| Category | Representative exports |
 | --- | --- |
-| `on(event, hook)` | Register an event hook |
-| `onTask(taskId, event, hook)` | Register a task-scoped hook |
-| `onAny(hook)` | Register a hook for every event |
-| `off(event, hook?)` | Remove event hooks |
-| `offTask(taskId, event?, hook?)` | Remove task-scoped hooks |
-| `offAny(hook)` | Remove an any-event hook |
-| `emit(event)` | Emit an event |
-| `emitOnTask(taskId, event)` | Emit a task-scoped event |
-| `clear()` | Remove all hooks |
-| `hasHooks(event?)` | Check whether hooks exist |
-
-## Activity Signal
-
-`createActivityStore()` creates a subscribable state store, commonly used to control whether a listener is active.
-
-```ts
-const signal = createActivityStore(true);
-
-signal.subscribe((active) => {
-	console.log('active:', active);
-});
-
-signal.set(false);
-signal.update((value) => !value);
-```
-
-Types:
-
-```ts
-type ActivitySignalStore<T = boolean> = {
-	get(): T;
-	subscribe(listener: (value: T) => void): SignalUnsubscribe;
-};
-
-type WritableActivitySignalStore<T = boolean> = ActivitySignalStore<T> & {
-	set(value: T): void;
-	update(updater: (value: T) => T): void;
-};
-```
-
-## Logger
-
-The default logger writes to the console with a `[Makoo]` prefix and timestamp.
-
-```ts
-const logger = new Logger('debug');
-
-logger.info('started');
-logger.warn('slow target');
-logger.error('failed');
-logger.debug('task detail');
-
-logger.setLevel('warn');
-```
-
-Levels:
-
-```ts
-type LoggerLevel = 'debug' | 'info' | 'warn' | 'error';
-```
-
-## Errors
-
-Core exports three base error types:
-
-| Error | Description |
-| --- | --- |
-| `MakooError` | Structured base error for Makoo |
-| `TaskError` | Task registration, run, or lifecycle errors |
-| `AdapterError` | Adapter mount or unmount errors |
-
-`ErrorCode` provides stable error codes for logs, tests, and error classification.
-
-```ts
-try {
-	injector.run();
-} catch (error) {
-	if (error instanceof MakooError) {
-		console.error(error.code, error.issues);
-	}
-}
-```
+| Runtime API | `createMakoo`, `inject`, `listen`, `MakooRuntime`, `StartedTasks` |
+| Adapter protocol | `MountAdapter`, `ResolvableMountAdapter`, `AdapterMountInput`, `AdapterUnmountInput`, `MakooContext` |
+| Lifecycle observation | `ObserverHub`, `OBSERVE_EVENT_NAMES`, `ObserveEvent`, `ObserveHook`, `LifecycleHookMap` |
+| DOM observation | `DOMWatcher` |
+| Listener signal | `createActivityStore`, `ActivitySignalSource` |
+| Logging | `Logger`, `ILogger`, `LoggerLevel` |
+| Errors | `MakooError`, `AdapterError`, `TaskError`, `ErrorCode` |
