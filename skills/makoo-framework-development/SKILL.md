@@ -35,7 +35,7 @@ If the task touches multiple areas or you need a fuller package map, read `refer
 ## Structure Conventions
 
 - Place implementation near its domain. Examples already used in the repo:
-  - runtime orchestration in `Task/`, `Injector/`, `watcher/`, `payload/`
+  - runtime orchestration in `Makoo/`, `runtime/`, `Task/`, `watcher/`, `payload/`
   - adapter contracts in `adapter/` or package-local adapter files
   - configuration defaults, validation, and resolution in `config/`
   - code generation split into `render/import`, `render/init`, and `render/run`
@@ -89,13 +89,13 @@ If the task touches multiple areas or you need a fuller package map, read `refer
 - Track top-level manifest dependencies separately from module manifest dependencies.
 - Keep runtime setup files separate from dependencies imported by runtime setup files.
 - Avoid dumping raw resolved config objects in `makoo inspect` when they duplicate scanner output.
-- Prefer grouped inspect output for project, source, runtime, monkey, injector, injections, and frameworks.
+- Prefer grouped inspect output for project, source, runtime, monkey, injection defaults, injections, and frameworks.
 - Keep display-only inspect formatting close to `packages/cli/src/command/inspect.ts` unless another command actually reuses it.
 - Use `packages/cli/src/shared/terminalColor.ts` for CLI colors instead of introducing another coloring helper.
 
-## Injector Defaults
+## Injection Defaults
 
-- Injector defaults belong to manifest scanning via `injectionDefaults`, not Vite config.
+- Injection runtime defaults belong to manifest scanning via `injectionDefaults`, not Vite config.
 - Module injection config resolves defaults field-by-field: module config overrides manifest defaults, and manifest defaults override Makoo defaults.
 - Reject unsupported Vite-level injector config with a clear CLI validation error instead of silently accepting or migrating it.
 
