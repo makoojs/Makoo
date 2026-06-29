@@ -74,9 +74,6 @@ importers:
 
   packages/cli:
     dependencies:
-      '@makoojs/core':
-        specifier: workspace:*
-        version: link:../core
       jiti:
         specifier: ^2.6.1
         version: 2.7.0
@@ -93,6 +90,9 @@ importers:
         specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
+      '@makoojs/core':
+        specifier: workspace:*
+        version: link:../core
       '@types/picomatch':
         specifier: ^4.0.3
         version: 4.0.3
@@ -109,11 +109,10 @@ importers:
         version: 8.5.0(@types/node@25.9.1)
 
   packages/react:
-    dependencies:
+    devDependencies:
       '@makoojs/core':
         specifier: workspace:*
         version: link:../core
-    devDependencies:
       react:
         specifier: ^19.2.6
         version: 19.2.6
@@ -122,11 +121,10 @@ importers:
         version: 19.2.6(react@19.2.6)
 
   packages/vue:
-    dependencies:
+    devDependencies:
       '@makoojs/core':
         specifier: workspace:*
         version: link:../core
-    devDependencies:
       vue:
         specifier: ^3.5.35
         version: 3.5.35(typescript@5.9.3)

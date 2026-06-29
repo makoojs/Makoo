@@ -30,13 +30,12 @@
       "require": "./dist/index.cjs"
     }
   },
-  "dependencies": {
-    "@makoojs/core": "workspace:*"
-  },
   "devDependencies": {
+    "@makoojs/core": "workspace:*",
     "vue": "^3.5.35"
   },
   "peerDependencies": {
+    "@makoojs/core": "workspace:^",
     "vue": ">=3"
   }
 }
