@@ -1,6 +1,6 @@
 {
   "name": "@makoojs/react",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "React adapter for the Makoo userscript development framework",
   "type": "module",
   "license": "MIT",
