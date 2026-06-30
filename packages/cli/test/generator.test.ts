@@ -77,7 +77,9 @@ describe('generate', () => {
 		expect(result.code).toContain('"start:requested":(() => "run-start")');
 		expect(result.code).toContain('adapters: [createReactAdapter()]');
 		expect(result.code).toContain('const makooTasks = [];');
-		expect(result.code).toContain('makooTasks.push(inject("#app", Injection_hello_card,');
+		expect(result.code).toContain(
+			'makooTasks.push(inject({"id":"hello-card","injectAt":"#app","artifact":Injection_hello_card,"options":'
+		);
 		expect(result.code).toContain('listen("#app", "click", (() => "clicked"))');
 		expect(result.code).toContain('makoo.start(makooTasks)');
 	});
@@ -142,8 +144,72 @@ describe('generate', () => {
 		expect(result.code).toContain(
 			'if (matchUrl(location.href, {"include":["https://example.com/*"],"exclude":["https://example.com/admin/*"]})) {'
 		);
-		expect(result.code).toContain('makooTasks.push(inject("#app", Injection_matched_card,');
-		expect(result.code).toContain('makooTasks.push(inject("#plain", Injection_plain_card,');
+		expect(result.code).toContain(
+			'makooTasks.push(inject({"id":"matched-card","injectAt":"#app","artifact":Injection_matched_card,"options":'
+		);
+		expect(result.code).toContain(
+			'makooTasks.push(inject({"id":"plain-card","injectAt":"#plain","artifact":Injection_plain_card,"options":'
+		);
+	});
+
+	it('uses module ids as generated object-form injection ids for same-named components', () => {
+		const config = resolveConfig(
+			{
+				app: {
+					name: 'same-component-name',
+					version: '1.0.0'
+				}
+			},
+			root
+		);
+		const firstInjection = resolveInjection(
+			{
+				name: 'first-panel',
+				injectAt: 'body',
+				component: './first/App.vue',
+				framework: 'Vue'
+			},
+			{
+				root,
+				source: config.source,
+				injectionDefaults: defaultInjectionDefaults,
+				componentPath: path.join(root, 'injections/first/App.vue')
+			}
+		);
+		const secondInjection = resolveInjection(
+			{
+				name: 'second-panel',
+				injectAt: 'body',
+				component: './second/App.vue',
+				framework: 'Vue'
+			},
+			{
+				root,
+				source: config.source,
+				injectionDefaults: defaultInjectionDefaults,
+				componentPath: path.join(root, 'injections/second/App.vue')
+			}
+		);
+		const scanResult: ScannerResult = {
+			config,
+			injectionDefaults: defaultInjectionDefaults,
+			manifestFile: path.join(root, 'injections/manifest.ts'),
+			manifestDependencies: [],
+			moduleManifestDependencies: [],
+			runtimeSetupFiles: [],
+			runtimeDependencies: [],
+			injections: [firstInjection, secondInjection],
+			frameworks: ['Vue']
+		};
+
+		const result = generate(scanResult);
+
+		expect(result.code).toContain(
+			'makooTasks.push(inject({"id":"first-panel","injectAt":"body","artifact":Injection_first_panel,"options":'
+		);
+		expect(result.code).toContain(
+			'makooTasks.push(inject({"id":"second-panel","injectAt":"body","artifact":Injection_second_panel,"options":'
+		);
 	});
 
 	it('renders runtime setup imports before component imports', () => {

@@ -217,6 +217,49 @@ describe('TaskRegister', () => {
 		});
 	});
 
+	it('should prefer explicit injection id over inferred artifact name', () => {
+		const component = createVueComponent('CompWithId');
+		const result = registerInjection(runtime, {
+			id: 'custom-panel',
+			injectAt: '#id-host',
+			artifact: component
+		});
+		const context = taskContext.get(result.taskId);
+
+		expect(result).toEqual({ taskId: 'custom-panel', isSuccess: true });
+		expect(context).toMatchObject({
+			kind: 'component',
+			taskId: 'custom-panel',
+			artifactName: 'CompWithId',
+			injectAt: '#id-host',
+			artifact: component
+		});
+	});
+
+	it('should treat repeated explicit injection id as duplicate', () => {
+		const firstComponent = createVueComponent('ExplicitA');
+		const secondComponent = createVueComponent('ExplicitB');
+
+		const first = registerInjection(runtime, {
+			id: 'same-explicit-id',
+			injectAt: '#explicit-a',
+			artifact: firstComponent
+		});
+		const second = registerInjection(runtime, {
+			id: 'same-explicit-id',
+			injectAt: '#explicit-b',
+			artifact: secondComponent
+		});
+
+		expect(first).toEqual({ taskId: 'same-explicit-id', isSuccess: true });
+		expect(second).toEqual({
+			taskId: 'same-explicit-id',
+			isSuccess: true,
+			isDuplicate: true
+		});
+		expect(taskContext.taskRecords).toHaveLength(1);
+	});
+
 	it('should return existing result for duplicate component registration', () => {
 		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
@@ -232,6 +275,54 @@ describe('TaskRegister', () => {
 		});
 		expect(taskContext.taskRecords).toHaveLength(1);
 		expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('already registered'));
+	});
+
+	it('should avoid duplicate fallback when different artifacts share name and target', () => {
+		const firstComponent = createVueComponent('SharedName');
+		const secondComponent = createVueComponent('SharedName');
+
+		const first = registerInjection(runtime, { injectAt: '#shared', artifact: firstComponent });
+		const second = registerInjection(runtime, {
+			injectAt: '#shared',
+			artifact: secondComponent
+		});
+
+		expect(first).toEqual({ taskId: 'SharedName@#shared', isSuccess: true });
+		expect(second).toMatchObject({
+			isSuccess: true
+		});
+		expect(second.isDuplicate).toBeUndefined();
+		expect(second.taskId).not.toBe('SharedName@#shared');
+		expect(second.taskId).toMatch(/^SharedName#artifact-\d+@#shared$/);
+		expect(taskContext.taskRecords).toHaveLength(2);
+		expect(taskContext.get(second.taskId)).toMatchObject({
+			artifact: secondComponent,
+			artifactName: 'SharedName',
+			injectAt: '#shared'
+		});
+	});
+
+	it('should treat repeated inferred fallback task as duplicate for the same artifact', () => {
+		const firstComponent = createVueComponent('RepeatedSharedName');
+		const secondComponent = createVueComponent('RepeatedSharedName');
+
+		registerInjection(runtime, { injectAt: '#repeated-shared', artifact: firstComponent });
+		const firstFallback = registerInjection(runtime, {
+			injectAt: '#repeated-shared',
+			artifact: secondComponent
+		});
+		const secondFallback = registerInjection(runtime, {
+			injectAt: '#repeated-shared',
+			artifact: secondComponent
+		});
+
+		expect(firstFallback.isDuplicate).toBeUndefined();
+		expect(secondFallback).toEqual({
+			taskId: firstFallback.taskId,
+			isSuccess: true,
+			isDuplicate: true
+		});
+		expect(taskContext.taskRecords).toHaveLength(2);
 	});
 
 	it('should reuse generated anonymous name for same component reference', () => {

@@ -13,8 +13,10 @@ import type {
 	TaskActivitySignal,
 	TaskListenerFeature
 } from './types';
+import { resolveInjectionTaskId } from './util';
 
 export type InjectionDeclaration<TArtifact = unknown> = {
+	id?: string;
 	injectAt: string;
 	artifact: TArtifact;
 	options?: ArtifactOptions;
@@ -124,9 +126,14 @@ export function registerInjection<TArtifact>(
 	runtime: MakooRuntimeState,
 	declaration: InjectionDeclaration<TArtifact>
 ): _RegisterResult {
-	const { injectAt, artifact, options } = declaration;
+	const { id, injectAt, artifact, options } = declaration;
 	const artifactName = getArtifactName(artifact);
-	const taskId: string = artifactName ? `${artifactName}@${injectAt}` : `artifact-${injectAt}`;
+	const taskId = resolveInjectionTaskId(runtime, {
+		id,
+		artifactName,
+		injectAt,
+		artifact
+	});
 	const withEvent = Boolean(options?.on);
 	const listenerEvent = options?.on?.type;
 	const listenAt = options?.on?.listenAt;

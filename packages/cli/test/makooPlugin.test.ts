@@ -88,7 +88,9 @@ describe('makooMonkey', () => {
 			await buildStart?.call({} as never, {} as never);
 			const code = await load?.call({} as never, RESOLVED_ID, {} as never);
 
-			expect(String(code)).toContain('makooTasks.push(inject("#app"');
+			expect(String(code)).toContain(
+				'makooTasks.push(inject({"id":"widget","injectAt":"#app","artifact":Injection_widget'
+			);
 			expect(String(code)).toContain('makoo.start(makooTasks)');
 			expect(String(code)).not.toContain('import.meta.hot.accept');
 		});
@@ -108,7 +110,9 @@ describe('makooMonkey', () => {
 			await buildStart?.call({} as never, {} as never);
 			const code = await load?.call({} as never, RESOLVED_ID, {} as never);
 
-			expect(String(code)).toContain('makooTasks.push(inject("#app"');
+			expect(String(code)).toContain(
+				'makooTasks.push(inject({"id":"widget","injectAt":"#app","artifact":Injection_widget'
+			);
 			expect(String(code)).toContain('makoo.start(makooTasks)');
 			expect(String(code)).toContain('import.meta.hot.accept');
 			expect(String(code)).toContain("import.meta.hot.on('makoo:structural-hmr'");

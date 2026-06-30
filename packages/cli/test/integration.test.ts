@@ -177,7 +177,8 @@ describe('makoo build integration', () => {
 		expect(userscript).toContain('__makooRuntimeSetup');
 		expect(userscript).toContain('createReactAdapter');
 		expect(userscript).toContain('createMakoo');
-		expect(userscript).toContain('inject("body"');
+		expect(userscript).toContain('"id": "hello-widget"');
+		expect(userscript).toContain('"injectAt": "body"');
 		expect(userscript).toContain('makoo.start(makooTasks)');
 		expect(userscript).not.toContain('virtual:makoo/entry');
 	});
