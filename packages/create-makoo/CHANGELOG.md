@@ -1,5 +1,11 @@
 # @makoojs/create-makoo
 
+## 0.1.5
+
+### Patch Changes
+
+Add a PR-time check that ensures create-makoo's recommended Makoo package versions stay aligned with pending Changesets releases.
+
 ## 0.1.4
 
 ### Patch Changes
