@@ -42,10 +42,33 @@ export function resolveInjectionTaskId(
 		? `${input.artifactName}@${input.injectAt}`
 		: `artifact-${input.injectAt}`;
 	const existingBaseTask = runtime.taskContext.get(baseTaskId);
-	if (!existingBaseTask) {
+
+	if (
+		existingBaseTask &&
+		isArtifactTask(existingBaseTask) &&
+		existingBaseTask.artifact === input.artifact
+	) {
 		return baseTaskId;
 	}
-	if (isArtifactTask(existingBaseTask) && existingBaseTask.artifact === input.artifact) {
+
+	// Reuse a live fallback task before allowing the artifact to move back to the base id.
+	const cachedArtifactIdentity: string | undefined = inferredArtifactIds.get(
+		input.artifact as object
+	);
+	if (cachedArtifactIdentity) {
+		const existingFallbackTaskId = `${input.artifactName}#${cachedArtifactIdentity}@${input.injectAt}`;
+		const existingFallbackTask = runtime.taskContext.get(existingFallbackTaskId);
+
+		if (
+			existingFallbackTask &&
+			isArtifactTask(existingFallbackTask) &&
+			existingFallbackTask.artifact === input.artifact
+		) {
+			return existingFallbackTaskId;
+		}
+	}
+
+	if (!existingBaseTask) {
 		return baseTaskId;
 	}
 
