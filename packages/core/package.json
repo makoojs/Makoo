@@ -1,6 +1,6 @@
 {
   "name": "@makoojs/core",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Framework-agnostic runtime core for Makoo userscript applications",
   "type": "module",
   "license": "MIT",
