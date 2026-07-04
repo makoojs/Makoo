@@ -325,6 +325,35 @@ describe('TaskRegister', () => {
 		expect(taskContext.taskRecords).toHaveLength(2);
 	});
 
+	it('should preserve inferred fallback task after base task is destroyed', () => {
+		const firstComponent = createVueComponent('DestroyedBaseSharedName');
+		const secondComponent = createVueComponent('DestroyedBaseSharedName');
+
+		const base = registerInjection(runtime, {
+			injectAt: '#destroyed-base-shared',
+			artifact: firstComponent
+		});
+		const firstFallback = registerInjection(runtime, {
+			injectAt: '#destroyed-base-shared',
+			artifact: secondComponent
+		});
+
+		taskContext.destroy(base.taskId);
+
+		const secondFallback = registerInjection(runtime, {
+			injectAt: '#destroyed-base-shared',
+			artifact: secondComponent
+		});
+
+		expect(firstFallback.taskId).not.toBe(base.taskId);
+		expect(secondFallback).toEqual({
+			taskId: firstFallback.taskId,
+			isSuccess: true,
+			isDuplicate: true
+		});
+		expect(taskContext.taskRecords).toHaveLength(1);
+	});
+
 	it('should reuse generated anonymous name for same component reference', () => {
 		const anonymous = createVueComponent('anonymous');
 		const a = registerInjection(runtime, { injectAt: '#a', artifact: anonymous });
