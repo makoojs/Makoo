@@ -30,6 +30,30 @@ describe('Makoo declarations', () => {
 		});
 	});
 
+	it('should create component injection declarations from object input', () => {
+		const component = createVueComponent('DeclaredObjectComp');
+		const declaration = inject({
+			id: 'declared-object',
+			injectAt: '#object-app',
+			artifact: component,
+			options: {
+				alive: true,
+				scope: 'global'
+			}
+		});
+
+		expect(declaration).toEqual({
+			kind: 'component',
+			id: 'declared-object',
+			injectAt: '#object-app',
+			artifact: component,
+			options: {
+				alive: true,
+				scope: 'global'
+			}
+		});
+	});
+
 	it('should create listener declarations that can be used standalone or inside inject options', () => {
 		const signal = createActivityStore(true);
 		const activitySignal = () => signal;

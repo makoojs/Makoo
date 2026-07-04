@@ -7,6 +7,7 @@ import type {
 	ArtifactOptions,
 	CreateMakooOptions,
 	MakooInjectionDeclaration,
+	MakooInjectionInput,
 	MakooListenerDeclaration,
 	MakooListenerOptions,
 	MakooRuntime,
@@ -57,11 +58,29 @@ export function inject<TArtifact>(
 	injectAt: string,
 	artifact: TArtifact,
 	options?: ArtifactOptions
+): MakooInjectionDeclaration<TArtifact>;
+export function inject<TArtifact>(
+	input: MakooInjectionInput<TArtifact>
+): MakooInjectionDeclaration<TArtifact>;
+export function inject<TArtifact>(
+	inputOrInjectAt: string | MakooInjectionInput<TArtifact>,
+	artifact?: TArtifact,
+	options?: ArtifactOptions
 ): MakooInjectionDeclaration<TArtifact> {
+	if (typeof inputOrInjectAt !== 'string') {
+		return {
+			kind: 'component',
+			...(inputOrInjectAt.id ? { id: inputOrInjectAt.id } : {}),
+			injectAt: inputOrInjectAt.injectAt,
+			artifact: inputOrInjectAt.artifact,
+			...(inputOrInjectAt.options ? { options: inputOrInjectAt.options } : {})
+		};
+	}
+
 	return {
 		kind: 'component',
-		injectAt,
-		artifact,
+		injectAt: inputOrInjectAt,
+		artifact: artifact as TArtifact,
 		...(options ? { options } : {})
 	};
 }
@@ -91,6 +110,7 @@ function registerDeclarations(
 	for (const declaration of declarations) {
 		if (declaration.kind === 'component') {
 			const result = registerInjection(runtime, {
+				...(declaration.id ? { id: declaration.id } : {}),
 				injectAt: declaration.injectAt,
 				artifact: declaration.artifact,
 				...(declaration.options ? { options: declaration.options } : {})

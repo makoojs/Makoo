@@ -115,7 +115,9 @@ describe('makooMonkey dev HMR', () => {
 
 			const load = getHook(plugin.load);
 			const initialCode = await load?.call({}, RESOLVED_ID, {});
-			expect(String(initialCode)).toContain('makooTasks.push(inject("#old"');
+			expect(String(initialCode)).toContain(
+				'makooTasks.push(inject({"id":"widget","injectAt":"#old","artifact":Injection_widget'
+			);
 			expect(String(initialCode)).toContain('makoo.start(makooTasks)');
 
 			const manifestFile = path.join(root, 'injections/manifest.ts');
@@ -132,7 +134,9 @@ describe('makooMonkey dev HMR', () => {
 			await dev.emit('change', manifestFile);
 
 			const updatedCode = await load?.call({} as never, RESOLVED_ID, {} as never);
-			expect(String(updatedCode)).toContain('makooTasks.push(inject("#new"');
+			expect(String(updatedCode)).toContain(
+				'makooTasks.push(inject({"id":"widget","injectAt":"#new","artifact":Injection_widget'
+			);
 			expect(dev.invalidateModule).toHaveBeenCalledTimes(1);
 			expect(dev.hotSend).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -172,7 +176,9 @@ describe('makooMonkey dev HMR', () => {
 
 			const load = getHook(plugin.load);
 			const initialCode = await load?.call({} as never, RESOLVED_ID, {} as never);
-			expect(String(initialCode)).toContain('makooTasks.push(inject("#old"');
+			expect(String(initialCode)).toContain(
+				'makooTasks.push(inject({"id":"widget","injectAt":"#old","artifact":Injection_widget'
+			);
 			expect(String(initialCode)).toContain('makoo.start(makooTasks)');
 
 			const manifestFile = path.join(root, 'injections/manifest.ts');
@@ -201,7 +207,9 @@ describe('makooMonkey dev HMR', () => {
 			const currentCode = await load?.call({} as never, RESOLVED_ID, {} as never);
 
 			expect(result).toEqual([componentModule]);
-			expect(String(currentCode)).toContain('makooTasks.push(inject("#old"');
+			expect(String(currentCode)).toContain(
+				'makooTasks.push(inject({"id":"widget","injectAt":"#old","artifact":Injection_widget'
+			);
 			expect(String(currentCode)).toContain('makoo.start(makooTasks)');
 			expect(dev.invalidateModule).not.toHaveBeenCalled();
 			expect(dev.hotSend).not.toHaveBeenCalled();

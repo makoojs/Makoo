@@ -117,6 +117,43 @@ describe('createMakoo', () => {
 		expect(callback).toHaveBeenCalledTimes(2);
 	});
 
+	it('should start object-form component declarations with explicit task id', () => {
+		const host = document.createElement('div');
+		host.id = 'object-host';
+		document.body.appendChild(host);
+		const artifact = { name: 'PlainObject' };
+		let mountInput: AdapterMountInput<PlainArtifact> | undefined;
+		const mount = vi.fn((input: AdapterMountInput<PlainArtifact>) => {
+			mountInput = input;
+			return { handle: { mounted: true }, instance: input.artifact };
+		});
+		const makoo = createMakoo({
+			adapters: [createPlainAdapter(mount)]
+		});
+
+		const started = makoo.start([
+			inject({
+				id: 'object-panel',
+				injectAt: '#object-host',
+				artifact
+			})
+		]);
+		const task = started.get('object-panel');
+
+		expect(task).toMatchObject({
+			kind: 'component',
+			taskId: 'object-panel'
+		});
+		expect(mountInput).toMatchObject({
+			taskId: 'object-panel',
+			injectAt: '#object-host',
+			makoo: expect.objectContaining({
+				taskId: 'object-panel',
+				injectAt: '#object-host'
+			})
+		});
+	});
+
 	it('should throw a task error when starting an empty batch', () => {
 		const makoo = createMakoo();
 

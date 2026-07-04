@@ -31,8 +31,16 @@ export type ArtifactOptions = {
 	hooks?: LifecycleHookMap;
 };
 
+export type MakooInjectionInput<TArtifact = unknown> = {
+	id?: string;
+	injectAt: string;
+	artifact: TArtifact;
+	options?: ArtifactOptions;
+};
+
 export type MakooInjectionDeclaration<TArtifact = unknown> = {
 	kind: 'component';
+	id?: string;
 	injectAt: string;
 	artifact: TArtifact;
 	options?: ArtifactOptions;

@@ -34,6 +34,7 @@ export type {
 	InjectionConfig,
 	MakooDefaults,
 	MakooInjectionDeclaration,
+	MakooInjectionInput,
 	MakooListenerDeclaration,
 	MakooListenerOptions,
 	MakooRuntime,

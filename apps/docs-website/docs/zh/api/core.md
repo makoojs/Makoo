@@ -78,6 +78,29 @@ makoo.start([
 
 `inject()` 和 `listen()` 是声明 helper。它们不会触碰 DOM，也不会自己注册任务。`makoo.start([...])` 会注册传入批次里的声明，并立即调度这些任务。
 
+`inject()` 有两种写法。参数形式比较简洁：
+
+```ts
+inject('#toolbar', toolbarArtifact, {
+	alive: true
+});
+```
+
+对象形式会把声明字段放在一起。里面可选的 `id` 会作为任务 ID，适合后续需要查找或控制这个任务的场景：
+
+```ts
+inject({
+	id: 'settings-panel',
+	injectAt: '#settings',
+	artifact: settingsArtifact,
+	options: {
+		alive: true
+	}
+});
+```
+
+没有传 `id` 时，Makoo 会根据 artifact 和目标 selector 推导任务 ID。
+
 ```ts
 import { createMakoo, inject, listen } from '@makoojs/core';
 
@@ -97,7 +120,17 @@ const makoo = createMakoo({
 
 const started = makoo.start([
 	inject('#toolbar', toolbarArtifact, {
-		alive: true,
+		alive: true
+	}),
+	inject({
+		id: 'settings-panel',
+		injectAt: '#settings',
+		artifact: settingsArtifact,
+		options: {
+			alive: true
+		}
+	}),
+	inject('#save-tip', saveTipArtifact, {
 		on: listen('#save', 'click', () => {
 			console.log('save clicked');
 		})

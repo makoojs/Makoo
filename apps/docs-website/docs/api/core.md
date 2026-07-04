@@ -78,6 +78,29 @@ makoo.start([
 
 `inject()` and `listen()` are declaration helpers. They do not touch the DOM and do not register tasks by themselves. `makoo.start([...])` registers the declarations in the provided batch and immediately schedules those tasks.
 
+`inject()` has two forms. The positional form is concise:
+
+```ts
+inject('#toolbar', toolbarArtifact, {
+	alive: true
+});
+```
+
+The object form keeps the declaration fields together. Its optional `id` is used as the task id, which is useful when you want to look up or control that task later:
+
+```ts
+inject({
+	id: 'settings-panel',
+	injectAt: '#settings',
+	artifact: settingsArtifact,
+	options: {
+		alive: true
+	}
+});
+```
+
+When `id` is omitted, Makoo infers a task id from the artifact and target selector.
+
 ```ts
 import { createMakoo, inject, listen } from '@makoojs/core';
 
@@ -97,7 +120,17 @@ const makoo = createMakoo({
 
 const started = makoo.start([
 	inject('#toolbar', toolbarArtifact, {
-		alive: true,
+		alive: true
+	}),
+	inject({
+		id: 'settings-panel',
+		injectAt: '#settings',
+		artifact: settingsArtifact,
+		options: {
+			alive: true
+		}
+	}),
+	inject('#save-tip', saveTipArtifact, {
 		on: listen('#save', 'click', () => {
 			console.log('save clicked');
 		})

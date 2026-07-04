@@ -34,7 +34,13 @@ export function renderRegisterComponent(
 			hooks: item.componentMeta.hooks
 		};
 		const options = renderArtifactOptions(config, item.componentMeta.on);
-		const register = `${instanceName}Tasks.push(inject(${JSON.stringify(item.componentMeta.injectAt)}, ${item.componentName}, ${options}));`;
+		const declaration = [
+			`"id":${JSON.stringify(item.componentMeta.moduleId)}`,
+			`"injectAt":${JSON.stringify(item.componentMeta.injectAt)}`,
+			`"artifact":${item.componentName}`,
+			`"options":${options}`
+		].join(',');
+		const register = `${instanceName}Tasks.push(inject({${declaration}}));`;
 
 		if (!item.componentMeta.match) {
 			return register;
