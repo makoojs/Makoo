@@ -60,6 +60,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -75,6 +77,14 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Fetch PR base branch
+        if: github.event_name == 'pull_request' && github.event.pull_request.title != 'Version Packages'
+        run: git fetch origin "${{ github.base_ref }}" --depth=1
+
+      - name: Check Makoo recommended versions
+        if: github.event_name == 'pull_request' && github.event.pull_request.title != 'Version Packages'
+        run: pnpm check:makoo-versions -- --since "origin/${{ github.base_ref }}"
 
       - name: Build project
         run: pnpm build
