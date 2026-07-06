@@ -27,6 +27,7 @@ import type {
 	CliConfig,
 	InjectionDefaults,
 	InjectionFramework,
+	InjectionListenerConfig,
 	InjectionManifest,
 	InjectionMatchConfig,
 	InjectionMatchObject,
@@ -40,12 +41,15 @@ import type {
 	ResolvedInjectionFramework,
 	ResolvedInjectionManifest,
 	ResolvedInjectionModule,
+	ResolvedListener,
+	ResolvedListenerManifest,
 	ResolvedMonkeyBuildConfig,
 	ResolvedMonkeyConfig,
 	ResolvedMonkeyServerConfig,
 	ResolvedRuntimeConfig,
 	ResolvedSourceConfig,
 	ResolveInjectionOptions,
+	ResolveListenerOptions,
 	RuntimeConfig,
 	SourceConfig
 } from './types';
@@ -147,6 +151,22 @@ const deriveInjectionModuleId = (
 	return `injection-${typeof index === 'number' ? index + 1 : 1}`;
 };
 
+const deriveListenerId = (
+	config: InjectionListenerConfig,
+	fallbackName?: string,
+	index?: number
+): string => {
+	if (config.name) {
+		return config.name;
+	}
+
+	if (fallbackName) {
+		return fallbackName;
+	}
+
+	return `listener-${typeof index === 'number' ? index + 1 : 1}`;
+};
+
 const resolveMetaFileName = (
 	fileName: string,
 	metaFileName: MonkeyBuildConfig['metaFileName']
@@ -184,6 +204,22 @@ export const normalizeInjectionManifest = (
 	injections: InjectionManifest | undefined
 ): ResolvedInjectionManifest => {
 	const items = injections?.injections;
+	if (!items) {
+		return [];
+	}
+	if (Array.isArray(items)) {
+		return items;
+	}
+	return Object.entries(items).map(([name, config]) => ({
+		name,
+		...config
+	}));
+};
+
+export const normalizeListenerManifest = (
+	manifest: InjectionManifest | undefined
+): ResolvedListenerManifest => {
+	const items = manifest?.listeners;
 	if (!items) {
 		return [];
 	}
@@ -381,6 +417,38 @@ export const resolveInjections = (
 			injectionDefaults: options.injectionDefaults,
 			componentPath: resolvePath(options.source.dir, injection.component),
 			// `index` was a name of element
+			index
+		})
+	);
+};
+
+export const resolveListener = (
+	config: InjectionListenerConfig,
+	options: ResolveListenerOptions
+): ResolvedListener => {
+	const { name: _name, enabled: _enabled, match: _match, ...rest } = config;
+	void _name;
+	void _enabled;
+	void _match;
+
+	return {
+		...rest,
+		listenerId:
+			options.listenerId ?? deriveListenerId(config, options.fallbackName, options.index),
+		enabled: config.enabled ?? true,
+		match: resolveMatchConfig(config.match)
+	};
+};
+
+export const resolveListeners = (
+	manifest: InjectionManifest | undefined,
+	options: ResolveConfigOptions
+): ResolvedListener[] => {
+	const normalizedListeners = normalizeListenerManifest(manifest);
+
+	return normalizedListeners.map((listener, index) =>
+		resolveListener(listener, {
+			root: options.root,
 			index
 		})
 	);

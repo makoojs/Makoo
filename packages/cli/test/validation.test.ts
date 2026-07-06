@@ -3,8 +3,10 @@ import { describe, expect, it } from 'vitest';
 import { ManifestValidationError } from '../src/error/error';
 import {
 	InjectionDefaultsSchema,
+	InjectionListenerSchema,
 	InjectionManifestSchema,
 	InjectionMatchSchema,
+	InjectionModuleListenerSchema,
 	InjectionModuleSchema,
 	LifecycleHookMapSchema,
 	ObserveEventNameSchema,
@@ -111,6 +113,22 @@ describe('InjectionModuleSchema', () => {
 		expect(result.success).toBe(true);
 	});
 
+	it('accepts module listener config', () => {
+		const callback = () => undefined;
+		const activitySignal = () => ({ value: true });
+		const result = InjectionModuleSchema.safeParse({
+			injectAt: '#app',
+			component: './index.tsx',
+			on: {
+				listenAt: '#open',
+				type: 'click',
+				callback,
+				activitySignal
+			}
+		});
+		expect(result.success).toBe(true);
+	});
+
 	it('accepts minimal config with only injectAt and component', () => {
 		const result = InjectionModuleSchema.safeParse({
 			injectAt: '#app',
@@ -157,6 +175,51 @@ describe('InjectionModuleSchema', () => {
 			injectAt: '#app',
 			component: './test.tsx',
 			match: 123
+		});
+		expect(result.success).toBe(false);
+	});
+});
+
+describe('InjectionModuleListenerSchema', () => {
+	it('accepts listener options used by injection on', () => {
+		const callback = () => undefined;
+		const activitySignal = () => ({ value: true });
+		const result = InjectionModuleListenerSchema.safeParse({
+			listenAt: '#button',
+			type: 'click',
+			callback,
+			activitySignal
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects missing callback', () => {
+		const result = InjectionModuleListenerSchema.safeParse({
+			listenAt: '#button',
+			type: 'click'
+		});
+		expect(result.success).toBe(false);
+	});
+});
+
+describe('InjectionListenerSchema', () => {
+	it('accepts top-level listener config with match and enabled', () => {
+		const result = InjectionListenerSchema.safeParse({
+			name: 'escape-close',
+			listenAt: 'body',
+			type: 'keydown',
+			callback: () => undefined,
+			activitySignal: () => ({ value: true }),
+			match: ['https://example.com/*'],
+			enabled: true
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects missing listenAt', () => {
+		const result = InjectionListenerSchema.safeParse({
+			type: 'keydown',
+			callback: () => undefined
 		});
 		expect(result.success).toBe(false);
 	});
@@ -212,6 +275,33 @@ describe('InjectionManifestSchema', () => {
 		expect(result.success).toBe(true);
 	});
 
+	it('accepts manifest with only listeners', () => {
+		const result = InjectionManifestSchema.safeParse({
+			listeners: {
+				escapeClose: {
+					listenAt: 'body',
+					type: 'keydown',
+					callback: () => undefined
+				}
+			}
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('accepts array form listeners', () => {
+		const result = InjectionManifestSchema.safeParse({
+			listeners: [
+				{
+					name: 'escapeClose',
+					listenAt: 'body',
+					type: 'keydown',
+					callback: () => undefined
+				}
+			]
+		});
+		expect(result.success).toBe(true);
+	});
+
 	it('rejects manifest with old globalInjector field', () => {
 		const result = InjectionManifestSchema.safeParse({
 			globalInjector: { alive: true, scope: 'global', timeout: 3000 },
@@ -220,7 +310,7 @@ describe('InjectionManifestSchema', () => {
 		expect(result.success).toBe(false);
 	});
 
-	it('rejects missing injections', () => {
+	it('rejects manifest without injections or listeners', () => {
 		const result = InjectionManifestSchema.safeParse({});
 		expect(result.success).toBe(false);
 	});
@@ -235,6 +325,13 @@ describe('InjectionManifestSchema', () => {
 	it('rejects array item missing injectAt', () => {
 		const result = InjectionManifestSchema.safeParse({
 			injections: [{ name: 'bad', component: './bad.tsx' }]
+		});
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects listener item missing listenAt', () => {
+		const result = InjectionManifestSchema.safeParse({
+			listeners: [{ name: 'bad', type: 'click', callback: () => undefined }]
 		});
 		expect(result.success).toBe(false);
 	});

@@ -1,4 +1,8 @@
-import { OBSERVE_EVENT_NAMES } from '@makoojs/core';
+import {
+	type ActivitySignalSource,
+	OBSERVE_EVENT_NAMES,
+	type ObserveHook
+} from '@makoojs/core';
 import { z } from 'zod';
 import { ManifestValidationError } from '../error/error';
 
@@ -6,7 +10,8 @@ import { ManifestValidationError } from '../error/error';
 
 export const ObserveEventNameSchema = z.enum(OBSERVE_EVENT_NAMES);
 
-const HookSchema = z.union([z.function(), z.array(z.function())]);
+const ObserveHookSchema = z.custom<ObserveHook>((value) => typeof value === 'function');
+const HookSchema = z.union([ObserveHookSchema, z.array(ObserveHookSchema)]);
 
 export const LifecycleHookMapSchema = z
 	.record(z.string(), HookSchema)
@@ -33,6 +38,18 @@ export const InjectionMatchSchema = z.union([
 	})
 ]);
 
+const EventListenerSchema = z.custom<EventListener>((value) => typeof value === 'function');
+const ActivitySignalSchema = z.custom<() => ActivitySignalSource<boolean>>(
+	(value) => typeof value === 'function'
+);
+
+export const InjectionModuleListenerSchema = z.object({
+	listenAt: z.string(),
+	type: z.string(),
+	callback: EventListenerSchema,
+	activitySignal: ActivitySignalSchema.optional()
+});
+
 export const InjectionModuleSchema = z.object({
 	name: z.string().optional(),
 	injectAt: z.string(),
@@ -42,7 +59,14 @@ export const InjectionModuleSchema = z.object({
 	match: InjectionMatchSchema.optional(),
 	alive: z.boolean().optional(),
 	scope: z.enum(['local', 'global']).optional(),
-	timeout: z.number().optional()
+	timeout: z.number().optional(),
+	on: InjectionModuleListenerSchema.optional()
+});
+
+export const InjectionListenerSchema = InjectionModuleListenerSchema.extend({
+	name: z.string().optional(),
+	enabled: z.boolean().optional(),
+	match: InjectionMatchSchema.optional()
 });
 
 // --- Top-level manifest ---
@@ -50,12 +74,23 @@ export const InjectionModuleSchema = z.object({
 export const InjectionManifestSchema = z
 	.object({
 		injectionDefaults: InjectionDefaultsSchema.optional(),
-		injections: z.union([
-			z.array(InjectionModuleSchema),
-			z.record(z.string(), InjectionModuleSchema.omit({ name: true }))
-		])
+		injections: z
+			.union([
+				z.array(InjectionModuleSchema),
+				z.record(z.string(), InjectionModuleSchema.omit({ name: true }))
+			])
+			.optional(),
+		listeners: z
+			.union([
+				z.array(InjectionListenerSchema),
+				z.record(z.string(), InjectionListenerSchema.omit({ name: true }))
+			])
+			.optional()
 	})
-	.strict();
+	.strict()
+	.refine((manifest) => manifest.injections || manifest.listeners, {
+		message: 'Manifest must define injections or listeners'
+	});
 
 // --- Validate helpers ---
 

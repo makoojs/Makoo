@@ -58,6 +58,7 @@ export async function scanner(config: ResolvedConfig): Promise<ScannerResult> {
 		for (const dependency of meta.dependencies) {
 			moduleManifestDependencies.add(dependency);
 		}
+		// resolve module config
 		const resolveMeta = resolveInjection(meta.moduleConfig, {
 			root: config.root,
 			source: config.source,
@@ -67,9 +68,14 @@ export async function scanner(config: ResolvedConfig): Promise<ScannerResult> {
 			fallbackName: module,
 			moduleManifestFile: meta.moduleManifestFile
 		});
+
+		// module config array
 		injectionsMeta.push(resolveMeta);
 	}
 
+	// merge target: module config
+	// merge source: main config(manifest config)
+	// injectionsMeta field will override resolveManifest when module id is equal
 	const injections = mergeMeta(resolveManifest, injectionsMeta).filter(
 		(injection) => injection.enabled
 	);
