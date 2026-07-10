@@ -9,6 +9,7 @@ import type {
 	MakooInjectionDeclaration,
 	MakooInjectionInput,
 	MakooListenerDeclaration,
+	MakooListenerInput,
 	MakooListenerOptions,
 	MakooRuntime,
 	MakooTaskDeclaration,
@@ -89,14 +90,35 @@ export function listen(
 	listenAt: string,
 	event: string,
 	callback: EventListener,
+	options?: MakooListenerOptions
+): MakooListenerDeclaration;
+export function listen(input: MakooListenerInput): MakooListenerDeclaration;
+export function listen(
+	inputOrListenAt: string | MakooListenerInput,
+	event?: string,
+	callback?: EventListener,
 	options: MakooListenerOptions = {}
 ): MakooListenerDeclaration {
+	if (typeof inputOrListenAt !== 'string') {
+		return {
+			kind: 'listener',
+			...(inputOrListenAt.id ? { id: inputOrListenAt.id } : {}),
+			listenAt: inputOrListenAt.listenAt,
+			event: inputOrListenAt.type,
+			type: inputOrListenAt.type,
+			callback: inputOrListenAt.callback,
+			...(inputOrListenAt.activitySignal
+				? { activitySignal: inputOrListenAt.activitySignal }
+				: {})
+		};
+	}
+
 	return {
 		kind: 'listener',
-		listenAt,
-		event,
-		type: event,
-		callback,
+		listenAt: inputOrListenAt,
+		event: event as string,
+		type: event as string,
+		callback: callback as EventListener,
 		...(options.activitySignal ? { activitySignal: options.activitySignal } : {})
 	};
 }

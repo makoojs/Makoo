@@ -70,4 +70,28 @@ describe('Makoo declarations', () => {
 			activitySignal
 		});
 	});
+
+	it('should create listener declarations from object input', () => {
+		const signal = createActivityStore(true);
+		const activitySignal = () => signal;
+		const callback = vi.fn();
+
+		const declaration = listen({
+			id: 'escape-close',
+			listenAt: '#escape',
+			type: 'keydown',
+			callback,
+			activitySignal
+		});
+
+		expect(declaration).toEqual({
+			kind: 'listener',
+			id: 'escape-close',
+			listenAt: '#escape',
+			event: 'keydown',
+			type: 'keydown',
+			callback,
+			activitySignal
+		});
+	});
 });

@@ -381,6 +381,30 @@ describe('TaskRegister', () => {
 		);
 	});
 
+	it('should prefer explicit listener id over inferred task id', () => {
+		const callback = vi.fn();
+		const result = registerListener(runtime, {
+			id: 'custom-listener',
+			listenAt: '#btn',
+			event: 'click',
+			callback
+		});
+		const context = taskContext.get(result.taskId);
+
+		expect(result).toEqual({ taskId: 'custom-listener', isSuccess: true });
+		expect(context).toMatchObject(
+			createTask({
+				kind: 'listener',
+				taskId: 'custom-listener',
+				listenAt: '#btn',
+				event: 'click',
+				callback,
+				withEvent: true,
+				timeout: 5000
+			})
+		);
+	});
+
 	it('should return existing result for duplicate listener registration', () => {
 		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 

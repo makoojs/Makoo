@@ -117,6 +117,31 @@ describe('createMakoo', () => {
 		expect(callback).toHaveBeenCalledTimes(2);
 	});
 
+	it('should start object-form listener declarations with explicit task id', () => {
+		const button = document.createElement('button');
+		button.id = 'object-listener-button';
+		document.body.appendChild(button);
+		const callback = vi.fn();
+		const makoo = createMakoo();
+
+		const started = makoo.start([
+			listen({
+				id: 'object-listener',
+				listenAt: '#object-listener-button',
+				type: 'click',
+				callback
+			})
+		]);
+		const task = started.get('object-listener');
+
+		button.click();
+		expect(callback).toHaveBeenCalledOnce();
+		expect(task).toMatchObject({
+			kind: 'listener',
+			taskId: 'object-listener'
+		});
+	});
+
 	it('should start object-form component declarations with explicit task id', () => {
 		const host = document.createElement('div');
 		host.id = 'object-host';

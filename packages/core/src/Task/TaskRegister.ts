@@ -23,6 +23,7 @@ export type InjectionDeclaration<TArtifact = unknown> = {
 };
 
 export type ListenerDeclaration = {
+	id?: string;
 	listenAt: string;
 	event: string;
 	callback: EventListener;
@@ -33,8 +34,8 @@ export function registerListener(
 	runtime: MakooRuntimeState,
 	declaration: ListenerDeclaration
 ): ListenerRegisterResult {
-	const { listenAt, event, callback, activitySignal } = declaration;
-	const id: string = `listener-${listenAt}-${event}`;
+	const { id: explicitId, listenAt, event, callback, activitySignal } = declaration;
+	const id = explicitId ?? `listener-${listenAt}-${event}`;
 
 	runtime.emit(
 		'register:start',
