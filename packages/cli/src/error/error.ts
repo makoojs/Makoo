@@ -146,15 +146,15 @@ export class ModuleManifestLoadError extends MakooError {
 	}
 }
 
-export class NoEnabledInjectionsError extends MakooError {
-	constructor(code: string = ErrorCode.CLI_NO_ENABLED_INJECTIONS, cause?: Error) {
+export class NoEnabledTasksError extends MakooError {
+	constructor(code: string = ErrorCode.CLI_NO_ENABLED_TASKS, cause?: Error) {
 		super(
-			'No enabled injections — all injections are disabled or filtered out',
+			'No enabled tasks — all injections and listeners are disabled or filtered out',
 			undefined,
 			code,
 			cause
 		);
-		this.name = 'NoEnabledInjectionsError';
+		this.name = 'NoEnabledTasksError';
 	}
 }
 

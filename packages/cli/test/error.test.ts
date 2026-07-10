@@ -1,5 +1,6 @@
 import { ErrorCode, MakooError } from '@makoojs/core';
 import { describe, expect, it } from 'vitest';
+import * as errors from '../src/error/error';
 import {
 	ComponentNotFoundError,
 	ConfigValidationError,
@@ -8,7 +9,7 @@ import {
 	ManifestNotFoundError,
 	ModuleAlreadyExistsError,
 	ModuleManifestLoadError,
-	NoEnabledInjectionsError,
+	NoEnabledTasksError,
 	SourceDirNotFoundError,
 	toMakooIssue,
 	UnknownFrameworkError,
@@ -184,19 +185,24 @@ describe('ModuleManifestLoadError', () => {
 	});
 });
 
-describe('NoEnabledInjectionsError', () => {
-	it('defaults code to CLI_NO_ENABLED_INJECTIONS', () => {
-		const err = new NoEnabledInjectionsError();
-		expect(err.code).toBe(ErrorCode.CLI_NO_ENABLED_INJECTIONS);
-		expect(err.name).toBe('NoEnabledInjectionsError');
-		expect(err.message).toContain('No enabled injections');
+describe('NoEnabledTasksError', () => {
+	it('defaults code to CLI_NO_ENABLED_TASKS', () => {
+		const err = new NoEnabledTasksError();
+		expect(err.code).toBe(ErrorCode.CLI_NO_ENABLED_TASKS);
+		expect(err.name).toBe('NoEnabledTasksError');
+		expect(err.message).toContain('No enabled tasks');
 	});
 
 	it('accepts custom code and cause', () => {
 		const cause = new Error('inner');
-		const err = new NoEnabledInjectionsError('CUSTOM', cause);
+		const err = new NoEnabledTasksError('CUSTOM', cause);
 		expect(err.code).toBe('CUSTOM');
 		expect(err.cause).toBe(cause);
+	});
+
+	it('does not expose the legacy no-enabled-injections error', () => {
+		expect('NoEnabledInjectionsError' in errors).toBe(false);
+		expect('CLI_NO_ENABLED_INJECTIONS' in ErrorCode).toBe(false);
 	});
 });
 

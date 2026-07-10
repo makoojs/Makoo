@@ -4,7 +4,8 @@ import type {
 	ResolvedConfig,
 	ResolvedInjectionDefaults,
 	ResolvedInjectionFramework,
-	ResolvedInjectionModule
+	ResolvedInjectionModule,
+	ResolvedListener
 } from '../config/types';
 
 export type ScannerResult = {
@@ -16,6 +17,7 @@ export type ScannerResult = {
 	config: ResolvedConfig;
 	injectionDefaults: ResolvedInjectionDefaults;
 	injections: ResolvedInjectionModule[];
+	listeners: ResolvedListener[];
 	frameworks: ResolvedInjectionFramework[];
 };
 

@@ -1,11 +1,16 @@
 import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import picomatch from 'picomatch';
-import { resolveInjection, resolveInjectionDefaults, resolveInjections } from '../config/resolve';
-import type { ResolvedConfig, ResolvedInjectionModule } from '../config/types';
+import {
+	resolveInjection,
+	resolveInjectionDefaults,
+	resolveInjections,
+	resolveListeners
+} from '../config/resolve';
+import type { ResolvedConfig, ResolvedInjectionModule, ResolvedListener } from '../config/types';
 import {
 	ManifestNotFoundError,
-	NoEnabledInjectionsError,
+	NoEnabledTasksError,
 	RuntimeSetupNotFoundError
 } from '../error/error';
 import { collectDependencies } from './collectDependenics';
@@ -79,12 +84,16 @@ export async function scanner(config: ResolvedConfig): Promise<ScannerResult> {
 	const injections = mergeMeta(resolveManifest, injectionsMeta).filter(
 		(injection) => injection.enabled
 	);
+	const listeners: ResolvedListener[] = resolveListeners(loadedManifest.manifest, {
+		root: config.root
+	}).filter((listener) => listener.enabled);
 
-	if (injections.length === 0) {
-		throw new NoEnabledInjectionsError();
+	if (injections.length === 0 && listeners.length === 0) {
+		throw new NoEnabledTasksError();
 	}
 
 	injections.sort((a, b) => a.moduleId.localeCompare(b.moduleId));
+	listeners.sort((a, b) => a.listenerId.localeCompare(b.listenerId));
 
 	const frameworks = [...new Set(injections.map((m) => m.framework))];
 
@@ -97,6 +106,7 @@ export async function scanner(config: ResolvedConfig): Promise<ScannerResult> {
 		runtimeSetupFiles: [...runtimeSetupFiles].sort(),
 		runtimeDependencies: [...runtimeDependencies].sort(),
 		injections,
+		listeners,
 		frameworks
 	};
 }
