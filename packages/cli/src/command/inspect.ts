@@ -1,7 +1,8 @@
 import type {
 	ResolvedConfig,
 	ResolvedInjectionDefaults,
-	ResolvedInjectionModule
+	ResolvedInjectionModule,
+	ResolvedListener
 } from '../config/types';
 import { scanner } from '../scanner/scanner';
 import type { ScannerResult } from '../scanner/types';
@@ -34,6 +35,7 @@ type InspectResult = {
 	monkey: ResolvedConfig['monkey'];
 	injectionDefaults: ScannerResult['injectionDefaults'];
 	injections: InspectInjection[];
+	listeners: ResolvedListener[];
 	frameworks: ScannerResult['frameworks'];
 };
 export function formatInspectInjection(
@@ -63,7 +65,7 @@ export function formatInspectInjection(
 }
 
 export function formatInspectResult(result: ScannerResult): InspectResult {
-	const { config, injectionDefaults, injections } = result;
+	const { config, injectionDefaults, injections, listeners } = result;
 	const moduleManifestFiles = [
 		...new Set(
 			injections
@@ -95,6 +97,7 @@ export function formatInspectResult(result: ScannerResult): InspectResult {
 		injections: injections.map((injection) =>
 			formatInspectInjection(injection, injectionDefaults)
 		),
+		listeners,
 		frameworks: result.frameworks
 	};
 }
@@ -110,6 +113,7 @@ export async function inspectCommand() {
 		['Monkey', inspectResult.monkey],
 		['Injection Defaults', inspectResult.injectionDefaults],
 		['Injections', inspectResult.injections],
+		['Listeners', inspectResult.listeners],
 		['Frameworks', inspectResult.frameworks]
 	];
 

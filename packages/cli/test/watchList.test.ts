@@ -23,6 +23,8 @@ const moduleManifestDependencyFile = path.join(sourceDir, 'widget/constants.ts')
 const runtimeSetupFile = path.join(sourceDir, 'vue-setup.ts');
 const runtimeDependencyFile = path.join(sourceDir, 'router.ts');
 
+const listenerDependencyFile = path.join(sourceDir, 'listenerCallbacks.ts');
+
 const scanResult: ScannerResult = {
 	config,
 	injectionDefaults: {
@@ -31,11 +33,12 @@ const scanResult: ScannerResult = {
 		timeout: 5000
 	},
 	manifestFile,
-	manifestDependencies: [path.join(sourceDir, 'hooks.ts')],
+	manifestDependencies: [listenerDependencyFile],
 	moduleManifestDependencies: [moduleManifestDependencyFile],
 	runtimeSetupFiles: [runtimeSetupFile],
 	runtimeDependencies: [runtimeDependencyFile],
 	injections: [{ moduleManifestFile }, { moduleManifestFile }, {}] as ResolvedInjectionModule[],
+	listeners: [],
 	frameworks: ['React']
 };
 
@@ -45,7 +48,7 @@ describe('watchList', () => {
 
 		expect(targets.files).toEqual([
 			manifestFile,
-			path.join(sourceDir, 'hooks.ts'),
+			listenerDependencyFile,
 			moduleManifestDependencyFile,
 			runtimeSetupFile,
 			runtimeDependencyFile,
@@ -57,7 +60,7 @@ describe('watchList', () => {
 	it('detects structural changes for manifest files, manifest dependencies and runtime files', () => {
 		expect(isStructuralChange(manifestFile, scanResult)).toBe(true);
 		expect(isStructuralChange(moduleManifestFile, scanResult)).toBe(true);
-		expect(isStructuralChange(path.join(sourceDir, 'hooks.ts'), scanResult)).toBe(true);
+		expect(isStructuralChange(listenerDependencyFile, scanResult)).toBe(true);
 		expect(isStructuralChange(moduleManifestDependencyFile, scanResult)).toBe(true);
 		expect(isStructuralChange(runtimeSetupFile, scanResult)).toBe(true);
 		expect(isStructuralChange(runtimeDependencyFile, scanResult)).toBe(true);
@@ -71,7 +74,7 @@ describe('watchList', () => {
 		expect(
 			classifyStructuralChange(path.join(sourceDir, 'new-widget/manifest.ts'), scanResult)
 		).toBe('module-manifest');
-		expect(classifyStructuralChange(path.join(sourceDir, 'hooks.ts'), scanResult)).toBe(
+		expect(classifyStructuralChange(listenerDependencyFile, scanResult)).toBe(
 			'manifest-dependency'
 		);
 		expect(classifyStructuralChange(moduleManifestDependencyFile, scanResult)).toBe(
