@@ -1,31 +1,10 @@
 import type { Component, RenderInitResult } from '../../../generator/types';
 import { renderInlineValue } from '../util/value';
 
-// runtime inject web url match logic
-const renderMatchUrlHelper = (): string => {
-	return [
-		'const matchUrl = (url, match) => {',
-		'  if (!match) return true;',
-		'  const matches = (patterns) => {',
-		'    if (!patterns) return false;',
-		// biome-ignore lint/suspicious/noTemplateCurlyInString: generated code intentionally contains template syntax.
-		"    const escape = (value) => value.replace(/[.+?^${}()|[\\]\\\\]/g, '\\\\$&');",
-		// biome-ignore lint/suspicious/noTemplateCurlyInString: generated code intentionally contains template syntax.
-		"    return patterns.some((pattern) => new RegExp(`^${pattern.split('*').map(escape).join('.*')}$`).test(url));",
-		'  };',
-		'  const included = match.include ? matches(match.include) : true;',
-		'  if (!included) return false;',
-		'  if (match.exclude && matches(match.exclude)) return false;',
-		'  return true;',
-		'};'
-	].join('\n');
-};
-
 export function renderRegisterComponent(
 	instanceName: string,
 	components: Component[]
 ): RenderInitResult {
-	const useMatchHelper = components.some((item) => item.componentMeta.match);
 	const registerCode = components.map((item) => {
 		const config = {
 			alive: item.componentMeta.alive,
@@ -54,9 +33,7 @@ export function renderRegisterComponent(
 	});
 
 	return {
-		code: [useMatchHelper ? renderMatchUrlHelper() : null, registerCode.join('\n')]
-			.filter(Boolean)
-			.join('\n'),
+		code: registerCode.join('\n'),
 		instanceName
 	};
 }
@@ -70,12 +47,15 @@ function renderArtifactOptions(
 		.map(([key, value]) => `${JSON.stringify(key)}:${renderInlineValue(value)}`);
 
 	if (on) {
-		const listenOptions = on.activitySignal
-			? `, { "activitySignal":${renderInlineValue(on.activitySignal)} }`
-			: '';
-		entries.push(
-			`"on":listen(${JSON.stringify(on.listenAt)}, ${JSON.stringify(on.type)}, ${renderInlineValue(on.callback)}${listenOptions})`
-		);
+		const listenDeclaration = [
+			`"listenAt":${JSON.stringify(on.listenAt)}`,
+			`"type":${JSON.stringify(on.type)}`,
+			`"callback":${renderInlineValue(on.callback)}`,
+			on.activitySignal ? `"activitySignal":${renderInlineValue(on.activitySignal)}` : null
+		]
+			.filter(Boolean)
+			.join(',');
+		entries.push(`"on":listen({${listenDeclaration}})`);
 	}
 
 	return `{${entries.join(',')}}`;
