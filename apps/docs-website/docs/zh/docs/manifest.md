@@ -47,6 +47,7 @@ export default defineInjections({
 | --- | --- |
 | `injectionDefaults` | 当前 manifest 注入集合的运行时默认值 |
 | `injections` | 对象或数组形式的注入模块配置 |
+| `listeners` | 对象或数组形式的独立 listener 配置 |
 
 `injectionDefaults` 支持 `alive`、`scope`、`timeout` 和 `hooks`。模块没有显式设置同名字段时，会继承这些默认值。
 
@@ -84,6 +85,29 @@ export default defineInjections({
 ```
 
 使用数组写法时，如果你需要稳定的模块 id，建议提供 `name`。
+
+## 独立 Listener
+
+顶层 `listeners` 用于声明不归属任何 injection 模块的事件任务。它不需要组件目录，也不需要 framework adapter：
+
+```ts
+export default defineInjections({
+	listeners: {
+		escapeClose: {
+			listenAt: 'document',
+			type: 'keydown',
+			callback: (event) => {
+				if (event instanceof KeyboardEvent && event.key === 'Escape') console.log('close');
+			},
+			match: ['https://example.com/*']
+		}
+	}
+});
+```
+
+对象形式中的键会成为 `listenerId`，因此该条目会生成 `listen({ id: 'escapeClose', ... })`。数组形式通过 `name` 达到相同目的。listener 支持 `listenAt`、`type`、`callback`、`activitySignal`、`enabled` 和 `match`。
+
+独立 listener 只能作为顶层 manifest 条目。事件若归属于组件任务，请使用模块的 `on` 字段；`on` 不需要显式 listener ID。
 
 ## 模块级 Manifest
 
@@ -251,4 +275,4 @@ export default defineInjections({
 });
 ```
 
-扫描和合并结束后，Makoo 会移除禁用模块。如果最终没有任何启用模块，扫描会给出明确错误。
+扫描和合并结束后，Makoo 会移除禁用模块和 listeners。如果最终没有任何启用任务，扫描会给出明确错误。

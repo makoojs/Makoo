@@ -50,6 +50,7 @@ export default defineInjections({
 | --- | --- |
 | `injectionDefaults` | Runtime defaults for this manifest's injection set |
 | `injections` | Object or array of injection module configs |
+| `listeners` | Object or array of standalone listener configs |
 
 `injectionDefaults` supports `alive`, `scope`, `timeout`, and `hooks`. These defaults are used
 when a module does not set the same field itself.
@@ -89,6 +90,33 @@ export default defineInjections({
 ```
 
 When using array form, provide `name` when you need a stable module id.
+
+## Standalone Listeners
+
+Use top-level `listeners` for event tasks that do not belong to an injection module. They do
+not need a component directory or a framework adapter:
+
+```ts
+export default defineInjections({
+	listeners: {
+		escapeClose: {
+			listenAt: 'document',
+			type: 'keydown',
+			callback: (event) => {
+				if (event instanceof KeyboardEvent && event.key === 'Escape') console.log('close');
+			},
+			match: ['https://example.com/*']
+		}
+	}
+});
+```
+
+In object form, the key becomes `listenerId`, so this entry generates
+`listen({ id: 'escapeClose', ... })`. Array form uses `name` for the same purpose. Listener
+entries support `listenAt`, `type`, `callback`, `activitySignal`, `enabled`, and `match`.
+
+Standalone listeners are top-level manifest entries only. Use a module's `on` field when the
+listener belongs to that component task; `on` does not need an explicit listener ID.
 
 ## Module-Level Manifest
 
@@ -267,5 +295,5 @@ export default defineInjections({
 });
 ```
 
-After scanning and merging, Makoo removes disabled modules. If no enabled modules remain,
-the scan fails with a clear error.
+After scanning and merging, Makoo removes disabled modules and listeners. If no enabled tasks
+remain, the scan fails with a clear error.

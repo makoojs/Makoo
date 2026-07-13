@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import { useRoute } from 'vitepress';
+import { useRoute, withBase } from 'vitepress';
 
 const route = useRoute();
 
@@ -99,7 +99,9 @@ let timer: number | undefined;
 
 const locale = computed(() => (route.path.startsWith('/zh/') ? 'zh' : 'en'));
 const content = computed(() => messages[locale.value]);
-const docsLink = computed(() => (locale.value === 'zh' ? '/zh/docs/' : '/docs/'));
+const docsLink = computed(() =>
+	withBase(locale.value === 'zh' ? '/zh/docs/getting-started' : '/docs/getting-started')
+);
 const activeStage = computed(() => logLines[activeLine.value]?.stage ?? 'register');
 
 function formatLine(message: string, index: number): string {

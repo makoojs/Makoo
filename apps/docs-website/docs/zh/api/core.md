@@ -131,11 +131,20 @@ const started = makoo.start([
 		}
 	}),
 	inject('#save-tip', saveTipArtifact, {
-		on: listen('#save', 'click', () => {
-			console.log('save clicked');
+		on: listen({
+			listenAt: '#save',
+			type: 'click',
+			callback: () => {
+				console.log('save clicked');
+			}
 		})
 	}),
-	listen('#escape', 'keydown', onEscape)
+	listen({
+		id: 'escape-close',
+		listenAt: '#escape',
+		type: 'keydown',
+		callback: onEscape
+	})
 ]);
 ```
 
@@ -182,7 +191,7 @@ const adapter: ResolvableMountAdapter<MyArtifact, MyHandle, MyInstance> = {
 
 ## Listener 和 activity signal
 
-独立监听任务通过 `listen()` 声明。
+独立监听任务使用 `listen()` 的对象形式声明。可选的 `id` 是任务 ID；后续需要稳定地查找或控制任务时应提供它。组件的 `on` listener 归属于组件任务本身，不需要单独的 ID。
 
 ```ts
 import { createActivityStore, createMakoo, listen } from '@makoojs/core';
@@ -191,16 +200,15 @@ const enabled = createActivityStore(true);
 const makoo = createMakoo();
 
 makoo.start([
-	listen(
-		'#save',
-		'click',
-		() => {
+	listen({
+		id: 'save-listener',
+		listenAt: '#save',
+		type: 'click',
+		callback: () => {
 			console.log('save clicked');
 		},
-		{
-			activitySignal: () => enabled
-		}
-	)
+		activitySignal: () => enabled
+	})
 ]);
 
 enabled.set(false);

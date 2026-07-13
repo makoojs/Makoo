@@ -131,11 +131,20 @@ const started = makoo.start([
 		}
 	}),
 	inject('#save-tip', saveTipArtifact, {
-		on: listen('#save', 'click', () => {
-			console.log('save clicked');
+		on: listen({
+			listenAt: '#save',
+			type: 'click',
+			callback: () => {
+				console.log('save clicked');
+			}
 		})
 	}),
-	listen('#escape', 'keydown', onEscape)
+	listen({
+		id: 'escape-close',
+		listenAt: '#escape',
+		type: 'keydown',
+		callback: onEscape
+	})
 ]);
 ```
 
@@ -182,7 +191,9 @@ const adapter: ResolvableMountAdapter<MyArtifact, MyHandle, MyInstance> = {
 
 ## Listener And Activity Signal
 
-Standalone listeners are declared with `listen()`.
+Standalone listeners use the object form of `listen()`. Their optional `id` is the task ID;
+use it when later task lookup or control needs a stable identity. A component's `on` listener
+is owned by that component task and does not need its own ID.
 
 ```ts
 import { createActivityStore, createMakoo, listen } from '@makoojs/core';
@@ -191,16 +202,15 @@ const enabled = createActivityStore(true);
 const makoo = createMakoo();
 
 makoo.start([
-	listen(
-		'#save',
-		'click',
-		() => {
+	listen({
+		id: 'save-listener',
+		listenAt: '#save',
+		type: 'click',
+		callback: () => {
 			console.log('save clicked');
 		},
-		{
-			activitySignal: () => enabled
-		}
-	)
+		activitySignal: () => enabled
+	})
 ]);
 
 enabled.set(false);

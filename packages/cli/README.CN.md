@@ -170,6 +170,27 @@ match: {
 
 `match` 是模块级过滤。userscript 本身在哪些页面运行，仍由 `monkey.userscript.match` 等 userscript 元信息决定。
 
+## 独立 Listener
+
+顶层 `listeners` 用于声明不归属任何 injection 模块的事件任务。listener 不需要组件目录，也不需要 framework adapter。对象形式中的键就是稳定的 listener ID，Makoo 会生成 `listen({ id, ... })` 声明：
+
+```ts
+export default defineInjections({
+	listeners: {
+		escapeClose: {
+			listenAt: 'document',
+			type: 'keydown',
+			callback: (event) => {
+				if (event instanceof KeyboardEvent && event.key === 'Escape') console.log('close');
+			},
+			match: ['https://example.com/*']
+		}
+	}
+});
+```
+
+每个 listener 需要 `listenAt`、`type` 和 `callback`，还可使用 `activitySignal`、`enabled` 和 `match`。数组形式需要为每个条目提供 `name` 作为稳定 ID。组件的 `on` 仍归组件任务所有，不需要显式 listener ID。
+
 ## 配置概览
 
 `makoo()` 的主要配置分为四块：
@@ -240,7 +261,7 @@ Makoo 的 Vite 插件会在启动和构建时执行以下流程：
 6. 生成虚拟入口，创建 Makoo runtime，声明任务并执行 `start()`。
 7. 把虚拟入口交给 [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) 打包成 userscript。
 
-如果没有找到顶层 manifest、没有可用注入模块，或无法推断 framework，CLI 会抛出 Makoo 自己的错误类型，方便定位问题。
+如果没有找到顶层 manifest、没有可用任务，或无法为组件推断 framework，CLI 会抛出 Makoo 自己的错误类型，方便定位问题。
 
 ## HMR 行为
 
@@ -250,7 +271,7 @@ Makoo 的 Vite 插件会在启动和构建时执行以下流程：
 | --- | --- |
 | 顶层 `injections/manifest.ts` 修改 | 重新扫描并更新虚拟入口 |
 | 模块级 `injections/<module>/manifest.ts` 修改 | 重新扫描并更新虚拟入口 |
-| manifest 静态导入的本地 helper 修改 | 追踪依赖并重新扫描更新虚拟入口 |
+| manifest 静态导入的本地 helper、hooks 或 listener callback 修改 | 追踪依赖并重新扫描更新虚拟入口 |
 | 模块目录新增或删除 | 重新扫描并更新虚拟入口 |
 | 普通组件文件修改 | 交给 Vite 原生 HMR 处理 |
 | 第三方依赖变化 | 不作为 Makoo 结构扫描依赖 |

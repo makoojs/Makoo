@@ -211,6 +211,27 @@ match: {
 
 没有配置 `match` 时，模块会在 userscript 生效的页面上正常注册；配置 `match` 后，Makoo 会在运行时根据 `location.href` 判断是否注册该模块。
 
+### 独立 Listener
+
+顶层 `listeners` 用于声明不归属任何 injection 模块的事件任务。它不需要组件目录，也不需要 framework adapter。对象形式中的键会成为 listener 的任务 ID：
+
+```ts
+export default defineInjections({
+	listeners: {
+		escapeClose: {
+			listenAt: 'document',
+			type: 'keydown',
+			callback: (event) => {
+				if (event instanceof KeyboardEvent && event.key === 'Escape') console.log('close');
+			},
+			match: ['https://example.com/*']
+		}
+	}
+});
+```
+
+Makoo 会为该条目生成 `listen({ id: 'escapeClose', ... })`。listener 也支持 `enabled`、`activitySignal` 和与模块相同的 `match` 规则；数组形式需要用 `name` 提供稳定 ID。
+
 ## HMR 行为说明
 
 Makoo 在开发模式下会区分结构变化和普通组件变化。
@@ -219,7 +240,7 @@ Makoo 在开发模式下会区分结构变化和普通组件变化。
 | --- | --- |
 | 顶层 `injections/manifest.ts` 修改 | 重新扫描并更新虚拟入口 |
 | 模块级 `injections/foo/manifest.ts` 修改 | 重新扫描并更新虚拟入口 |
-| manifest 通过相对路径引入的 helper / hooks 修改 | 递归追踪依赖并触发重新扫描 |
+| manifest 通过相对路径引入的 helper、hooks 或 listener callback 修改 | 递归追踪依赖并触发重新扫描 |
 | 新增或删除模块级 `manifest.ts` | 触发结构更新 |
 | 普通组件文件修改 | 交给 Vite 原生 HMR |
 | 第三方包依赖变化 | 不纳入 Makoo 的结构扫描 |

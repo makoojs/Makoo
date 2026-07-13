@@ -170,6 +170,31 @@ match: {
 
 `match` is a module-level filter. Which pages the userscript itself runs on is still controlled by userscript metadata such as `monkey.userscript.match`.
 
+## Standalone Listeners
+
+Use top-level `listeners` for event tasks that are not owned by an injection module. A listener
+does not need a component directory or a framework adapter. In object form, the record key is
+the stable listener ID used by the generated `listen({ id, ... })` declaration:
+
+```ts
+export default defineInjections({
+	listeners: {
+		escapeClose: {
+			listenAt: 'document',
+			type: 'keydown',
+			callback: (event) => {
+				if (event instanceof KeyboardEvent && event.key === 'Escape') console.log('close');
+			},
+			match: ['https://example.com/*']
+		}
+	}
+});
+```
+
+Each listener accepts `listenAt`, `type`, and `callback`; it can also use `activitySignal`,
+`enabled`, and `match`. Array form is supported when each entry supplies `name` as its stable
+ID. Component `on` remains component-owned and does not need an explicit listener ID.
+
 ## Configuration Overview
 
 `makoo()` has four main config areas:
@@ -240,7 +265,7 @@ Makoo's Vite plugin runs this flow during dev startup and build:
 6. Generate a virtual entry, create a Makoo runtime, declare tasks, and call `start()`.
 7. Hand the virtual entry to [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) so it can be bundled as a userscript.
 
-If the top-level manifest is missing, no enabled injection modules are found, or the framework cannot be inferred, the CLI throws Makoo's own error types to make the issue easier to locate.
+If the top-level manifest is missing, no enabled tasks are found, or the framework cannot be inferred for a component, the CLI throws Makoo's own error types to make the issue easier to locate.
 
 ## HMR Behavior
 
@@ -250,7 +275,7 @@ In dev mode, Makoo separates structural changes from normal component updates.
 | --- | --- |
 | Top-level `injections/manifest.ts` changes | Rescan and update the virtual entry |
 | Module-level `injections/<module>/manifest.ts` changes | Rescan and update the virtual entry |
-| Local helpers statically imported by a manifest change | Track dependencies, rescan, and update the virtual entry |
+| Local helpers, hooks, or listener callbacks statically imported by a manifest change | Track dependencies, rescan, and update the virtual entry |
 | Module directory is added or removed | Rescan and update the virtual entry |
 | Regular component files change | Let Vite handle native HMR |
 | Third-party dependencies change | Not tracked as Makoo structural scan dependencies |

@@ -211,6 +211,31 @@ match: {
 
 When `match` is omitted, the module is registered on pages where the userscript itself runs. When `match` is provided, Makoo checks `location.href` at runtime before registering that module.
 
+### Standalone Listeners
+
+Top-level `listeners` declares event tasks that are not owned by an injection module. They do
+not need a component directory or a framework adapter. In object form, the record key becomes
+the listener task ID:
+
+```ts
+export default defineInjections({
+	listeners: {
+		escapeClose: {
+			listenAt: 'document',
+			type: 'keydown',
+			callback: (event) => {
+				if (event instanceof KeyboardEvent && event.key === 'Escape') console.log('close');
+			},
+			match: ['https://example.com/*']
+		}
+	}
+});
+```
+
+Makoo generates `listen({ id: 'escapeClose', ... })` for this entry. Listeners also support
+`enabled`, `activitySignal`, and the same `match` rules as modules. Use `name` in array form
+when a listener needs a stable ID.
+
 ## HMR Behavior
 
 Makoo separates structural changes from regular component updates in dev mode.
@@ -219,7 +244,7 @@ Makoo separates structural changes from regular component updates in dev mode.
 | --- | --- |
 | Top-level `injections/manifest.ts` changes | Rescan and update the virtual entry |
 | Module-level `injections/foo/manifest.ts` changes | Rescan and update the virtual entry |
-| Local helper or hooks imported by a manifest changes | Recursively track the local dependency and rescan |
+| Local helpers, hooks, or listener callbacks imported by a manifest change | Recursively track the local dependency and rescan |
 | Module-level `manifest.ts` is added or removed | Trigger a structural update |
 | Regular component file changes | Let Vite handle native HMR |
 | Third-party package dependency changes | Not tracked by Makoo structural scanning |
