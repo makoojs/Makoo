@@ -94,9 +94,17 @@ describe('scanner', () => {
 			'injections/fromManifest/index.tsx':
 				'export default function FromManifest() { return null; }',
 			'injections/overridden/manifest.ts': `
-				import { selector } from './selector';
-				export default { injectAt: '#new', component: './index.tsx', framework: 'Vue', alive: true };
-			`,
+					import { selector } from './selector';
+					export default {
+						injectAt: selector,
+						component: './index.tsx',
+						framework: 'Vue',
+						alive: true,
+						hooks: {
+							'artifact:mountSuccess': () => undefined
+						}
+					};
+				`,
 			'injections/overridden/selector.ts': "export const selector = '#new';",
 			'injections/overridden/index.tsx': 'export default { name: "Overridden" };',
 			'injections/includedOnly/manifest.ts': `
@@ -148,7 +156,10 @@ describe('scanner', () => {
 			injectAt: '#new',
 			framework: 'Vue',
 			alive: true,
-			timeout: 777
+			timeout: 777,
+			hooks: {
+				'artifact:mountSuccess': expect.any(Function)
+			}
 		});
 		expect(modules.overridden.moduleManifestFile).toBe(
 			path.join(root, 'injections/overridden/manifest.ts')
@@ -157,6 +168,27 @@ describe('scanner', () => {
 		expect(result.moduleManifestDependencies).toEqual([
 			path.join(root, 'injections/overridden/selector.ts')
 		]);
+		expect(result.manifestBindings).toEqual({
+			injectionDefaults: {
+				manifestFile: path.join(root, 'injections/manifest.ts'),
+				valuePath: ['injectionDefaults']
+			},
+			injections: {
+				fromManifest: {
+					manifestFile: path.join(root, 'injections/manifest.ts'),
+					valuePath: ['injections', 'fromManifest']
+				},
+				includedOnly: {
+					manifestFile: path.join(root, 'injections/includedOnly/manifest.ts'),
+					valuePath: []
+				},
+				overridden: {
+					manifestFile: path.join(root, 'injections/overridden/manifest.ts'),
+					valuePath: []
+				}
+			},
+			listeners: {}
+		});
 		expect(modules.skipMe).toBeUndefined();
 		expect(result.frameworks).toEqual(['React', 'Vue']);
 	});
@@ -226,7 +258,73 @@ describe('scanner', () => {
 		expect(result.manifestDependencies).toEqual([
 			path.join(root, 'injections/listenerCallbacks.ts')
 		]);
+		expect(result.manifestBindings).toEqual({
+			injections: {},
+			listeners: {
+				escapeClose: {
+					manifestFile: path.join(root, 'injections/manifest.ts'),
+					valuePath: ['listeners', 'escapeClose']
+				},
+				resizeWindow: {
+					manifestFile: path.join(root, 'injections/manifest.ts'),
+					valuePath: ['listeners', 'resizeWindow']
+				}
+			}
+		});
 		expect(result.frameworks).toEqual([]);
+	});
+
+	it('preserves array source indexes after sorting tasks', async () => {
+		const root = await trackProject({
+			'injections/manifest.ts': `
+					export default {
+						injections: [
+							{ name: 'zeta', injectAt: '#zeta', component: './zeta/index.tsx', framework: 'React' },
+							{ name: 'alpha', injectAt: '#alpha', component: './alpha/index.tsx', framework: 'React' }
+						],
+						listeners: [
+							{ name: 'zeta-listener', listenAt: 'body', type: 'click', callback: () => undefined },
+							{ name: 'alpha-listener', listenAt: 'body', type: 'keydown', callback: () => undefined }
+						]
+					};
+				`,
+			'injections/zeta/index.tsx': 'export default function Zeta() { return null; }',
+			'injections/alpha/index.tsx': 'export default function Alpha() { return null; }'
+		});
+		const config = resolveConfig(
+			{
+				app: { name: 'array-bindings', version: '0.0.1' }
+			},
+			root
+		);
+
+		const result = await withCwd(root, () => scanner(config));
+
+		expect(result.injections.map((injection) => injection.moduleId)).toEqual(['alpha', 'zeta']);
+		expect(result.listeners.map((listener) => listener.listenerId)).toEqual([
+			'alpha-listener',
+			'zeta-listener'
+		]);
+		expect(result.manifestBindings.injections).toEqual({
+			zeta: {
+				manifestFile: path.join(root, 'injections/manifest.ts'),
+				valuePath: ['injections', 0]
+			},
+			alpha: {
+				manifestFile: path.join(root, 'injections/manifest.ts'),
+				valuePath: ['injections', 1]
+			}
+		});
+		expect(result.manifestBindings.listeners).toEqual({
+			'zeta-listener': {
+				manifestFile: path.join(root, 'injections/manifest.ts'),
+				valuePath: ['listeners', 0]
+			},
+			'alpha-listener': {
+				manifestFile: path.join(root, 'injections/manifest.ts'),
+				valuePath: ['listeners', 1]
+			}
+		});
 	});
 
 	it('uses Makoo defaults when manifest does not define injectionDefaults', async () => {

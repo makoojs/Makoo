@@ -1,8 +1,4 @@
-import {
-	type ActivitySignalSource,
-	OBSERVE_EVENT_NAMES,
-	type ObserveHook
-} from '@makoojs/core';
+import { type ActivitySignalSource, OBSERVE_EVENT_NAMES, type ObserveHook } from '@makoojs/core';
 import { z } from 'zod';
 import { ManifestValidationError } from '../error/error';
 
@@ -60,6 +56,7 @@ export const InjectionModuleSchema = z.object({
 	alive: z.boolean().optional(),
 	scope: z.enum(['local', 'global']).optional(),
 	timeout: z.number().optional(),
+	hooks: LifecycleHookMapSchema.optional(),
 	on: InjectionModuleListenerSchema.optional()
 });
 

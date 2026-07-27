@@ -63,6 +63,7 @@ describe('formatInspectResult', () => {
 			config,
 			injectionDefaults,
 			manifestFile: path.join(root, 'injections/manifest.ts'),
+			manifestBindings: { injections: {}, listeners: {} },
 			manifestDependencies: [path.join(root, 'injections/hooks.ts')],
 			moduleManifestDependencies: [path.join(root, 'injections/panel/options.ts')],
 			runtimeSetupFiles: [path.join(root, 'injections/setup.ts')],

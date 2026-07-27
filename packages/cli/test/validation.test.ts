@@ -129,6 +129,17 @@ describe('InjectionModuleSchema', () => {
 		expect(result.success).toBe(true);
 	});
 
+	it('accepts module lifecycle hooks', () => {
+		const result = InjectionModuleSchema.safeParse({
+			injectAt: '#app',
+			component: './index.tsx',
+			hooks: {
+				'artifact:mountSuccess': () => undefined
+			}
+		});
+		expect(result.success).toBe(true);
+	});
+
 	it('accepts minimal config with only injectAt and component', () => {
 		const result = InjectionModuleSchema.safeParse({
 			injectAt: '#app',

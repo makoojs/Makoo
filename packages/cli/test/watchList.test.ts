@@ -33,6 +33,7 @@ const scanResult: ScannerResult = {
 		timeout: 5000
 	},
 	manifestFile,
+	manifestBindings: { injections: {}, listeners: {} },
 	manifestDependencies: [listenerDependencyFile],
 	moduleManifestDependencies: [moduleManifestDependencyFile],
 	runtimeSetupFiles: [runtimeSetupFile],

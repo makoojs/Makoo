@@ -16,6 +16,7 @@ import {
 import { collectDependencies } from './collectDependenics';
 import { loadManifest } from './load/loadManifes';
 import { loadMeta } from './load/loadMeta';
+import { buildManifestBindings } from './manifestBinding';
 import type { ScannerResult } from './types';
 import { mergeMeta } from './util';
 
@@ -84,13 +85,24 @@ export async function scanner(config: ResolvedConfig): Promise<ScannerResult> {
 	const injections = mergeMeta(resolveManifest, injectionsMeta).filter(
 		(injection) => injection.enabled
 	);
-	const listeners: ResolvedListener[] = resolveListeners(loadedManifest.manifest, {
+	const resolvedListeners: ResolvedListener[] = resolveListeners(loadedManifest.manifest, {
 		root: config.root
-	}).filter((listener) => listener.enabled);
+	});
+	const listeners = resolvedListeners.filter((listener) => listener.enabled);
 
 	if (injections.length === 0 && listeners.length === 0) {
 		throw new NoEnabledTasksError();
 	}
+
+	const manifestBindings = buildManifestBindings({
+		manifest: loadedManifest.manifest,
+		manifestFile: loadedManifest.manifestFile,
+		manifestInjections: resolveManifest,
+		moduleInjections: injectionsMeta,
+		manifestListeners: resolvedListeners,
+		enabledInjections: injections,
+		enabledListeners: listeners
+	});
 
 	injections.sort((a, b) => a.moduleId.localeCompare(b.moduleId));
 	listeners.sort((a, b) => a.listenerId.localeCompare(b.listenerId));
@@ -101,6 +113,7 @@ export async function scanner(config: ResolvedConfig): Promise<ScannerResult> {
 		config,
 		injectionDefaults,
 		manifestFile: loadedManifest.manifestFile,
+		manifestBindings,
 		manifestDependencies: [...manifestDependencies].sort(),
 		moduleManifestDependencies: [...moduleManifestDependencies].sort(),
 		runtimeSetupFiles: [...runtimeSetupFiles].sort(),
