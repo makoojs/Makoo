@@ -10,7 +10,7 @@ import {
 	resolveMonkeyBuildConfig,
 	resolveMonkeyPluginOptions
 } from '../src/config/resolve';
-import { ComponentNotFoundError, UnknownFrameworkError } from '../src/error/error';
+import { ComponentNotFoundError, UnknownFrameworkError } from '../src/error/MakooCliError';
 
 const root = path.resolve('/project');
 

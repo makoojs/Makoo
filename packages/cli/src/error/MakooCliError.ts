@@ -118,6 +118,39 @@ export class ManifestNotFoundError extends MakooError {
 	}
 }
 
+export class ManifestBindingNotFoundError extends MakooError {
+	constructor(
+		kind: 'injection' | 'listener',
+		id: string,
+		code: string = ErrorCode.CLI_MANIFEST_BINDING_NOT_FOUND,
+		cause?: Error
+	) {
+		super(
+			`Missing manifest binding for ${kind} "${id}"`,
+			[{ path: `${kind}s.${id}`, message: 'could not resolve manifest source' }],
+			code,
+			cause
+		);
+		this.name = 'ManifestBindingNotFoundError';
+	}
+}
+
+export class ManifestImportNotFoundError extends MakooError {
+	constructor(
+		manifestFile: string,
+		code: string = ErrorCode.CLI_MANIFEST_IMPORT_NOT_FOUND,
+		cause?: Error
+	) {
+		super(
+			`Missing manifest import for "${manifestFile}"`,
+			[{ path: 'manifestFile', message: manifestFile }],
+			code,
+			cause
+		);
+		this.name = 'ManifestImportNotFoundError';
+	}
+}
+
 export class ManifestLoadError extends MakooError {
 	constructor(path: string, code: string = ErrorCode.CLI_MANIFEST_LOAD_FAIL, cause?: Error) {
 		super(

@@ -8,7 +8,7 @@ import {
 } from 'node:path';
 import process from 'node:process';
 import type { MonkeyOption } from 'vite-plugin-monkey';
-import { ComponentNotFoundError, UnknownFrameworkError } from '../error/error';
+import { ComponentNotFoundError, UnknownFrameworkError } from '../error/MakooCliError';
 import {
 	DEFAULT_FILE_NAME_SUFFIX,
 	DEFAULT_INJECTION_DEFAULTS,

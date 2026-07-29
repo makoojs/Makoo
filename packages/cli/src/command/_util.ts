@@ -7,7 +7,10 @@ import { createJiti } from 'jiti';
 import { loadConfigFromFile } from 'vite';
 import { DEFAULT_SOURCE_DIR } from '../config/defaults';
 import type { ResolvedConfig } from '../config/types';
-import { LoadViteMakooConfigError, UnsupportedFrameworkGenerationError } from '../error/error';
+import {
+	LoadViteMakooConfigError,
+	UnsupportedFrameworkGenerationError
+} from '../error/MakooCliError';
 import type { MakooMonkeyPlugin } from '../vitePlugin/types';
 
 export async function loadCliVersion(cliVersionCache: string | null): Promise<string> {

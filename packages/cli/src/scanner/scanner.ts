@@ -12,7 +12,7 @@ import {
 	ManifestNotFoundError,
 	NoEnabledTasksError,
 	RuntimeSetupNotFoundError
-} from '../error/error';
+} from '../error/MakooCliError';
 import { collectDependencies } from './collectDependenics';
 import { loadManifest } from './load/loadManifes';
 import { loadMeta } from './load/loadMeta';

@@ -1,4 +1,5 @@
 import type { InjectionManifest, ResolvedInjectionModule, ResolvedListener } from '../config/types';
+import { ManifestBindingNotFoundError } from '../error/MakooCliError';
 import type { ManifestBinding, ScannerManifestBindings } from './types';
 
 export type BuildManifestBindingsOptions = {
@@ -78,7 +79,7 @@ function selectBindings(
 		ids.map((id) => {
 			const binding = bindings.get(id);
 			if (!binding) {
-				throw new Error(`[makoo] Missing manifest binding for ${kind} "${id}"`);
+				throw new ManifestBindingNotFoundError(kind, id);
 			}
 			return [id, binding];
 		})

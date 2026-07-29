@@ -1,6 +1,6 @@
 import { type ActivitySignalSource, OBSERVE_EVENT_NAMES, type ObserveHook } from '@makoojs/core';
 import { z } from 'zod';
-import { ManifestValidationError } from '../error/error';
+import { ManifestValidationError } from '../error/MakooCliError';
 
 // --- Hook validation ---
 

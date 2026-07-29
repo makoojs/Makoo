@@ -1,6 +1,6 @@
 import { MakooError } from '@makoojs/core';
 import { describe, expect, it } from 'vitest';
-import { ManifestValidationError } from '../src/error/error';
+import { ManifestValidationError } from '../src/error/MakooCliError';
 import {
 	InjectionDefaultsSchema,
 	InjectionListenerSchema,

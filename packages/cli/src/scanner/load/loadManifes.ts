@@ -2,7 +2,7 @@ import { existsSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { createJiti } from 'jiti';
 import type { ResolvedSourceConfig } from '../../config/types';
-import { ManifestLoadError, SourceDirNotFoundError } from '../../error/error';
+import { ManifestLoadError, SourceDirNotFoundError } from '../../error/MakooCliError';
 import { collectDependencies } from '../collectDependenics';
 import type { LoadManifestResult } from '../types';
 import { validateManifest } from '../validation';

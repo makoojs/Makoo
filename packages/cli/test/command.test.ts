@@ -11,7 +11,7 @@ import {
 	vueTemplate
 } from '../src/command/_util';
 import { addCommand } from '../src/command/add';
-import { UnsupportedFrameworkGenerationError } from '../src/error/error';
+import { UnsupportedFrameworkGenerationError } from '../src/error/MakooCliError';
 import { cleanupTempProjects, trackProject, withCwd } from './utils/tempProject';
 
 afterEach(cleanupTempProjects);

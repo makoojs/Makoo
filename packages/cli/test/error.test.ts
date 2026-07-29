@@ -1,10 +1,12 @@
 import { ErrorCode, MakooError } from '@makoojs/core';
 import { describe, expect, it } from 'vitest';
-import * as errors from '../src/error/error';
+import * as errors from '../src/error/MakooCliError';
 import {
 	ComponentNotFoundError,
 	ConfigValidationError,
 	LoadViteMakooConfigError,
+	ManifestBindingNotFoundError,
+	ManifestImportNotFoundError,
 	ManifestLoadError,
 	ManifestNotFoundError,
 	ModuleAlreadyExistsError,
@@ -15,7 +17,7 @@ import {
 	UnknownFrameworkError,
 	UnsupportedFrameworkGenerationError,
 	type ValidationIssue
-} from '../src/error/error';
+} from '../src/error/MakooCliError';
 
 describe('ModuleAlreadyExistsError', () => {
 	it('defaults code to CLI_MODULE_ALREADY_EXISTS', () => {
@@ -141,6 +143,32 @@ describe('ManifestNotFoundError', () => {
 		const err = new ManifestNotFoundError('/dir', 'CUSTOM', cause);
 		expect(err.code).toBe('CUSTOM');
 		expect(err.cause).toBe(cause);
+	});
+});
+
+describe('ManifestBindingNotFoundError', () => {
+	it('describes the unresolved task binding', () => {
+		const err = new ManifestBindingNotFoundError('listener', 'close');
+
+		expect(err).toBeInstanceOf(MakooError);
+		expect(err.code).toBe(ErrorCode.CLI_MANIFEST_BINDING_NOT_FOUND);
+		expect(err.name).toBe('ManifestBindingNotFoundError');
+		expect(err.issues).toEqual([
+			{ path: 'listeners.close', message: 'could not resolve manifest source' }
+		]);
+	});
+});
+
+describe('ManifestImportNotFoundError', () => {
+	it('describes the missing manifest import', () => {
+		const err = new ManifestImportNotFoundError('/project/injections/manifest.ts');
+
+		expect(err).toBeInstanceOf(MakooError);
+		expect(err.code).toBe(ErrorCode.CLI_MANIFEST_IMPORT_NOT_FOUND);
+		expect(err.name).toBe('ManifestImportNotFoundError');
+		expect(err.issues).toEqual([
+			{ path: 'manifestFile', message: '/project/injections/manifest.ts' }
+		]);
 	});
 });
 

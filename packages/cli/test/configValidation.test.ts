@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { validateCliConfig } from '../src/config/validation';
-import { ConfigValidationError } from '../src/error/error';
+import { ConfigValidationError } from '../src/error/MakooCliError';
 
 describe('validateCliConfig', () => {
 	it('accepts a minimal valid CLI config', () => {
