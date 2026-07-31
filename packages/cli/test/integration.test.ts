@@ -112,12 +112,28 @@ describe('makoo build integration', () => {
 	it('injects makooMonkey and vite-plugin-monkey so Vite builds the generated virtual entry into a userscript', async () => {
 		const root = await trackProject({
 			'injections/manifest.ts': `
+				import { callback } from './listenerCallback';
 				export default {
 					injections: [
 						{ name: 'hello-widget', injectAt: 'body', component: './hello/index.ts', framework: 'React' }
-					]
+					],
+					listeners: {
+						closureListener: {
+							listenAt: 'document',
+							type: 'makoo:closure',
+							callback
+						}
+					}
 				};
 			`,
+			'injections/listenerCallback.ts': `
+				import { closureValue } from './listenerValue';
+				export const callback = () => {
+					(globalThis as { __makooClosureValue?: string }).__makooClosureValue = closureValue;
+				};
+			`,
+			'injections/listenerValue.ts':
+				"export const closureValue = 'closure-import-preserved';",
 			'injections/runtime-setup.ts':
 				'(globalThis as { __makooRuntimeSetup?: string }).__makooRuntimeSetup = "ready";',
 			'injections/hello/index.ts': 'export default function HelloWidget() { return null; }'
@@ -179,6 +195,9 @@ describe('makoo build integration', () => {
 		expect(userscript).toContain('createMakoo');
 		expect(userscript).toContain('"id": "hello-widget"');
 		expect(userscript).toContain('"injectAt": "body"');
+		expect(userscript).toContain('"id": "closureListener"');
+		expect(userscript).toContain('__makooClosureValue');
+		expect(userscript).toContain('closure-import-preserved');
 		expect(userscript).toContain('makoo.start(makooTasks)');
 		expect(userscript).not.toContain('virtual:makoo/entry');
 	});

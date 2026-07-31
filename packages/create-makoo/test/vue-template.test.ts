@@ -47,6 +47,7 @@ describe('generateVueTemplate', () => {
 			const vueAssetPath = path.join(projectRoot, 'assets', 'vue.svg');
 			const makooAssetPath = path.join(projectRoot, 'assets', 'makoo-icon-transparent.png');
 			const appPath = path.join(projectRoot, 'injections', 'hello-world', 'app.vue');
+			const manifestPath = path.join(projectRoot, 'injections', 'manifest.ts');
 
 			expect(existsSync(tsconfigPath)).toBe(true);
 			expect(existsSync(appTsconfigPath)).toBe(true);
@@ -75,6 +76,7 @@ describe('generateVueTemplate', () => {
 			expect(readFileSync(appPath, 'utf-8')).toContain(
 				'../../assets/makoo-icon-transparent.png'
 			);
+			expect(readFileSync(manifestPath, 'utf-8')).toContain("from '@makoojs/cli/manifest'");
 			expect(readFileSync(appPath, 'utf-8')).toContain('<h1>Makoo</h1>');
 		});
 	});

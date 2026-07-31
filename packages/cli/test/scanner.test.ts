@@ -87,7 +87,17 @@ describe('scanner', () => {
 					injectionDefaults: { timeout: 777 },
 					injections: {
 						fromManifest: { injectAt: 'body', component: './fromManifest/index.tsx', framework: 'React' },
-						overridden: { injectAt: '#old', component: './overridden/old.tsx', framework: 'React', timeout: 1 }
+						overridden: {
+							injectAt: '#old',
+							component: './overridden/old.tsx',
+							framework: 'React',
+							timeout: 1,
+							on: {
+								listenAt: 'body',
+								type: 'click',
+								callback: () => 'root'
+							}
+						}
 					}
 				};
 			`,
@@ -156,9 +166,12 @@ describe('scanner', () => {
 			injectAt: '#new',
 			framework: 'Vue',
 			alive: true,
-			timeout: 777,
+			timeout: 1,
 			hooks: {
 				'artifact:mountSuccess': expect.any(Function)
+			},
+			on: {
+				callback: expect.any(Function)
 			}
 		});
 		expect(modules.overridden.moduleManifestFile).toBe(
@@ -169,22 +182,20 @@ describe('scanner', () => {
 			path.join(root, 'injections/overridden/selector.ts')
 		]);
 		expect(result.manifestBindings).toEqual({
-			injectionDefaults: {
-				manifestFile: path.join(root, 'injections/manifest.ts'),
-				valuePath: ['injectionDefaults']
-			},
 			injections: {
-				fromManifest: {
-					manifestFile: path.join(root, 'injections/manifest.ts'),
-					valuePath: ['injections', 'fromManifest']
-				},
-				includedOnly: {
-					manifestFile: path.join(root, 'injections/includedOnly/manifest.ts'),
-					valuePath: []
-				},
+				fromManifest: {},
+				includedOnly: {},
 				overridden: {
-					manifestFile: path.join(root, 'injections/overridden/manifest.ts'),
-					valuePath: []
+					hooks: {
+						manifestFile: path.join(root, 'injections/overridden/manifest.ts'),
+						valuePath: ['hooks']
+					},
+					on: {
+						callback: {
+							manifestFile: path.join(root, 'injections/manifest.ts'),
+							valuePath: ['injections', 'overridden', 'on', 'callback']
+						}
+					}
 				}
 			},
 			listeners: {}
@@ -262,12 +273,16 @@ describe('scanner', () => {
 			injections: {},
 			listeners: {
 				escapeClose: {
-					manifestFile: path.join(root, 'injections/manifest.ts'),
-					valuePath: ['listeners', 'escapeClose']
+					callback: {
+						manifestFile: path.join(root, 'injections/manifest.ts'),
+						valuePath: ['listeners', 'escapeClose', 'callback']
+					}
 				},
 				resizeWindow: {
-					manifestFile: path.join(root, 'injections/manifest.ts'),
-					valuePath: ['listeners', 'resizeWindow']
+					callback: {
+						manifestFile: path.join(root, 'injections/manifest.ts'),
+						valuePath: ['listeners', 'resizeWindow', 'callback']
+					}
 				}
 			}
 		});
@@ -306,23 +321,21 @@ describe('scanner', () => {
 			'zeta-listener'
 		]);
 		expect(result.manifestBindings.injections).toEqual({
-			zeta: {
-				manifestFile: path.join(root, 'injections/manifest.ts'),
-				valuePath: ['injections', 0]
-			},
-			alpha: {
-				manifestFile: path.join(root, 'injections/manifest.ts'),
-				valuePath: ['injections', 1]
-			}
+			zeta: {},
+			alpha: {}
 		});
 		expect(result.manifestBindings.listeners).toEqual({
 			'zeta-listener': {
-				manifestFile: path.join(root, 'injections/manifest.ts'),
-				valuePath: ['listeners', 0]
+				callback: {
+					manifestFile: path.join(root, 'injections/manifest.ts'),
+					valuePath: ['listeners', 0, 'callback']
+				}
 			},
 			'alpha-listener': {
-				manifestFile: path.join(root, 'injections/manifest.ts'),
-				valuePath: ['listeners', 1]
+				callback: {
+					manifestFile: path.join(root, 'injections/manifest.ts'),
+					valuePath: ['listeners', 1, 'callback']
+				}
 			}
 		});
 	});

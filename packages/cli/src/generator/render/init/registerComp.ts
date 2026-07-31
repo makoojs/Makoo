@@ -1,18 +1,17 @@
-import type { Component, RenderInitResult } from '../../../generator/types';
+import { ManifestBindingNotFoundError } from '../../../error/MakooCliError';
+import type { InjectionManifestBindings, ScannerManifestBindings } from '../../../scanner/types';
+import type { Component, RenderInitResult, RenderManifestReference } from '../../types';
 import { renderInlineValue } from '../util/value';
 
 export function renderRegisterComponent(
 	instanceName: string,
-	components: Component[]
+	components: Component[],
+	manifestBindings: ScannerManifestBindings['injections'],
+	renderManifestReference: RenderManifestReference
 ): RenderInitResult {
 	const registerCode = components.map((item) => {
-		const config = {
-			alive: item.componentMeta.alive,
-			scope: item.componentMeta.scope,
-			timeout: item.componentMeta.timeout,
-			hooks: item.componentMeta.hooks
-		};
-		const options = renderArtifactOptions(config, item.componentMeta.on);
+		const manifestBinding = manifestBindings[item.componentMeta.moduleId];
+		const options = renderArtifactOptions(item, manifestBinding, renderManifestReference);
 		const declaration = [
 			`"id":${JSON.stringify(item.componentMeta.moduleId)}`,
 			`"injectAt":${JSON.stringify(item.componentMeta.injectAt)}`,
@@ -39,19 +38,42 @@ export function renderRegisterComponent(
 }
 
 function renderArtifactOptions(
-	config: Record<string, unknown>,
-	on?: Component['componentMeta']['on']
+	item: Component,
+	manifestBinding: InjectionManifestBindings | undefined,
+	renderManifestReference: RenderManifestReference
 ): string {
+	const { componentMeta } = item;
+	const config = {
+		alive: componentMeta.alive,
+		scope: componentMeta.scope,
+		timeout: componentMeta.timeout
+	};
 	const entries = Object.entries(config)
 		.filter(([, value]) => typeof value !== 'undefined')
 		.map(([key, value]) => `${JSON.stringify(key)}:${renderInlineValue(value)}`);
 
-	if (on) {
+	if (componentMeta.hooks) {
+		if (!manifestBinding?.hooks) {
+			throw new ManifestBindingNotFoundError('injection', `${componentMeta.moduleId}.hooks`);
+		}
+		entries.push(`"hooks":${renderManifestReference(manifestBinding.hooks)}`);
+	}
+
+	if (componentMeta.on) {
+		if (!manifestBinding?.on) {
+			throw new ManifestBindingNotFoundError('injection', `${componentMeta.moduleId}.on`);
+		}
 		const listenDeclaration = [
-			`"listenAt":${JSON.stringify(on.listenAt)}`,
-			`"type":${JSON.stringify(on.type)}`,
-			`"callback":${renderInlineValue(on.callback)}`,
-			on.activitySignal ? `"activitySignal":${renderInlineValue(on.activitySignal)}` : null
+			`"listenAt":${JSON.stringify(componentMeta.on.listenAt)}`,
+			`"type":${JSON.stringify(componentMeta.on.type)}`,
+			`"callback":${renderManifestReference(manifestBinding.on.callback)}`,
+			componentMeta.on.activitySignal
+				? renderActivitySignal(
+						componentMeta.moduleId,
+						manifestBinding,
+						renderManifestReference
+					)
+				: null
 		]
 			.filter(Boolean)
 			.join(',');
@@ -59,4 +81,16 @@ function renderArtifactOptions(
 	}
 
 	return `{${entries.join(',')}}`;
+}
+
+function renderActivitySignal(
+	moduleId: string,
+	manifestBinding: InjectionManifestBindings,
+	renderManifestReference: RenderManifestReference
+): string {
+	const activitySignalBinding = manifestBinding.on?.activitySignal;
+	if (!activitySignalBinding) {
+		throw new ManifestBindingNotFoundError('injection', `${moduleId}.on.activitySignal`);
+	}
+	return `"activitySignal":${renderManifestReference(activitySignalBinding)}`;
 }

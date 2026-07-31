@@ -2,12 +2,18 @@ import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import picomatch from 'picomatch';
 import {
+	normalizeInjectionManifest,
 	resolveInjection,
 	resolveInjectionDefaults,
 	resolveInjections,
 	resolveListeners
 } from '../config/resolve';
-import type { ResolvedConfig, ResolvedInjectionModule, ResolvedListener } from '../config/types';
+import type {
+	InjectionModuleConfig,
+	ResolvedConfig,
+	ResolvedInjectionModule,
+	ResolvedListener
+} from '../config/types';
 import {
 	ManifestNotFoundError,
 	NoEnabledTasksError,
@@ -44,6 +50,13 @@ export async function scanner(config: ResolvedConfig): Promise<ScannerResult> {
 		source: config.source,
 		injectionDefaults
 	});
+	const normalizedManifestInjections = normalizeInjectionManifest(loadedManifest.manifest);
+	const manifestInjectionConfigs = new Map(
+		resolveManifest.map((injection, index) => [
+			injection.moduleId,
+			normalizedManifestInjections[index]
+		])
+	);
 
 	const folder = readdirSync(config.source.dir, { withFileTypes: true })
 		.filter((entry) => entry.isDirectory())
@@ -54,6 +67,7 @@ export async function scanner(config: ResolvedConfig): Promise<ScannerResult> {
 	const filteredFolders = folder.filter((name) => isIncluded(name) && !isExcluded(name));
 
 	const injectionsMeta: ResolvedInjectionModule[] = [];
+	const moduleInjectionConfigs = new Map<string, InjectionModuleConfig>();
 	for (const module of filteredFolders) {
 		const modulePath = path.join(config.source.dir, module);
 		//check module level config
@@ -65,7 +79,7 @@ export async function scanner(config: ResolvedConfig): Promise<ScannerResult> {
 			moduleManifestDependencies.add(dependency);
 		}
 		// resolve module config
-		const resolveMeta = resolveInjection(meta.moduleConfig, {
+		const resolveOptions = {
 			root: config.root,
 			source: config.source,
 			injectionDefaults,
@@ -73,10 +87,17 @@ export async function scanner(config: ResolvedConfig): Promise<ScannerResult> {
 			componentPath: path.join(modulePath, meta.moduleConfig.component),
 			fallbackName: module,
 			moduleManifestFile: meta.moduleManifestFile
-		});
+		};
+		const moduleMeta = resolveInjection(meta.moduleConfig, resolveOptions);
+		const manifestConfig = manifestInjectionConfigs.get(moduleMeta.moduleId);
+		const resolveMeta = resolveInjection(
+			manifestConfig ? { ...manifestConfig, ...meta.moduleConfig } : meta.moduleConfig,
+			resolveOptions
+		);
 
 		// module config array
 		injectionsMeta.push(resolveMeta);
+		moduleInjectionConfigs.set(resolveMeta.moduleId, meta.moduleConfig);
 	}
 
 	// merge target: module config
@@ -99,6 +120,7 @@ export async function scanner(config: ResolvedConfig): Promise<ScannerResult> {
 		manifestFile: loadedManifest.manifestFile,
 		manifestInjections: resolveManifest,
 		moduleInjections: injectionsMeta,
+		moduleInjectionConfigs,
 		manifestListeners: resolvedListeners,
 		enabledInjections: injections,
 		enabledListeners: listeners

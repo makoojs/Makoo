@@ -1,19 +1,31 @@
 import type { ResolvedListener } from '../../../config/types';
-import type { RenderInitResult } from '../../types';
+import { ManifestBindingNotFoundError } from '../../../error/MakooCliError';
+import type { ManifestBinding, ScannerManifestBindings } from '../../../scanner/types';
+import type { RenderInitResult, RenderManifestReference } from '../../types';
 import { renderInlineValue } from '../util/value';
 
 export function renderRegisterListener(
 	instanceName: string,
-	listeners: ResolvedListener[]
+	listeners: ResolvedListener[],
+	manifestBindings: ScannerManifestBindings['listeners'],
+	renderManifestReference: RenderManifestReference
 ): RenderInitResult {
 	const registerCode = listeners.map((listener) => {
+		const manifestBinding = manifestBindings[listener.listenerId];
+		if (!manifestBinding) {
+			throw new ManifestBindingNotFoundError('listener', listener.listenerId);
+		}
 		const declaration = [
 			`"id":${JSON.stringify(listener.listenerId)}`,
 			`"listenAt":${JSON.stringify(listener.listenAt)}`,
 			`"type":${JSON.stringify(listener.type)}`,
-			`"callback":${renderInlineValue(listener.callback)}`,
+			`"callback":${renderManifestReference(manifestBinding.callback)}`,
 			listener.activitySignal
-				? `"activitySignal":${renderInlineValue(listener.activitySignal)}`
+				? renderActivitySignal(
+						listener.listenerId,
+						manifestBinding.activitySignal,
+						renderManifestReference
+					)
 				: null
 		]
 			.filter(Boolean)
@@ -35,4 +47,15 @@ export function renderRegisterListener(
 		code: registerCode.join('\n'),
 		instanceName
 	};
+}
+
+function renderActivitySignal(
+	listenerId: string,
+	manifestBinding: ManifestBinding | undefined,
+	renderManifestReference: RenderManifestReference
+): string {
+	if (!manifestBinding) {
+		throw new ManifestBindingNotFoundError('listener', `${listenerId}.activitySignal`);
+	}
+	return `"activitySignal":${renderManifestReference(manifestBinding)}`;
 }

@@ -98,7 +98,7 @@ export default defineConfig({
 }
 
 function manifestTemplate(): string {
-	return `import { defineInjections } from '@makoojs/cli';
+	return `import { defineInjections } from '@makoojs/cli/manifest';
 
 export default defineInjections({
   injections: {

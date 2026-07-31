@@ -2,6 +2,7 @@ import type { ScannerResult } from '../scanner/types';
 import { renderImportAdapter } from './render/import/importAdapter';
 import { renderImportComp } from './render/import/importComp';
 import { renderImportMakooRuntime } from './render/import/importMakooRuntime';
+import { renderImportManifest } from './render/import/importManifest';
 import { renderRuntimeSetupImport } from './render/import/importRuntimeSetup';
 import { renderInitMakooRuntime } from './render/init/initMakooRuntime';
 import { renderRegisterComponent } from './render/init/registerComp';
@@ -17,23 +18,31 @@ import type {
 
 export function generate(sannerResult: ScannerResult): GeneratorResult {
 	const importRuntimeSetup = renderRuntimeSetupImport(sannerResult.config.runtime.setup);
+	const importManifest = renderImportManifest(sannerResult.manifestBindings);
 	const importComponent: RenderImportCompResult = renderImportComp(sannerResult.injections);
 	const importAdapter: RenderImportResult = renderImportAdapter(sannerResult.injections);
 	const initMakooRuntime: RenderInitResult = renderInitMakooRuntime(
 		sannerResult.frameworks,
-		sannerResult.injectionDefaults
+		sannerResult.injectionDefaults,
+		sannerResult.manifestBindings.injectionDefaults,
+		importManifest.renderReference
 	);
 	const initComponetnRegister: RenderInitResult = renderRegisterComponent(
 		initMakooRuntime.instanceName,
-		importComponent.component
+		importComponent.component,
+		sannerResult.manifestBindings.injections,
+		importManifest.renderReference
 	);
 	const initListenerRegister: RenderInitResult = renderRegisterListener(
 		initMakooRuntime.instanceName,
-		sannerResult.listeners
+		sannerResult.listeners,
+		sannerResult.manifestBindings.listeners,
+		importManifest.renderReference
 	);
 
 	const importCode: string = [
 		importRuntimeSetup,
+		importManifest.code,
 		importComponent.code,
 		renderImportMakooRuntime(),
 		importAdapter.code

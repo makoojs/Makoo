@@ -36,10 +36,17 @@ describe('generate', () => {
 				component: './hello/index.tsx',
 				framework: 'React',
 				alive: true,
+				hooks: {
+					'artifact:mountSuccess': () => 'mounted'
+				},
 				on: {
 					listenAt: '#app',
 					type: 'click',
-					callback: () => 'clicked'
+					callback: () => 'clicked',
+					activitySignal: () => ({
+						get: () => true,
+						subscribe: () => () => {}
+					})
 				}
 			},
 			{
@@ -53,7 +60,33 @@ describe('generate', () => {
 			config,
 			injectionDefaults,
 			manifestFile: path.join(root, 'injections/manifest.ts'),
-			manifestBindings: { injections: {}, listeners: {} },
+			manifestBindings: {
+				injectionDefaults: {
+					hooks: {
+						manifestFile: path.join(root, 'injections/manifest.ts'),
+						valuePath: ['injectionDefaults', 'hooks']
+					}
+				},
+				injections: {
+					'hello-card': {
+						hooks: {
+							manifestFile: path.join(root, 'injections/manifest.ts'),
+							valuePath: ['injections', 0, 'hooks']
+						},
+						on: {
+							callback: {
+								manifestFile: path.join(root, 'injections/manifest.ts'),
+								valuePath: ['injections', 0, 'on', 'callback']
+							},
+							activitySignal: {
+								manifestFile: path.join(root, 'injections/manifest.ts'),
+								valuePath: ['injections', 0, 'on', 'activitySignal']
+							}
+						}
+					}
+				},
+				listeners: {}
+			},
 			manifestDependencies: [],
 			moduleManifestDependencies: [],
 			runtimeSetupFiles: [],
@@ -70,21 +103,29 @@ describe('generate', () => {
 			`import Injection_hello_card from '${path.join(root, 'injections/hello/index.tsx').replace(/\\/g, '/')}';`
 		);
 		expect(result.code).toContain(
+			`import Manifest_0 from '${path.join(root, 'injections/manifest.ts').replace(/\\/g, '/')}';`
+		);
+		expect(result.code).toContain(
 			"import { createMakoo, inject, listen } from '@makoojs/core';"
 		);
 		expect(result.code).toContain('import { createReactAdapter } from "@makoojs/react";');
 		expect(result.code).toContain('let makoo;');
 		expect(result.code).toContain('makoo = createMakoo({');
 		expect(result.code).toContain('defaults:');
-		expect(result.code).toContain('"start:requested":(() => "run-start")');
+		expect(result.code).toContain('hooks: Manifest_0["injectionDefaults"]["hooks"]');
 		expect(result.code).toContain('adapters: [createReactAdapter()]');
 		expect(result.code).toContain('const makooTasks = [];');
 		expect(result.code).toContain(
 			'makooTasks.push(inject({"id":"hello-card","injectAt":"#app","artifact":Injection_hello_card,"options":'
 		);
+		expect(result.code).toContain('"hooks":Manifest_0["injections"][0]["hooks"]');
 		expect(result.code).toContain(
-			'listen({"listenAt":"#app","type":"click","callback":(() => "clicked")})'
+			'listen({"listenAt":"#app","type":"click","callback":Manifest_0["injections"][0]["on"]["callback"],"activitySignal":Manifest_0["injections"][0]["on"]["activitySignal"]})'
 		);
+		expect(result.code).not.toContain('run-start');
+		expect(result.code).not.toContain('mounted');
+		expect(result.code).not.toContain('clicked');
+		expect(result.code).not.toContain('subscribe: () => () => {}');
 		expect(result.code).toContain('makoo.start(makooTasks)');
 	});
 
@@ -296,7 +337,21 @@ describe('generate', () => {
 			config,
 			injectionDefaults: defaultInjectionDefaults,
 			manifestFile: path.join(root, 'injections/manifest.ts'),
-			manifestBindings: { injections: {}, listeners: {} },
+			manifestBindings: {
+				injections: {},
+				listeners: {
+					'escape-close': {
+						callback: {
+							manifestFile: path.join(root, 'injections/manifest.ts'),
+							valuePath: ['listeners', 'escape-close', 'callback']
+						},
+						activitySignal: {
+							manifestFile: path.join(root, 'injections/manifest.ts'),
+							valuePath: ['listeners', 'escape-close', 'activitySignal']
+						}
+					}
+				}
+			},
 			manifestDependencies: [],
 			moduleManifestDependencies: [],
 			runtimeSetupFiles: [],
@@ -310,10 +365,10 @@ describe('generate', () => {
 
 		expect(result.code).toContain('const makooTasks = [];');
 		expect(result.code).toContain(
-			'makooTasks.push(listen({"id":"escape-close","listenAt":"body","type":"keydown","callback":(() => "closed"),"activitySignal":'
+			'makooTasks.push(listen({"id":"escape-close","listenAt":"body","type":"keydown","callback":Manifest_0["listeners"]["escape-close"]["callback"],"activitySignal":Manifest_0["listeners"]["escape-close"]["activitySignal"]}));'
 		);
-		expect(result.code).toContain('get: () => true');
-		expect(result.code).toContain('subscribe: () => () => {}');
+		expect(result.code).not.toContain('get: () => true');
+		expect(result.code).not.toContain('subscribe: () => () => {}');
 		expect(result.code).toContain('makoo.start(makooTasks)');
 	});
 
@@ -340,7 +395,17 @@ describe('generate', () => {
 			config,
 			injectionDefaults: defaultInjectionDefaults,
 			manifestFile: path.join(root, 'injections/manifest.ts'),
-			manifestBindings: { injections: {}, listeners: {} },
+			manifestBindings: {
+				injections: {},
+				listeners: {
+					visibility: {
+						callback: {
+							manifestFile: path.join(root, 'injections/manifest.ts'),
+							valuePath: ['listeners', 'visibility', 'callback']
+						}
+					}
+				}
+			},
 			manifestDependencies: [],
 			moduleManifestDependencies: [],
 			runtimeSetupFiles: [],
@@ -357,7 +422,7 @@ describe('generate', () => {
 			'if (matchUrl(location.href, {"include":["https://example.com/*"]})) {'
 		);
 		expect(result.code).toContain(
-			'makooTasks.push(listen({"id":"visibility","listenAt":"document","type":"visibilitychange","callback":(() => undefined)}));'
+			'makooTasks.push(listen({"id":"visibility","listenAt":"document","type":"visibilitychange","callback":Manifest_0["listeners"]["visibility"]["callback"]}));'
 		);
 	});
 });

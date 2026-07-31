@@ -109,7 +109,7 @@ export async function updateManifest(
 		const newManifestPath = join(sourcePath, 'manifest.ts');
 		await writeFile(
 			newManifestPath,
-			`import { defineInjections } from "@makoojs/cli";\nexport default defineInjections(${JSON.stringify(merged, null, 2)})\n`,
+			`import { defineInjections } from "@makoojs/cli/manifest";\nexport default defineInjections(${JSON.stringify(merged, null, 2)})\n`,
 			'utf-8'
 		);
 		return;

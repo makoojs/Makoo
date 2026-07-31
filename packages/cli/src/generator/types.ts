@@ -1,4 +1,5 @@
 import type { ResolvedInjectionModule } from '../config/types';
+import type { ManifestBinding } from '../scanner/types';
 
 export type RenderImportResult = {
 	code: string;
@@ -20,3 +21,10 @@ export type GeneratorResult = {
 	code: string;
 	instanceName: string;
 };
+
+export type RenderImportManifestResult = {
+	code: string;
+	renderReference: RenderManifestReference;
+};
+
+export type RenderManifestReference = (binding: ManifestBinding) => string;

@@ -4,6 +4,7 @@ import * as errors from '../src/error/MakooCliError';
 import {
 	ComponentNotFoundError,
 	ConfigValidationError,
+	FunctionSerializationError,
 	LoadViteMakooConfigError,
 	ManifestBindingNotFoundError,
 	ManifestImportNotFoundError,
@@ -157,6 +158,14 @@ describe('ManifestBindingNotFoundError', () => {
 			{ path: 'listeners.close', message: 'could not resolve manifest source' }
 		]);
 	});
+
+	it('supports injection defaults hook bindings', () => {
+		const err = new ManifestBindingNotFoundError('injectionDefaults', 'hooks');
+
+		expect(err.issues).toEqual([
+			{ path: 'injectionDefaults.hooks', message: 'could not resolve manifest source' }
+		]);
+	});
 });
 
 describe('ManifestImportNotFoundError', () => {
@@ -168,6 +177,22 @@ describe('ManifestImportNotFoundError', () => {
 		expect(err.name).toBe('ManifestImportNotFoundError');
 		expect(err.issues).toEqual([
 			{ path: 'manifestFile', message: '/project/injections/manifest.ts' }
+		]);
+	});
+});
+
+describe('FunctionSerializationError', () => {
+	it('requires function values to use manifest bindings', () => {
+		const err = new FunctionSerializationError();
+
+		expect(err).toBeInstanceOf(MakooError);
+		expect(err.code).toBe(ErrorCode.CLI_FUNCTION_SERIALIZATION_UNSUPPORTED);
+		expect(err.name).toBe('FunctionSerializationError');
+		expect(err.issues).toEqual([
+			{
+				path: 'generator.inlineValue',
+				message: 'function values require a manifest binding'
+			}
 		]);
 	});
 });

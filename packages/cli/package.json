@@ -31,6 +31,11 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
+    "./manifest": {
+      "types": "./dist/manifest/index.d.ts",
+      "import": "./dist/manifest/index.js",
+      "require": "./dist/manifest/index.cjs"
+    },
     "./monkey": {
       "types": "./dist/monkey/index.d.ts",
       "import": "./dist/monkey/index.js",

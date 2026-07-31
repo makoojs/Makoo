@@ -248,6 +248,15 @@ describe('makooMonkey dev HMR', () => {
 		await withCwd(root, async () => {
 			await configureDevPlugin(plugin, dev.server);
 
+			const load = getHook(plugin.load);
+			const initialCode = String(await load?.call({} as never, RESOLVED_ID, {} as never));
+			const manifestFile = path.join(root, 'injections/manifest.ts');
+			expect(initialCode).toContain(
+				`import Manifest_0 from '${manifestFile.replace(/\\/g, '/')}';`
+			);
+			expect(initialCode).toContain('hooks: Manifest_0["injectionDefaults"]["hooks"]');
+			expect(initialCode).not.toContain('helper()');
+
 			const helperFile = path.join(root, 'injections/helper.ts');
 			expect(dev.watcherAdd).toHaveBeenCalledWith(helperFile);
 			await writeFile(helperFile, `export const helper = () => 'new-helper';`);

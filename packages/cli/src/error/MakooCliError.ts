@@ -120,14 +120,16 @@ export class ManifestNotFoundError extends MakooError {
 
 export class ManifestBindingNotFoundError extends MakooError {
 	constructor(
-		kind: 'injection' | 'listener',
+		kind: 'injectionDefaults' | 'injection' | 'listener',
 		id: string,
 		code: string = ErrorCode.CLI_MANIFEST_BINDING_NOT_FOUND,
 		cause?: Error
 	) {
+		const path = kind === 'injectionDefaults' ? `${kind}.${id}` : `${kind}s.${id}`;
+		const label = kind === 'injectionDefaults' ? 'injection defaults' : kind;
 		super(
-			`Missing manifest binding for ${kind} "${id}"`,
-			[{ path: `${kind}s.${id}`, message: 'could not resolve manifest source' }],
+			`Missing manifest binding for ${label} "${id}"`,
+			[{ path, message: 'could not resolve manifest source' }],
 			code,
 			cause
 		);
@@ -148,6 +150,23 @@ export class ManifestImportNotFoundError extends MakooError {
 			cause
 		);
 		this.name = 'ManifestImportNotFoundError';
+	}
+}
+
+export class FunctionSerializationError extends MakooError {
+	constructor(code: string = ErrorCode.CLI_FUNCTION_SERIALIZATION_UNSUPPORTED, cause?: Error) {
+		super(
+			'Function values cannot be serialized into the generated entry; use a manifest binding instead',
+			[
+				{
+					path: 'generator.inlineValue',
+					message: 'function values require a manifest binding'
+				}
+			],
+			code,
+			cause
+		);
+		this.name = 'FunctionSerializationError';
 	}
 }
 

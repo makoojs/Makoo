@@ -43,6 +43,7 @@ describe('generateReactTemplate', () => {
 			const reactAssetPath = path.join(projectRoot, 'assets', 'react.svg');
 			const makooAssetPath = path.join(projectRoot, 'assets', 'makoo-icon-transparent.png');
 			const appPath = path.join(projectRoot, 'injections', 'hello-world', 'app.tsx');
+			const manifestPath = path.join(projectRoot, 'injections', 'manifest.ts');
 			const stylePath = path.join(projectRoot, 'injections', 'hello-world', 'style.css');
 
 			expect(existsSync(packageJsonPath)).toBe(true);
@@ -65,6 +66,7 @@ describe('generateReactTemplate', () => {
 				"dedupe: ['react', 'react-dom']"
 			);
 			expect(readFileSync(appPath, 'utf-8')).toContain('../../assets/react.svg');
+			expect(readFileSync(manifestPath, 'utf-8')).toContain("from '@makoojs/cli/manifest'");
 			expect(readFileSync(appPath, 'utf-8')).toContain('count is {count}');
 			expect(readFileSync(stylePath, 'utf-8')).toContain('.logo-react');
 		});

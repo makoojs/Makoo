@@ -27,10 +27,25 @@ export type ManifestBinding = {
 	valuePath: Array<string | number>;
 };
 
+export type InjectionManifestBindings = {
+	hooks?: ManifestBinding;
+	on?: {
+		callback: ManifestBinding;
+		activitySignal?: ManifestBinding;
+	};
+};
+
+export type ListenerManifestBindings = {
+	callback: ManifestBinding;
+	activitySignal?: ManifestBinding;
+};
+
 export type ScannerManifestBindings = {
-	injectionDefaults?: ManifestBinding;
-	injections: Record<string, ManifestBinding>;
-	listeners: Record<string, ManifestBinding>;
+	injectionDefaults?: {
+		hooks: ManifestBinding;
+	};
+	injections: Record<string, InjectionManifestBindings>;
+	listeners: Record<string, ListenerManifestBindings>;
 };
 
 export type LoadManifestResult = {

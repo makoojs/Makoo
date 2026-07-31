@@ -16,6 +16,7 @@ describe('buildManifestBindings', () => {
 				manifestFile: '/project/injections/manifest.ts',
 				manifestInjections: [],
 				moduleInjections: [],
+				moduleInjectionConfigs: new Map(),
 				manifestListeners: [],
 				enabledInjections: [missingInjection],
 				enabledListeners: []

@@ -221,6 +221,7 @@ export default defineInjections({
 
 			const content = readFileSync(manifestPath, 'utf-8');
 			expect(content).toContain('defineInjections');
+			expect(content).toContain('from "@makoojs/cli/manifest"');
 			expect(content).toContain('test');
 			expect(content).toContain('./test/App.vue');
 		});
