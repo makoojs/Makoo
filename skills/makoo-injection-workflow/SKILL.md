@@ -1,6 +1,7 @@
 ---
 name: makoo-injection-workflow
-description: Use when creating or modifying Makoo injection modules, injections/manifest.ts, module-level manifests, React/Vue injection components, injectAt, match, alive, timeout, hooks, and userscript injection workflows in Makoo projects.
+description: Use when creating, modifying, or debugging Makoo injection modules, top-level or module manifests, standalone listeners, hooks, callbacks, activity signals, browser-safe manifest imports, React/Vue components, injectAt, match, alive, timeout, HMR, or userscript injection workflows in Makoo projects.
+license: MIT
 ---
 
 # Makoo Injection Workflow
@@ -19,6 +20,23 @@ First confirm that the current project is a Makoo project, then read the nearest
 - Neighboring component files: check whether the project uses Vue, React, TypeScript, or JavaScript, and how styles are organized.
 
 Do not invent a new structure without a reason. Prefer the module names, component names, and file layout patterns already used in the project.
+
+## Understand The Automatic Entry
+
+Makoo projects do not normally need a `main.ts` to mount a manifest or start the runtime. The CLI owns this pipeline:
+
+```txt
+scanner -> generator -> virtual entry -> Vite
+```
+
+The scanner resolves enabled injections and listeners, the generator creates the virtual entry, and the generated code registers and starts the tasks. Preserve this automatic path unless the user explicitly requests a different architecture.
+
+The virtual entry imports manifest modules to obtain real `hooks`, `callback`, and `activitySignal` values. A manifest therefore participates in both Node build-time loading and browser bundling. Before editing one, verify that its top-level code and runtime dependency graph:
+
+- Have no application side effects during module evaluation.
+- Do not depend on `node:fs`, `node:path`, or other Node-only modules.
+- Can be bundled by Vite for the browser.
+- Use static relative imports when Makoo must track local structural dependencies.
 
 ## When To Create An Injection Module
 
@@ -60,10 +78,10 @@ injections
 
 ## How To Write `injections/manifest.ts`
 
-Use `defineInjections()` from `@makoojs/cli` in the top-level manifest. Prefer the object form because each object key becomes a stable module id, which fits most projects:
+Use `defineInjections()` from the browser-safe `@makoojs/cli/manifest` entry in the top-level manifest. Prefer the object form because each object key becomes a stable module id, which fits most projects:
 
 ```ts
-import { defineInjections } from '@makoojs/cli';
+import { defineInjections } from '@makoojs/cli/manifest';
 
 export default defineInjections({
 	injectionDefaults: {
@@ -83,7 +101,7 @@ export default defineInjections({
 Use the array form only when the configuration is generated, a list is clearer than object keys, or a stable `name` must be explicit:
 
 ```ts
-import { defineInjections } from '@makoojs/cli';
+import { defineInjections } from '@makoojs/cli/manifest';
 
 export default defineInjections({
 	injections: [
@@ -142,10 +160,12 @@ In module-level `injections/<module>/manifest.ts`, `component` paths are resolve
 
 ```ts
 // injections/profile-card/manifest.ts
-export default {
+import { defineInjection } from '@makoojs/cli/manifest';
+
+export default defineInjection({
 	injectAt: '.profile',
 	component: './app.vue'
-};
+});
 ```
 
 ## When To Use Module-Level `manifest.ts`
@@ -161,7 +181,9 @@ Module-level example:
 
 ```ts
 // injections/profile-card/manifest.ts
-export default {
+import { defineInjection } from '@makoojs/cli/manifest';
+
+export default defineInjection({
 	injectAt: '.profile',
 	component: './app.vue',
 	alive: true,
@@ -171,14 +193,72 @@ export default {
 		include: ['https://example.com/profile/*'],
 		exclude: ['https://example.com/profile/settings']
 	}
+});
+```
+
+**Module definition source priority**: if a module-level manifest and the top-level manifest resolve to the same module id, Makoo shallow-merges their top-level configuration fields. A field explicitly present in the module manifest wins; a missing module field can come from the top-level entry.
+
+For runtime-function fields, ownership follows the manifest that supplies the complete top-level field:
+
+- If the module manifest declares `hooks`, generated code references its `hooks`.
+- If the module omits `hooks`, top-level injection `hooks` can remain effective.
+- If the module declares `on`, the complete module `on` object wins.
+- If the module omits `on`, top-level injection `on` can remain effective.
+
+Do not expect a deep merge inside `hooks` or `on`. Keep one authoritative source for each of those fields.
+
+For scalar runtime defaults such as `alive`, `scope`, and `timeout`, use this effective priority:
+
+```txt
+explicit module field -> same-id top-level injection field -> manifest.injectionDefaults -> Makoo default
+```
+
+`injectionDefaults.hooks` configures shared runtime hooks. Injection-level `hooks` remains a per-task field whose source follows the module-versus-top-level ownership rules above.
+
+## How To Declare Standalone Listeners
+
+Declare standalone listeners only in the top-level `injections/manifest.ts`. A module-level manifest currently describes one injection module and cannot declare its own standalone listener collection.
+
+Keep listener implementations in browser-safe helper files and import them statically:
+
+```ts
+// injections/listeners/callbacks.ts
+import { closePanel } from './panelState';
+
+export const onEscape: EventListener = (event) => {
+	if (event instanceof KeyboardEvent && event.key === 'Escape') {
+		closePanel();
+	}
 };
 ```
 
-**Module definition source priority**: if a module-level manifest and the top-level manifest define the same module id, the module-level manifest replaces the top-level resolved result for that module. Do not maintain the same module's core configuration in both places.
+```ts
+// injections/manifest.ts
+import { defineInjections } from '@makoojs/cli/manifest';
+import { onEscape } from './listeners/callbacks';
 
-**Default field inheritance priority**: `module config` > `manifest.injectionDefaults` > `Makoo default`.
+export default defineInjections({
+	listeners: {
+		'escape-close': {
+			listenAt: 'document',
+			type: 'keydown',
+			callback: onEscape,
+			match: ['https://example.com/*']
+		}
+	}
+});
+```
 
-This priority only applies to default field inheritance within a module configuration, such as `alive`, `scope`, `timeout`, and `hooks`. Explicit module fields have the highest priority; missing fields are filled from manifest defaults or Makoo defaults.
+Standalone listener fields have these roles:
+
+- `listenAt`: selects the event target understood by the Makoo listener runtime.
+- `type`: provides the DOM event type.
+- `callback`: provides the real event callback imported through the manifest.
+- `activitySignal`: optionally controls whether the listener task is active.
+- `match`: limits registration by URL after the userscript has loaded.
+- `enabled`: removes a disabled listener from the generated runtime.
+
+Do not add `injectAt`, `alive`, `scope`, or `timeout` to standalone listeners. Those fields belong to component injection tasks.
 
 ## How To Choose The React / Vue Adapter
 
@@ -282,7 +362,7 @@ Guidance:
 - If the target only appears after a user action, first check whether the module should inject into a more stable parent container instead of endlessly increasing `timeout`.
 - Do not use `timeout` as a retry mechanism. Use `alive` when the target repeatedly disappears and reappears.
 
-## Hooks And Dependency Tracking
+## Runtime Functions And Dependency Tracking
 
 Hooks can live in `injectionDefaults.hooks` or in module config:
 
@@ -297,12 +377,14 @@ import { hooks } from './hooks';
 
 Makoo tracks local dependency chains such as `manifest -> hooks -> helper`. Do not rely on dynamic `import()`, path aliases, or third-party package changes to trigger manifest structure rescans.
 
+Apply the same rule to injection `on.callback`, standalone listener `callback`, and `activitySignal`. Makoo references these values from the real manifest module instead of converting a function to source text, so imported helpers and lexical closures remain part of Vite's module graph. This only works when the entire reachable runtime graph is browser-safe.
+
 ## Enable, Disable, And Scan Behavior
 
 - Modules default to `enabled: true`.
 - Use `enabled: false` to keep a module config in the manifest while excluding it from the generated runtime.
 - `source.include` and `source.exclude` filter module directory scanning; they are not URL matching rules.
-- Changes to the top-level manifest, module-level manifests, and static relative imports from manifests trigger structural updates.
+- Changes to the top-level manifest, module-level manifests, and statically imported local dependency chains trigger structural updates.
 - Top-level manifest dependencies and module manifest dependencies are tracked separately by Makoo, so keep imports static and local to the manifest that owns them.
 - Ordinary component changes are handled by Vite HMR.
 
@@ -310,6 +392,9 @@ Makoo tracks local dependency chains such as `manifest -> hooks -> helper`. Do n
 
 Before finishing injection work, check:
 
+- No required `main.ts` was added merely to mount the manifest or start Makoo.
+- Manifest helpers and manifest-facing types use `@makoojs/cli/manifest`.
+- Manifest top-level evaluation has no application side effects or Node-only dependencies.
 - New modules live under `injections/<module-name>/` with stable names.
 - `component` paths are written relative to the manifest file that declares them.
 - `framework` can be inferred from the extension; if not, it is explicitly configured.
@@ -317,5 +402,7 @@ Before finishing injection work, check:
 - `match` only does module-level filtering, and `monkey.userscript.match` covers the pages where the script should run.
 - `alive` is only enabled when the DOM can be rebuilt and injection truly needs to recover.
 - `timeout` reflects when the target node appears and is not hiding an incorrect selector.
-- Hooks use static relative imports.
+- Module and top-level injection configs follow shallow top-level field precedence; `hooks` and `on` each have one authoritative source.
+- Standalone listeners are declared in the top-level manifest and do not use injection-only fields.
+- Hooks, callbacks, activity signals, and their helper chains use static relative imports and remain browser-bundleable.
 - If the project mixes React and Vue, dependencies, Vite plugins, and userscript external globals support the selected frameworks.
