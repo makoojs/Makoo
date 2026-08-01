@@ -91,7 +91,8 @@ export function makooMonkey(config: ResolvedConfig): MakooMonkeyPlugin {
 
 				const relativeFile = path.relative(config.root, changedFile).replace(/\\/g, '/');
 				server.config.logger.info(
-					`[makoo] ${colorize('structural HMR', ansi.green)} ${colorize(reason, ansi.cyan)}: ${colorize(relativeFile, ansi.dim)}`
+					`${colorize('[makoo]', ansi.deepPink)} ${colorize('(client)', ansi.dim)} ${colorize('hmr update', ansi.green)} ${colorize(`${reason}: ${relativeFile}`, ansi.dim)}`,
+					{ timestamp: true }
 				);
 				syncWatchTargets(server);
 				invalidateVirtualModule(server);
