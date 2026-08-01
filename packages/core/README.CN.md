@@ -94,7 +94,7 @@ const makoo = createMakoo({
 });
 
 const started = makoo.start([
-	inject('#app', artifact)
+	inject({ injectAt: '#app', artifact })
 ]);
 ```
 
@@ -107,27 +107,11 @@ const started = makoo.start([
 
 ```ts
 function inject<TArtifact>(
-	injectAt: string,
-	artifact: TArtifact,
-	options?: ArtifactOptions
-): MakooInjectionDeclaration<TArtifact>;
-
-function inject<TArtifact>(
 	input: MakooInjectionInput<TArtifact>
 ): MakooInjectionDeclaration<TArtifact>;
 ```
 
 ### Parameters
-
-#### 参数形式
-
-| 参数 | 类型 | 说明 |
-| --- | --- | --- |
-| `injectAt` | `string` | 目标元素的 CSS selector |
-| `artifact` | `TArtifact` | 交给 adapter 挂载的内容 |
-| `options` | `ArtifactOptions` | 当前任务的可选配置 |
-
-#### 对象形式
 
 ```ts
 type MakooInjectionInput<TArtifact = unknown> = {
@@ -176,28 +160,10 @@ const declaration = inject({
 ### Type
 
 ```ts
-function listen(
-	listenAt: string,
-	event: string,
-	callback: EventListener,
-	options?: MakooListenerOptions
-): MakooListenerDeclaration;
-
 function listen(input: MakooListenerInput): MakooListenerDeclaration;
 ```
 
 ### Parameters
-
-#### 参数形式
-
-| 参数 | 类型 | 说明 |
-| --- | --- | --- |
-| `listenAt` | `string` | 事件目标的 CSS selector |
-| `event` | `string` | DOM 事件类型 |
-| `callback` | `EventListener` | 事件回调 |
-| `options.activitySignal` | `() => ActivitySignalSource<boolean>` | 控制监听是否启用 |
-
-#### 对象形式
 
 ```ts
 type MakooListenerInput = {
@@ -611,10 +577,6 @@ type MakooDefaults = {
 	alive: boolean;
 	scope: 'local' | 'global';
 	timeout: number;
-};
-
-type MakooListenerOptions = {
-	activitySignal?: () => ActivitySignalSource<boolean>;
 };
 
 type MakooInjectionDeclaration<TArtifact = unknown> = {

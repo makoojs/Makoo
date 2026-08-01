@@ -35,7 +35,7 @@ const makoo = createMakoo({
 });
 
 makoo.start([
-	inject('#app', Panel)
+	inject({ injectAt: '#app', artifact: Panel })
 ]);
 ```
 

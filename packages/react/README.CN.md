@@ -34,7 +34,7 @@ const makoo = createMakoo({
 });
 
 makoo.start([
-	inject('#app', Badge)
+	inject({ injectAt: '#app', artifact: Badge })
 ]);
 ```
 

@@ -94,7 +94,7 @@ const makoo = createMakoo({
 });
 
 const started = makoo.start([
-	inject('#app', artifact)
+	inject({ injectAt: '#app', artifact })
 ]);
 ```
 
@@ -106,27 +106,11 @@ Creates a component task declaration. `inject()` does not register or start the 
 
 ```ts
 function inject<TArtifact>(
-	injectAt: string,
-	artifact: TArtifact,
-	options?: ArtifactOptions
-): MakooInjectionDeclaration<TArtifact>;
-
-function inject<TArtifact>(
 	input: MakooInjectionInput<TArtifact>
 ): MakooInjectionDeclaration<TArtifact>;
 ```
 
 ### Parameters
-
-#### Positional form
-
-| Parameter | Type | Description |
-| --- | --- | --- |
-| `injectAt` | `string` | CSS selector of the target element |
-| `artifact` | `TArtifact` | Value passed to the mounting adapter |
-| `options` | `ArtifactOptions` | Options for this task |
-
-#### Object form
 
 ```ts
 type MakooInjectionInput<TArtifact = unknown> = {
@@ -174,28 +158,10 @@ Creates a listener task declaration. `listen()` does not register or start the t
 ### Type
 
 ```ts
-function listen(
-	listenAt: string,
-	event: string,
-	callback: EventListener,
-	options?: MakooListenerOptions
-): MakooListenerDeclaration;
-
 function listen(input: MakooListenerInput): MakooListenerDeclaration;
 ```
 
 ### Parameters
-
-#### Positional form
-
-| Parameter | Type | Description |
-| --- | --- | --- |
-| `listenAt` | `string` | CSS selector of the event target |
-| `event` | `string` | DOM event type |
-| `callback` | `EventListener` | Event callback |
-| `options.activitySignal` | `() => ActivitySignalSource<boolean>` | Controls whether the listener is active |
-
-#### Object form
 
 ```ts
 type MakooListenerInput = {
@@ -607,10 +573,6 @@ type MakooDefaults = {
 	alive: boolean;
 	scope: 'local' | 'global';
 	timeout: number;
-};
-
-type MakooListenerOptions = {
-	activitySignal?: () => ActivitySignalSource<boolean>;
 };
 
 type MakooInjectionDeclaration<TArtifact = unknown> = {

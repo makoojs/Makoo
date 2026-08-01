@@ -270,7 +270,7 @@ const makoo = createMakoo({
 });
 
 const makooTasks = [
-	inject('.profile', ProfileCard)
+	inject({ injectAt: '.profile', artifact: ProfileCard })
 ];
 
 makoo.start(makooTasks);

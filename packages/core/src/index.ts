@@ -37,7 +37,6 @@ export type {
 	MakooInjectionInput,
 	MakooListenerDeclaration,
 	MakooListenerInput,
-	MakooListenerOptions,
 	MakooRuntime,
 	MakooTaskDeclaration,
 	StartedComponentTask,

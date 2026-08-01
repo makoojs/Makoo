@@ -7,13 +7,21 @@ describe('Makoo declarations', () => {
 	it('should create component injection declarations without touching the DOM', () => {
 		const component = createVueComponent('DeclaredComp');
 		const callback = vi.fn();
-		const listener = listen('#button', 'click', callback);
+		const listener = listen({
+			listenAt: '#button',
+			type: 'click',
+			callback
+		});
 
-		const declaration = inject('#app', component, {
-			alive: true,
-			scope: 'global',
-			timeout: 1200,
-			on: listener
+		const declaration = inject({
+			injectAt: '#app',
+			artifact: component,
+			options: {
+				alive: true,
+				scope: 'global',
+				timeout: 1200,
+				on: listener
+			}
 		});
 
 		expect(document.body.innerHTML).toBe('');
@@ -30,7 +38,7 @@ describe('Makoo declarations', () => {
 		});
 	});
 
-	it('should create component injection declarations from object input', () => {
+	it('should preserve an explicit component task id', () => {
 		const component = createVueComponent('DeclaredObjectComp');
 		const declaration = inject({
 			id: 'declared-object',
@@ -59,7 +67,12 @@ describe('Makoo declarations', () => {
 		const activitySignal = () => signal;
 		const callback = vi.fn();
 
-		const declaration = listen('#escape', 'keydown', callback, { activitySignal });
+		const declaration = listen({
+			listenAt: '#escape',
+			type: 'keydown',
+			callback,
+			activitySignal
+		});
 
 		expect(declaration).toEqual({
 			kind: 'listener',
@@ -71,7 +84,7 @@ describe('Makoo declarations', () => {
 		});
 	});
 
-	it('should create listener declarations from object input', () => {
+	it('should preserve an explicit listener task id', () => {
 		const signal = createActivityStore(true);
 		const activitySignal = () => signal;
 		const callback = vi.fn();

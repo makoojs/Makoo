@@ -112,6 +112,11 @@ If the task touches multiple areas or you need a fuller package map, read `refer
 
 ## Release And Changesets
 
+- Treat changesets as a separate, explicitly authorized release action. Never create, edit, or
+  delete a changeset unless the user directly asks for changeset work. Do not infer permission
+  from an implementation request, bug fix, breaking API change, documentation update, request to
+  commit, or the fact that a published package is affected. When a change appears to need a
+  changeset but the user did not request one, complete the requested work without generating it.
 - Makoo uses Changesets for published package versioning and changelogs.
 - Published packages maintain package-level changelogs under `packages/*/CHANGELOG.md`.
 - The root `CHANGELOG.md` is a legacy project-level archive, not the current release changelog source.

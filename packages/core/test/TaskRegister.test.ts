@@ -157,7 +157,12 @@ describe('TaskRegister', () => {
 			injectAt: '#event-host',
 			artifact: component,
 			options: {
-				on: listen('#btn', 'click', callback, { activitySignal })
+				on: listen({
+					listenAt: '#btn',
+					type: 'click',
+					callback,
+					activitySignal
+				})
 			}
 		});
 

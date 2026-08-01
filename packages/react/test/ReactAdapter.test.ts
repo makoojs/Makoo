@@ -44,7 +44,7 @@ describe('ReactAdapter', () => {
 			adapters: [createReactAdapter()]
 		});
 
-		const started = makoo.start([inject('#react-adapter', artifact)]);
+		const started = makoo.start([inject({ injectAt: '#react-adapter', artifact })]);
 
 		expect(started.get('Badge@#react-adapter')).toMatchObject({
 			kind: 'component',
@@ -71,7 +71,7 @@ describe('ReactAdapter', () => {
 			adapters: [createReactAdapter()]
 		});
 
-		const started = makoo.start([inject('#react-adapter', artifact)]);
+		const started = makoo.start([inject({ injectAt: '#react-adapter', artifact })]);
 		started.get('Badge@#react-adapter')?.destroy();
 
 		expect(reactDomClientMock.root.unmount).toHaveBeenCalledOnce();
