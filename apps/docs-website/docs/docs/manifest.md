@@ -17,12 +17,25 @@ injections
 Makoo loads the top-level manifest first, then scans module folders and merges module-level
 manifests by `moduleId`.
 
+## Loading
+
+Makoo scans manifests and generates the startup entry automatically. It loads manifests in Node
+to validate configuration and resolve paths. Their `hooks`, `callback`, and `activitySignal`
+fields are bundled with the userscript and run in the browser.
+
+Keep manifests safe across both environments:
+
+- Keep top-level evaluation declarative and free of application side effects.
+- Do not import `node:fs`, `node:path`, or other Node-only modules.
+- Ensure `hooks`, `callback`, `activitySignal`, and every file they import can be bundled for the browser.
+- Prefer static relative imports so Makoo can track structural dependency changes.
+
 ## Top-Level Manifest
 
-Use `defineInjections()` from `@makoojs/cli`:
+Use `defineInjections()` from `@makoojs/cli/manifest`:
 
 ```ts
-import { defineInjections } from '@makoojs/cli';
+import { defineInjections } from '@makoojs/cli/manifest';
 
 export default defineInjections({
 	injectionDefaults: {
@@ -124,20 +137,24 @@ A module can provide its own `manifest.ts`:
 
 ```ts
 // injections/profile-card/manifest.ts
-export default {
+import { defineInjection } from '@makoojs/cli/manifest';
+
+export default defineInjection({
 	injectAt: '.profile',
 	component: './app.vue',
 	alive: true
-};
+});
 ```
 
 Module-level manifests are useful when a module should own its own target, component path,
 URL rule, or runtime options. Paths in a module-level manifest are resolved from the module
 directory.
 
-If a module-level manifest has the same module id as a top-level manifest entry, the
-module-level config replaces the top-level resolved module. If it introduces a new module id,
-Makoo adds it to the final injection list.
+If a module-level manifest has the same module id as a top-level manifest entry, Makoo
+shallow-merges their top-level fields. An explicitly declared module field wins; a field
+omitted by the module can come from the same-id top-level entry. `hooks` and `on` each use one
+complete field source, so Makoo does not deep-merge inside either object. An injection declared
+by a module manifest but absent from the root manifest is added to the final injection list.
 
 ## Module Fields
 
@@ -153,7 +170,7 @@ Makoo adds it to the final injection list.
 | `scope` | No | Reinjection observation scope, `'local'` or `'global'` |
 | `timeout` | No | Milliseconds to wait for the target node |
 | `hooks` | No | Module-level lifecycle hooks |
-| `on` | No | Event listener binding options |
+| `on` | No | Component event listener options |
 
 ## Component Paths
 
@@ -167,10 +184,12 @@ In a module-level manifest, component paths are resolved from that module direct
 
 ```ts
 // injections/profile-card/manifest.ts
-export default {
+import { defineInjection } from '@makoojs/cli/manifest';
+
+export default defineInjection({
 	component: './app.vue',
 	injectAt: '.profile'
-};
+});
 ```
 
 ## Framework Resolution
@@ -246,7 +265,46 @@ export default defineInjections({
 `stable` inherits `alive: false` and `timeout: 5000`. `dynamic` overrides those values.
 
 > [!NOTE]
-> **Inheritance priority**: `module config` > `manifest.injectionDefaults` > `Makoo default`.
+> **Scalar option priority**: explicit module field > same-id top-level injection field >
+> `manifest.injectionDefaults` > Makoo default.
+
+`injectionDefaults.hooks` registers shared runtime hooks. Injection-level `hooks` is a
+per-task field and follows the module-field priority described above.
+
+## Hooks and Event Callbacks
+
+You can write a function directly here, use a function already declared in the current file,
+or use a function imported from another file.
+
+A function can also directly use variables and other utility functions from the file where it
+is declared.
+
+When importing a function, ensure its file and dependencies can run in the browser:
+
+```ts
+// injections/listeners/callbacks.ts
+import { closePanel } from './panel-state';
+
+export const onEscape: EventListener = (event) => {
+	if (event instanceof KeyboardEvent && event.key === 'Escape') closePanel();
+};
+```
+
+```ts
+// injections/manifest.ts
+import { defineInjections } from '@makoojs/cli/manifest';
+import { onEscape } from './listeners/callbacks';
+
+export default defineInjections({
+	listeners: {
+		escapeClose: {
+			listenAt: 'document',
+			type: 'keydown',
+			callback: onEscape
+		}
+	}
+});
+```
 
 ## Hooks
 

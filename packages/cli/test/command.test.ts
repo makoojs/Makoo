@@ -166,7 +166,7 @@ describe('reactTemplate', () => {
 describe('updateManifest', () => {
 	it('adds entry to object-form injections', async () => {
 		const root = await trackProject({
-			'injections/manifest.ts': `import { defineInjections } from '@makoojs/cli';
+			'injections/manifest.ts': `import { defineInjections } from '@makoojs/cli/manifest';
 export default defineInjections({
   injections: {
     header: {
@@ -190,7 +190,7 @@ export default defineInjections({
 
 	it('adds entry to array-form injections', async () => {
 		const root = await trackProject({
-			'injections/manifest.ts': `import { defineInjections } from '@makoojs/cli';
+			'injections/manifest.ts': `import { defineInjections } from '@makoojs/cli/manifest';
 export default defineInjections({
   injections: [
     { name: 'header', injectAt: 'body', component: './header/App.vue' }
@@ -233,7 +233,7 @@ export default defineInjections({
 describe('addCommand', () => {
 	it('creates module dir and component file (Vue)', async () => {
 		const root = await trackProject({
-			'injections/manifest.ts': `import { defineInjections } from '@makoojs/cli';
+			'injections/manifest.ts': `import { defineInjections } from '@makoojs/cli/manifest';
 export default defineInjections({ injections: {} });`
 		});
 
@@ -251,7 +251,7 @@ export default defineInjections({ injections: {} });`
 
 	it('creates module dir and component file (React)', async () => {
 		const root = await trackProject({
-			'injections/manifest.ts': `import { defineInjections } from '@makoojs/cli';
+			'injections/manifest.ts': `import { defineInjections } from '@makoojs/cli/manifest';
 export default defineInjections({ injections: {} });`
 		});
 
@@ -294,7 +294,7 @@ export default defineInjections({ injections: {} });`
 
 	it('updates manifest with new module entry', async () => {
 		const root = await trackProject({
-			'injections/manifest.ts': `import { defineInjections } from '@makoojs/cli';
+			'injections/manifest.ts': `import { defineInjections } from '@makoojs/cli/manifest';
 export default defineInjections({ injections: {} });`
 		});
 

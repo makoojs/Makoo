@@ -54,7 +54,7 @@ The manifest is the declaration of what gets injected. The top-level
 `injections/manifest.ts` describes the modules in your project:
 
 ```ts
-import { defineInjections } from '@makoojs/cli';
+import { defineInjections } from '@makoojs/cli/manifest';
 
 export default defineInjections({
 	injectionDefaults: {
@@ -107,7 +107,7 @@ injections
 ```
 
 A module should own the code needed for that injection point: component, styles, local
-helpers, and optional module-level manifest data. This keeps large userscripts from turning
+utility functions, and optional module-level manifest data. This keeps large userscripts from turning
 into one file that knows about every target page and every feature.
 
 The module name comes from the manifest key in object form:
@@ -187,7 +187,7 @@ Makoo currently provides adapters through `@makoojs/vue` and `@makoojs/react`.
 
 Mounted components receive a Makoo context from the adapter. That context includes the task
 id, target selector, lifecycle controls such as `reset()` and `destroy()`, hook registration
-helpers, a logger, and listener controls.
+functions, a logger, and listener controls.
 
 ## Alive Reinjection
 
@@ -252,5 +252,5 @@ The main boundary to remember is:
 | Runtime | Generated entry and Makoo runtime | Declare, start, wait, mount, reinject, cleanup |
 | Framework bridge | Vue or React adapter | Mount and unmount framework components |
 
-This separation is what makes Makoo a framework layer rather than only a helper library. It
+This separation is what makes Makoo a framework layer rather than only a utility collection. It
 defines how a userscript project is configured, organized, generated, and run.

@@ -80,7 +80,7 @@ Keep the manifest and every runtime dependency reachable from it safe in both en
 - Use static relative imports for local hooks, callbacks, signals, and their helper chains.
 - Do not use dynamic imports or path aliases when Makoo must track a manifest dependency structurally.
 
-Makoo now passes these functions through real manifest-module references instead of serializing their source text. Closures and imported helpers are therefore preserved by Vite as long as the dependency graph remains browser-safe.
+Makoo passes these functions through manifest-module references. Closures and imported helpers are preserved by Vite as long as the dependency graph remains browser-safe.
 
 ## Keep Manifest Declarative
 

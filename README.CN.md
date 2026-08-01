@@ -81,7 +81,7 @@ pnpm dev
 
 `Injection Module` 是一个注入模块。一个模块通常对应 `injections/<module-name>/` 下的一个组件，也可以有自己的模块级 `manifest.ts` 覆盖配置。
 
-`Manifest` 是声明式注入配置。顶层 `injections/manifest.ts` 描述项目里有哪些模块要注入；模块级 `injections/foo/manifest.ts` 可以覆盖单个模块的配置。
+`Manifest` 是声明式注入配置。顶层 `injections/manifest.ts` 描述项目里有哪些模块要注入；模块级 `injections/foo/manifest.ts` 可以为同一模块中根manifest缺失的字段进行补充，其中模块manifest中的显式字段优先。
 
 `Adapter` 是组件挂载适配器。Makoo 通过 `@makoojs/vue` 和 `@makoojs/react` 支持 Vue / React，后续也可以扩展其他可挂载产物。
 
@@ -101,6 +101,8 @@ injections
 ```
 
 顶层 `manifest.ts` 适合声明项目入口配置；模块级 `manifest.ts` 适合让模块自己维护 `injectAt`、`framework`、`match`、`hooks` 等配置。
+
+Makoo 会扫描这些 manifest 并自动生成运行时入口，普通项目不需要为了导入 manifest 或启动 Makoo 再创建 `main.ts`。
 
 ## 配置概览
 
@@ -134,12 +136,14 @@ makoo({
 
 顶层 manifest 支持数组和对象两种写法。
 
-`injectionDefaults` 用来定义当前 manifest 下共享的注入运行时默认值。模块没有显式配置时，会继承这里的 `alive`、`scope`、`timeout` 和 `hooks`；模块自己写了这些字段时，则以模块配置为准。
+`injectionDefaults` 用来定义共享运行时默认值。模块会继承 `alive`、`scope`、`timeout` 等标量选项；其中的 `hooks` 会注册为共享运行时 hooks。
+
+`defineInjection`/`defineInjections` 函数和相关类型从 `@makoojs/cli/manifest` 导入。Manifest 会在 Node 构建期被扫描，其中的 hooks、callback 和 activitySignal 会随 userscript 一起打包到浏览器中执行。Manifest 顶层不能产生应用副作用或依赖 Node-only 模块；这些函数引用的其他文件也必须能被浏览器打包。
 
 对象写法适合多数项目：
 
 ```ts
-import { defineInjections } from '@makoojs/cli';
+import { defineInjections } from '@makoojs/cli/manifest';
 
 export default defineInjections({
 	injectionDefaults: {
@@ -168,7 +172,7 @@ export default defineInjections({
 数组写法适合动态生成或需要显式 `name` 的场景：
 
 ```ts
-import { defineInjections } from '@makoojs/cli';
+import { defineInjections } from '@makoojs/cli/manifest';
 
 export default defineInjections({
 	injections: [
@@ -232,6 +236,8 @@ export default defineInjections({
 
 Makoo 会为该条目生成 `listen({ id: 'escapeClose', ... })`。listener 也支持 `enabled`、`activitySignal` 和与模块相同的 `match` 规则；数组形式需要用 `name` 提供稳定 ID。
 
+独立 listener 只能声明在顶层 manifest。模块级 manifest 只描述一个 injection 模块，当前尚不支持描述一个listener；事件属于组件任务时使用模块的 `on` 字段。
+
 ## HMR 行为说明
 
 Makoo 在开发模式下会区分结构变化和普通组件变化。
@@ -240,7 +246,7 @@ Makoo 在开发模式下会区分结构变化和普通组件变化。
 | --- | --- |
 | 顶层 `injections/manifest.ts` 修改 | 重新扫描并更新虚拟入口 |
 | 模块级 `injections/foo/manifest.ts` 修改 | 重新扫描并更新虚拟入口 |
-| manifest 通过相对路径引入的 helper、hooks 或 listener callback 修改 | 递归追踪依赖并触发重新扫描 |
+| manifest 通过相对路径引入的 hooks、callback、activitySignal 或它们继续导入的本地文件的修改 | 递归追踪依赖并触发重新扫描 |
 | 新增或删除模块级 `manifest.ts` | 触发结构更新 |
 | 普通组件文件修改 | 交给 Vite 原生 HMR |
 | 第三方包依赖变化 | 不纳入 Makoo 的结构扫描 |
@@ -251,14 +257,16 @@ Makoo 在开发模式下会区分结构变化和普通组件变化。
 import { hooks } from './hooks';
 ```
 
-Makoo 会追踪 `manifest -> hooks -> helper` 这样的本地依赖链。动态 `import()`、path alias 和第三方包不会被纳入 Makoo 的结构依赖追踪。
+Makoo 会继续追踪 hooks 和 callback 文件里面的静态导入。动态 `import()`、path alias 和第三方包不会被纳入 Makoo 的结构依赖追踪。
+
+也可以在manifest文件直接写 hooks、callback 和 activitySignal等，也可以使用当前文件里已有的函数，或者使用从其他文件导入的函数等。
 
 ## 使用示例
 
 ### 按 URL 启用模块
 
 ```ts
-import { defineInjections } from '@makoojs/cli';
+import { defineInjections } from '@makoojs/cli/manifest';
 
 export default defineInjections({
 	injections: {
@@ -277,7 +285,7 @@ export default defineInjections({
 ### 使用 Vue 模块
 
 ```ts
-import { defineInjections } from '@makoojs/cli';
+import { defineInjections } from '@makoojs/cli/manifest';
 
 export default defineInjections({
 	injections: {
@@ -304,7 +312,7 @@ export const hooks = {
 ```ts
 // injections/manifest.ts
 import { hooks } from './hooks';
-import { defineInjections } from '@makoojs/cli';
+import { defineInjections } from '@makoojs/cli/manifest';
 
 export default defineInjections({
 	injectionDefaults: {

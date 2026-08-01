@@ -1,130 +1,96 @@
-# @makoojs/react
+# React API Reference
 
-`@makoojs/react` is Makoo's React mount adapter. It connects React components to the `@makoojs/core` adapter protocol, allowing the Makoo runtime to create React roots after target DOM nodes appear, render components, and unmount them correctly when tasks are destroyed or reset.
+## API Index
 
-Most Makoo projects use this package through `@makoojs/cli`: when a manifest module is recognized as React, the CLI imports the React adapter in the generated virtual entry. You only need to call `createReactAdapter()` explicitly when wiring a runtime manually with `@makoojs/core`.
+- [`createReactAdapter()`](#createreactadapter): creates the React mounting adapter
+- [`ReactAdapterError`](#reactadaptererror): reports React mounting errors
+- [TypeScript types](#typescript-types): public React adapter types
 
-## Use Cases
+## `createReactAdapter()`
 
-- Inject React components in a Makoo project.
-- Let the `@makoojs/core` runtime recognize and mount React artifacts.
-- Register the React adapter manually when using the core runtime directly.
-- Read the Makoo task context `makoo` inside React components.
+Creates a Makoo adapter that mounts React components.
 
-## Installation
-
-```bash
-// npm install @makoojs/react
-// yarn add @makoojs/react
-pnpm add @makoojs/react
-```
-
-`@makoojs/react` depends on `@makoojs/core` and declares `react` and `react-dom` as peer dependencies, so make sure both `react` and `react-dom` are installed before using this package.
-
-## Usage In CLI Projects
-
-In most cases, you only need to declare a React component in the manifest.
+### Type
 
 ```ts
-import { defineInjections } from '@makoojs/cli';
-
-export default defineInjections({
-	injections: {
-		badge: {
-			injectAt: 'body',
-			component: './badge/App.tsx',
-			framework: 'React'
-		}
-	}
-});
+function createReactAdapter(): ReactMountAdapter;
 ```
 
-If `framework` is omitted or set to `auto`, Makoo infers React from the `.tsx` / `.jsx` extension.
+### Returns
 
-## Makoo Context In React Components
+Returns `ReactMountAdapter`.
 
-The React adapter passes `makoo` to the component as props. Components can use it to read the current task ID, target selector, logger, or control the current task lifecycle.
+### Details
+
+The adapter uses `createRoot()` to render a component into the task's `mountPoint` and passes `makoo` as component props. It calls `unmount()` on the React root when the task is unmounted.
+
+Mounting or unmounting failures throw `ReactAdapterError`.
+
+### Example
 
 ```tsx
-import type { ReactMountProps } from '@makoojs/react';
+const makoo = createMakoo({
+	adapters: [createReactAdapter()]
+});
 
-export default function Badge({ makoo }: ReactMountProps) {
-	return (
-		<button
-			type="button"
-			onClick={() => {
-				makoo.getLogger().info(`clicked ${makoo.taskId}`);
-			}}
-		>
-			Makoo Badge
-		</button>
+makoo.start([
+	inject('#app', Badge)
+]);
+```
+
+## `ReactAdapterError`
+
+Error class used when the React adapter cannot mount or unmount a component. It extends `AdapterError`.
+
+### Type
+
+```ts
+class ReactAdapterError extends AdapterError {
+	constructor(
+		message: string,
+		issues?: MakooIssue[],
+		code?: string,
+		cause?: Error
 	);
 }
 ```
 
-`makoo` comes from `@makoojs/core`'s `MakooContext`. Common capabilities include:
+When `code` is omitted, it defaults to `ErrorCode.ADAPTER_MOUNT_FAIL`.
 
-| Capability | Description |
-| --- | --- |
-| `taskId` | Current injection task ID |
-| `injectAt` | Target selector for the current task |
-| `enableAlive()` / `disableAlive()` | Control alive reinjection for the current task |
-| `reset()` / `destroy()` | Reset or destroy the current task |
-| `on()` / `onTask()` | Listen to lifecycle observation events |
-| `getLogger()` | Get the current runtime logger |
+## TypeScript types
 
-## Direct Usage With @makoojs/core
+### `ReactMountProps`
 
-If you are not using `@makoojs/cli`, pass the React adapter to `createMakoo()`.
+Props received by the React root component.
 
-```tsx
-import { createMakoo, inject } from '@makoojs/core';
-import { createReactAdapter } from '@makoojs/react';
-import Badge from './Badge';
-
-const makoo = createMakoo({
-	defaults: {
-		alive: true,
-		scope: 'local',
-		timeout: 5000
-	},
-	adapters: [createReactAdapter()]
-});
-
-makoo.start([inject('#app', Badge)]);
+```ts
+type ReactMountProps = {
+	makoo: MakooContext;
+};
 ```
 
-The adapter returned by `createReactAdapter()` will:
+### `ReactMountArtifact`
 
-- Create a React root with `react-dom/client`'s `createRoot(mountPoint)`.
-- Render the component with `root.render(createElement(artifact, { makoo }))`.
-- Call `root.unmount()` during unmount.
-- Wrap mount/unmount failures as `ReactAdapterError`.
+Component types accepted by the Makoo React adapter.
 
-## Type Exports
+```ts
+type ReactMountArtifact =
+	| ComponentType<ReactMountProps>
+	| ExoticComponent<ReactMountProps>;
+```
 
-`@makoojs/react` exports these commonly used types:
+### `ReactMountRoot`
 
-| Type | Description |
-| --- | --- |
-| `ReactMountProps` | Props received by the React component, including `makoo` |
-| `ReactMountArtifact` | React artifact type recognized by Makoo |
-| `ReactMountAdapter` | React adapter type |
-| `ReactMountRoot` | React root handle type |
+```ts
+type ReactMountRoot = Root;
+```
 
-It also exports:
+### `ReactMountAdapter`
 
-- `createReactAdapter`
-- `ReactAdapterError`
-
-Use the table above as the public API overview for this adapter package.
-
-## Relationship With Other Packages
-
-| Package | Responsibility |
-| --- | --- |
-| `@makoojs/react` | React mount adapter |
-| `@makoojs/core` | Provides the runtime API, adapter protocol, and Makoo runtime context |
-| `@makoojs/cli` | Scans manifests, generates the virtual entry, and imports the React adapter when needed |
-
-`@makoojs/react` is not a complete runtime by itself. It works with `@makoojs/core`'s injection scheduler, or with runtime code generated automatically by `@makoojs/cli`.
+```ts
+type ReactMountAdapter = ResolvableMountAdapter<
+	ReactMountArtifact,
+	ReactMountRoot,
+	undefined
+>;
+```

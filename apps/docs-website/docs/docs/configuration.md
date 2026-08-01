@@ -101,7 +101,7 @@ Runtime defaults belong to `injections/manifest.ts`, not `vite.config.ts`. Use
 `hooks`:
 
 ```ts
-import { defineInjections } from '@makoojs/cli';
+import { defineInjections } from '@makoojs/cli/manifest';
 
 export default defineInjections({
 	injectionDefaults: {
@@ -205,6 +205,6 @@ Keep this split in mind:
 | --- | --- |
 | `vite.config.ts` | Project metadata, scanning, setup imports, userscript build/dev options |
 | `injections/manifest.ts` | Injection modules, shared runtime defaults, target selectors, component paths, module URL rules |
-| `injections/<module>/` | Component code, module styles, module helpers, optional module manifest |
+| `injections/<module>/` | Component code, module styles, module utility functions, optional module manifest |
 
 This boundary keeps Makoo projects understandable as they grow.

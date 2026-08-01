@@ -14,12 +14,24 @@ injections
 
 Makoo 会先加载顶层 manifest，再扫描模块目录，并按 `moduleId` 合并模块级 manifest。
 
+## 加载方式
+
+Makoo 会扫描 manifest 并自动生成启动入口，Makoo 会在 Node 环境加载 manifest，用于校验配置和解析路径；
+其中的 `hooks`、`callback` 和 `activitySignal` 则会随 userscript 一起打包到浏览器中执行。
+
+Manifest 及其依赖必须同时适合这两个环境：
+
+- 顶层执行保持声明式，不产生应用副作用。
+- 不导入 `node:fs`、`node:path` 或其他 Node-only 模块。
+- `hooks`、`callback`、`activitySignal` 及其引用的其他文件必须能被浏览器打包。
+- 优先使用静态相对导入，让 Makoo 能追踪结构依赖变化。
+
 ## 顶层 Manifest
 
-使用 `@makoojs/cli` 提供的 `defineInjections()`：
+使用 `@makoojs/cli/manifest` 提供的 `defineInjections()`：
 
 ```ts
-import { defineInjections } from '@makoojs/cli';
+import { defineInjections } from '@makoojs/cli/manifest';
 
 export default defineInjections({
 	injectionDefaults: {
@@ -115,16 +127,18 @@ export default defineInjections({
 
 ```ts
 // injections/profile-card/manifest.ts
-export default {
+import { defineInjection } from '@makoojs/cli/manifest';
+
+export default defineInjection({
 	injectAt: '.profile',
 	component: './app.vue',
 	alive: true
-};
+});
 ```
 
 当模块希望自己维护目标节点、组件路径、URL 规则或运行时选项时，模块级 manifest 会更合适。模块级 manifest 中的路径会从当前模块目录解析。
 
-如果模块级 manifest 的模块 id 和顶层 manifest 某个条目相同，模块级配置会替换顶层解析结果。如果它引入了新的模块 id，Makoo 会把它加入最终注入列表。
+如果模块级 manifest 的模块 id 和顶层 manifest 某个条目相同，Makoo 会浅合并它们的顶层字段。模块显式声明的字段优先；模块省略的字段可以来自同 ID 顶层条目。`hooks` 和 `on` 各自只选择一个完整字段来源，不会继续深合并对象内部。根 manifest 没有声明、但模块 manifest 声明的 injection 会加入最终注入列表。
 
 ## 模块字段
 
@@ -140,7 +154,7 @@ export default {
 | `scope` | 否 | 重新注入观察范围，`'local'` 或 `'global'` |
 | `timeout` | 否 | 等待目标节点的毫秒数 |
 | `hooks` | 否 | 模块级生命周期 hooks |
-| `on` | 否 | 事件监听绑定选项 |
+| `on` | 否 | 组件事件监听选项 |
 
 ## 组件路径
 
@@ -154,10 +168,12 @@ component: './profile-card/app.vue'
 
 ```ts
 // injections/profile-card/manifest.ts
-export default {
+import { defineInjection } from '@makoojs/cli/manifest';
+
+export default defineInjection({
 	component: './app.vue',
 	injectAt: '.profile'
-};
+});
 ```
 
 ## 框架解析
@@ -228,7 +244,43 @@ export default defineInjections({
 `stable` 会继承 `alive: false` 和 `timeout: 5000`。`dynamic` 会覆盖这些值。
 
 > [!NOTE]
-> **整体继承优先级**：`module config` > `manifest.injectionDefaults` > `Makoo default`。
+> **标量选项优先级**：模块显式字段 > 同 ID 顶层 injection 字段 >
+> `manifest.injectionDefaults` > Makoo 默认值。
+
+`injectionDefaults.hooks` 会注册共享运行时 hooks。Injection 级 `hooks` 是任务字段，按上面的模块字段优先级选择。
+
+## Hooks 和事件回调
+
+此处支持直接声明函数，也支持引用当前模块中已有的函数，或使用从其他模块导入的函数。
+
+函数可以访问其所在模块作用域内的变量及辅助函数。
+
+引用外部模块时，该模块及其所有依赖必须兼容浏览器运行环境。
+
+```ts
+// injections/listeners/callbacks.ts
+import { closePanel } from './panel-state';
+
+export const onEscape: EventListener = (event) => {
+	if (event instanceof KeyboardEvent && event.key === 'Escape') closePanel();
+};
+```
+
+```ts
+// injections/manifest.ts
+import { defineInjections } from '@makoojs/cli/manifest';
+import { onEscape } from './listeners/callbacks';
+
+export default defineInjections({
+	listeners: {
+		escapeClose: {
+			listenAt: 'document',
+			type: 'keydown',
+			callback: onEscape
+		}
+	}
+});
+```
 
 ## Hooks
 

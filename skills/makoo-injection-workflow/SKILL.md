@@ -198,7 +198,7 @@ export default defineInjection({
 
 **Module definition source priority**: if a module-level manifest and the top-level manifest resolve to the same module id, Makoo shallow-merges their top-level configuration fields. A field explicitly present in the module manifest wins; a missing module field can come from the top-level entry.
 
-For runtime-function fields, ownership follows the manifest that supplies the complete top-level field:
+For `hooks` and `on`, ownership follows the manifest that supplies the complete top-level field:
 
 - If the module manifest declares `hooks`, generated code references its `hooks`.
 - If the module omits `hooks`, top-level injection `hooks` can remain effective.
@@ -253,7 +253,7 @@ Standalone listener fields have these roles:
 
 - `listenAt`: selects the event target understood by the Makoo listener runtime.
 - `type`: provides the DOM event type.
-- `callback`: provides the real event callback imported through the manifest.
+- `callback`: provides the event handler.
 - `activitySignal`: optionally controls whether the listener task is active.
 - `match`: limits registration by URL after the userscript has loaded.
 - `enabled`: removes a disabled listener from the generated runtime.
@@ -362,7 +362,7 @@ Guidance:
 - If the target only appears after a user action, first check whether the module should inject into a more stable parent container instead of endlessly increasing `timeout`.
 - Do not use `timeout` as a retry mechanism. Use `alive` when the target repeatedly disappears and reappears.
 
-## Runtime Functions And Dependency Tracking
+## Hooks, Callbacks, And Dependency Tracking
 
 Hooks can live in `injectionDefaults.hooks` or in module config:
 
@@ -377,7 +377,7 @@ import { hooks } from './hooks';
 
 Makoo tracks local dependency chains such as `manifest -> hooks -> helper`. Do not rely on dynamic `import()`, path aliases, or third-party package changes to trigger manifest structure rescans.
 
-Apply the same rule to injection `on.callback`, standalone listener `callback`, and `activitySignal`. Makoo references these values from the real manifest module instead of converting a function to source text, so imported helpers and lexical closures remain part of Vite's module graph. This only works when the entire reachable runtime graph is browser-safe.
+Apply the same import rule to injection `on.callback`, standalone listener `callback`, and `activitySignal`. These functions can use variables from their module and helpers imported from other files. Every imported file and dependency used by them must be browser-safe.
 
 ## Enable, Disable, And Scan Behavior
 
