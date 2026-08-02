@@ -1,6 +1,6 @@
 import { type ActivitySignalSource, OBSERVE_EVENT_NAMES, type ObserveHook } from '@makoojs/core';
 import { z } from 'zod';
-import { ManifestValidationError } from '../error/MakooCliError';
+import { ManifestValidationError, UnsupportedSelectorTargetError } from '../error/MakooCliError';
 
 // --- Hook validation ---
 
@@ -99,6 +99,7 @@ export function validateManifest(
 	if (!result.success) {
 		throw new ManifestValidationError(file, result.error.issues);
 	}
+	assertManifestSelectorTargets(result.data, file);
 	return result.data;
 }
 
@@ -110,5 +111,40 @@ export function validateModuleMeta(
 	if (!result.success) {
 		throw new ManifestValidationError(file, result.error.issues);
 	}
+	assertSelectorTarget(result.data.injectAt, file, 'injectAt');
+	assertSelectorTarget(result.data.on?.listenAt, file, 'on.listenAt');
 	return result.data;
+}
+
+function assertManifestSelectorTargets(
+	manifest: z.infer<typeof InjectionManifestSchema>,
+	file: string
+): void {
+	if (Array.isArray(manifest.injections)) {
+		manifest.injections.forEach((injection, index) => {
+			assertSelectorTarget(injection.injectAt, file, `injections[${index}].injectAt`);
+			assertSelectorTarget(injection.on?.listenAt, file, `injections[${index}].on.listenAt`);
+		});
+	} else if (manifest.injections) {
+		Object.entries(manifest.injections).forEach(([id, injection]) => {
+			assertSelectorTarget(injection.injectAt, file, `injections.${id}.injectAt`);
+			assertSelectorTarget(injection.on?.listenAt, file, `injections.${id}.on.listenAt`);
+		});
+	}
+
+	if (Array.isArray(manifest.listeners)) {
+		manifest.listeners.forEach((listener, index) => {
+			assertSelectorTarget(listener.listenAt, file, `listeners[${index}].listenAt`);
+		});
+	} else if (manifest.listeners) {
+		Object.entries(manifest.listeners).forEach(([id, listener]) => {
+			assertSelectorTarget(listener.listenAt, file, `listeners.${id}.listenAt`);
+		});
+	}
+}
+
+function assertSelectorTarget(target: string | undefined, file: string, path: string): void {
+	if (target === 'document' || target === 'window') {
+		throw new UnsupportedSelectorTargetError(file, path, target);
+	}
 }

@@ -52,7 +52,7 @@ describe('formatInspectResult', () => {
 		);
 		const listener = resolveListener(
 			{
-				listenAt: 'document',
+				listenAt: 'body',
 				type: 'visibilitychange',
 				callback: () => undefined,
 				match: ['https://example.com/*']
@@ -98,7 +98,7 @@ describe('formatInspectResult', () => {
 			listeners: [
 				{
 					listenerId: 'visibility',
-					listenAt: 'document',
+					listenAt: 'body',
 					type: 'visibilitychange',
 					callback: listener.callback,
 					match: { include: ['https://example.com/*'] },

@@ -113,7 +113,7 @@ not need a component directory or a framework adapter:
 export default defineInjections({
 	listeners: {
 		escapeClose: {
-			listenAt: 'document',
+			listenAt: 'body',
 			type: 'keydown',
 			callback: (event) => {
 				if (event instanceof KeyboardEvent && event.key === 'Escape') console.log('close');
@@ -127,6 +127,7 @@ export default defineInjections({
 In object form, the key becomes `listenerId`, so this entry generates
 `listen({ id: 'escapeClose', ... })`. Array form uses `name` for the same purpose. Listener
 entries support `listenAt`, `type`, `callback`, `activitySignal`, `enabled`, and `match`.
+`listenAt` must be a CSS selector; `document` and `window` are not supported listener targets.
 
 Standalone listeners are top-level manifest entries only. Use a module's `on` field when the
 listener belongs to that component task; `on` does not need an explicit listener ID.
@@ -171,6 +172,8 @@ by a module manifest but absent from the root manifest is added to the final inj
 | `timeout` | No | Milliseconds to wait for the target node |
 | `hooks` | No | Module-level lifecycle hooks |
 | `on` | No | Component event listener options |
+
+`injectAt` must be a CSS selector; `document` and `window` are not supported injection targets.
 
 ## Component Paths
 
@@ -298,7 +301,7 @@ import { onEscape } from './listeners/callbacks';
 export default defineInjections({
 	listeners: {
 		escapeClose: {
-			listenAt: 'document',
+			listenAt: 'body',
 			type: 'keydown',
 			callback: onEscape
 		}

@@ -200,6 +200,8 @@ export default defineInjections({
 | `hooks` | 当前模块的生命周期钩子 |
 | `match` | 当前模块的 URL 匹配规则 |
 
+`injectAt` 必须是 CSS 选择器，不支持使用 `document` 或 `window` 作为注入目标。
+
 模块级 URL `match` 支持简写和完整写法：
 
 ```ts
@@ -223,7 +225,7 @@ match: {
 export default defineInjections({
 	listeners: {
 		escapeClose: {
-			listenAt: 'document',
+			listenAt: 'body',
 			type: 'keydown',
 			callback: (event) => {
 				if (event instanceof KeyboardEvent && event.key === 'Escape') console.log('close');
@@ -234,7 +236,7 @@ export default defineInjections({
 });
 ```
 
-Makoo 会为该条目生成 `listen({ id: 'escapeClose', ... })`。listener 也支持 `enabled`、`activitySignal` 和与模块相同的 `match` 规则；数组形式需要用 `name` 提供稳定 ID。
+Makoo 会为该条目生成 `listen({ id: 'escapeClose', ... })`。listener 也支持 `enabled`、`activitySignal` 和与模块相同的 `match` 规则；数组形式需要用 `name` 提供稳定 ID。`listenAt` 必须是 CSS 选择器，不支持使用 `document` 或 `window` 作为监听目标。
 
 独立 listener 只能声明在顶层 manifest。模块级 manifest 只描述一个 injection 模块，当前尚不支持描述一个listener；事件属于组件任务时使用模块的 `on` 字段。
 

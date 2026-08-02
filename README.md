@@ -200,6 +200,8 @@ Common module fields:
 | `hooks` | Lifecycle hooks for the current module |
 | `match` | URL matching rule for the current module |
 
+`injectAt` must be a CSS selector; `document` and `window` are not supported injection targets.
+
 Module-level URL `match` supports shorthand and object forms:
 
 ```ts
@@ -225,7 +227,7 @@ the listener task ID:
 export default defineInjections({
 	listeners: {
 		escapeClose: {
-			listenAt: 'document',
+			listenAt: 'body',
 			type: 'keydown',
 			callback: (event) => {
 				if (event instanceof KeyboardEvent && event.key === 'Escape') console.log('close');
@@ -238,7 +240,8 @@ export default defineInjections({
 
 Makoo generates `listen({ id: 'escapeClose', ... })` for this entry. Listeners also support
 `enabled`, `activitySignal`, and the same `match` rules as modules. Use `name` in array form
-when a listener needs a stable ID.
+when a listener needs a stable ID. `listenAt` must be a CSS selector; `document` and `window`
+are not supported listener targets.
 
 Standalone listeners belong to the top-level manifest. A module-level manifest describes one injection module; use its `on` field when the event belongs to that component task.
 

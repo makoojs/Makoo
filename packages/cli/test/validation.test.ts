@@ -1,6 +1,9 @@
 import { MakooError } from '@makoojs/core';
 import { describe, expect, it } from 'vitest';
-import { ManifestValidationError } from '../src/error/MakooCliError';
+import {
+	ManifestValidationError,
+	UnsupportedSelectorTargetError
+} from '../src/error/MakooCliError';
 import {
 	InjectionDefaultsSchema,
 	InjectionListenerSchema,
@@ -390,6 +393,78 @@ describe('validateManifest', () => {
 			expect(e.message).toContain('injections');
 		}
 	});
+
+	it.each(['document', 'window'])('rejects the global listener target %s', (listenAt) => {
+		expect(() =>
+			validateManifest(
+				{
+					listeners: {
+						escapeClose: {
+							listenAt,
+							type: 'keydown',
+							callback: () => undefined
+						}
+					}
+				},
+				'/project/injections/manifest.ts'
+			)
+		).toThrow(UnsupportedSelectorTargetError);
+	});
+
+	it.each(['document', 'window'])('rejects the injection target %s', (injectAt) => {
+		try {
+			validateManifest(
+				{
+					injections: {
+						panel: {
+							injectAt,
+							component: './panel.tsx'
+						}
+					}
+				},
+				'/project/injections/manifest.ts'
+			);
+			expect.unreachable('should have thrown');
+		} catch (err) {
+			expect(err).toBeInstanceOf(UnsupportedSelectorTargetError);
+			expect((err as UnsupportedSelectorTargetError).issues).toEqual([
+				{
+					path: 'injections.panel.injectAt',
+					message: 'must be a CSS selector; document and window are not supported'
+				}
+			]);
+		}
+	});
+
+	it('reports the injection listener path for an unsupported target', () => {
+		try {
+			validateManifest(
+				{
+					injections: {
+						panel: {
+							injectAt: '#app',
+							component: './panel.tsx',
+							on: {
+								listenAt: 'window',
+								type: 'resize',
+								callback: () => undefined
+							}
+						}
+					}
+				},
+				'/project/injections/manifest.ts'
+			);
+			expect.unreachable('should have thrown');
+		} catch (err) {
+			expect(err).toBeInstanceOf(UnsupportedSelectorTargetError);
+			expect((err as UnsupportedSelectorTargetError).issues).toEqual([
+				{
+					path: 'injections.panel.on.listenAt',
+					message: 'must be a CSS selector; document and window are not supported'
+				}
+			]);
+		}
+	});
 });
 
 describe('validateModuleMeta', () => {
@@ -411,5 +486,34 @@ describe('validateModuleMeta', () => {
 			expect(e.message).toContain('[makoo] Invalid manifest at');
 			expect(e.message).toContain('injectAt: is required');
 		}
+	});
+
+	it.each(['document', 'window'])('rejects the module injection target %s', (injectAt) => {
+		expect(() =>
+			validateModuleMeta(
+				{
+					injectAt,
+					component: './index.tsx'
+				},
+				'/project/injections/widget/manifest.ts'
+			)
+		).toThrow(UnsupportedSelectorTargetError);
+	});
+
+	it('rejects document as a module listener target', () => {
+		expect(() =>
+			validateModuleMeta(
+				{
+					injectAt: '#app',
+					component: './index.tsx',
+					on: {
+						listenAt: 'document',
+						type: 'keydown',
+						callback: () => undefined
+					}
+				},
+				'/project/injections/widget/manifest.ts'
+			)
+		).toThrow(UnsupportedSelectorTargetError);
 	});
 });

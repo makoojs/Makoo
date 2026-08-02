@@ -106,7 +106,7 @@ export default defineInjections({
 export default defineInjections({
 	listeners: {
 		escapeClose: {
-			listenAt: 'document',
+			listenAt: 'body',
 			type: 'keydown',
 			callback: (event) => {
 				if (event instanceof KeyboardEvent && event.key === 'Escape') console.log('close');
@@ -117,7 +117,7 @@ export default defineInjections({
 });
 ```
 
-对象形式中的键会成为 `listenerId`，因此该条目会生成 `listen({ id: 'escapeClose', ... })`。数组形式通过 `name` 达到相同目的。listener 支持 `listenAt`、`type`、`callback`、`activitySignal`、`enabled` 和 `match`。
+对象形式中的键会成为 `listenerId`，因此该条目会生成 `listen({ id: 'escapeClose', ... })`。数组形式通过 `name` 达到相同目的。listener 支持 `listenAt`、`type`、`callback`、`activitySignal`、`enabled` 和 `match`。`listenAt` 必须是 CSS 选择器，不支持使用 `document` 或 `window` 作为监听目标。
 
 独立 listener 只能作为顶层 manifest 条目。事件若归属于组件任务，请使用模块的 `on` 字段；`on` 不需要显式 listener ID。
 
@@ -155,6 +155,8 @@ export default defineInjection({
 | `timeout` | 否 | 等待目标节点的毫秒数 |
 | `hooks` | 否 | 模块级生命周期 hooks |
 | `on` | 否 | 组件事件监听选项 |
+
+`injectAt` 必须是 CSS 选择器，不支持使用 `document` 或 `window` 作为注入目标。
 
 ## 组件路径
 
@@ -274,7 +276,7 @@ import { onEscape } from './listeners/callbacks';
 export default defineInjections({
 	listeners: {
 		escapeClose: {
-			listenAt: 'document',
+			listenAt: 'body',
 			type: 'keydown',
 			callback: onEscape
 		}

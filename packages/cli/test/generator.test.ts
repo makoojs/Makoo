@@ -384,7 +384,7 @@ describe('generate', () => {
 		);
 		const listener = resolveListener(
 			{
-				listenAt: 'document',
+				listenAt: 'body',
 				type: 'visibilitychange',
 				callback: () => undefined,
 				match: ['https://example.com/*']
@@ -422,7 +422,7 @@ describe('generate', () => {
 			'if (matchUrl(location.href, {"include":["https://example.com/*"]})) {'
 		);
 		expect(result.code).toContain(
-			'makooTasks.push(listen({"id":"visibility","listenAt":"document","type":"visibilitychange","callback":Manifest_0["listeners"]["visibility"]["callback"]}));'
+			'makooTasks.push(listen({"id":"visibility","listenAt":"body","type":"visibilitychange","callback":Manifest_0["listeners"]["visibility"]["callback"]}));'
 		);
 	});
 });

@@ -153,6 +153,25 @@ export class ManifestImportNotFoundError extends MakooError {
 	}
 }
 
+export class UnsupportedSelectorTargetError extends MakooError {
+	constructor(
+		file: string,
+		path: string,
+		target: string,
+		code: string = ErrorCode.CLI_SELECTOR_TARGET_UNSUPPORTED,
+		cause?: Error
+	) {
+		const rel = relative(process.cwd(), file);
+		super(
+			`Unsupported selector target "${target}" in manifest at ${rel}`,
+			[{ path, message: 'must be a CSS selector; document and window are not supported' }],
+			code,
+			cause
+		);
+		this.name = 'UnsupportedSelectorTargetError';
+	}
+}
+
 export class FunctionSerializationError extends MakooError {
 	constructor(code: string = ErrorCode.CLI_FUNCTION_SERIALIZATION_UNSUPPORTED, cause?: Error) {
 		super(

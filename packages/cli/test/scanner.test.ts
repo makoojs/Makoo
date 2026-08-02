@@ -215,7 +215,7 @@ describe('scanner', () => {
 				export default {
 					listeners: {
 						resizeWindow: {
-							listenAt: 'window',
+							listenAt: 'body',
 							type: 'resize',
 							callback: onResize,
 							match: ['https://example.com/*']
@@ -258,7 +258,7 @@ describe('scanner', () => {
 		});
 		expect(result.listeners[1]).toMatchObject({
 			listenerId: 'resizeWindow',
-			listenAt: 'window',
+			listenAt: 'body',
 			type: 'resize',
 			callback: expect.any(Function),
 			enabled: true,
@@ -287,6 +287,73 @@ describe('scanner', () => {
 			}
 		});
 		expect(result.frameworks).toEqual([]);
+	});
+
+	it.each(['document', 'window'])('rejects the global listener target %s', async (listenAt) => {
+		const root = await trackProject({
+			'injections/manifest.ts': `
+				export default {
+					listeners: {
+						globalListener: {
+							listenAt: '${listenAt}',
+							type: 'click',
+							callback: () => undefined
+						}
+					}
+				};
+			`
+		});
+		const config = resolveConfig(
+			{
+				app: { name: 'unsupported-listener-target', version: '0.0.1' }
+			},
+			root
+		);
+
+		const err = await withCwd(root, () => scanner(config)).catch((error) => error);
+
+		expect(err).toBeInstanceOf(MakooError);
+		expect((err as MakooError).code).toBe(ErrorCode.CLI_SELECTOR_TARGET_UNSUPPORTED);
+		expect((err as MakooError).issues).toEqual([
+			{
+				path: 'listeners.globalListener.listenAt',
+				message: 'must be a CSS selector; document and window are not supported'
+			}
+		]);
+	});
+
+	it.each(['document', 'window'])('rejects the injection target %s', async (injectAt) => {
+		const root = await trackProject({
+			'injections/manifest.ts': `
+				export default {
+					injections: {
+						panel: {
+							injectAt: '${injectAt}',
+							component: './panel.tsx',
+							framework: 'React'
+						}
+					}
+				};
+			`,
+			'injections/panel.tsx': 'export default function Panel() { return null; }'
+		});
+		const config = resolveConfig(
+			{
+				app: { name: 'unsupported-injection-target', version: '0.0.1' }
+			},
+			root
+		);
+
+		const err = await withCwd(root, () => scanner(config)).catch((error) => error);
+
+		expect(err).toBeInstanceOf(MakooError);
+		expect((err as MakooError).code).toBe(ErrorCode.CLI_SELECTOR_TARGET_UNSUPPORTED);
+		expect((err as MakooError).issues).toEqual([
+			{
+				path: 'injections.panel.injectAt',
+				message: 'must be a CSS selector; document and window are not supported'
+			}
+		]);
 	});
 
 	it('preserves array source indexes after sorting tasks', async () => {

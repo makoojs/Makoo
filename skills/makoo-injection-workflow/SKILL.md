@@ -240,7 +240,7 @@ import { onEscape } from './listeners/callbacks';
 export default defineInjections({
 	listeners: {
 		'escape-close': {
-			listenAt: 'document',
+			listenAt: 'body',
 			type: 'keydown',
 			callback: onEscape,
 			match: ['https://example.com/*']
@@ -290,6 +290,7 @@ Do not add framework branching to `packages/core` or ordinary injection componen
 
 `injectAt` is the CSS selector for the target node. Choose it with these rules:
 
+- Do not use `document` or `window`; they are global objects, not injection target selectors.
 - Prefer stable, semantic selectors that still exist after page refreshes.
 - When injecting into an existing area, use the smallest necessary selector, such as `.profile-header`; do not default to `body`.
 - Use `body` for floating panels, global widgets, toasts, debug entry points, and similar UI that controls its own positioning.

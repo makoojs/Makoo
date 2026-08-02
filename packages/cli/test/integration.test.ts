@@ -119,7 +119,7 @@ describe('makoo build integration', () => {
 					],
 					listeners: {
 						closureListener: {
-							listenAt: 'document',
+							listenAt: 'body',
 							type: 'makoo:closure',
 							callback
 						}

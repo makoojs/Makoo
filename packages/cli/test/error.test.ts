@@ -17,6 +17,7 @@ import {
 	toMakooIssue,
 	UnknownFrameworkError,
 	UnsupportedFrameworkGenerationError,
+	UnsupportedSelectorTargetError,
 	type ValidationIssue
 } from '../src/error/MakooCliError';
 
@@ -192,6 +193,26 @@ describe('FunctionSerializationError', () => {
 			{
 				path: 'generator.inlineValue',
 				message: 'function values require a manifest binding'
+			}
+		]);
+	});
+});
+
+describe('UnsupportedSelectorTargetError', () => {
+	it('requires selector targets to be CSS selectors', () => {
+		const err = new UnsupportedSelectorTargetError(
+			'/project/injections/manifest.ts',
+			'listeners.escapeClose.listenAt',
+			'document'
+		);
+
+		expect(err).toBeInstanceOf(MakooError);
+		expect(err.code).toBe(ErrorCode.CLI_SELECTOR_TARGET_UNSUPPORTED);
+		expect(err.name).toBe('UnsupportedSelectorTargetError');
+		expect(err.issues).toEqual([
+			{
+				path: 'listeners.escapeClose.listenAt',
+				message: 'must be a CSS selector; document and window are not supported'
 			}
 		]);
 	});
