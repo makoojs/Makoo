@@ -3,12 +3,14 @@ import { describe, expect, it } from 'vitest';
 import { FAKE_ENTRY } from '../src/config/defaults';
 import {
 	normalizeInjectionManifest,
+	normalizeListenerManifest,
 	resolveConfig,
 	resolveInjection,
+	resolveListener,
 	resolveMonkeyBuildConfig,
 	resolveMonkeyPluginOptions
 } from '../src/config/resolve';
-import { ComponentNotFoundError, UnknownFrameworkError } from '../src/error/error';
+import { ComponentNotFoundError, UnknownFrameworkError } from '../src/error/MakooCliError';
 
 const root = path.resolve('/project');
 
@@ -174,6 +176,33 @@ describe('resolve helpers', () => {
 		expect(normalizeInjectionManifest({ injections: [] })).toEqual([]);
 	});
 
+	it('normalizes object-form listener manifests into named entries', () => {
+		const callback = () => undefined;
+		expect(
+			normalizeListenerManifest({
+				listeners: {
+					escapeClose: {
+						listenAt: 'body',
+						type: 'keydown',
+						callback
+					}
+				}
+			})
+		).toEqual([
+			{
+				name: 'escapeClose',
+				listenAt: 'body',
+				type: 'keydown',
+				callback
+			}
+		]);
+	});
+
+	it('returns an empty array when no listeners are defined', () => {
+		expect(normalizeListenerManifest(undefined)).toEqual([]);
+		expect(normalizeListenerManifest({ listeners: [] })).toEqual([]);
+	});
+
 	it('resolves injection module id, framework, module manifest file, and injection defaults', () => {
 		const result = resolveInjection(
 			{
@@ -230,6 +259,52 @@ describe('resolve helpers', () => {
 
 		expect(result.match).toEqual({
 			include: ['https://example.com/*']
+		});
+	});
+
+	it('resolves listener id, enabled, and match config', () => {
+		const callback = () => undefined;
+		const result = resolveListener(
+			{
+				listenAt: 'body',
+				type: 'keydown',
+				callback,
+				match: ['https://example.com/*']
+			},
+			{
+				root,
+				index: 1
+			}
+		);
+
+		expect(result).toEqual({
+			listenerId: 'listener-2',
+			listenAt: 'body',
+			type: 'keydown',
+			callback,
+			enabled: true,
+			match: {
+				include: ['https://example.com/*']
+			}
+		});
+	});
+
+	it('prefers explicit listener names', () => {
+		const callback = () => undefined;
+		const result = resolveListener(
+			{
+				name: 'escape-close',
+				listenAt: 'body',
+				type: 'keydown',
+				callback,
+				enabled: false
+			},
+			{ root }
+		);
+
+		expect(result).toMatchObject({
+			listenerId: 'escape-close',
+			enabled: false
 		});
 	});
 

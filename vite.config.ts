@@ -17,7 +17,7 @@ export default defineConfig({
     environment: 'jsdom',
     include: ['./packages/*/test/**/*.test.ts'],
     coverage: {
-      exclude: ['**/dist/**', '**/test/**'],
+      exclude: ['**/dist/**', '**/test/**','.github'],
     },
   },
 })

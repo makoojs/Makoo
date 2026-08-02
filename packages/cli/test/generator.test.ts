@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { resolveConfig, resolveInjection } from '../src/config/resolve';
+import { resolveConfig, resolveInjection, resolveListener } from '../src/config/resolve';
 import type { ResolvedInjectionDefaults } from '../src/config/types';
 import { generate } from '../src/generator/generator';
 import type { ScannerResult } from '../src/scanner/types';
@@ -36,10 +36,17 @@ describe('generate', () => {
 				component: './hello/index.tsx',
 				framework: 'React',
 				alive: true,
+				hooks: {
+					'artifact:mountSuccess': () => 'mounted'
+				},
 				on: {
 					listenAt: '#app',
 					type: 'click',
-					callback: () => 'clicked'
+					callback: () => 'clicked',
+					activitySignal: () => ({
+						get: () => true,
+						subscribe: () => () => {}
+					})
 				}
 			},
 			{
@@ -53,11 +60,39 @@ describe('generate', () => {
 			config,
 			injectionDefaults,
 			manifestFile: path.join(root, 'injections/manifest.ts'),
+			manifestBindings: {
+				injectionDefaults: {
+					hooks: {
+						manifestFile: path.join(root, 'injections/manifest.ts'),
+						valuePath: ['injectionDefaults', 'hooks']
+					}
+				},
+				injections: {
+					'hello-card': {
+						hooks: {
+							manifestFile: path.join(root, 'injections/manifest.ts'),
+							valuePath: ['injections', 0, 'hooks']
+						},
+						on: {
+							callback: {
+								manifestFile: path.join(root, 'injections/manifest.ts'),
+								valuePath: ['injections', 0, 'on', 'callback']
+							},
+							activitySignal: {
+								manifestFile: path.join(root, 'injections/manifest.ts'),
+								valuePath: ['injections', 0, 'on', 'activitySignal']
+							}
+						}
+					}
+				},
+				listeners: {}
+			},
 			manifestDependencies: [],
 			moduleManifestDependencies: [],
 			runtimeSetupFiles: [],
 			runtimeDependencies: [],
 			injections: [injection],
+			listeners: [],
 			frameworks: ['React']
 		};
 
@@ -68,19 +103,29 @@ describe('generate', () => {
 			`import Injection_hello_card from '${path.join(root, 'injections/hello/index.tsx').replace(/\\/g, '/')}';`
 		);
 		expect(result.code).toContain(
+			`import Manifest_0 from '${path.join(root, 'injections/manifest.ts').replace(/\\/g, '/')}';`
+		);
+		expect(result.code).toContain(
 			"import { createMakoo, inject, listen } from '@makoojs/core';"
 		);
 		expect(result.code).toContain('import { createReactAdapter } from "@makoojs/react";');
 		expect(result.code).toContain('let makoo;');
 		expect(result.code).toContain('makoo = createMakoo({');
 		expect(result.code).toContain('defaults:');
-		expect(result.code).toContain('"start:requested":(() => "run-start")');
+		expect(result.code).toContain('hooks: Manifest_0["injectionDefaults"]["hooks"]');
 		expect(result.code).toContain('adapters: [createReactAdapter()]');
 		expect(result.code).toContain('const makooTasks = [];');
 		expect(result.code).toContain(
 			'makooTasks.push(inject({"id":"hello-card","injectAt":"#app","artifact":Injection_hello_card,"options":'
 		);
-		expect(result.code).toContain('listen("#app", "click", (() => "clicked"))');
+		expect(result.code).toContain('"hooks":Manifest_0["injections"][0]["hooks"]');
+		expect(result.code).toContain(
+			'listen({"listenAt":"#app","type":"click","callback":Manifest_0["injections"][0]["on"]["callback"],"activitySignal":Manifest_0["injections"][0]["on"]["activitySignal"]})'
+		);
+		expect(result.code).not.toContain('run-start');
+		expect(result.code).not.toContain('mounted');
+		expect(result.code).not.toContain('clicked');
+		expect(result.code).not.toContain('subscribe: () => () => {}');
 		expect(result.code).toContain('makoo.start(makooTasks)');
 	});
 
@@ -130,11 +175,13 @@ describe('generate', () => {
 			config,
 			injectionDefaults: defaultInjectionDefaults,
 			manifestFile: path.join(root, 'injections/manifest.ts'),
+			manifestBindings: { injections: {}, listeners: {} },
 			manifestDependencies: [],
 			moduleManifestDependencies: [],
 			runtimeSetupFiles: [],
 			runtimeDependencies: [],
 			injections: [matchedInjection, plainInjection],
+			listeners: [],
 			frameworks: ['React']
 		};
 
@@ -194,11 +241,13 @@ describe('generate', () => {
 			config,
 			injectionDefaults: defaultInjectionDefaults,
 			manifestFile: path.join(root, 'injections/manifest.ts'),
+			manifestBindings: { injections: {}, listeners: {} },
 			manifestDependencies: [],
 			moduleManifestDependencies: [],
 			runtimeSetupFiles: [],
 			runtimeDependencies: [],
 			injections: [firstInjection, secondInjection],
+			listeners: [],
 			frameworks: ['Vue']
 		};
 
@@ -243,11 +292,13 @@ describe('generate', () => {
 			config,
 			injectionDefaults: defaultInjectionDefaults,
 			manifestFile: path.join(root, 'injections/manifest.ts'),
+			manifestBindings: { injections: {}, listeners: {} },
 			manifestDependencies: [],
 			moduleManifestDependencies: [],
 			runtimeSetupFiles: [],
 			runtimeDependencies: [],
 			injections: [injection],
+			listeners: [],
 			frameworks: ['Vue']
 		};
 
@@ -257,5 +308,121 @@ describe('generate', () => {
 
 		expect(result.code).toContain(setupImport);
 		expect(result.code.indexOf(setupImport)).toBeLessThan(result.code.indexOf(componentImport));
+	});
+
+	it('generates standalone listener tasks with explicit ids and activity signals', () => {
+		const activitySignal = () => ({
+			get: () => true,
+			subscribe: () => () => {}
+		});
+		const config = resolveConfig(
+			{
+				app: {
+					name: 'listener-only',
+					version: '1.0.0'
+				}
+			},
+			root
+		);
+		const listener = resolveListener(
+			{
+				listenAt: 'body',
+				type: 'keydown',
+				callback: () => 'closed',
+				activitySignal
+			},
+			{ listenerId: 'escape-close' }
+		);
+		const scanResult: ScannerResult = {
+			config,
+			injectionDefaults: defaultInjectionDefaults,
+			manifestFile: path.join(root, 'injections/manifest.ts'),
+			manifestBindings: {
+				injections: {},
+				listeners: {
+					'escape-close': {
+						callback: {
+							manifestFile: path.join(root, 'injections/manifest.ts'),
+							valuePath: ['listeners', 'escape-close', 'callback']
+						},
+						activitySignal: {
+							manifestFile: path.join(root, 'injections/manifest.ts'),
+							valuePath: ['listeners', 'escape-close', 'activitySignal']
+						}
+					}
+				}
+			},
+			manifestDependencies: [],
+			moduleManifestDependencies: [],
+			runtimeSetupFiles: [],
+			runtimeDependencies: [],
+			injections: [],
+			listeners: [listener],
+			frameworks: []
+		};
+
+		const result = generate(scanResult);
+
+		expect(result.code).toContain('const makooTasks = [];');
+		expect(result.code).toContain(
+			'makooTasks.push(listen({"id":"escape-close","listenAt":"body","type":"keydown","callback":Manifest_0["listeners"]["escape-close"]["callback"],"activitySignal":Manifest_0["listeners"]["escape-close"]["activitySignal"]}));'
+		);
+		expect(result.code).not.toContain('get: () => true');
+		expect(result.code).not.toContain('subscribe: () => () => {}');
+		expect(result.code).toContain('makoo.start(makooTasks)');
+	});
+
+	it('wraps matched standalone listeners in runtime URL checks', () => {
+		const config = resolveConfig(
+			{
+				app: {
+					name: 'matched-listener',
+					version: '1.0.0'
+				}
+			},
+			root
+		);
+		const listener = resolveListener(
+			{
+				listenAt: 'body',
+				type: 'visibilitychange',
+				callback: () => undefined,
+				match: ['https://example.com/*']
+			},
+			{ listenerId: 'visibility' }
+		);
+		const scanResult: ScannerResult = {
+			config,
+			injectionDefaults: defaultInjectionDefaults,
+			manifestFile: path.join(root, 'injections/manifest.ts'),
+			manifestBindings: {
+				injections: {},
+				listeners: {
+					visibility: {
+						callback: {
+							manifestFile: path.join(root, 'injections/manifest.ts'),
+							valuePath: ['listeners', 'visibility', 'callback']
+						}
+					}
+				}
+			},
+			manifestDependencies: [],
+			moduleManifestDependencies: [],
+			runtimeSetupFiles: [],
+			runtimeDependencies: [],
+			injections: [],
+			listeners: [listener],
+			frameworks: []
+		};
+
+		const result = generate(scanResult);
+
+		expect(result.code).toContain('const matchUrl = (url, match) => {');
+		expect(result.code).toContain(
+			'if (matchUrl(location.href, {"include":["https://example.com/*"]})) {'
+		);
+		expect(result.code).toContain(
+			'makooTasks.push(listen({"id":"visibility","listenAt":"body","type":"visibilitychange","callback":Manifest_0["listeners"]["visibility"]["callback"]}));'
+		);
 	});
 });

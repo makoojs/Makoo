@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createJiti } from 'jiti';
 import { DEFAULT_MANIFEST_FILE_NAME } from '../../config/defaults';
-import { ModuleManifestLoadError } from '../../error/error';
+import { ModuleManifestLoadError } from '../../error/MakooCliError';
 import { collectDependencies } from '../collectDependenics';
 import type { LoadMetaResult } from '../types';
 import { validateModuleMeta } from '../validation';

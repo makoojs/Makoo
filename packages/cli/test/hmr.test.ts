@@ -158,11 +158,15 @@ describe('makooMonkey dev HMR', () => {
 					reason: 'top-level-manifest'
 				})
 			});
-			const logMessage = dev.loggerInfo.mock.calls[0]?.[0] as string;
-			expect(logMessage).toContain('[makoo]');
-			expect(logMessage).toContain('\x1B[32mstructural HMR\x1B[0m');
-			expect(logMessage).toContain('\x1B[36mtop-level-manifest\x1B[0m');
-			expect(logMessage).toContain('\x1B[2minjections/manifest.ts\x1B[0m');
+			expect(dev.loggerInfo).toHaveBeenCalledWith(
+				[
+					'\x1B[38;5;162m[makoo]\x1B[0m',
+					'\x1B[2m(client)\x1B[0m',
+					'\x1B[32mhmr update\x1B[0m',
+					'\x1B[2mtop-level-manifest: injections/manifest.ts\x1B[0m'
+				].join(' '),
+				{ timestamp: true }
+			);
 		});
 	});
 
@@ -247,6 +251,15 @@ describe('makooMonkey dev HMR', () => {
 
 		await withCwd(root, async () => {
 			await configureDevPlugin(plugin, dev.server);
+
+			const load = getHook(plugin.load);
+			const initialCode = String(await load?.call({} as never, RESOLVED_ID, {} as never));
+			const manifestFile = path.join(root, 'injections/manifest.ts');
+			expect(initialCode).toContain(
+				`import Manifest_0 from '${manifestFile.replace(/\\/g, '/')}';`
+			);
+			expect(initialCode).toContain('hooks: Manifest_0["injectionDefaults"]["hooks"]');
+			expect(initialCode).not.toContain('helper()');
 
 			const helperFile = path.join(root, 'injections/helper.ts');
 			expect(dev.watcherAdd).toHaveBeenCalledWith(helperFile);

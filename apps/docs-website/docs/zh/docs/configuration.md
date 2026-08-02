@@ -91,7 +91,7 @@ Makoo 当前扫描固定的 `injections/` 目录。顶层 manifest 文件名也�
 运行时默认值属于 `injections/manifest.ts`，不属于 `vite.config.ts`。多个模块需要共享 `alive`、`scope`、`timeout` 或 `hooks` 时，使用 `injectionDefaults`：
 
 ```ts
-import { defineInjections } from '@makoojs/cli';
+import { defineInjections } from '@makoojs/cli/manifest';
 
 export default defineInjections({
 	injectionDefaults: {
@@ -190,6 +190,6 @@ Makoo 会内部管理一部分 `vite-plugin-monkey` 细节：
 | --- | --- |
 | `vite.config.ts` | 项目元信息、扫描、setup import、userscript 开发/构建选项 |
 | `injections/manifest.ts` | 注入模块、共享运行时默认值、目标选择器、组件路径、模块 URL 规则 |
-| `injections/<module>/` | 组件代码、模块样式、模块 helper、可选模块级 manifest |
+| `injections/<module>/` | 组件代码、模块样式、模块工具函数、可选模块级 manifest |
 
 这个边界能让 Makoo 项目变大后仍然清楚。

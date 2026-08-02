@@ -51,7 +51,7 @@ describe('createMakoo', () => {
 			adapters: [createPlainAdapter(mount, unmount)]
 		});
 
-		const started = makoo.start([inject('#plain-host', artifact)]);
+		const started = makoo.start([inject({ injectAt: '#plain-host', artifact })]);
 		const task = started.get('PlainCard@#plain-host');
 
 		expect(started.tasks).toHaveLength(1);
@@ -95,7 +95,13 @@ describe('createMakoo', () => {
 		const callback = vi.fn();
 		const makoo = createMakoo();
 
-		const started = makoo.start([listen('#listener-button', 'click', callback)]);
+		const started = makoo.start([
+			listen({
+				listenAt: '#listener-button',
+				type: 'click',
+				callback
+			})
+		]);
 		const task = started.get('listener-#listener-button-click');
 
 		button.click();
@@ -115,6 +121,31 @@ describe('createMakoo', () => {
 		expect(task?.kind === 'listener' ? task.open() : false).toBe(true);
 		button.click();
 		expect(callback).toHaveBeenCalledTimes(2);
+	});
+
+	it('should start object-form listener declarations with explicit task id', () => {
+		const button = document.createElement('button');
+		button.id = 'object-listener-button';
+		document.body.appendChild(button);
+		const callback = vi.fn();
+		const makoo = createMakoo();
+
+		const started = makoo.start([
+			listen({
+				id: 'object-listener',
+				listenAt: '#object-listener-button',
+				type: 'click',
+				callback
+			})
+		]);
+		const task = started.get('object-listener');
+
+		button.click();
+		expect(callback).toHaveBeenCalledOnce();
+		expect(task).toMatchObject({
+			kind: 'listener',
+			taskId: 'object-listener'
+		});
 	});
 
 	it('should start object-form component declarations with explicit task id', () => {
@@ -179,8 +210,12 @@ describe('createMakoo', () => {
 			adapters: [createPlainAdapter(undefined, unmount)]
 		});
 
-		const first = makoo.start([inject('#first-host', { name: 'PlainFirst' })]);
-		const second = makoo.start([inject('#second-host', { name: 'PlainSecond' })]);
+		const first = makoo.start([
+			inject({ injectAt: '#first-host', artifact: { name: 'PlainFirst' } })
+		]);
+		const second = makoo.start([
+			inject({ injectAt: '#second-host', artifact: { name: 'PlainSecond' } })
+		]);
 
 		first.destroyAll();
 
@@ -202,7 +237,10 @@ describe('createMakoo', () => {
 		const makoo = createMakoo({
 			adapters: [createPlainAdapter(undefined, unmount)]
 		});
-		const declaration = inject('#duplicate-host', { name: 'PlainDuplicate' });
+		const declaration = inject({
+			injectAt: '#duplicate-host',
+			artifact: { name: 'PlainDuplicate' }
+		});
 
 		const first = makoo.start([declaration]);
 		const second = makoo.start([declaration]);
@@ -228,7 +266,7 @@ describe('createMakoo', () => {
 			}
 		});
 
-		makoo.start([inject('#missing-host', { name: 'PlainMissing' })]);
+		makoo.start([inject({ injectAt: '#missing-host', artifact: { name: 'PlainMissing' } })]);
 
 		expect(startHook).toHaveBeenCalledOnce();
 		expect(readySpy).toHaveBeenCalledWith(

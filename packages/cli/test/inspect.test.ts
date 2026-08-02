@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { formatInspectInjection, formatInspectResult } from '../src/command/inspect';
-import { resolveConfig, resolveInjection } from '../src/config/resolve';
+import { resolveConfig, resolveInjection, resolveListener } from '../src/config/resolve';
 import type { ResolvedInjectionDefaults } from '../src/config/types';
 import type { ScannerResult } from '../src/scanner/types';
 
@@ -50,15 +50,26 @@ describe('formatInspectResult', () => {
 				moduleManifestFile: path.join(root, 'injections/panel/manifest.ts')
 			}
 		);
+		const listener = resolveListener(
+			{
+				listenAt: 'body',
+				type: 'visibilitychange',
+				callback: () => undefined,
+				match: ['https://example.com/*']
+			},
+			{ listenerId: 'visibility' }
+		);
 		const scanResult: ScannerResult = {
 			config,
 			injectionDefaults,
 			manifestFile: path.join(root, 'injections/manifest.ts'),
+			manifestBindings: { injections: {}, listeners: {} },
 			manifestDependencies: [path.join(root, 'injections/hooks.ts')],
 			moduleManifestDependencies: [path.join(root, 'injections/panel/options.ts')],
 			runtimeSetupFiles: [path.join(root, 'injections/setup.ts')],
 			runtimeDependencies: [path.join(root, 'injections/runtime.ts')],
 			injections: [injection],
+			listeners: [listener],
 			frameworks: ['React']
 		};
 
@@ -84,6 +95,16 @@ describe('formatInspectResult', () => {
 			},
 			monkey: config.monkey,
 			injectionDefaults,
+			listeners: [
+				{
+					listenerId: 'visibility',
+					listenAt: 'body',
+					type: 'visibilitychange',
+					callback: listener.callback,
+					match: { include: ['https://example.com/*'] },
+					enabled: true
+				}
+			],
 			frameworks: ['React']
 		});
 		expect(result).not.toHaveProperty('config');

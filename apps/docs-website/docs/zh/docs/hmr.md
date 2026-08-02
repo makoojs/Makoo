@@ -13,7 +13,7 @@ Makoo 在开发模式下区分两类更新：
 | --- | --- |
 | Vue 或 React 组件文件变化 | 交给 Vite 框架 HMR 处理 |
 | 顶层 `injections/manifest.ts` 变化 | Makoo 重新扫描并更新虚拟入口 |
-| 顶层 manifest 导入的本地依赖变化 | Makoo 重新扫描并更新虚拟入口 |
+| manifest 导入的本地 hooks、callback、activity signal 或它们继续导入的本地文件变化 | Makoo 重新扫描并更新虚拟入口 |
 | 模块级 `injections/<module>/manifest.ts` 变化 | Makoo 重新扫描并更新虚拟入口 |
 | 新增或删除模块级 manifest | Makoo 重新扫描并更新虚拟入口 |
 | `runtime.setup` 文件变化 | Makoo 重新扫描并更新虚拟入口 |
@@ -29,8 +29,8 @@ Makoo 在开发模式下区分两类更新：
 - 修改模块的 `injectAt`
 - 修改模块的 `component`
 - 切换 `enabled`
-- 修改 `match`、`alive`、`scope`、`timeout` 或 `hooks`
-- 修改 manifest 导入的本地 helper
+- 修改 `match`、`alive`、`scope`、`timeout`、`hooks`、callback 或 `activitySignal`
+- 修改 manifest 导入的本地文件
 - 修改 `runtime.setup` 文件
 
 当 Makoo 检测到结构更新时，会重新扫描项目、使虚拟模块失效，并向 Vite 发送生成入口的 HMR 更新。
@@ -55,10 +55,11 @@ Makoo 会追踪 manifest 和 setup 文件中的本地静态导入。
 
 ```ts
 // injections/manifest.ts
+import { defineInjections } from '@makoojs/cli/manifest';
 import { profileHooks } from './profile-hooks';
 
 export default defineInjections({
-	globalInjector: {
+	injectionDefaults: {
 		hooks: profileHooks
 	},
 	injections: {
@@ -72,17 +73,19 @@ export default defineInjections({
 
 修改 `profile-hooks.ts` 会触发结构更新，因为它是 manifest 的本地依赖。
 
+`profileHooks` 可以直接使用当前文件中的变量和从其他文件导入的函数；这些文件会随 userscript 一起打包。
+
 Makoo 不会追踪所有可能的依赖形态。manifest 和 setup 依赖推荐使用静态相对路径导入：
 
 ```ts
 import { hooks } from './hooks';
 ```
 
-Makoo 现在还处于早期，依赖追踪暂时是有意收窄的。请尽量不要依赖以下场景的结构 HMR：
+结构依赖追踪不覆盖以下场景：
 
 - manifest 依赖链中的动态 `import()`
 - Makoo 无法解析为本地文件的 path alias
-- manifest helper 导入的第三方包
+- manifest 导入的第三方包
 
 如果这些依赖会影响生成的运行时，修改后建议重启开发服务。
 
@@ -106,7 +109,7 @@ Makoo 现在还处于早期，依赖追踪暂时是有意收窄的。请尽量�
 - manifest 结构无效
 - 组件文件不存在
 - 无法从组件扩展名推断框架
-- 过滤后没有任何启用的注入模块
+- 过滤后没有任何启用的任务（injection 或 listener）
 - `runtime.setup` 文件不存在
 
 修复 manifest 或 setup 文件后再次保存，Makoo 会在下一次相关变化时重新扫描。
@@ -118,7 +121,7 @@ Makoo 现在还处于早期，依赖追踪暂时是有意收窄的。请尽量�
 - 安装或升级依赖
 - 修改 Vite 插件
 - 修改不受支持的 `vite-plugin-monkey` 集成细节
-- manifest 依赖了第三方 helper，并且该 helper 影响生成运行时
+- manifest 导入了会影响生成结果的第三方包
 - 修改只能通过动态导入或无法解析的 alias 触达的文件
 
 经验规则是：如果变化影响 Vite 本身、包解析，或者 Makoo 无法静态收集的依赖，就重启开发服务。

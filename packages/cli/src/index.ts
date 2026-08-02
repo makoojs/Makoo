@@ -1,15 +1,7 @@
 export { cdn } from 'vite-plugin-monkey';
-export {
-	defineInjection,
-	defineInjections
-} from './config/config';
 export type {
 	AppConfig,
 	CliConfig,
-	InjectionDefaults,
-	InjectionFramework,
-	InjectionManifest,
-	InjectionModuleConfig,
 	MonkeyBuildConfig,
 	MonkeyConfig,
 	MonkeyServerConfig,

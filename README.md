@@ -81,7 +81,7 @@ A minimal project usually looks like this:
 
 `Injection Module` is a single injection unit. A module usually maps to a component under `injections/<module-name>/`, and it may also provide its own module-level `manifest.ts`.
 
-`Manifest` is the declarative injection configuration. The top-level `injections/manifest.ts` describes which modules should be injected; module-level files such as `injections/foo/manifest.ts` can override a single module.
+`Manifest` is the declarative injection configuration. The top-level `injections/manifest.ts` describes which modules should be injected; module-level files such as `injections/foo/manifest.ts` can contribute fields for the same module, with explicit module fields taking priority.
 
 `Adapter` is the component mounting bridge. Makoo supports Vue and React through `@makoojs/vue` and `@makoojs/react`, and the adapter model can support other mountable artifacts later.
 
@@ -101,6 +101,8 @@ injections
 ```
 
 Use the top-level `manifest.ts` as the project entry configuration. Use module-level `manifest.ts` files when a module should own fields such as `injectAt`, `framework`, `match`, or `hooks`.
+
+Makoo scans these manifests and automatically generates the runtime entry, so a normal project does not need a `main.ts` just to import the manifest or start Makoo.
 
 ## Configuration Overview
 
@@ -134,12 +136,14 @@ Most `monkey` options are passed through to [lisonge/vite-plugin-monkey](https:/
 
 The top-level manifest supports both object and array forms.
 
-`injectionDefaults` defines shared injection runtime defaults for the current manifest. Modules inherit `alive`, `scope`, `timeout`, and `hooks` from it unless they override those fields themselves.
+`injectionDefaults` defines shared runtime defaults. Modules inherit scalar options such as `alive`, `scope`, and `timeout`; its `hooks` are registered as shared runtime hooks.
+
+`defineInjection` / `defineInjections` and their related types come from `@makoojs/cli/manifest`. Manifests are scanned in Node during a build, while their hooks, callbacks, and activity signals are bundled with the userscript and run in the browser. Keep manifest top-level evaluation free of application side effects and Node-only dependencies, and ensure every file imported by these functions can be bundled for the browser.
 
 Object form is recommended for most projects:
 
 ```ts
-import { defineInjections } from '@makoojs/cli';
+import { defineInjections } from '@makoojs/cli/manifest';
 
 export default defineInjections({
 	injectionDefaults: {
@@ -168,7 +172,7 @@ export default defineInjections({
 Array form is useful when entries are generated or need an explicit `name`:
 
 ```ts
-import { defineInjections } from '@makoojs/cli';
+import { defineInjections } from '@makoojs/cli/manifest';
 
 export default defineInjections({
 	injections: [
@@ -196,6 +200,8 @@ Common module fields:
 | `hooks` | Lifecycle hooks for the current module |
 | `match` | URL matching rule for the current module |
 
+`injectAt` must be a CSS selector; `document` and `window` are not supported injection targets.
+
 Module-level URL `match` supports shorthand and object forms:
 
 ```ts
@@ -211,6 +217,34 @@ match: {
 
 When `match` is omitted, the module is registered on pages where the userscript itself runs. When `match` is provided, Makoo checks `location.href` at runtime before registering that module.
 
+### Standalone Listeners
+
+Top-level `listeners` declares event tasks that are not owned by an injection module. They do
+not need a component directory or a framework adapter. In object form, the record key becomes
+the listener task ID:
+
+```ts
+export default defineInjections({
+	listeners: {
+		escapeClose: {
+			listenAt: 'body',
+			type: 'keydown',
+			callback: (event) => {
+				if (event instanceof KeyboardEvent && event.key === 'Escape') console.log('close');
+			},
+			match: ['https://example.com/*']
+		}
+	}
+});
+```
+
+Makoo generates `listen({ id: 'escapeClose', ... })` for this entry. Listeners also support
+`enabled`, `activitySignal`, and the same `match` rules as modules. Use `name` in array form
+when a listener needs a stable ID. `listenAt` must be a CSS selector; `document` and `window`
+are not supported listener targets.
+
+Standalone listeners belong to the top-level manifest. A module-level manifest describes one injection module; use its `on` field when the event belongs to that component task.
+
 ## HMR Behavior
 
 Makoo separates structural changes from regular component updates in dev mode.
@@ -219,7 +253,7 @@ Makoo separates structural changes from regular component updates in dev mode.
 | --- | --- |
 | Top-level `injections/manifest.ts` changes | Rescan and update the virtual entry |
 | Module-level `injections/foo/manifest.ts` changes | Rescan and update the virtual entry |
-| Local helper or hooks imported by a manifest changes | Recursively track the local dependency and rescan |
+| Local hooks, callbacks, activity signals, or files they import change | Recursively track the local dependency and rescan |
 | Module-level `manifest.ts` is added or removed | Trigger a structural update |
 | Regular component file changes | Let Vite handle native HMR |
 | Third-party package dependency changes | Not tracked by Makoo structural scanning |
@@ -230,14 +264,16 @@ When splitting hooks into a separate file, prefer static relative imports:
 import { hooks } from './hooks';
 ```
 
-Makoo tracks local chains such as `manifest -> hooks -> helper`. Dynamic `import()`, path aliases, and third-party packages are not part of Makoo's structural dependency tracking.
+Makoo continues tracking local files statically imported by hooks and callbacks. Dynamic `import()`, path aliases, and third-party packages are not part of Makoo's structural dependency tracking.
+
+You can write hooks, callbacks, and activity signals directly, use functions already declared in the current file, or import functions from other files. A function can also use variables and other utility functions from the file where it is declared.
 
 ## Recipes
 
 ### Enable a Module by URL
 
 ```ts
-import { defineInjections } from '@makoojs/cli';
+import { defineInjections } from '@makoojs/cli/manifest';
 
 export default defineInjections({
 	injections: {
@@ -256,7 +292,7 @@ export default defineInjections({
 ### Use a Vue Module
 
 ```ts
-import { defineInjections } from '@makoojs/cli';
+import { defineInjections } from '@makoojs/cli/manifest';
 
 export default defineInjections({
 	injections: {
@@ -283,7 +319,7 @@ export const hooks = {
 ```ts
 // injections/manifest.ts
 import { hooks } from './hooks';
-import { defineInjections } from '@makoojs/cli';
+import { defineInjections } from '@makoojs/cli/manifest';
 
 export default defineInjections({
 	injectionDefaults: {

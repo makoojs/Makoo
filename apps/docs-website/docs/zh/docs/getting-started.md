@@ -60,6 +60,7 @@ React 项目结构类似，只是组件文件会变成 `app.tsx`，并带有模�
 ```
 
 最重要的是 `injections/` 目录。Makoo 会扫描这里，读取 manifest，并生成运行时入口来注册你的模块。
+你不需要额外创建或维护 `main.ts` 入口文件。
 
 ## 配置 userscript
 
@@ -98,7 +99,7 @@ export default defineConfig({
 生成的 manifest 会注册一个 `hello-world` 模块：
 
 ```ts
-import { defineInjections } from '@makoojs/cli';
+import { defineInjections } from '@makoojs/cli/manifest';
 
 export default defineInjections({
 	injections: {

@@ -1,16 +1,28 @@
 import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import picomatch from 'picomatch';
-import { resolveInjection, resolveInjectionDefaults, resolveInjections } from '../config/resolve';
-import type { ResolvedConfig, ResolvedInjectionModule } from '../config/types';
+import {
+	normalizeInjectionManifest,
+	resolveInjection,
+	resolveInjectionDefaults,
+	resolveInjections,
+	resolveListeners
+} from '../config/resolve';
+import type {
+	InjectionModuleConfig,
+	ResolvedConfig,
+	ResolvedInjectionModule,
+	ResolvedListener
+} from '../config/types';
 import {
 	ManifestNotFoundError,
-	NoEnabledInjectionsError,
+	NoEnabledTasksError,
 	RuntimeSetupNotFoundError
-} from '../error/error';
+} from '../error/MakooCliError';
 import { collectDependencies } from './collectDependenics';
 import { loadManifest } from './load/loadManifes';
 import { loadMeta } from './load/loadMeta';
+import { buildManifestBindings } from './manifestBinding';
 import type { ScannerResult } from './types';
 import { mergeMeta } from './util';
 
@@ -38,6 +50,13 @@ export async function scanner(config: ResolvedConfig): Promise<ScannerResult> {
 		source: config.source,
 		injectionDefaults
 	});
+	const normalizedManifestInjections = normalizeInjectionManifest(loadedManifest.manifest);
+	const manifestInjectionConfigs = new Map(
+		resolveManifest.map((injection, index) => [
+			injection.moduleId,
+			normalizedManifestInjections[index]
+		])
+	);
 
 	const folder = readdirSync(config.source.dir, { withFileTypes: true })
 		.filter((entry) => entry.isDirectory())
@@ -48,6 +67,7 @@ export async function scanner(config: ResolvedConfig): Promise<ScannerResult> {
 	const filteredFolders = folder.filter((name) => isIncluded(name) && !isExcluded(name));
 
 	const injectionsMeta: ResolvedInjectionModule[] = [];
+	const moduleInjectionConfigs = new Map<string, InjectionModuleConfig>();
 	for (const module of filteredFolders) {
 		const modulePath = path.join(config.source.dir, module);
 		//check module level config
@@ -58,7 +78,8 @@ export async function scanner(config: ResolvedConfig): Promise<ScannerResult> {
 		for (const dependency of meta.dependencies) {
 			moduleManifestDependencies.add(dependency);
 		}
-		const resolveMeta = resolveInjection(meta.moduleConfig, {
+		// resolve module config
+		const resolveOptions = {
 			root: config.root,
 			source: config.source,
 			injectionDefaults,
@@ -66,19 +87,47 @@ export async function scanner(config: ResolvedConfig): Promise<ScannerResult> {
 			componentPath: path.join(modulePath, meta.moduleConfig.component),
 			fallbackName: module,
 			moduleManifestFile: meta.moduleManifestFile
-		});
+		};
+		const moduleId = meta.moduleConfig.name || module;
+		const manifestConfig = manifestInjectionConfigs.get(moduleId);
+		const resolveMeta = resolveInjection(
+			manifestConfig ? { ...manifestConfig, ...meta.moduleConfig } : meta.moduleConfig,
+			resolveOptions
+		);
+
+		// module config array
 		injectionsMeta.push(resolveMeta);
+		moduleInjectionConfigs.set(resolveMeta.moduleId, meta.moduleConfig);
 	}
 
+	// merge target: module config
+	// merge source: main config(manifest config)
+	// injectionsMeta field will override resolveManifest when module id is equal
 	const injections = mergeMeta(resolveManifest, injectionsMeta).filter(
 		(injection) => injection.enabled
 	);
+	const resolvedListeners: ResolvedListener[] = resolveListeners(loadedManifest.manifest, {
+		root: config.root
+	});
+	const listeners = resolvedListeners.filter((listener) => listener.enabled);
 
-	if (injections.length === 0) {
-		throw new NoEnabledInjectionsError();
+	if (injections.length === 0 && listeners.length === 0) {
+		throw new NoEnabledTasksError();
 	}
 
+	const manifestBindings = buildManifestBindings({
+		manifest: loadedManifest.manifest,
+		manifestFile: loadedManifest.manifestFile,
+		manifestInjections: resolveManifest,
+		moduleInjections: injectionsMeta,
+		moduleInjectionConfigs,
+		manifestListeners: resolvedListeners,
+		enabledInjections: injections,
+		enabledListeners: listeners
+	});
+
 	injections.sort((a, b) => a.moduleId.localeCompare(b.moduleId));
+	listeners.sort((a, b) => a.listenerId.localeCompare(b.listenerId));
 
 	const frameworks = [...new Set(injections.map((m) => m.framework))];
 
@@ -86,11 +135,13 @@ export async function scanner(config: ResolvedConfig): Promise<ScannerResult> {
 		config,
 		injectionDefaults,
 		manifestFile: loadedManifest.manifestFile,
+		manifestBindings,
 		manifestDependencies: [...manifestDependencies].sort(),
 		moduleManifestDependencies: [...moduleManifestDependencies].sort(),
 		runtimeSetupFiles: [...runtimeSetupFiles].sort(),
 		runtimeDependencies: [...runtimeDependencies].sort(),
 		injections,
+		listeners,
 		frameworks
 	};
 }

@@ -1,10 +1,15 @@
 import { MakooError } from '@makoojs/core';
 import { describe, expect, it } from 'vitest';
-import { ManifestValidationError } from '../src/error/error';
+import {
+	ManifestValidationError,
+	UnsupportedSelectorTargetError
+} from '../src/error/MakooCliError';
 import {
 	InjectionDefaultsSchema,
+	InjectionListenerSchema,
 	InjectionManifestSchema,
 	InjectionMatchSchema,
+	InjectionModuleListenerSchema,
 	InjectionModuleSchema,
 	LifecycleHookMapSchema,
 	ObserveEventNameSchema,
@@ -111,6 +116,33 @@ describe('InjectionModuleSchema', () => {
 		expect(result.success).toBe(true);
 	});
 
+	it('accepts module listener config', () => {
+		const callback = () => undefined;
+		const activitySignal = () => ({ value: true });
+		const result = InjectionModuleSchema.safeParse({
+			injectAt: '#app',
+			component: './index.tsx',
+			on: {
+				listenAt: '#open',
+				type: 'click',
+				callback,
+				activitySignal
+			}
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('accepts module lifecycle hooks', () => {
+		const result = InjectionModuleSchema.safeParse({
+			injectAt: '#app',
+			component: './index.tsx',
+			hooks: {
+				'artifact:mountSuccess': () => undefined
+			}
+		});
+		expect(result.success).toBe(true);
+	});
+
 	it('accepts minimal config with only injectAt and component', () => {
 		const result = InjectionModuleSchema.safeParse({
 			injectAt: '#app',
@@ -157,6 +189,51 @@ describe('InjectionModuleSchema', () => {
 			injectAt: '#app',
 			component: './test.tsx',
 			match: 123
+		});
+		expect(result.success).toBe(false);
+	});
+});
+
+describe('InjectionModuleListenerSchema', () => {
+	it('accepts listener options used by injection on', () => {
+		const callback = () => undefined;
+		const activitySignal = () => ({ value: true });
+		const result = InjectionModuleListenerSchema.safeParse({
+			listenAt: '#button',
+			type: 'click',
+			callback,
+			activitySignal
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects missing callback', () => {
+		const result = InjectionModuleListenerSchema.safeParse({
+			listenAt: '#button',
+			type: 'click'
+		});
+		expect(result.success).toBe(false);
+	});
+});
+
+describe('InjectionListenerSchema', () => {
+	it('accepts top-level listener config with match and enabled', () => {
+		const result = InjectionListenerSchema.safeParse({
+			name: 'escape-close',
+			listenAt: 'body',
+			type: 'keydown',
+			callback: () => undefined,
+			activitySignal: () => ({ value: true }),
+			match: ['https://example.com/*'],
+			enabled: true
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects missing listenAt', () => {
+		const result = InjectionListenerSchema.safeParse({
+			type: 'keydown',
+			callback: () => undefined
 		});
 		expect(result.success).toBe(false);
 	});
@@ -212,6 +289,33 @@ describe('InjectionManifestSchema', () => {
 		expect(result.success).toBe(true);
 	});
 
+	it('accepts manifest with only listeners', () => {
+		const result = InjectionManifestSchema.safeParse({
+			listeners: {
+				escapeClose: {
+					listenAt: 'body',
+					type: 'keydown',
+					callback: () => undefined
+				}
+			}
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('accepts array form listeners', () => {
+		const result = InjectionManifestSchema.safeParse({
+			listeners: [
+				{
+					name: 'escapeClose',
+					listenAt: 'body',
+					type: 'keydown',
+					callback: () => undefined
+				}
+			]
+		});
+		expect(result.success).toBe(true);
+	});
+
 	it('rejects manifest with old globalInjector field', () => {
 		const result = InjectionManifestSchema.safeParse({
 			globalInjector: { alive: true, scope: 'global', timeout: 3000 },
@@ -220,7 +324,7 @@ describe('InjectionManifestSchema', () => {
 		expect(result.success).toBe(false);
 	});
 
-	it('rejects missing injections', () => {
+	it('rejects manifest without injections or listeners', () => {
 		const result = InjectionManifestSchema.safeParse({});
 		expect(result.success).toBe(false);
 	});
@@ -235,6 +339,13 @@ describe('InjectionManifestSchema', () => {
 	it('rejects array item missing injectAt', () => {
 		const result = InjectionManifestSchema.safeParse({
 			injections: [{ name: 'bad', component: './bad.tsx' }]
+		});
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects listener item missing listenAt', () => {
+		const result = InjectionManifestSchema.safeParse({
+			listeners: [{ name: 'bad', type: 'click', callback: () => undefined }]
 		});
 		expect(result.success).toBe(false);
 	});
@@ -282,6 +393,78 @@ describe('validateManifest', () => {
 			expect(e.message).toContain('injections');
 		}
 	});
+
+	it.each(['document', 'window'])('rejects the global listener target %s', (listenAt) => {
+		expect(() =>
+			validateManifest(
+				{
+					listeners: {
+						escapeClose: {
+							listenAt,
+							type: 'keydown',
+							callback: () => undefined
+						}
+					}
+				},
+				'/project/injections/manifest.ts'
+			)
+		).toThrow(UnsupportedSelectorTargetError);
+	});
+
+	it.each(['document', 'window'])('rejects the injection target %s', (injectAt) => {
+		try {
+			validateManifest(
+				{
+					injections: {
+						panel: {
+							injectAt,
+							component: './panel.tsx'
+						}
+					}
+				},
+				'/project/injections/manifest.ts'
+			);
+			expect.unreachable('should have thrown');
+		} catch (err) {
+			expect(err).toBeInstanceOf(UnsupportedSelectorTargetError);
+			expect((err as UnsupportedSelectorTargetError).issues).toEqual([
+				{
+					path: 'injections.panel.injectAt',
+					message: 'must be a CSS selector; document and window are not supported'
+				}
+			]);
+		}
+	});
+
+	it('reports the injection listener path for an unsupported target', () => {
+		try {
+			validateManifest(
+				{
+					injections: {
+						panel: {
+							injectAt: '#app',
+							component: './panel.tsx',
+							on: {
+								listenAt: 'window',
+								type: 'resize',
+								callback: () => undefined
+							}
+						}
+					}
+				},
+				'/project/injections/manifest.ts'
+			);
+			expect.unreachable('should have thrown');
+		} catch (err) {
+			expect(err).toBeInstanceOf(UnsupportedSelectorTargetError);
+			expect((err as UnsupportedSelectorTargetError).issues).toEqual([
+				{
+					path: 'injections.panel.on.listenAt',
+					message: 'must be a CSS selector; document and window are not supported'
+				}
+			]);
+		}
+	});
 });
 
 describe('validateModuleMeta', () => {
@@ -303,5 +486,34 @@ describe('validateModuleMeta', () => {
 			expect(e.message).toContain('[makoo] Invalid manifest at');
 			expect(e.message).toContain('injectAt: is required');
 		}
+	});
+
+	it.each(['document', 'window'])('rejects the module injection target %s', (injectAt) => {
+		expect(() =>
+			validateModuleMeta(
+				{
+					injectAt,
+					component: './index.tsx'
+				},
+				'/project/injections/widget/manifest.ts'
+			)
+		).toThrow(UnsupportedSelectorTargetError);
+	});
+
+	it('rejects document as a module listener target', () => {
+		expect(() =>
+			validateModuleMeta(
+				{
+					injectAt: '#app',
+					component: './index.tsx',
+					on: {
+						listenAt: 'document',
+						type: 'keydown',
+						callback: () => undefined
+					}
+				},
+				'/project/injections/widget/manifest.ts'
+			)
+		).toThrow(UnsupportedSelectorTargetError);
 	});
 });

@@ -1,3 +1,5 @@
+import { FunctionSerializationError } from '../../../error/MakooCliError';
+
 const renderObjectEntries = (value: Record<string, unknown>): string => {
 	const entries = Object.entries(value)
 		.filter(([, item]) => typeof item !== 'undefined')
@@ -8,7 +10,7 @@ const renderObjectEntries = (value: Record<string, unknown>): string => {
 
 export const renderInlineValue = (value: unknown): string => {
 	if (typeof value === 'function') {
-		return `(${value.toString()})`;
+		throw new FunctionSerializationError();
 	}
 
 	if (Array.isArray(value)) {

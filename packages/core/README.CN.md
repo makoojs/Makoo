@@ -1,272 +1,713 @@
-# @makoojs/core
+# 核心 API
 
-`@makoojs/core` 是 Makoo 的框架无关运行时核心。它负责声明注入任务、启动任务批次、等待目标 DOM、挂载 artifact、管理 alive 重新注入、绑定事件监听，并提供生命周期观察、日志和错误基础设施。
+## API 索引
 
-普通项目通常从 `@makoojs/cli` 开始。只有在你想绕过 CLI 生成入口、手动集成运行时时，才需要直接使用 core。
+### 任务
 
-> [!NOTE]
-> `@makoojs/core`包是其他包的父包，其他的包都直接或间接的依赖该包的类型或功能
+- [`createMakoo()`](#createmakoo)：创建运行时
+- [`inject()`](#inject)：声明 component 任务
+- [`listen()`](#listen)：声明 listener 任务
 
-## 使用场景
+### 观察和状态
 
-- 编写自定义 `ResolvableMountAdapter`，让 Makoo 挂载新的 artifact 类型。
-- 使用 `createMakoo()` 创建运行时，并显式启动任务声明。
-- 监听注入生命周期事件，用于调试、埋点、错误上报或可视化开发工具。
-- 使用 `DOMWatcher`、`createActivityStore` 等底层工具构建自定义运行时集成。
+- [`createObserverHub()`](#createobserverhub)：创建生命周期事件中心
+- [`createActivityStore()`](#createactivitystore)：创建可订阅状态
+- [`DOMWatcher`](#domwatcher)：观察 DOM 目标
 
-## 安装
+### 基础能力
 
-```bash
-// npm install @makoojs/core
-// yarn add @makoojs/core
-pnpm add @makoojs/core
-```
+- [`Logger`](#logger)：日志实现
+- [错误类](#错误类)：结构化错误
+- [常量](#常量)：动作、事件名和错误码
 
-## 最小运行时示例
+### TypeScript 类型
+
+- [Adapter 类型](#adapter-类型)
+- [任务类型](#任务类型)
+- [观察类型](#观察类型)
+- [Signal 类型](#signal-类型)
+- [日志类型](#日志类型)
+- [错误类型](#错误类型)
+
+## `createMakoo()`
+
+创建一个 Makoo 运行时。
+
+### Type
 
 ```ts
-import {
-	createMakoo,
-	inject,
-	type ResolvableMountAdapter
-} from '@makoojs/core';
+function createMakoo(options?: CreateMakooOptions): MakooRuntime;
+```
 
-type TextArtifact = {
-	kind: 'text';
-	text: string;
-};
+### Parameters
 
-const textAdapter: ResolvableMountAdapter<TextArtifact, HTMLElement> = {
-	name: 'text',
-	matches(artifact): artifact is TextArtifact {
-		return (
-			typeof artifact === 'object' &&
-			artifact !== null &&
-			(artifact as { kind?: unknown }).kind === 'text'
-		);
-	},
-	mount({ mountPoint, artifact }) {
-		const el = document.createElement('span');
-		el.textContent = artifact.text;
-		mountPoint.appendChild(el);
+`options` 使用 `CreateMakooOptions`：
 
-		return { handle: el };
-	},
-	unmount({ handle }) {
-		handle.remove();
-	}
-};
+| 字段 | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `defaults` | `Partial<MakooDefaults>` | `{}` | 设置 injection 的默认选项 |
+| `adapters` | `ResolvableMountAdapter[]` | `[]` | 注册可用于挂载 artifact 的 adapter |
+| `hooks` | `LifecycleHookMap` | `undefined` | 注册全局生命周期 hooks |
+| `logger` | `ILogger` | `new Logger()` | 设置日志实现 |
+| `observer` | `ObserverHub` | `createObserverHub(logger)` | 设置生命周期事件中心 |
 
+### Details
+
+`defaults` 的最终默认值：
+
+```ts
+{
+	alive: false,
+	scope: 'local',
+	timeout: 5000
+}
+```
+
+### Returns
+
+返回 `MakooRuntime`：
+
+| 方法 | 返回值 | 说明 |
+| --- | --- | --- |
+| `start(tasks)` | `StartedTasks` | 注册并启动一批 `MakooTaskDeclaration`；空数组会抛出 `TaskError` |
+| `reset(taskId)` | `void` | 重置指定任务并释放当前资源 |
+| `destroy(taskId)` | `void` | 销毁并移除指定任务 |
+| `resetAll()` | `void` | 重置当前运行时中的全部任务 |
+| `destroyAll()` | `void` | 销毁当前运行时中的全部任务 |
+| `enableAlive(taskId)` | `void` | 为 component 任务启用 alive 观察 |
+| `disableAlive(taskId)` | `void` | 为 component 任务关闭 alive 观察 |
+| `on(event, hook)` | `() => void` | 监听指定事件，返回取消监听函数 |
+| `onTask(taskId, event, hook)` | `() => void` | 监听指定任务的指定事件，返回取消监听函数 |
+| `onAny(hook)` | `() => void` | 监听全部事件，返回取消监听函数 |
+| `off(event, hook?)` | `void` | 移除指定事件的一个或全部 hook |
+| `offTask(taskId, event?, hook?)` | `void` | 按任务移除 hook |
+| `offAny(hook)` | `void` | 移除通过 `onAny()` 注册的 hook |
+| `getLogger()` | `ILogger` | 返回当前日志实现 |
+
+重复的任务 ID 不会再次注册，也不会出现在本次 `start()` 返回的 `StartedTasks.tasks` 中。
+
+### Example
+
+```ts
 const makoo = createMakoo({
-	defaults: {
-		alive: true,
-		scope: 'local',
-		timeout: 5000
-	},
-	adapters: [textAdapter]
-});
-
-makoo.start([
-	inject('#app', {
-		kind: 'text',
-		text: 'Hello from Makoo core'
-	})
-]);
-```
-
-## 运行时基础
-
-`inject()` 和 `listen()` 是声明 helper。它们不会触碰 DOM，也不会自己注册任务。`makoo.start([...])` 会注册传入批次里的声明，并立即调度这些任务。
-
-`inject()` 有两种写法。参数形式比较简洁：
-
-```ts
-inject('#toolbar', toolbarArtifact, {
-	alive: true
-});
-```
-
-对象形式会把声明字段放在一起。里面可选的 `id` 会作为任务 ID，适合后续需要查找或控制这个任务的场景：
-
-```ts
-inject({
-	id: 'settings-panel',
-	injectAt: '#settings',
-	artifact: settingsArtifact,
-	options: {
-		alive: true
-	}
-});
-```
-
-没有传 `id` 时，Makoo 会根据 artifact 和目标 selector 推导任务 ID。
-
-```ts
-import { createMakoo, inject, listen } from '@makoojs/core';
-
-const makoo = createMakoo({
-	defaults: {
-		alive: false,
-		scope: 'local',
-		timeout: 5000
-	},
-	adapters: [myAdapter],
-	hooks: {
-		'start:requested': (event) => {
-			console.log(event.name);
-		}
-	}
+	adapters: [adapter]
 });
 
 const started = makoo.start([
-	inject('#toolbar', toolbarArtifact, {
-		alive: true
-	}),
-	inject({
-		id: 'settings-panel',
-		injectAt: '#settings',
-		artifact: settingsArtifact,
-		options: {
-			alive: true
-		}
-	}),
-	inject('#save-tip', saveTipArtifact, {
-		on: listen('#save', 'click', () => {
-			console.log('save clicked');
-		})
-	}),
-	listen('#escape', 'keydown', onEscape)
+	inject({ injectAt: '#app', artifact })
 ]);
 ```
 
-`start()` 返回 `StartedTasks`，用于控制本批次任务：
+## `inject()`
+
+创建 component 任务声明。调用 `inject()` 不会注册或启动任务，返回值需要传给
+`MakooRuntime.start()`。
+
+### Type
 
 ```ts
-const toolbar = started.get('Toolbar@#toolbar');
-
-if (toolbar?.kind === 'component') {
-	toolbar.disableAlive();
-	toolbar.enableAlive();
-}
-
-started.destroyAll();
+function inject<TArtifact>(
+	input: MakooInjectionInput<TArtifact>
+): MakooInjectionDeclaration<TArtifact>;
 ```
 
-`started.destroyAll()` 只影响本次启动产生的任务。`makoo.destroyAll()` 会影响整个运行时中的全部任务。
-
-## Adapter 协议
-
-core 不关心 artifact 是 Vue 组件、React 组件还是其他对象。它只要求 adapter 实现统一挂载协议。
+### Parameters
 
 ```ts
-import type { ResolvableMountAdapter } from '@makoojs/core';
-
-const adapter: ResolvableMountAdapter<MyArtifact, MyHandle, MyInstance> = {
-	name: 'my-adapter',
-	matches(artifact): artifact is MyArtifact {
-		return isMyArtifact(artifact);
-	},
-	mount(input) {
-		return {
-			handle,
-			instance
-		};
-	},
-	unmount(input) {
-		// 根据 input.reason 清理资源。
-	}
+type MakooInjectionInput<TArtifact = unknown> = {
+	id?: string;
+	injectAt: string;
+	artifact: TArtifact;
+	options?: ArtifactOptions;
 };
 ```
 
-`mount(input)` 会收到目标宿主节点、生成的挂载点、artifact、taskId、selector，以及任务级 `makoo` 上下文。
+`id` 省略时，运行时会根据 artifact 和 `injectAt` 生成任务 ID。
 
-## Listener 和 activity signal
+#### `ArtifactOptions`
 
-独立监听任务通过 `listen()` 声明。
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `alive` | `boolean` | 是否在目标被替换后尝试重新挂载 |
+| `scope` | `'local' \| 'global'` | alive 观察范围 |
+| `timeout` | `number` | 等待目标元素的毫秒数 |
+| `on` | `MakooListenerDeclaration` | 随 component 一起注册的事件监听 |
+| `hooks` | `LifecycleHookMap` | 当前任务的生命周期 hooks |
+
+### Returns
+
+返回 `MakooInjectionDeclaration<TArtifact>`。
+
+### Example
 
 ```ts
-import { createActivityStore, createMakoo, listen } from '@makoojs/core';
-
-const enabled = createActivityStore(true);
-const makoo = createMakoo();
-
-makoo.start([
-	listen(
-		'#save',
-		'click',
-		() => {
-			console.log('save clicked');
-		},
-		{
-			activitySignal: () => enabled
-		}
-	)
-]);
-
-enabled.set(false);
-enabled.set(true);
+const declaration = inject({
+	id: 'settings-panel',
+	injectAt: '#settings',
+	artifact: settingsPanel,
+	options: {
+		alive: true,
+		scope: 'global'
+	}
+});
 ```
 
-## 观察事件
+## `listen()`
 
-core 会在声明注册、启动、挂载、监听、alive 模式、DOM 观察和任务状态变化时发出观察事件。
+创建 listener 任务声明。调用 `listen()` 不会注册或启动任务，返回值需要传给
+`MakooRuntime.start()`，或者作为 `ArtifactOptions.on` 使用。
+
+### Type
 
 ```ts
-const off = makoo.on('artifact:mountSuccess', (event) => {
-	console.log(event.taskId, event.injectAt);
-});
+function listen(input: MakooListenerInput): MakooListenerDeclaration;
+```
 
-makoo.onAny((event, ctrl) => {
-	if (event.name === 'artifact:mountFail') {
-		ctrl.stopPropagation();
-	}
+### Parameters
+
+```ts
+type MakooListenerInput = {
+	id?: string;
+	listenAt: string;
+	type: string;
+	callback: EventListener;
+	activitySignal?: () => ActivitySignalSource<boolean>;
+};
+```
+
+`id` 省略时，运行时使用 `listener-${listenAt}-${type}` 作为任务 ID。
+
+### Returns
+
+返回 `MakooListenerDeclaration`。它可以作为独立任务启动，也可以赋给 `ArtifactOptions.on`。
+
+### Example
+
+```ts
+const declaration = listen({
+	id: 'escape-close',
+	listenAt: 'body',
+	type: 'keydown',
+	callback: onEscape
+});
+```
+
+## `createObserverHub()`
+
+创建事件中心。`logger` 默认使用 `new Logger()`。
+
+### Type
+
+```ts
+function createObserverHub(logger?: ILogger): ObserverHub;
+```
+
+### Parameters
+
+- `logger`：可选的 `ILogger`。省略时创建 `Logger`。
+
+### Returns
+
+返回 `ObserverHub`：
+
+| 方法 | 返回值 | 说明 |
+| --- | --- | --- |
+| `on(event, hook)` | `() => void` | 注册指定事件的 hook |
+| `onTask(taskId, event, hook)` | `() => void` | 注册指定任务的 hook |
+| `onAny(hook)` | `() => void` | 注册接收全部事件的 hook |
+| `off(event, hook?)` | `void` | 移除指定事件的 hook |
+| `offTask(taskId, event?, hook?)` | `void` | 移除指定任务的 hook |
+| `offAny(hook)` | `void` | 移除一个全局 hook |
+| `clear()` | `void` | 移除全部 hook |
+| `hasHooks(event?)` | `boolean` | 检查全部或指定事件是否存在 hook |
+| `emit(event)` | `void` | 发出事件 |
+| `emitOnTask(taskId, event)` | `void` | 为指定任务发出事件 |
+
+任务事件的调用顺序是：任务 hook、同名事件 hook、`onAny()` hook。
+`stopPropagation()` 会阻止进入下一层；`stopImmediatePropagation()` 还会停止当前层剩余 hook。
+某个 hook 抛出异常时，异常会写入 logger，其他 hook 继续执行。
+
+### Example
+
+```ts
+const observer = createObserverHub();
+const off = observer.on('artifact:mountSuccess', (event) => {
+	console.log(event.taskId);
 });
 
 off();
 ```
 
-常见事件包括：
+## `createActivityStore()`
 
-- `register:start`
-- `register:success`
-- `start:requested`
-- `start:taskScheduled`
-- `artifact:mountStart`
-- `artifact:mountSuccess`
-- `artifact:mountFail`
-- `listener:attached`
-- `alive:enabled`
-- `alive:observerStarted`
-- `task:statusChange`
-- `dom:targetFound`
-- `dom:targetTimeout`
+创建一个可读取、订阅和修改的状态对象。
 
-完整事件名列表可从 `OBSERVE_EVENT_NAMES` 获取。
+### Type
 
-## DOMWatcher
+```ts
+function createActivityStore<T>(initialValue: T): {
+	get(): T;
+	subscribe(listener: (value: T) => void): SignalUnsubscribe;
+	set(value: T): void;
+	update(updater: (value: T) => T): void;
+};
+```
 
-`DOMWatcher` 是 core 的底层 DOM 观察工具。通常你不需要直接使用它，因为 `makoo.start()` 和 alive 模式已经封装了目标等待和恢复逻辑。
+### Parameters
 
-## 日志和错误
+- `initialValue`：状态的初始值。
 
-core 默认使用 `Logger`，并用 `[Makoo]` 前缀打印日志。你可以通过 `createMakoo({ logger })` 传入自定义 logger。
+### Returns
 
-core 也导出这些错误相关类型：
+返回包含 `get()`、`subscribe()`、`set()` 和 `update()` 的状态对象。
 
-- `MakooError`
-- `AdapterError`
-- `TaskError`
-- `ErrorCode`
-- `MakooIssue`
+### Details
 
-## Public Exports 概览
+`set()` 或 `update()` 产生的新值与当前值通过 `Object.is()` 比较；值没有变化时不会通知订阅者。
 
-| 分类 | 代表导出 |
+### Example
+
+```ts
+const active = createActivityStore(true);
+const unsubscribe = active.subscribe((value) => {
+	console.log(value);
+});
+
+active.set(false);
+active.update((value) => !value);
+unsubscribe();
+```
+
+## `DOMWatcher`
+
+### `DOMWatcher.onDomReady()`
+
+立即查找匹配元素，并通过 `MutationObserver` 监听后续新增元素。
+
+#### Type
+
+```ts
+DOMWatcher.onDomReady(
+	selector: string,
+	callback: (element: HTMLElement, observer?: MutationObserver) => void,
+	root: Document | HTMLElement = document,
+	options: { once: boolean; timeout?: number } | { once?: boolean; timeout: number },
+	runtime?: {
+		logger: ILogger;
+		emit: (name:
+			| 'dom:targetFound'
+			| 'dom:targetTimeout'
+			| 'dom:targetRemoved'
+			| 'dom:targetRestored'
+		) => void;
+	}
+): () => void;
+```
+
+#### Details
+
+- 找到元素时调用 `callback`。
+- `once: true` 会在首次找到元素后停止观察。
+- 设置 `timeout` 后，超时会停止观察。
+- 返回值用于手动停止观察。
+
+### `DOMWatcher.onDomAlive()`
+
+监听 `target` 被移除，并在 `selector` 对应的新元素出现时调用 `onRestore`。
+
+#### Type
+
+```ts
+DOMWatcher.onDomAlive(
+	target: HTMLElement,
+	selector: string,
+	onRemove: () => void,
+	onRestore: (element: HTMLElement, observer?: MutationObserver) => void,
+	root: Document | HTMLElement = document,
+	options: { once: boolean; timeout?: number } | { once?: boolean; timeout: number },
+	runtime?: {
+		logger: ILogger;
+		emit: (name:
+			| 'dom:targetFound'
+			| 'dom:targetTimeout'
+			| 'dom:targetRemoved'
+			| 'dom:targetRestored'
+		) => void;
+	}
+): () => void;
+```
+
+#### Returns
+
+返回一个停止函数，用于停止移除和恢复观察。
+
+## `Logger`
+
+Makoo 默认提供的日志实现。
+
+### Type
+
+```ts
+class Logger implements ILogger {
+	static readonly PREFIX = '[Makoo]';
+
+	constructor(level?: LoggerLevel);
+	setLevel(level: LoggerLevel): void;
+	getLevel(): LoggerLevel;
+	log(level: LoggerLevel, message: string, ...args: unknown[]): void;
+	debug(message: string, ...args: unknown[]): void;
+	info(message: string, ...args: unknown[]): void;
+	warn(message: string, ...args: unknown[]): void;
+	error(message: string, ...args: unknown[]): void;
+}
+```
+
+默认日志等级为 `info`。等级顺序为 `debug`、`info`、`warn`、`error`；低于当前等级的日志不会输出。
+
+## 错误类
+
+### `MakooError`
+
+```ts
+class MakooError extends Error {
+	readonly code: string;
+	readonly issues: MakooIssue[];
+	override readonly cause?: Error;
+
+	constructor(
+		message: string,
+		issues?: MakooIssue[],
+		code?: string,
+		cause?: Error
+	);
+}
+```
+
+`message` 会添加 `[makoo]` 前缀，并包含 `issues` 和 `cause` 错误链。
+
+### `AdapterError`
+
+```ts
+class AdapterError extends MakooError;
+```
+
+默认错误码：`ErrorCode.ADAPTER_NOT_FOUND`。
+
+### `SignalError`
+
+```ts
+class SignalError extends MakooError;
+```
+
+默认错误码：`ErrorCode.TASK_SIGNAL_INVALID`。
+
+### `TaskError`
+
+```ts
+class TaskError extends MakooError;
+```
+
+默认错误码：`ErrorCode.TASK_NO_REGISTERED`。
+
+## 常量
+
+### `Action`
+
+```ts
+enum Action {
+	OPEN = 'OPEN',
+	CLOSE = 'CLOSE'
+}
+
+type ActionEvent = `${Action}`;
+```
+
+### `OBSERVE_EVENT_NAMES`
+
+```ts
+const OBSERVE_EVENT_NAMES = [
+	'register:start',
+	'register:success',
+	'register:duplicate',
+	'register:error',
+	'start:requested',
+	'start:taskScheduled',
+	'start:taskSkipped',
+	'artifact:mountStart',
+	'artifact:mountSuccess',
+	'artifact:mountFail',
+	'listener:attached',
+	'listener:detached',
+	'listener:attachFail',
+	'alive:enabled',
+	'alive:disabled',
+	'alive:observerStarted',
+	'alive:observerStopped',
+	'task:targetReady',
+	'task:statusChange',
+	'task:beforeReset',
+	'task:afterReset',
+	'task:beforeDestroy',
+	'task:afterDestroy',
+	'signal:watcherReleased',
+	'resource:listenerReleased',
+	'artifact:unmounted',
+	'dom:targetFound',
+	'dom:targetTimeout',
+	'dom:targetRemoved',
+	'dom:targetRestored'
+] as const;
+```
+
+### `ErrorCode`
+
+| 字段 | 值 |
 | --- | --- |
-| 运行时 API | `createMakoo`, `inject`, `listen`, `MakooRuntime`, `StartedTasks` |
-| Adapter 协议 | `MountAdapter`, `ResolvableMountAdapter`, `AdapterMountInput`, `AdapterUnmountInput`, `MakooContext` |
-| 生命周期观察 | `ObserverHub`, `OBSERVE_EVENT_NAMES`, `ObserveEvent`, `ObserveHook`, `LifecycleHookMap` |
-| DOM 观察 | `DOMWatcher` |
-| 监听 signal | `createActivityStore`, `ActivitySignalSource` |
-| 日志 | `Logger`, `ILogger`, `LoggerLevel` |
-| 错误 | `MakooError`, `AdapterError`, `TaskError`, `ErrorCode` |
+| `UNKNOWN` | `MAKOO_UNKNOWN` |
+| `ADAPTER_NOT_FOUND` | `MAKOO_ADAPTER_NOT_FOUND` |
+| `ADAPTER_MOUNT_FAIL` | `MAKOO_ADAPTER_MOUNT_FAIL` |
+| `ADAPTER_UNMOUNT_FAIL` | `MAKOO_ADAPTER_UNMOUNT_FAIL` |
+| `TASK_NO_REGISTERED` | `MAKOO_TASK_NO_REGISTERED` |
+| `TASK_NOT_FOUND` | `MAKOO_TASK_NOT_FOUND` |
+| `TASK_INJECT_FAIL` | `MAKOO_TASK_INJECT_FAIL` |
+| `TASK_ALREADY_MOUNTED` | `MAKOO_TASK_ALREADY_MOUNTED` |
+| `TASK_TARGET_DETACHED` | `MAKOO_TASK_TARGET_DETACHED` |
+| `TASK_LISTENER_ATTACH_FAIL` | `MAKOO_TASK_LISTENER_ATTACH_FAIL` |
+| `TASK_SIGNAL_INVALID` | `MAKOO_TASK_SIGNAL_INVALID` |
+| `TASK_SIGNAL_BIND_FAIL` | `MAKOO_TASK_SIGNAL_BIND_FAIL` |
+| `CLI_SOURCE_DIR_NOT_FOUND` | `MAKOO_CLI_SOURCE_DIR_NOT_FOUND` |
+| `CLI_MANIFEST_LOAD_FAIL` | `MAKOO_CLI_MANIFEST_LOAD_FAIL` |
+| `CLI_MODULE_MANIFEST_LOAD_FAIL` | `MAKOO_CLI_MODULE_MANIFEST_LOAD_FAIL` |
+| `CLI_MANIFEST_NOT_FOUND` | `MAKOO_CLI_MANIFEST_NOT_FOUND` |
+| `CLI_MANIFEST_BINDING_NOT_FOUND` | `MAKOO_CLI_MANIFEST_BINDING_NOT_FOUND` |
+| `CLI_MANIFEST_IMPORT_NOT_FOUND` | `MAKOO_CLI_MANIFEST_IMPORT_NOT_FOUND` |
+| `CLI_FUNCTION_SERIALIZATION_UNSUPPORTED` | `MAKOO_CLI_FUNCTION_SERIALIZATION_UNSUPPORTED` |
+| `CLI_NO_ENABLED_TASKS` | `MAKOO_CLI_NO_ENABLED_TASKS` |
+| `CLI_COMPONENT_NOT_FOUND` | `MAKOO_CLI_COMPONENT_NOT_FOUND` |
+| `CLI_CONFIG_INVALID` | `MAKOO_CLI_CONFIG_INVALID` |
+| `CLI_UNKNOWN_FRAMEWORK` | `MAKOO_CLI_UNKNOWN_FRAMEWORK` |
+| `CLI_UNSUPPORTED_FRAMEWORK` | `MAKOO_CLI_UNSUPPORTED_FRAMEWORK` |
+| `CLI_MODULE_ALREADY_EXISTS` | `MAKOO_CLI_MODULE_ALREADY_EXISTS` |
+| `CLI_MANIFEST_VALIDATION_FAIL` | `MAKOO_CLI_MANIFEST_VALIDATION_FAIL` |
+| `CLI_VITE_CONFIG_NOT_FOUND` | `MAKOO_CLI_VITE_CONFIG_NOT_FOUND` |
+| `CLI_PLUGIN_NOT_FOUND` | `MAKOO_CLI_PLUGIN_NOT_FOUND` |
+| `CLI_RUNTIME_SETUP_NOT_FOUND` | `MAKOO_CLI_RUNTIME_SETUP_NOT_FOUND` |
+
+## Adapter 类型
+
+### `MountAdapter`
+
+```ts
+interface MountAdapter<TArtifact = unknown, THandle = unknown, TInstance = unknown> {
+	name: string;
+	mount(input: AdapterMountInput<TArtifact>): AdapterMountResult<THandle, TInstance>;
+	unmount(input: AdapterUnmountInput<THandle>): void;
+}
+```
+
+### `ResolvableMountAdapter`
+
+```ts
+interface ResolvableMountAdapter<TArtifact = unknown, THandle = unknown, TInstance = unknown>
+	extends MountAdapter<TArtifact, THandle, TInstance> {
+	matches(artifact: unknown): artifact is TArtifact;
+}
+```
+
+### `AdapterMountInput`
+
+| 字段 | 类型 |
+| --- | --- |
+| `host` | `HTMLElement` |
+| `mountPoint` | `HTMLElement` |
+| `artifact` | `TArtifact` |
+| `taskId` | `string` |
+| `injectAt` | `string` |
+| `makoo` | `MakooContext` |
+
+### `AdapterMountResult`
+
+```ts
+type AdapterMountResult<THandle = unknown, TInstance = unknown> = {
+	handle: THandle;
+	instance?: TInstance;
+};
+```
+
+### `AdapterUnmountInput`
+
+| 字段 | 类型 |
+| --- | --- |
+| `host` | `HTMLElement \| undefined` |
+| `mountPoint` | `HTMLElement` |
+| `handle` | `THandle` |
+| `taskId` | `string` |
+| `injectAt` | `string` |
+| `reason` | `AdapterUnmountReason` |
+
+```ts
+type AdapterUnmountReason = 'destroy' | 'reset' | 'remount' | 'manual';
+type AdapterResolver = (artifact: unknown) => MountAdapter | undefined;
+```
+
+### `MakooContext`
+
+```ts
+type MakooContext = {
+	taskId: string;
+	injectAt: string;
+	enableAlive(): void;
+	disableAlive(): void;
+	reset(): void;
+	destroy(): void;
+	on(event: ObserveEventName, hook: ObserveHook): () => void;
+	onTask(event: ObserveEventName, hook: ObserveHook): () => void;
+	off(event: ObserveEventName, hook?: ObserveHook): void;
+	offTask(event?: ObserveEventName, hook?: ObserveHook): void;
+	getLogger(): ILogger;
+	bindListenerSignal(source: ActivitySignalSource<boolean>): boolean;
+	controlListener(event: ActionEvent): boolean;
+};
+```
+
+## 任务类型
+
+```ts
+type MakooDefaults = {
+	alive: boolean;
+	scope: 'local' | 'global';
+	timeout: number;
+};
+
+type MakooInjectionDeclaration<TArtifact = unknown> = {
+	kind: 'component';
+	id?: string;
+	injectAt: string;
+	artifact: TArtifact;
+	options?: ArtifactOptions;
+};
+
+type MakooListenerDeclaration = {
+	kind: 'listener';
+	id?: string;
+	listenAt: string;
+	event: string;
+	type: string;
+	callback: EventListener;
+	activitySignal?: () => ActivitySignalSource<boolean>;
+};
+
+type MakooTaskDeclaration<TArtifact = unknown> =
+	| MakooInjectionDeclaration<TArtifact>
+	| MakooListenerDeclaration;
+```
+
+### `StartedTasks`
+
+```ts
+type StartedComponentTask = {
+	kind: 'component';
+	taskId: string;
+	enableAlive(): void;
+	disableAlive(): void;
+	reset(): void;
+	destroy(): void;
+};
+
+type StartedListenerTask = {
+	kind: 'listener';
+	taskId: string;
+	open(): boolean;
+	close(): boolean;
+	destroy(): void;
+};
+
+type StartedTask = StartedComponentTask | StartedListenerTask;
+
+type StartedTasks = {
+	tasks: StartedTask[];
+	get(taskId: string): StartedTask | undefined;
+	resetAll(): void;
+	destroyAll(): void;
+};
+```
+
+`StartedTasks.resetAll()` 和 `StartedTasks.destroyAll()` 只操作当前 `start()` 返回的任务批次。
+
+### `InjectionConfig`
+
+```ts
+type InjectionConfig = MakooDefaults & {
+	logger: ILogger;
+	observer?: ObserverHub;
+	hooks?: LifecycleHookMap;
+};
+```
+
+## 观察类型
+
+```ts
+type ObserveEventName = (typeof OBSERVE_EVENT_NAMES)[number];
+
+type ObserveEvent = {
+	name: ObserveEventName;
+	ts: number;
+	taskId?: string;
+	kind?: 'component' | 'listener';
+	injectAt?: string;
+	status?: 'idle' | 'pending' | 'active';
+	durationMs?: number;
+	error?: unknown;
+	preStatus?: 'idle' | 'pending' | 'active';
+	meta?: Record<string, unknown>;
+};
+
+type ObserveHook = (
+	event: ObserveEvent,
+	ctrl: {
+		stopPropagation(): void;
+		stopImmediatePropagation(): void;
+	}
+) => void;
+
+type LifecycleHookMap = Partial<
+	Record<ObserveEventName, ObserveHook | ObserveHook[]>
+>;
+```
+
+## Signal 类型
+
+```ts
+type SignalUnsubscribe = (() => void) | { unsubscribe(): void };
+
+type ActivitySignalSource<T = boolean> = {
+	get(): T;
+	subscribe(listener: (value: T) => void): SignalUnsubscribe;
+};
+
+type ActivitySignalSubscribable<T = boolean> = ActivitySignalSource<T>;
+```
+
+## 日志类型
+
+```ts
+type LoggerLevel = 'debug' | 'info' | 'warn' | 'error';
+
+interface ILogger {
+	info(message: string, ...args: unknown[]): void;
+	warn(message: string, ...args: unknown[]): void;
+	error(message: string, ...args: unknown[]): void;
+	debug(message: string, ...args: unknown[]): void;
+}
+```
+
+## 错误类型
+
+```ts
+type MakooIssue = {
+	path: string;
+	message: string;
+};
+
+type ErrorCodeValue = (typeof ErrorCode)[keyof typeof ErrorCode];
+```

@@ -2,7 +2,10 @@ import { existsSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { DEFAULT_SOURCE_DIR } from '../config/defaults';
-import { ModuleAlreadyExistsError, UnsupportedFrameworkGenerationError } from '../error/error';
+import {
+	ModuleAlreadyExistsError,
+	UnsupportedFrameworkGenerationError
+} from '../error/MakooCliError';
 import { getExtName, moduleTemplate, updateManifest } from './_util';
 
 export async function addCommand(moduleName: string, framework: string): Promise<void> {

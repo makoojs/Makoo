@@ -28,7 +28,7 @@ describe('scanner', () => {
 		expect(err.message).toContain('No manifest found');
 	});
 
-	it('throws CLI_NO_ENABLED_INJECTIONS when all injections are disabled', async () => {
+	it('throws CLI_NO_ENABLED_TASKS when all injections are disabled', async () => {
 		const root = await trackProject({
 			'injections/manifest.ts': `
 				export default {
@@ -48,8 +48,36 @@ describe('scanner', () => {
 
 		const err = await withCwd(root, () => scanner(config)).catch((e) => e);
 		expect(err).toBeInstanceOf(MakooError);
-		expect((err as MakooError).code).toBe(ErrorCode.CLI_NO_ENABLED_INJECTIONS);
-		expect(err.message).toContain('No enabled injections');
+		expect((err as MakooError).code).toBe(ErrorCode.CLI_NO_ENABLED_TASKS);
+		expect(err.message).toContain('No enabled tasks');
+	});
+
+	it('throws CLI_NO_ENABLED_TASKS when all listeners are disabled', async () => {
+		const root = await trackProject({
+			'injections/manifest.ts': `
+				export default {
+					listeners: {
+						disabledListener: {
+							listenAt: 'body',
+							type: 'click',
+							callback: () => undefined,
+							enabled: false
+						}
+					}
+				};
+			`
+		});
+		const config = resolveConfig(
+			{
+				app: { name: 'all-listeners-disabled', version: '0.0.1' }
+			},
+			root
+		);
+
+		const err = await withCwd(root, () => scanner(config)).catch((e) => e);
+		expect(err).toBeInstanceOf(MakooError);
+		expect((err as MakooError).code).toBe(ErrorCode.CLI_NO_ENABLED_TASKS);
+		expect(err.message).toContain('No enabled tasks');
 	});
 
 	it('supports record manifest, module fallback names, overrides and source filters', async () => {
@@ -59,16 +87,34 @@ describe('scanner', () => {
 					injectionDefaults: { timeout: 777 },
 					injections: {
 						fromManifest: { injectAt: 'body', component: './fromManifest/index.tsx', framework: 'React' },
-						overridden: { injectAt: '#old', component: './overridden/old.tsx', framework: 'React', timeout: 1 }
+						overridden: {
+							injectAt: '#old',
+							component: './overridden/old.tsx',
+							framework: 'React',
+							timeout: 1,
+							on: {
+								listenAt: 'body',
+								type: 'click',
+								callback: () => 'root'
+							}
+						}
 					}
 				};
 			`,
 			'injections/fromManifest/index.tsx':
 				'export default function FromManifest() { return null; }',
 			'injections/overridden/manifest.ts': `
-				import { selector } from './selector';
-				export default { injectAt: '#new', component: './index.tsx', framework: 'Vue', alive: true };
-			`,
+					import { selector } from './selector';
+					export default {
+						injectAt: selector,
+						component: './index.tsx',
+						framework: 'Vue',
+						alive: true,
+						hooks: {
+							'artifact:mountSuccess': () => undefined
+						}
+					};
+				`,
 			'injections/overridden/selector.ts': "export const selector = '#new';",
 			'injections/overridden/index.tsx': 'export default { name: "Overridden" };',
 			'injections/includedOnly/manifest.ts': `
@@ -120,7 +166,13 @@ describe('scanner', () => {
 			injectAt: '#new',
 			framework: 'Vue',
 			alive: true,
-			timeout: 777
+			timeout: 1,
+			hooks: {
+				'artifact:mountSuccess': expect.any(Function)
+			},
+			on: {
+				callback: expect.any(Function)
+			}
 		});
 		expect(modules.overridden.moduleManifestFile).toBe(
 			path.join(root, 'injections/overridden/manifest.ts')
@@ -129,8 +181,230 @@ describe('scanner', () => {
 		expect(result.moduleManifestDependencies).toEqual([
 			path.join(root, 'injections/overridden/selector.ts')
 		]);
+		expect(result.manifestBindings).toEqual({
+			injections: {
+				fromManifest: {},
+				includedOnly: {},
+				overridden: {
+					hooks: {
+						manifestFile: path.join(root, 'injections/overridden/manifest.ts'),
+						valuePath: ['hooks']
+					},
+					on: {
+						callback: {
+							manifestFile: path.join(root, 'injections/manifest.ts'),
+							valuePath: ['injections', 'overridden', 'on', 'callback']
+						}
+					}
+				}
+			},
+			listeners: {}
+		});
 		expect(modules.skipMe).toBeUndefined();
 		expect(result.frameworks).toEqual(['React', 'Vue']);
+	});
+
+	it('scans enabled listeners from a listener-only manifest', async () => {
+		const root = await trackProject({
+			'injections/listenerCallbacks.ts': `
+				export const onEscape = () => undefined;
+				export const onResize = () => undefined;
+			`,
+			'injections/manifest.ts': `
+				import { onEscape, onResize } from './listenerCallbacks';
+				export default {
+					listeners: {
+						resizeWindow: {
+							listenAt: 'body',
+							type: 'resize',
+							callback: onResize,
+							match: ['https://example.com/*']
+						},
+						disabledListener: {
+							listenAt: 'body',
+							type: 'click',
+							callback: onEscape,
+							enabled: false
+						},
+						escapeClose: {
+							listenAt: 'body',
+							type: 'keydown',
+							callback: onEscape
+						}
+					}
+				};
+			`
+		});
+		const config = resolveConfig(
+			{
+				app: { name: 'listener-only', version: '0.0.1' }
+			},
+			root
+		);
+
+		const result = await withCwd(root, () => scanner(config));
+
+		expect(result.injections).toEqual([]);
+		expect(result.listeners.map((listener) => listener.listenerId)).toEqual([
+			'escapeClose',
+			'resizeWindow'
+		]);
+		expect(result.listeners[0]).toMatchObject({
+			listenerId: 'escapeClose',
+			listenAt: 'body',
+			type: 'keydown',
+			callback: expect.any(Function),
+			enabled: true
+		});
+		expect(result.listeners[1]).toMatchObject({
+			listenerId: 'resizeWindow',
+			listenAt: 'body',
+			type: 'resize',
+			callback: expect.any(Function),
+			enabled: true,
+			match: {
+				include: ['https://example.com/*']
+			}
+		});
+		expect(result.manifestDependencies).toEqual([
+			path.join(root, 'injections/listenerCallbacks.ts')
+		]);
+		expect(result.manifestBindings).toEqual({
+			injections: {},
+			listeners: {
+				escapeClose: {
+					callback: {
+						manifestFile: path.join(root, 'injections/manifest.ts'),
+						valuePath: ['listeners', 'escapeClose', 'callback']
+					}
+				},
+				resizeWindow: {
+					callback: {
+						manifestFile: path.join(root, 'injections/manifest.ts'),
+						valuePath: ['listeners', 'resizeWindow', 'callback']
+					}
+				}
+			}
+		});
+		expect(result.frameworks).toEqual([]);
+	});
+
+	it.each(['document', 'window'])('rejects the global listener target %s', async (listenAt) => {
+		const root = await trackProject({
+			'injections/manifest.ts': `
+				export default {
+					listeners: {
+						globalListener: {
+							listenAt: '${listenAt}',
+							type: 'click',
+							callback: () => undefined
+						}
+					}
+				};
+			`
+		});
+		const config = resolveConfig(
+			{
+				app: { name: 'unsupported-listener-target', version: '0.0.1' }
+			},
+			root
+		);
+
+		const err = await withCwd(root, () => scanner(config)).catch((error) => error);
+
+		expect(err).toBeInstanceOf(MakooError);
+		expect((err as MakooError).code).toBe(ErrorCode.CLI_SELECTOR_TARGET_UNSUPPORTED);
+		expect((err as MakooError).issues).toEqual([
+			{
+				path: 'listeners.globalListener.listenAt',
+				message: 'must be a CSS selector; document and window are not supported'
+			}
+		]);
+	});
+
+	it.each(['document', 'window'])('rejects the injection target %s', async (injectAt) => {
+		const root = await trackProject({
+			'injections/manifest.ts': `
+				export default {
+					injections: {
+						panel: {
+							injectAt: '${injectAt}',
+							component: './panel.tsx',
+							framework: 'React'
+						}
+					}
+				};
+			`,
+			'injections/panel.tsx': 'export default function Panel() { return null; }'
+		});
+		const config = resolveConfig(
+			{
+				app: { name: 'unsupported-injection-target', version: '0.0.1' }
+			},
+			root
+		);
+
+		const err = await withCwd(root, () => scanner(config)).catch((error) => error);
+
+		expect(err).toBeInstanceOf(MakooError);
+		expect((err as MakooError).code).toBe(ErrorCode.CLI_SELECTOR_TARGET_UNSUPPORTED);
+		expect((err as MakooError).issues).toEqual([
+			{
+				path: 'injections.panel.injectAt',
+				message: 'must be a CSS selector; document and window are not supported'
+			}
+		]);
+	});
+
+	it('preserves array source indexes after sorting tasks', async () => {
+		const root = await trackProject({
+			'injections/manifest.ts': `
+					export default {
+						injections: [
+							{ name: 'zeta', injectAt: '#zeta', component: './zeta/index.tsx', framework: 'React' },
+							{ name: 'alpha', injectAt: '#alpha', component: './alpha/index.tsx', framework: 'React' }
+						],
+						listeners: [
+							{ name: 'zeta-listener', listenAt: 'body', type: 'click', callback: () => undefined },
+							{ name: 'alpha-listener', listenAt: 'body', type: 'keydown', callback: () => undefined }
+						]
+					};
+				`,
+			'injections/zeta/index.tsx': 'export default function Zeta() { return null; }',
+			'injections/alpha/index.tsx': 'export default function Alpha() { return null; }'
+		});
+		const config = resolveConfig(
+			{
+				app: { name: 'array-bindings', version: '0.0.1' }
+			},
+			root
+		);
+
+		const result = await withCwd(root, () => scanner(config));
+
+		expect(result.injections.map((injection) => injection.moduleId)).toEqual(['alpha', 'zeta']);
+		expect(result.listeners.map((listener) => listener.listenerId)).toEqual([
+			'alpha-listener',
+			'zeta-listener'
+		]);
+		expect(result.manifestBindings.injections).toEqual({
+			zeta: {},
+			alpha: {}
+		});
+		expect(result.manifestBindings.listeners).toEqual({
+			'zeta-listener': {
+				callback: {
+					manifestFile: path.join(root, 'injections/manifest.ts'),
+					valuePath: ['listeners', 0, 'callback']
+				}
+			},
+			'alpha-listener': {
+				callback: {
+					manifestFile: path.join(root, 'injections/manifest.ts'),
+					valuePath: ['listeners', 1, 'callback']
+				}
+			}
+		});
 	});
 
 	it('uses Makoo defaults when manifest does not define injectionDefaults', async () => {

@@ -15,7 +15,7 @@ structure changes visible during development.
 | --- | --- |
 | Vue or React component file changes | Handled by Vite framework HMR |
 | Top-level `injections/manifest.ts` changes | Makoo rescans and updates the virtual entry |
-| Local dependency imported by the top-level manifest changes | Makoo rescans and updates the virtual entry |
+| Local hooks, callbacks, activity signals, or files they import change | Makoo rescans and updates the virtual entry |
 | Module-level `injections/<module>/manifest.ts` changes | Makoo rescans and updates the virtual entry |
 | Module-level manifest is added or removed | Makoo rescans and updates the virtual entry |
 | `runtime.setup` file changes | Makoo rescans and updates the virtual entry |
@@ -32,8 +32,8 @@ include:
 - changing a module's `injectAt`
 - changing a module's `component`
 - toggling `enabled`
-- changing `match`, `alive`, `scope`, `timeout`, or `hooks`
-- changing a local helper imported by a manifest
+- changing `match`, `alive`, `scope`, `timeout`, `hooks`, callbacks, or `activitySignal`
+- changing a local file imported by a manifest
 - changing a `runtime.setup` file
 
 When Makoo detects a structural update, it rescans the project, invalidates the virtual
@@ -60,10 +60,11 @@ Makoo tracks local static imports from manifest and setup files.
 
 ```ts
 // injections/manifest.ts
+import { defineInjections } from '@makoojs/cli/manifest';
 import { profileHooks } from './profile-hooks';
 
 export default defineInjections({
-	globalInjector: {
+	injectionDefaults: {
 		hooks: profileHooks
 	},
 	injections: {
@@ -78,6 +79,9 @@ export default defineInjections({
 Changing `profile-hooks.ts` triggers a structural update because it is a local dependency of
 the manifest.
 
+`profileHooks` can use variables from its file and functions imported from other files; those
+files are bundled with the userscript.
+
 Makoo does not track every possible dependency shape. Prefer static relative imports for
 manifest and setup dependencies:
 
@@ -85,12 +89,11 @@ manifest and setup dependencies:
 import { hooks } from './hooks';
 ```
 
-Makoo is still early, and dependency tracking is intentionally limited for now. Try not to
-rely on structural HMR for:
+Structural dependency tracking does not cover:
 
 - dynamic `import()` in a manifest dependency chain
 - path aliases that Makoo cannot resolve as local files
-- third-party packages imported by manifest helpers
+- third-party packages imported by a manifest
 
 If those dependencies affect the generated runtime, restart the dev server after changing
 them.
@@ -117,7 +120,7 @@ is available. Common causes include:
 - invalid manifest shape
 - missing component file
 - unknown component framework extension
-- no enabled injections after filtering
+- no enabled tasks (injections or listeners) after filtering
 - missing `runtime.setup` file
 
 Fix the manifest or setup file and save again; Makoo will try to rescan on the next relevant
@@ -131,7 +134,7 @@ when you change something outside Makoo's structural watch model, such as:
 - installing or upgrading dependencies
 - changing Vite plugins
 - changing unsupported `vite-plugin-monkey` integration details
-- relying on a third-party helper imported by a manifest dependency
+- importing a third-party package that affects the generated result
 - editing files reached only through dynamic imports or unresolved aliases
 
 The rule of thumb: if the change affects Vite itself, package resolution, or dependencies

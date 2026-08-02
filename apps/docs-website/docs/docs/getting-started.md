@@ -63,6 +63,7 @@ A React project uses the same shape, with `app.tsx` and a module stylesheet:
 
 The important directory is `injections/`. Makoo scans this area, reads the manifest, and
 generates the runtime entry that registers your modules.
+You do not need to create or maintain a `main.ts` entry file.
 
 ## Configure The Userscript
 
@@ -103,7 +104,7 @@ injection modules there.
 The generated manifest registers a single `hello-world` module:
 
 ```ts
-import { defineInjections } from '@makoojs/cli';
+import { defineInjections } from '@makoojs/cli/manifest';
 
 export default defineInjections({
 	injections: {

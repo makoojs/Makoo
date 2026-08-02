@@ -1,6 +1,7 @@
 ---
 name: makoo-best-practices
-description: Use when building, reviewing, or refactoring Makoo-powered userscript projects and an agent needs high-level Makoo best practices for injection modules, manifests, framework components, adapters, DOM mounting, HMR boundaries, Vue plugin setup, and structural changes.
+description: Use when building, reviewing, or refactoring Makoo-powered userscript projects and an agent needs high-level guidance for automatic virtual entries, browser-safe manifests, injection modules, standalone listeners, runtime callbacks, framework adapters, DOM mounting, HMR boundaries, Vue plugin setup, or structural changes.
+license: MIT
 ---
 
 # Makoo Best Practices
@@ -12,6 +13,14 @@ Do not use this skill for developing the Makoo framework/monorepo itself; use th
 ## Core Rule
 
 Makoo owns the injection lifecycle. A Makoo project should describe what to inject with manifests and implement the UI with framework components. It should not hand-roll the main injection pipeline.
+
+The CLI owns the automatic startup path:
+
+```txt
+scanner -> generator -> virtual entry -> Vite
+```
+
+Do not add a required `main.ts` merely to import or mount the manifest. Makoo scans manifests, generates the runtime entry, registers tasks, and starts them automatically. Introduce a manual entry only when the user explicitly chooses a different application architecture.
 
 Prefer this shape:
 
@@ -40,7 +49,7 @@ Use `defineInjections()` in `injections/manifest.ts` for top-level module regist
 Good:
 
 ```ts
-import { defineInjections } from '@makoojs/cli';
+import { defineInjections } from '@makoojs/cli/manifest';
 
 export default defineInjections({
 	injections: {
@@ -53,6 +62,25 @@ export default defineInjections({
 ```
 
 Avoid manually creating a separate userscript runtime entry just to query the DOM and mount React/Vue. Let Makoo generate the runtime entry from the manifest.
+
+Use `defineInjection()` from the same browser-safe subpath for a module-level manifest. Import manifest-facing types from `@makoojs/cli/manifest` as well. Keep manifest helpers out of the main CLI entry so the browser dependency boundary stays explicit.
+
+## Keep Manifests Browser Safe
+
+A manifest participates in two environments:
+
+- Node build time, where Makoo loads it to validate config, resolve paths, and scan dependencies.
+- Browser bundle time, where the generated virtual entry imports it to obtain the real hooks, callbacks, and activity signals.
+
+Keep the manifest and every runtime dependency reachable from it safe in both environments:
+
+- Keep top-level evaluation declarative and free of application side effects.
+- Do not import `node:fs`, `node:path`, or other Node-only modules from the manifest runtime graph.
+- Use dependencies that Vite can bundle for the browser.
+- Use static relative imports for local hooks, callbacks, signals, and their helper chains.
+- Do not use dynamic imports or path aliases when Makoo must track a manifest dependency structurally.
+
+Makoo passes these functions through manifest-module references. Closures and imported helpers are preserved by Vite as long as the dependency graph remains browser-safe.
 
 ## Keep Manifest Declarative
 
@@ -68,11 +96,17 @@ Manifest files should describe injection configuration only:
 - `timeout`
 - hooks or listener configuration when supported by the current Makoo project
 
-Do not put UI state, rendering logic, component trees, network workflows, or business behavior in manifest files. Move those into `app.tsx`, `app.jsx`, `app.vue`, or module-local helpers.
+Do not put UI state, rendering logic, component trees, network workflows, or application startup behavior in manifest files. Move those into `app.tsx`, `app.jsx`, `app.vue`, or module-local helpers. Hooks and callbacks may be imported into the manifest as configuration values, but their implementation should stay in focused helper files.
 
 Use module-level `manifest.ts` when a module should own its own injection configuration. Keep top-level `injections/manifest.ts` focused on registration and shared defaults.
 
-Use `injectionDefaults` in the top-level manifest for shared runtime defaults such as `alive`, `scope`, `timeout`, and hooks. Individual modules should override only the fields that differ from those defaults.
+Use `injectionDefaults` in the top-level manifest for shared runtime defaults such as `alive`, `scope`, `timeout`, and shared hooks. Individual modules should declare only the scalar overrides and task-specific hooks they actually need.
+
+## Respect Manifest Ownership
+
+Use the top-level manifest for `injectionDefaults`, the injection collection, and standalone listeners. A module-level `manifest.ts` describes one injection module; it does not currently declare standalone listeners.
+
+When a top-level injection and a module-level manifest resolve to the same module id, Makoo merges their top-level fields. Explicit module fields win and missing module fields can come from the top-level entry. Treat `hooks` and `on` as whole top-level fields rather than expecting a deep merge inside either object.
 
 ## Put Component Logic In Framework Files
 
@@ -145,7 +179,8 @@ Structural changes are the ones that should cause Makoo to rescan or regenerate 
 
 - top-level `injections/manifest.ts`
 - module-level `injections/<module>/manifest.ts`
-- hooks or helpers statically imported by a top-level or module-level manifest
+- hooks, callbacks, activity signals, or helpers statically imported by a manifest
+- local dependencies statically imported by those runtime-function files
 - `vite.config.ts` Makoo config
 - `source.include`, `source.exclude`, `runtime.setup`, or userscript metadata that changes the generated runtime
 
@@ -195,8 +230,13 @@ When you find manual `document.querySelector` + `appendChild` + framework mount 
 Before finishing work in a Makoo-powered project, check:
 
 - No manual `querySelector` + `appendChild` flow is used as the primary injection mechanism.
-- `defineInjections()` is used for injection registration.
+- No required `main.ts` has been added just to mount a manifest or start Makoo.
+- Manifest helpers and manifest-facing types are imported from `@makoojs/cli/manifest`.
 - Manifest files describe injection config, not UI implementation.
+- Manifest top-level code has no application side effects or Node-only dependencies.
+- Hooks, callbacks, activity signals, and their imported helpers are browser-bundleable.
+- Standalone listeners live in the top-level manifest, not a module-level manifest.
+- Module and top-level injection fields follow explicit-module-field precedence without assuming a deep merge.
 - Component logic lives in `app.tsx`, `app.jsx`, `app.vue`, or module-local framework files.
 - React/Vue mounting is handled by Makoo adapters.
 - Vue plugins, when needed, are registered through `VuePlugin` from a `runtime.setup` file.

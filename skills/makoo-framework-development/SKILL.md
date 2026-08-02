@@ -32,6 +32,17 @@ If the task touches multiple areas or you need a fuller package map, read `refer
 - Keep functions small and explicit. Favor clear local helpers over clever abstractions.
 - Add comments only when they explain intent, invariants, or subtle behavior. Do not narrate obvious code.
 
+## Documentation Rules
+
+- Write public README and documentation-site content as a description of the current framework: supported APIs, observable behavior, usage, constraints, and examples.
+- Keep implementation history and migration rationale in changesets, changelogs, ADRs, commit messages, or pull-request descriptions. Do not turn user documentation into a record of superseded technical decisions.
+- Describe current behavior positively and in terms users already know. For example, write "hooks and callbacks may be declared inline or imported from browser-compatible files" rather than explaining an old serialization mechanism.
+- Prefer public field and API names over invented umbrella terms. Do not introduce labels such as "runtime functions" when the documentation can name `hooks`, `callback`, and `activitySignal` directly.
+- Keep scanner, binding, generated-code, and module-graph details in architecture or internal CLI documentation unless a user must understand them to use or debug a documented feature. In usage guides, explain the observable result and the required user action.
+- Use negative wording when it communicates a current user-facing requirement or boundary, such as an unsupported import or an unnecessary setup file. Do not use it merely to contrast the current architecture with an abandoned internal approach.
+- When the user edits one language of paired documentation, treat that edited version as the source for the requested synchronization. Preserve its meaning and structure, then update the other language without rewriting the user's source text beyond necessary correctness fixes.
+- Before finishing a documentation change, scan the affected public docs for stale migration language such as `now`, `no longer`, `formerly`, `instead of the old`, `不再`, `以前`, or comparisons with a removed mechanism. Review matches in context rather than replacing unrelated prose blindly.
+
 ## Structure Conventions
 
 - Place implementation near its domain. Examples already used in the repo:
@@ -101,6 +112,11 @@ If the task touches multiple areas or you need a fuller package map, read `refer
 
 ## Release And Changesets
 
+- Treat changesets as a separate, explicitly authorized release action. Never create, edit, or
+  delete a changeset unless the user directly asks for changeset work. Do not infer permission
+  from an implementation request, bug fix, breaking API change, documentation update, request to
+  commit, or the fact that a published package is affected. When a change appears to need a
+  changeset but the user did not request one, complete the requested work without generating it.
 - Makoo uses Changesets for published package versioning and changelogs.
 - Published packages maintain package-level changelogs under `packages/*/CHANGELOG.md`.
 - The root `CHANGELOG.md` is a legacy project-level archive, not the current release changelog source.

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ConfigValidationError, toMakooIssue } from '../error/error';
+import { ConfigValidationError, toMakooIssue } from '../error/MakooCliError';
 
 const AppConfigSchema = z.object({
 	name: z.string().min(1, 'app.name is required'),

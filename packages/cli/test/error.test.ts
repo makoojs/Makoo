@@ -1,20 +1,25 @@
 import { ErrorCode, MakooError } from '@makoojs/core';
 import { describe, expect, it } from 'vitest';
+import * as errors from '../src/error/MakooCliError';
 import {
 	ComponentNotFoundError,
 	ConfigValidationError,
+	FunctionSerializationError,
 	LoadViteMakooConfigError,
+	ManifestBindingNotFoundError,
+	ManifestImportNotFoundError,
 	ManifestLoadError,
 	ManifestNotFoundError,
 	ModuleAlreadyExistsError,
 	ModuleManifestLoadError,
-	NoEnabledInjectionsError,
+	NoEnabledTasksError,
 	SourceDirNotFoundError,
 	toMakooIssue,
 	UnknownFrameworkError,
 	UnsupportedFrameworkGenerationError,
+	UnsupportedSelectorTargetError,
 	type ValidationIssue
-} from '../src/error/error';
+} from '../src/error/MakooCliError';
 
 describe('ModuleAlreadyExistsError', () => {
 	it('defaults code to CLI_MODULE_ALREADY_EXISTS', () => {
@@ -143,6 +148,76 @@ describe('ManifestNotFoundError', () => {
 	});
 });
 
+describe('ManifestBindingNotFoundError', () => {
+	it('describes the unresolved task binding', () => {
+		const err = new ManifestBindingNotFoundError('listener', 'close');
+
+		expect(err).toBeInstanceOf(MakooError);
+		expect(err.code).toBe(ErrorCode.CLI_MANIFEST_BINDING_NOT_FOUND);
+		expect(err.name).toBe('ManifestBindingNotFoundError');
+		expect(err.issues).toEqual([
+			{ path: 'listeners.close', message: 'could not resolve manifest source' }
+		]);
+	});
+
+	it('supports injection defaults hook bindings', () => {
+		const err = new ManifestBindingNotFoundError('injectionDefaults', 'hooks');
+
+		expect(err.issues).toEqual([
+			{ path: 'injectionDefaults.hooks', message: 'could not resolve manifest source' }
+		]);
+	});
+});
+
+describe('ManifestImportNotFoundError', () => {
+	it('describes the missing manifest import', () => {
+		const err = new ManifestImportNotFoundError('/project/injections/manifest.ts');
+
+		expect(err).toBeInstanceOf(MakooError);
+		expect(err.code).toBe(ErrorCode.CLI_MANIFEST_IMPORT_NOT_FOUND);
+		expect(err.name).toBe('ManifestImportNotFoundError');
+		expect(err.issues).toEqual([
+			{ path: 'manifestFile', message: '/project/injections/manifest.ts' }
+		]);
+	});
+});
+
+describe('FunctionSerializationError', () => {
+	it('requires function values to use manifest bindings', () => {
+		const err = new FunctionSerializationError();
+
+		expect(err).toBeInstanceOf(MakooError);
+		expect(err.code).toBe(ErrorCode.CLI_FUNCTION_SERIALIZATION_UNSUPPORTED);
+		expect(err.name).toBe('FunctionSerializationError');
+		expect(err.issues).toEqual([
+			{
+				path: 'generator.inlineValue',
+				message: 'function values require a manifest binding'
+			}
+		]);
+	});
+});
+
+describe('UnsupportedSelectorTargetError', () => {
+	it('requires selector targets to be CSS selectors', () => {
+		const err = new UnsupportedSelectorTargetError(
+			'/project/injections/manifest.ts',
+			'listeners.escapeClose.listenAt',
+			'document'
+		);
+
+		expect(err).toBeInstanceOf(MakooError);
+		expect(err.code).toBe(ErrorCode.CLI_SELECTOR_TARGET_UNSUPPORTED);
+		expect(err.name).toBe('UnsupportedSelectorTargetError');
+		expect(err.issues).toEqual([
+			{
+				path: 'listeners.escapeClose.listenAt',
+				message: 'must be a CSS selector; document and window are not supported'
+			}
+		]);
+	});
+});
+
 describe('ManifestLoadError', () => {
 	it('defaults code to CLI_MANIFEST_LOAD_FAIL', () => {
 		const err = new ManifestLoadError('/path/manifest.ts');
@@ -184,19 +259,24 @@ describe('ModuleManifestLoadError', () => {
 	});
 });
 
-describe('NoEnabledInjectionsError', () => {
-	it('defaults code to CLI_NO_ENABLED_INJECTIONS', () => {
-		const err = new NoEnabledInjectionsError();
-		expect(err.code).toBe(ErrorCode.CLI_NO_ENABLED_INJECTIONS);
-		expect(err.name).toBe('NoEnabledInjectionsError');
-		expect(err.message).toContain('No enabled injections');
+describe('NoEnabledTasksError', () => {
+	it('defaults code to CLI_NO_ENABLED_TASKS', () => {
+		const err = new NoEnabledTasksError();
+		expect(err.code).toBe(ErrorCode.CLI_NO_ENABLED_TASKS);
+		expect(err.name).toBe('NoEnabledTasksError');
+		expect(err.message).toContain('No enabled tasks');
 	});
 
 	it('accepts custom code and cause', () => {
 		const cause = new Error('inner');
-		const err = new NoEnabledInjectionsError('CUSTOM', cause);
+		const err = new NoEnabledTasksError('CUSTOM', cause);
 		expect(err.code).toBe('CUSTOM');
 		expect(err.cause).toBe(cause);
+	});
+
+	it('does not expose the legacy no-enabled-injections error', () => {
+		expect('NoEnabledInjectionsError' in errors).toBe(false);
+		expect('CLI_NO_ENABLED_INJECTIONS' in ErrorCode).toBe(false);
 	});
 });
 

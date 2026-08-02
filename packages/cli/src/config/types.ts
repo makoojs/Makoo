@@ -31,6 +31,13 @@ export type ResolveInjectionOptions = {
 	index?: number;
 };
 
+export type ResolveListenerOptions = {
+	root?: string;
+	listenerId?: string;
+	fallbackName?: string;
+	index?: number;
+};
+
 export type MonkeyGenerateContext = {
 	userscript: string;
 	mode: MonkeyMode;
@@ -123,6 +130,12 @@ export type InjectionModuleListenerConfig = {
 	activitySignal?: () => ActivitySignalSource<boolean>;
 };
 
+export type InjectionListenerConfig = InjectionModuleListenerConfig & {
+	name?: string;
+	enabled?: boolean;
+	match?: InjectionMatchConfig;
+};
+
 export type InjectionModuleOptions = Partial<
 	Pick<RuntimeInjectionConfig, 'alive' | 'scope' | 'timeout' | 'hooks'>
 > & {
@@ -139,12 +152,15 @@ export type InjectionModuleConfig = InjectionModuleOptions & {
 };
 
 export type InjectionManifestRecord = Record<string, Omit<InjectionModuleConfig, 'name'>>;
+export type InjectionListenerRecord = Record<string, Omit<InjectionListenerConfig, 'name'>>;
 export type InjectionManifest = {
 	injectionDefaults?: InjectionDefaults;
-	injections: InjectionModuleConfig[] | InjectionManifestRecord;
+	injections?: InjectionModuleConfig[] | InjectionManifestRecord;
+	listeners?: InjectionListenerConfig[] | InjectionListenerRecord;
 };
 
 export type ResolvedInjectionManifest = InjectionModuleConfig[];
+export type ResolvedListenerManifest = InjectionListenerConfig[];
 
 export type ResolvedInjectionModule = Omit<
 	InjectionModuleConfig,
@@ -159,6 +175,12 @@ export type ResolvedInjectionModule = Omit<
 	alive: ResolvedInjectionDefaults['alive'];
 	scope: ResolvedInjectionDefaults['scope'];
 	timeout: ResolvedInjectionDefaults['timeout'];
+	match?: InjectionMatchObject;
+};
+
+export type ResolvedListener = Omit<InjectionListenerConfig, 'name' | 'enabled' | 'match'> & {
+	listenerId: string;
+	enabled: boolean;
 	match?: InjectionMatchObject;
 };
 

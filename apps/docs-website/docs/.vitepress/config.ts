@@ -38,24 +38,24 @@ const zhGuideSidebar = [
 
 const enApiSidebar = [
 	{
-		text: 'API',
+		text: 'API Reference',
 		items: [
-			{ text: '@makoojs/core', link: '/api/core' },
-			{ text: '@makoojs/cli', link: '/api/cli' },
-			{ text: '@makoojs/vue', link: '/api/vue' },
-			{ text: '@makoojs/react', link: '/api/react' }
+			{ text: 'Core API', link: '/api/core' },
+			{ text: 'CLI API', link: '/api/cli' },
+			{ text: 'Vue API', link: '/api/vue' },
+			{ text: 'React API', link: '/api/react' }
 		]
 	}
 ];
 
 const zhApiSidebar = [
 	{
-		text: 'API',
+		text: 'API 参考',
 		items: [
-			{ text: '@makoojs/core', link: '/zh/api/core' },
-			{ text: '@makoojs/cli', link: '/zh/api/cli' },
-			{ text: '@makoojs/vue', link: '/zh/api/vue' },
-			{ text: '@makoojs/react', link: '/zh/api/react' }
+			{ text: '核心 API', link: '/zh/api/core' },
+			{ text: 'CLI API', link: '/zh/api/cli' },
+			{ text: 'Vue API', link: '/zh/api/vue' },
+			{ text: 'React API', link: '/zh/api/react' }
 		]
 	}
 ];

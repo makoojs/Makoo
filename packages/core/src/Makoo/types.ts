@@ -10,12 +10,17 @@ export enum Action {
 
 export type ActionEvent = `${Action}`;
 
-export type MakooListenerOptions = {
+export type MakooListenerInput = {
+	id?: string;
+	listenAt: string;
+	type: string;
+	callback: EventListener;
 	activitySignal?: TaskActivitySignal;
 };
 
 export type MakooListenerDeclaration = {
 	kind: 'listener';
+	id?: string;
 	listenAt: string;
 	event: string;
 	type: string;

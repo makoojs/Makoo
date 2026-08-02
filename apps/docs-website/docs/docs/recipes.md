@@ -17,7 +17,7 @@ The tool supports these interactions:
 - Click `Hide` to keep a draggable mini toolbar
 - Click `Open` to restore the full panel
 
-The same pattern also works for page debugging panels, selection tools, reading helpers, form fillers, annotation tools, and similar utilities.
+The same pattern also works for page debugging panels, selection tools, reading aids, form fillers, annotation tools, and similar utilities.
 
 ## Project Structure
 
@@ -49,7 +49,7 @@ Each part has a narrow responsibility:
 | `app.jsx` | Injection module entry; only top-level state and composition |
 | `components/` | React UI such as the panel, fields, and header |
 | `hooks/` | Browser interaction logic such as element picking and panel dragging |
-| `utils/` | Pure helpers such as selector generation and clipboard copying |
+| `utils/` | Pure utility functions such as selector generation and clipboard copying |
 | `constants.js` | Shared DOM ids, ignored selectors, and other module constants |
 | `style.css` | Styles for this injection module |
 
@@ -60,10 +60,10 @@ With this split, the module does not become one large file that mixes DOM calcul
 The top-level `injections/manifest.js` declares the module:
 
 ```js
-import { defineInjections } from '@makoojs/cli';
+import { defineInjections } from '@makoojs/cli/manifest';
 
 export default defineInjections({
-	globalInjector: {
+	injectionDefaults: {
 		alive: true,
 		scope: 'global',
 		timeout: 10000

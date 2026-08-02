@@ -157,7 +157,12 @@ describe('TaskRegister', () => {
 			injectAt: '#event-host',
 			artifact: component,
 			options: {
-				on: listen('#btn', 'click', callback, { activitySignal })
+				on: listen({
+					listenAt: '#btn',
+					type: 'click',
+					callback,
+					activitySignal
+				})
 			}
 		});
 
@@ -372,6 +377,30 @@ describe('TaskRegister', () => {
 			createTask({
 				kind: 'listener',
 				taskId: 'listener-#btn-click',
+				listenAt: '#btn',
+				event: 'click',
+				callback,
+				withEvent: true,
+				timeout: 5000
+			})
+		);
+	});
+
+	it('should prefer explicit listener id over inferred task id', () => {
+		const callback = vi.fn();
+		const result = registerListener(runtime, {
+			id: 'custom-listener',
+			listenAt: '#btn',
+			event: 'click',
+			callback
+		});
+		const context = taskContext.get(result.taskId);
+
+		expect(result).toEqual({ taskId: 'custom-listener', isSuccess: true });
+		expect(context).toMatchObject(
+			createTask({
+				kind: 'listener',
+				taskId: 'custom-listener',
 				listenAt: '#btn',
 				event: 'click',
 				callback,

@@ -9,6 +9,7 @@ export default defineConfig({
 		lib: {
 			entry: {
 				index: resolve(__dirname, 'src/index.ts'),
+				'manifest/index': resolve(__dirname, 'src/manifest/index.ts'),
 				'monkey/index': resolve(__dirname, 'src/monkey/index.ts')
 			},
 			formats: ['es', 'cjs'],

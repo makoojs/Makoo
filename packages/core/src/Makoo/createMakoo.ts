@@ -4,12 +4,11 @@ import * as lifecycle from '../Task/TaskLifeCycle';
 import { registerInjection, registerListener } from '../Task/TaskRegister';
 import { controlListener, startTasks } from '../Task/TaskRunner';
 import type {
-	ArtifactOptions,
 	CreateMakooOptions,
 	MakooInjectionDeclaration,
 	MakooInjectionInput,
 	MakooListenerDeclaration,
-	MakooListenerOptions,
+	MakooListenerInput,
 	MakooRuntime,
 	MakooTaskDeclaration,
 	StartedComponentTask,
@@ -55,49 +54,26 @@ export function createMakoo(options: CreateMakooOptions = {}): MakooRuntime {
 }
 
 export function inject<TArtifact>(
-	injectAt: string,
-	artifact: TArtifact,
-	options?: ArtifactOptions
-): MakooInjectionDeclaration<TArtifact>;
-export function inject<TArtifact>(
 	input: MakooInjectionInput<TArtifact>
-): MakooInjectionDeclaration<TArtifact>;
-export function inject<TArtifact>(
-	inputOrInjectAt: string | MakooInjectionInput<TArtifact>,
-	artifact?: TArtifact,
-	options?: ArtifactOptions
 ): MakooInjectionDeclaration<TArtifact> {
-	if (typeof inputOrInjectAt !== 'string') {
-		return {
-			kind: 'component',
-			...(inputOrInjectAt.id ? { id: inputOrInjectAt.id } : {}),
-			injectAt: inputOrInjectAt.injectAt,
-			artifact: inputOrInjectAt.artifact,
-			...(inputOrInjectAt.options ? { options: inputOrInjectAt.options } : {})
-		};
-	}
-
 	return {
 		kind: 'component',
-		injectAt: inputOrInjectAt,
-		artifact: artifact as TArtifact,
-		...(options ? { options } : {})
+		...(input.id ? { id: input.id } : {}),
+		injectAt: input.injectAt,
+		artifact: input.artifact,
+		...(input.options ? { options: input.options } : {})
 	};
 }
 
-export function listen(
-	listenAt: string,
-	event: string,
-	callback: EventListener,
-	options: MakooListenerOptions = {}
-): MakooListenerDeclaration {
+export function listen(input: MakooListenerInput): MakooListenerDeclaration {
 	return {
 		kind: 'listener',
-		listenAt,
-		event,
-		type: event,
-		callback,
-		...(options.activitySignal ? { activitySignal: options.activitySignal } : {})
+		...(input.id ? { id: input.id } : {}),
+		listenAt: input.listenAt,
+		event: input.type,
+		type: input.type,
+		callback: input.callback,
+		...(input.activitySignal ? { activitySignal: input.activitySignal } : {})
 	};
 }
 

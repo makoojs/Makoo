@@ -60,10 +60,10 @@ injections
 顶层 `injections/manifest.js` 声明这个注入模块：
 
 ```js
-import { defineInjections } from '@makoojs/cli';
+import { defineInjections } from '@makoojs/cli/manifest';
 
 export default defineInjections({
-	globalInjector: {
+	injectionDefaults: {
 		alive: true,
 		scope: 'global',
 		timeout: 10000

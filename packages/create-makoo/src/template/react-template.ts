@@ -112,7 +112,7 @@ export default defineConfig({
 }
 
 function manifestTemplate(data: InitData): string {
-	return `import { defineInjections } from '@makoojs/cli';
+	return `import { defineInjections } from '@makoojs/cli/manifest';
 
 export default defineInjections({
   injections: {

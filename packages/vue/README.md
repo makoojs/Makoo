@@ -1,195 +1,120 @@
-# @makoojs/vue
+# Vue API Reference
 
-`@makoojs/vue` is Makoo's Vue mount adapter. It connects Vue components to the `@makoojs/core` adapter protocol, allowing the Makoo runtime to create Vue apps after target DOM nodes appear, mount components, and unmount them correctly when tasks are destroyed or reset.
+## API Index
 
-Most Makoo projects use this package through `@makoojs/cli`: when a manifest module is recognized as Vue, the CLI imports the Vue adapter in the generated virtual entry. You only need to call `createVueAdapter()` explicitly when wiring a runtime manually with `@makoojs/core`.
+- [`createVueAdapter()`](#createvueadapter): creates the Vue mounting adapter
+- [`VuePlugin`](#vueplugin): manages plugins installed on mounted Vue apps
+- [`VueAdapterError`](#vueadaptererror): reports Vue mounting errors
+- [TypeScript types](#typescript-types): public Vue adapter types
 
-## Use Cases
+## `createVueAdapter()`
 
-- Inject Vue components in a Makoo project.
-- Let the `@makoojs/core` runtime recognize and mount Vue artifacts.
-- Register the Vue adapter manually when using the core runtime directly.
-- Read the Makoo task context `makoo` inside Vue components.
-- Register shared plugins for Vue apps created by Makoo.
+Creates a Makoo adapter that mounts Vue components.
 
-## Installation
-
-```bash
-// npm install @makoojs/vue
-// yarn add @makoojs/vue
-pnpm add @makoojs/vue
-```
-
-`@makoojs/vue` depends on `@makoojs/core` and declares `vue` as a peer dependency, so make sure `vue` is installed before using this package.
-
-## Usage In CLI Projects
-
-In most cases, you only need to declare a Vue component in the manifest.
+### Type
 
 ```ts
-import { defineInjections } from '@makoojs/cli';
-
-export default defineInjections({
-	injections: {
-		panel: {
-			injectAt: 'body',
-			component: './panel/App.vue',
-			framework: 'Vue'
-		}
-	}
-});
+function createVueAdapter(): VueMountAdapter;
 ```
 
-If `framework` is omitted or set to `auto`, Makoo infers Vue from the `.vue` extension.
+### Returns
 
-## Makoo Context In Vue Components
+Returns `VueMountAdapter`.
 
-The Vue adapter passes `makoo` to the root component as props. Components can use it to read the current task ID, target selector, logger, or control the current task lifecycle.
+### Details
 
-```vue
-<script setup lang="ts">
-import type { VueMountProps } from '@makoojs/vue';
+The adapter uses `createApp(artifact, { makoo })` to create a Vue app, installs every plugin registered with `VuePlugin`, and mounts the app into the task's `mountPoint`. It calls `app.unmount()` when the task is unmounted.
 
-const props = defineProps<VueMountProps>();
+Mounting or unmounting failures throw `VueAdapterError`.
 
-function handleClick() {
-	props.makoo.getLogger().info(`clicked ${props.makoo.taskId}`);
-}
-</script>
-
-<template>
-	<button type="button" @click="handleClick">Makoo Panel</button>
-</template>
-```
-
-`makoo` comes from `@makoojs/core`'s `MakooContext`. Common capabilities include:
-
-| Capability | Description |
-| --- | --- |
-| `taskId` | Current injection task ID |
-| `injectAt` | Target selector for the current task |
-| `enableAlive()` / `disableAlive()` | Control alive reinjection for the current task |
-| `reset()` / `destroy()` | Reset or destroy the current task |
-| `on()` / `onTask()` | Listen to lifecycle observation events |
-| `getLogger()` | Get the current runtime logger |
-
-## Direct Usage With @makoojs/core
-
-If you are not using `@makoojs/cli`, pass the Vue adapter to `createMakoo()`.
+### Example
 
 ```ts
-import { createMakoo, inject } from '@makoojs/core';
-import { createVueAdapter } from '@makoojs/vue';
-import Panel from './Panel.vue';
-
 const makoo = createMakoo({
-	defaults: {
-		alive: true,
-		scope: 'local',
-		timeout: 5000
-	},
 	adapters: [createVueAdapter()]
 });
 
-makoo.start([inject('#app', Panel)]);
+makoo.start([
+	inject({ injectAt: '#app', artifact: Panel })
+]);
 ```
 
-The adapter returned by `createVueAdapter()` will:
+## `VuePlugin`
 
-- Create a Vue app with `createApp(artifact, { makoo })`.
-- Apply shared plugins registered through `VuePlugin`.
-- Mount the component with `app.mount(mountPoint)`.
-- Call `app.unmount()` during unmount.
-- Wrap mount/unmount failures as `VueAdapterError`.
+Stores plugins that `createVueAdapter()` installs on each Vue app it creates.
 
-## Register Vue Plugins
-
-`VuePlugin` registers shared plugins for every Vue app created by Makoo, such as router, i18n, or UI library plugins.
-
-In CLI projects, put plugin registration in the setup file referenced by `runtime.setup`. The setup file enters Makoo's generated virtual entry first. Later, when the Vue adapter mounts each Vue component, it reads these plugins and calls `app.use(plugin)` for each one.
+### Type
 
 ```ts
-// vite.config.ts
-import { defineConfig } from 'vite';
-import { makoo } from '@makoojs/cli';
-
-export default defineConfig({
-	plugins: [
-		...makoo({
-			app: {
-				name: 'my-script',
-				version: '0.0.1'
-			},
-			runtime: {
-				setup: './injections/vue-setup.ts'
-			},
-			monkey: {
-				userscript: {
-					match: ['https://example.com/*']
-				}
-			}
-		})
-	]
-});
+const VuePlugin: {
+	getPlugins(): Plugin[];
+	use<T extends Plugin>(plugin: T): void;
+	usePlugins(...plugins: Plugin[]): void;
+	clear(): void;
+};
 ```
 
-```ts
-// injections/vue-setup.ts
-import { VuePlugin } from '@makoojs/vue';
-import router from './router';
-import i18n from './i18n';
+### Methods
 
+| Method | Returns | Description |
+| --- | --- | --- |
+| `getPlugins()` | `Plugin[]` | Returns a copy of the current plugin list |
+| `use(plugin)` | `void` | Registers one plugin; the same plugin instance is stored once |
+| `usePlugins(...plugins)` | `void` | Registers multiple plugins |
+| `clear()` | `void` | Removes every plugin |
+
+### Example
+
+```ts
 VuePlugin.use(router);
-VuePlugin.usePlugins(i18n);
+VuePlugin.usePlugins(pinia, i18n);
 ```
 
-You can also register multiple plugins at once:
+## `VueAdapterError`
+
+Error class used when the Vue adapter cannot mount or unmount a component. It extends `AdapterError`.
+
+### Type
 
 ```ts
-VuePlugin.usePlugins(router, i18n);
+class VueAdapterError extends AdapterError {
+	constructor(
+		message: string,
+		issues?: MakooIssue[],
+		code?: string,
+		cause?: Error
+	);
+}
 ```
 
-For example, with Pinia:
+When `code` is omitted, it defaults to `ErrorCode.ADAPTER_MOUNT_FAIL`.
+
+## TypeScript types
+
+### `VueMountProps`
+
+Props received by the Vue root component.
 
 ```ts
-// injections/vue-setup.ts
-import { VuePlugin } from '@makoojs/vue';
-import { createPinia } from 'pinia';
-
-const pinia = createPinia();
-
-VuePlugin.usePlugins(pinia);
+type VueMountProps = {
+	makoo: MakooContext;
+};
 ```
 
-`VuePlugin` deduplicates the same plugin instance. In tests or special runtimes, call `VuePlugin.clear()` to remove registered plugins.
+### `VueMountArtifact`
 
-The setup file should import `VuePlugin` from `@makoojs/vue`, not from a source path or alias. Otherwise, the setup file may register plugins on one `VuePlugin` instance while the Vue adapter reads from another instance, so the plugins will not be installed on the Vue app that mounts your component.
+```ts
+type VueMountArtifact = Component;
+```
 
-## Type Exports
+### `VueMountHandle`
 
-`@makoojs/vue` exports these commonly used types:
+```ts
+type VueMountHandle = App<Element>;
+```
 
-| Type | Description |
-| --- | --- |
-| `VueMountProps` | Props received by the Vue root component, including `makoo` |
-| `VueMountArtifact` | Vue artifact type recognized by Makoo |
-| `VueMountHandle` | Vue app handle type |
-| `VueMountInstance` | Vue component instance type |
+### `VueMountInstance`
 
-It also exports:
-
-- `createVueAdapter`
-- `VuePlugin`
-- `VueAdapterError`
-
-The complete API reference will live in a separate documentation site later.
-
-## Relationship With Other Packages
-
-| Package | Responsibility |
-| --- | --- |
-| `@makoojs/vue` | Vue mount adapter and Vue plugin registration helper |
-| `@makoojs/core` | Provides the runtime API, adapter protocol, and Makoo runtime context |
-| `@makoojs/cli` | Scans manifests, generates the virtual entry, and imports the Vue adapter when needed |
-
-`@makoojs/vue` is not a complete runtime by itself. It works with `@makoojs/core`'s injection scheduler, or with runtime code generated automatically by `@makoojs/cli`.
+```ts
+type VueMountInstance = ComponentPublicInstance;
+```

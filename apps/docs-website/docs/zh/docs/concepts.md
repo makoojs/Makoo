@@ -49,7 +49,7 @@ makoo({
 Manifest 用来声明“要注入什么”。顶层 `injections/manifest.ts` 描述项目里的模块：
 
 ```ts
-import { defineInjections } from '@makoojs/cli';
+import { defineInjections } from '@makoojs/cli/manifest';
 
 export default defineInjections({
 	injectionDefaults: {
@@ -98,7 +98,7 @@ injections
    └─ style.css
 ```
 
-一个模块应该维护这个注入点需要的代码：组件、样式、本地 helper，以及可选的模块级 manifest
+一个模块应该维护这个注入点需要的代码：组件、样式、本地工具函数，以及可选的模块级 manifest
 信息。这样大型 userscript 就不会变成一个同时知道所有页面、所有目标节点、所有功能的大文件。
 
 模块名可以来自对象写法里的 manifest key：

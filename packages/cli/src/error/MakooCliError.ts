@@ -118,6 +118,77 @@ export class ManifestNotFoundError extends MakooError {
 	}
 }
 
+export class ManifestBindingNotFoundError extends MakooError {
+	constructor(
+		kind: 'injectionDefaults' | 'injection' | 'listener',
+		id: string,
+		code: string = ErrorCode.CLI_MANIFEST_BINDING_NOT_FOUND,
+		cause?: Error
+	) {
+		const path = kind === 'injectionDefaults' ? `${kind}.${id}` : `${kind}s.${id}`;
+		const label = kind === 'injectionDefaults' ? 'injection defaults' : kind;
+		super(
+			`Missing manifest binding for ${label} "${id}"`,
+			[{ path, message: 'could not resolve manifest source' }],
+			code,
+			cause
+		);
+		this.name = 'ManifestBindingNotFoundError';
+	}
+}
+
+export class ManifestImportNotFoundError extends MakooError {
+	constructor(
+		manifestFile: string,
+		code: string = ErrorCode.CLI_MANIFEST_IMPORT_NOT_FOUND,
+		cause?: Error
+	) {
+		super(
+			`Missing manifest import for "${manifestFile}"`,
+			[{ path: 'manifestFile', message: manifestFile }],
+			code,
+			cause
+		);
+		this.name = 'ManifestImportNotFoundError';
+	}
+}
+
+export class UnsupportedSelectorTargetError extends MakooError {
+	constructor(
+		file: string,
+		path: string,
+		target: string,
+		code: string = ErrorCode.CLI_SELECTOR_TARGET_UNSUPPORTED,
+		cause?: Error
+	) {
+		const rel = relative(process.cwd(), file);
+		super(
+			`Unsupported selector target "${target}" in manifest at ${rel}`,
+			[{ path, message: 'must be a CSS selector; document and window are not supported' }],
+			code,
+			cause
+		);
+		this.name = 'UnsupportedSelectorTargetError';
+	}
+}
+
+export class FunctionSerializationError extends MakooError {
+	constructor(code: string = ErrorCode.CLI_FUNCTION_SERIALIZATION_UNSUPPORTED, cause?: Error) {
+		super(
+			'Function values cannot be serialized into the generated entry; use a manifest binding instead',
+			[
+				{
+					path: 'generator.inlineValue',
+					message: 'function values require a manifest binding'
+				}
+			],
+			code,
+			cause
+		);
+		this.name = 'FunctionSerializationError';
+	}
+}
+
 export class ManifestLoadError extends MakooError {
 	constructor(path: string, code: string = ErrorCode.CLI_MANIFEST_LOAD_FAIL, cause?: Error) {
 		super(
@@ -146,15 +217,15 @@ export class ModuleManifestLoadError extends MakooError {
 	}
 }
 
-export class NoEnabledInjectionsError extends MakooError {
-	constructor(code: string = ErrorCode.CLI_NO_ENABLED_INJECTIONS, cause?: Error) {
+export class NoEnabledTasksError extends MakooError {
+	constructor(code: string = ErrorCode.CLI_NO_ENABLED_TASKS, cause?: Error) {
 		super(
-			'No enabled injections — all injections are disabled or filtered out',
+			'No enabled tasks — all injections and listeners are disabled or filtered out',
 			undefined,
 			code,
 			cause
 		);
-		this.name = 'NoEnabledInjectionsError';
+		this.name = 'NoEnabledTasksError';
 	}
 }
 

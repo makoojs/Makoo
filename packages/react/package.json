@@ -36,7 +36,7 @@
     "react-dom": "^19.2.6"
   },
   "peerDependencies": {
-    "@makoojs/core": "workspace:^",
+    "@makoojs/core": "*",
     "react": ">=19",
     "react-dom": ">=19"
   }
