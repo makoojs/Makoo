@@ -88,8 +88,8 @@ export async function scanner(config: ResolvedConfig): Promise<ScannerResult> {
 			fallbackName: module,
 			moduleManifestFile: meta.moduleManifestFile
 		};
-		const moduleMeta = resolveInjection(meta.moduleConfig, resolveOptions);
-		const manifestConfig = manifestInjectionConfigs.get(moduleMeta.moduleId);
+		const moduleId = meta.moduleConfig.name || module;
+		const manifestConfig = manifestInjectionConfigs.get(moduleId);
 		const resolveMeta = resolveInjection(
 			manifestConfig ? { ...manifestConfig, ...meta.moduleConfig } : meta.moduleConfig,
 			resolveOptions
