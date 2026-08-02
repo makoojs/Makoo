@@ -1,6 +1,6 @@
 {
   "name": "@makoojs/vue",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Vue adapter for the Makoo userscript development framework",
   "type": "module",
   "license": "MIT",
