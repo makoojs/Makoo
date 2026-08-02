@@ -171,11 +171,14 @@ type MakooListenerInput = {
 	listenAt: string;
 	type: string;
 	callback: EventListener;
+	capture?: boolean;
 	activitySignal?: () => ActivitySignalSource<boolean>;
 };
 ```
 
 `id` 省略时，运行时使用 `listener-${listenAt}-${type}` 作为任务 ID。
+`capture` 为 `true` 时会在 DOM 捕获阶段监听事件；默认保持浏览器行为，即 `false`，
+在冒泡阶段监听。listener 使用的 abort signal 仍由 Makoo 内部管理。
 
 ### Returns
 
@@ -188,6 +191,7 @@ const declaration = listen({
 	id: 'escape-close',
 	listenAt: 'body',
 	type: 'keydown',
+	capture: true,
 	callback: onEscape
 });
 ```
@@ -594,6 +598,7 @@ type MakooListenerDeclaration = {
 	event: string;
 	type: string;
 	callback: EventListener;
+	capture?: boolean;
 	activitySignal?: () => ActivitySignalSource<boolean>;
 };
 

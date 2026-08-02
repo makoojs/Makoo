@@ -169,11 +169,14 @@ type MakooListenerInput = {
 	listenAt: string;
 	type: string;
 	callback: EventListener;
+	capture?: boolean;
 	activitySignal?: () => ActivitySignalSource<boolean>;
 };
 ```
 
 When `id` is omitted, the runtime uses `listener-${listenAt}-${type}` as the task ID.
+`capture` selects the DOM capture phase when `true`; it defaults to the browser behavior of
+`false` (the bubbling phase). Makoo continues to manage the listener's abort signal internally.
 
 ### Returns
 
@@ -186,6 +189,7 @@ const declaration = listen({
 	id: 'escape-close',
 	listenAt: 'body',
 	type: 'keydown',
+	capture: true,
 	callback: onEscape
 });
 ```
@@ -590,6 +594,7 @@ type MakooListenerDeclaration = {
 	event: string;
 	type: string;
 	callback: EventListener;
+	capture?: boolean;
 	activitySignal?: () => ActivitySignalSource<boolean>;
 };
 

@@ -226,10 +226,11 @@ the listener task ID:
 ```ts
 export default defineInjections({
 	listeners: {
-		escapeClose: {
-			listenAt: 'body',
-			type: 'keydown',
-			callback: (event) => {
+			escapeClose: {
+				listenAt: 'body',
+				type: 'keydown',
+				capture: true,
+				callback: (event) => {
 				if (event instanceof KeyboardEvent && event.key === 'Escape') console.log('close');
 			},
 			match: ['https://example.com/*']
@@ -239,7 +240,8 @@ export default defineInjections({
 ```
 
 Makoo generates `listen({ id: 'escapeClose', ... })` for this entry. Listeners also support
-`enabled`, `activitySignal`, and the same `match` rules as modules. Use `name` in array form
+`enabled`, `capture`, `activitySignal`, and the same `match` rules as modules. `capture` defaults
+to `false`; set it to `true` to listen during the DOM capture phase. Use `name` in array form
 when a listener needs a stable ID. `listenAt` must be a CSS selector; `document` and `window`
 are not supported listener targets.
 

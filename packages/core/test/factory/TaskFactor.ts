@@ -41,6 +41,7 @@ export type CreateListenerTaskInput = TaskBaseInput & {
 	listenAt?: string;
 	event?: string;
 	callback?: EventListener;
+	capture?: boolean;
 	controller?: AbortController;
 	activitySignal?: () => ActivitySignalSource<boolean>;
 };
@@ -87,6 +88,7 @@ export function createTask(input: CreateArtifactTaskInput | CreateListenerTaskIn
 		listenAt: input.listenAt ?? '#app',
 		event: input.event ?? 'click',
 		callback: input.callback ?? (() => undefined),
+		...(typeof input.capture !== 'undefined' ? { capture: input.capture } : {}),
 		...(input.controller ? { controller: input.controller } : {}),
 		...(input.activitySignal ? { activitySignal: input.activitySignal } : {})
 	};

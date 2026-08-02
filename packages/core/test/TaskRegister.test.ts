@@ -161,6 +161,7 @@ describe('TaskRegister', () => {
 					listenAt: '#btn',
 					type: 'click',
 					callback,
+					capture: true,
 					activitySignal
 				})
 			}
@@ -185,6 +186,7 @@ describe('TaskRegister', () => {
 				listenAt: '#btn',
 				event: 'click',
 				callback,
+				capture: true,
 				activitySignal
 			}
 		});
@@ -369,7 +371,12 @@ describe('TaskRegister', () => {
 
 	it('should register listener-only task', () => {
 		const callback = vi.fn();
-		const result = registerListener(runtime, { listenAt: '#btn', event: 'click', callback });
+		const result = registerListener(runtime, {
+			listenAt: '#btn',
+			event: 'click',
+			callback,
+			capture: false
+		});
 		const context = taskContext.get(result.taskId);
 
 		expect(result).toEqual({ taskId: 'listener-#btn-click', isSuccess: true });
@@ -380,6 +387,7 @@ describe('TaskRegister', () => {
 				listenAt: '#btn',
 				event: 'click',
 				callback,
+				capture: false,
 				withEvent: true,
 				timeout: 5000
 			})

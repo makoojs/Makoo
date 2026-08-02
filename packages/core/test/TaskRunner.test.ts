@@ -660,6 +660,55 @@ describe('TaskRunner', () => {
 		expect(callback).toHaveBeenCalledOnce();
 	});
 
+	it('should use capture when the listener target already exists', () => {
+		const btn = document.createElement('button');
+		btn.id = 'capture-listener-btn';
+		document.body.appendChild(btn);
+		const callback = vi.fn();
+		const addEventSpy = vi.spyOn(btn, 'addEventListener');
+		taskContext.set(
+			'capture-listener-task',
+			createListenerTask({
+				taskId: 'capture-listener-task',
+				withEvent: true,
+				listenAt: '#capture-listener-btn',
+				event: 'click',
+				callback,
+				capture: true
+			})
+		);
+
+		expect(controlListener(runtime, 'capture-listener-task', Action.OPEN)).toBe(true);
+		expect(addEventSpy).toHaveBeenCalledWith('click', callback, {
+			capture: true,
+			signal: expect.any(AbortSignal)
+		});
+	});
+
+	it('should default to the bubbling phase when capture is omitted', () => {
+		const btn = document.createElement('button');
+		btn.id = 'bubble-listener-btn';
+		document.body.appendChild(btn);
+		const callback = vi.fn();
+		const addEventSpy = vi.spyOn(btn, 'addEventListener');
+		taskContext.set(
+			'bubble-listener-task',
+			createListenerTask({
+				taskId: 'bubble-listener-task',
+				withEvent: true,
+				listenAt: '#bubble-listener-btn',
+				event: 'click',
+				callback
+			})
+		);
+
+		expect(controlListener(runtime, 'bubble-listener-task', Action.OPEN)).toBe(true);
+		expect(addEventSpy).toHaveBeenCalledWith('click', callback, {
+			capture: false,
+			signal: expect.any(AbortSignal)
+		});
+	});
+
 	it('should emit normalized listener open and close payloads', () => {
 		const observer = createObserverHub();
 		runtime = createRuntime(observer);
@@ -1058,8 +1107,11 @@ describe('TaskRunner', () => {
 	});
 
 	it('should use onDomReady fallback when listen target does not exist in OPEN', () => {
+		const delayedTarget = document.createElement('button');
+		const addEventSpy = vi.spyOn(delayedTarget, 'addEventListener');
+		const callback = vi.fn();
 		const readySpy = vi.spyOn(DOMWatcher, 'onDomReady').mockImplementation((_, cb) => {
-			const el = document.createElement('button');
+			const el = delayedTarget;
 			cb(el);
 			return () => {};
 		});
@@ -1070,13 +1122,18 @@ describe('TaskRunner', () => {
 				withEvent: true,
 				listenAt: '#non-existing-btn',
 				event: 'click',
-				callback: vi.fn()
+				callback,
+				capture: true
 			})
 		);
 
 		const result = controlListener(runtime, 'fallback-open-task', Action.OPEN);
 		expect(result).toBe(true);
 		expect(readySpy).toHaveBeenCalledOnce();
+		expect(addEventSpy).toHaveBeenCalledWith('click', callback, {
+			capture: true,
+			signal: expect.any(AbortSignal)
+		});
 		expect(taskContext.get<ListenerTask>('fallback-open-task')?.controller).toBeInstanceOf(
 			AbortController
 		);

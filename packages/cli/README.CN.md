@@ -207,10 +207,11 @@ export default defineInjections({
 		}
 	},
 	listeners: {
-		escape: {
-			listenAt: 'body',
-			type: 'keydown',
-			callback: onEscape
+			escape: {
+				listenAt: 'body',
+				type: 'keydown',
+				capture: true,
+				callback: onEscape
 		}
 	}
 });
@@ -245,6 +246,7 @@ export default defineInjection({
 	on: {
 		listenAt: 'body',
 		type: 'click',
+		capture: true,
 		callback: onClick
 	}
 });
@@ -304,6 +306,7 @@ type InjectionModuleListenerConfig = {
 	listenAt: string;
 	type: string;
 	callback: EventListener;
+	capture?: boolean;
 	activitySignal?: () => ActivitySignalSource<boolean>;
 };
 
@@ -313,6 +316,9 @@ type InjectionListenerConfig = InjectionModuleListenerConfig & {
 	match?: InjectionMatchConfig;
 };
 ```
+
+设置 `capture: true` 后，listener 会在 DOM 捕获阶段处理事件。该字段默认为 `false`，
+未配置时使用冒泡阶段。事件 listener 的 signal 仍由 Makoo 内部管理。
 
 ### `InjectionFramework`
 

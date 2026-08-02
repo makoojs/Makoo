@@ -202,9 +202,29 @@ describe('InjectionModuleListenerSchema', () => {
 			listenAt: '#button',
 			type: 'click',
 			callback,
+			capture: true,
 			activitySignal
 		});
 		expect(result.success).toBe(true);
+	});
+
+	it('accepts false capture and rejects non-boolean capture values', () => {
+		expect(
+			InjectionModuleListenerSchema.safeParse({
+				listenAt: '#button',
+				type: 'click',
+				callback: () => undefined,
+				capture: false
+			}).success
+		).toBe(true);
+		expect(
+			InjectionModuleListenerSchema.safeParse({
+				listenAt: '#button',
+				type: 'click',
+				callback: () => undefined,
+				capture: 'true'
+			}).success
+		).toBe(false);
 	});
 
 	it('rejects missing callback', () => {
@@ -223,6 +243,7 @@ describe('InjectionListenerSchema', () => {
 			listenAt: 'body',
 			type: 'keydown',
 			callback: () => undefined,
+			capture: true,
 			activitySignal: () => ({ value: true }),
 			match: ['https://example.com/*'],
 			enabled: true

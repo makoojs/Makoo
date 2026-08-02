@@ -43,6 +43,7 @@ describe('generate', () => {
 					listenAt: '#app',
 					type: 'click',
 					callback: () => 'clicked',
+					capture: false,
 					activitySignal: () => ({
 						get: () => true,
 						subscribe: () => () => {}
@@ -120,7 +121,7 @@ describe('generate', () => {
 		);
 		expect(result.code).toContain('"hooks":Manifest_0["injections"][0]["hooks"]');
 		expect(result.code).toContain(
-			'listen({"listenAt":"#app","type":"click","callback":Manifest_0["injections"][0]["on"]["callback"],"activitySignal":Manifest_0["injections"][0]["on"]["activitySignal"]})'
+			'listen({"listenAt":"#app","type":"click","callback":Manifest_0["injections"][0]["on"]["callback"],"capture":false,"activitySignal":Manifest_0["injections"][0]["on"]["activitySignal"]})'
 		);
 		expect(result.code).not.toContain('run-start');
 		expect(result.code).not.toContain('mounted');
@@ -329,6 +330,7 @@ describe('generate', () => {
 				listenAt: 'body',
 				type: 'keydown',
 				callback: () => 'closed',
+				capture: false,
 				activitySignal
 			},
 			{ listenerId: 'escape-close' }
@@ -365,7 +367,7 @@ describe('generate', () => {
 
 		expect(result.code).toContain('const makooTasks = [];');
 		expect(result.code).toContain(
-			'makooTasks.push(listen({"id":"escape-close","listenAt":"body","type":"keydown","callback":Manifest_0["listeners"]["escape-close"]["callback"],"activitySignal":Manifest_0["listeners"]["escape-close"]["activitySignal"]}));'
+			'makooTasks.push(listen({"id":"escape-close","listenAt":"body","type":"keydown","callback":Manifest_0["listeners"]["escape-close"]["callback"],"capture":false,"activitySignal":Manifest_0["listeners"]["escape-close"]["activitySignal"]}));'
 		);
 		expect(result.code).not.toContain('get: () => true');
 		expect(result.code).not.toContain('subscribe: () => () => {}');

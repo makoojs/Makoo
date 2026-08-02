@@ -20,6 +20,9 @@ export function renderRegisterListener(
 			`"listenAt":${JSON.stringify(listener.listenAt)}`,
 			`"type":${JSON.stringify(listener.type)}`,
 			`"callback":${renderManifestReference(manifestBinding.callback)}`,
+			typeof listener.capture !== 'undefined'
+				? `"capture":${JSON.stringify(listener.capture)}`
+				: null,
 			listener.activitySignal
 				? renderActivitySignal(
 						listener.listenerId,

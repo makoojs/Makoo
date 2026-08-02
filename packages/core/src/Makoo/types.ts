@@ -15,6 +15,7 @@ export type MakooListenerInput = {
 	listenAt: string;
 	type: string;
 	callback: EventListener;
+	capture?: boolean;
 	activitySignal?: TaskActivitySignal;
 };
 
@@ -25,6 +26,7 @@ export type MakooListenerDeclaration = {
 	event: string;
 	type: string;
 	callback: EventListener;
+	capture?: boolean;
 	activitySignal?: TaskActivitySignal;
 };
 
