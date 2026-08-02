@@ -54,7 +54,7 @@
     "cac": "^7.0.0"
   },
   "peerDependencies": {
-    "@makoojs/core": "workspace:^",
+    "@makoojs/core": "*",
     "vite": ">=7"
   }
 }

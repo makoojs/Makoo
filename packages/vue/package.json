@@ -35,7 +35,7 @@
     "vue": "^3.5.35"
   },
   "peerDependencies": {
-    "@makoojs/core": "workspace:^",
+    "@makoojs/core": "*",
     "vue": ">=3"
   }
 }

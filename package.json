@@ -32,6 +32,7 @@
   ],
 	"scripts": {
 		"changeset": "changeset",
+		"changeset:status": "changeset status --since origin/main",
 		"check:makoo-versions": "node .github/scripts/check-makoo-versions.mjs",
 		"version-packages": "changeset version",
 		"release": "pnpm build && pnpm test && changeset publish",
