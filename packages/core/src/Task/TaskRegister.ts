@@ -27,6 +27,7 @@ export type ListenerDeclaration = {
 	listenAt: string;
 	event: string;
 	callback: EventListener;
+	capture?: boolean;
 	activitySignal?: TaskActivitySignal;
 };
 
@@ -34,7 +35,7 @@ export function registerListener(
 	runtime: MakooRuntimeState,
 	declaration: ListenerDeclaration
 ): ListenerRegisterResult {
-	const { id: explicitId, listenAt, event, callback, activitySignal } = declaration;
+	const { id: explicitId, listenAt, event, callback, capture, activitySignal } = declaration;
 	const id = explicitId ?? `listener-${listenAt}-${event}`;
 
 	runtime.emit(
@@ -80,6 +81,9 @@ export function registerListener(
 			event,
 			callback
 		};
+		if (typeof capture !== 'undefined') {
+			context.capture = capture;
+		}
 		if (activitySignal) {
 			context.activitySignal = activitySignal;
 		}
@@ -211,6 +215,10 @@ export function registerInjection<TArtifact>(
 				callback: options.on.callback
 			};
 			context.withEvent = true;
+
+			if (typeof options.on.capture !== 'undefined') {
+				listener.capture = options.on.capture;
+			}
 
 			if (options.on.activitySignal) {
 				listener.activitySignal = options.on.activitySignal;

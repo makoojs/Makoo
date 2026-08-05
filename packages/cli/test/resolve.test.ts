@@ -269,6 +269,7 @@ describe('resolve helpers', () => {
 				listenAt: 'body',
 				type: 'keydown',
 				callback,
+				capture: false,
 				match: ['https://example.com/*']
 			},
 			{
@@ -282,6 +283,7 @@ describe('resolve helpers', () => {
 			listenAt: 'body',
 			type: 'keydown',
 			callback,
+			capture: false,
 			enabled: true,
 			match: {
 				include: ['https://example.com/*']

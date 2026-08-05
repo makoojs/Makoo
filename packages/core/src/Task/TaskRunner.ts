@@ -285,7 +285,8 @@ export function controlListener(
 				context.kind,
 				listener.listenAt,
 				listener.event,
-				listener.callback
+				listener.callback,
+				listener.capture
 			);
 
 			if (newController) {
@@ -364,12 +365,14 @@ function attachEvent(
 	kind: Task['kind'],
 	listenAt: string,
 	event: string,
-	callback: EventListener
+	callback: EventListener,
+	capture = false
 ): AbortController | null {
 	const element = document.querySelector(listenAt) as HTMLElement;
 	if (element) {
 		const controller = new AbortController();
 		element.addEventListener(event, callback, {
+			capture,
 			signal: controller.signal
 		});
 		runtime.logger.info(`Event "${event}" attached at "${listenAt}" (task: ${id})`);
@@ -382,6 +385,7 @@ function attachEvent(
 		(el) => {
 			if (proxyController.signal.aborted) return;
 			el.addEventListener(event, callback, {
+				capture,
 				signal: proxyController.signal
 			});
 			runtime.logger.info(`Event "${event}" attached at "${listenAt}" (task: ${id})`);

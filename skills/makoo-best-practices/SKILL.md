@@ -108,6 +108,23 @@ Use the top-level manifest for `injectionDefaults`, the injection collection, an
 
 When a top-level injection and a module-level manifest resolve to the same module id, Makoo merges their top-level fields. Explicit module fields win and missing module fields can come from the top-level entry. Treat `hooks` and `on` as whole top-level fields rather than expecting a deep merge inside either object.
 
+## Choose The Listener Event Phase
+
+Standalone listeners belong in the top-level manifest; component-owned listeners belong in an injection module's `on` field. Both forms support an optional `capture` boolean:
+
+```ts
+listeners: {
+	'escape-close': {
+		listenAt: 'body',
+		type: 'keydown',
+		capture: true,
+		callback: onEscape
+	}
+}
+```
+
+Use `capture: true` when the handler must run during the DOM capture phase. Omit it or set it to `false` for the normal bubbling phase. Keep explicit `false` values intact when transforming configuration or generated code.
+
 ## Put Component Logic In Framework Files
 
 Use the module entry component as the UI boundary:
@@ -236,6 +253,7 @@ Before finishing work in a Makoo-powered project, check:
 - Manifest top-level code has no application side effects or Node-only dependencies.
 - Hooks, callbacks, activity signals, and their imported helpers are browser-bundleable.
 - Standalone listeners live in the top-level manifest, not a module-level manifest.
+- Listener `capture` is chosen deliberately: `true` for capture, omitted/`false` for bubbling.
 - Module and top-level injection fields follow explicit-module-field precedence without assuming a deep merge.
 - Component logic lives in `app.tsx`, `app.jsx`, `app.vue`, or module-local framework files.
 - React/Vue mounting is handled by Makoo adapters.

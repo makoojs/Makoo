@@ -227,6 +227,7 @@ export default defineInjections({
 		escapeClose: {
 			listenAt: 'body',
 			type: 'keydown',
+			capture: true,
 			callback: (event) => {
 				if (event instanceof KeyboardEvent && event.key === 'Escape') console.log('close');
 			},
@@ -236,7 +237,7 @@ export default defineInjections({
 });
 ```
 
-Makoo 会为该条目生成 `listen({ id: 'escapeClose', ... })`。listener 也支持 `enabled`、`activitySignal` 和与模块相同的 `match` 规则；数组形式需要用 `name` 提供稳定 ID。`listenAt` 必须是 CSS 选择器，不支持使用 `document` 或 `window` 作为监听目标。
+Makoo 会为该条目生成 `listen({ id: 'escapeClose', ... })`。listener 也支持 `enabled`、`capture`、`activitySignal` 和与模块相同的 `match` 规则。`capture` 默认为 `false`，设置为 `true` 后会在 DOM 捕获阶段监听事件；数组形式需要用 `name` 提供稳定 ID。`listenAt` 必须是 CSS 选择器，不支持使用 `document` 或 `window` 作为监听目标。
 
 独立 listener 只能声明在顶层 manifest。模块级 manifest 只描述一个 injection 模块，当前尚不支持描述一个listener；事件属于组件任务时使用模块的 `on` 字段。
 

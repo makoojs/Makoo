@@ -210,6 +210,7 @@ export default defineInjections({
 		escape: {
 			listenAt: 'body',
 			type: 'keydown',
+			capture: true,
 			callback: onEscape
 		}
 	}
@@ -245,6 +246,7 @@ export default defineInjection({
 	on: {
 		listenAt: 'body',
 		type: 'click',
+		capture: true,
 		callback: onClick
 	}
 });
@@ -304,6 +306,7 @@ type InjectionModuleListenerConfig = {
 	listenAt: string;
 	type: string;
 	callback: EventListener;
+	capture?: boolean;
 	activitySignal?: () => ActivitySignalSource<boolean>;
 };
 
@@ -313,6 +316,9 @@ type InjectionListenerConfig = InjectionModuleListenerConfig & {
 	match?: InjectionMatchConfig;
 };
 ```
+
+Set `capture: true` to listen during the DOM capture phase. It defaults to `false`, so listeners
+use the bubbling phase unless explicitly configured. Makoo manages the event listener signal.
 
 ### `InjectionFramework`
 

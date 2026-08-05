@@ -71,6 +71,7 @@ describe('Makoo declarations', () => {
 			listenAt: '#escape',
 			type: 'keydown',
 			callback,
+			capture: true,
 			activitySignal
 		});
 
@@ -80,7 +81,23 @@ describe('Makoo declarations', () => {
 			event: 'keydown',
 			type: 'keydown',
 			callback,
+			capture: true,
 			activitySignal
+		});
+	});
+
+	it('should preserve an explicit false capture option', () => {
+		const callback = vi.fn();
+		const declaration = listen({
+			listenAt: '#escape',
+			type: 'keydown',
+			callback,
+			capture: false
+		});
+
+		expect(declaration).toMatchObject({
+			callback,
+			capture: false
 		});
 	});
 

@@ -67,6 +67,9 @@ function renderArtifactOptions(
 			`"listenAt":${JSON.stringify(componentMeta.on.listenAt)}`,
 			`"type":${JSON.stringify(componentMeta.on.type)}`,
 			`"callback":${renderManifestReference(manifestBinding.on.callback)}`,
+			typeof componentMeta.on.capture !== 'undefined'
+				? `"capture":${JSON.stringify(componentMeta.on.capture)}`
+				: null,
 			componentMeta.on.activitySignal
 				? renderActivitySignal(
 						componentMeta.moduleId,

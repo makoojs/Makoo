@@ -127,6 +127,7 @@ export type InjectionModuleListenerConfig = {
 	listenAt: string;
 	type: string;
 	callback: EventListener;
+	capture?: boolean;
 	activitySignal?: () => ActivitySignalSource<boolean>;
 };
 

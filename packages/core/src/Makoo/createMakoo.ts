@@ -73,6 +73,7 @@ export function listen(input: MakooListenerInput): MakooListenerDeclaration {
 		event: input.type,
 		type: input.type,
 		callback: input.callback,
+		...(typeof input.capture !== 'undefined' ? { capture: input.capture } : {}),
 		...(input.activitySignal ? { activitySignal: input.activitySignal } : {})
 	};
 }

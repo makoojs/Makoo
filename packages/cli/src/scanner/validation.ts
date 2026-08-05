@@ -43,6 +43,7 @@ export const InjectionModuleListenerSchema = z.object({
 	listenAt: z.string(),
 	type: z.string(),
 	callback: EventListenerSchema,
+	capture: z.boolean().optional(),
 	activitySignal: ActivitySignalSchema.optional()
 });
 

@@ -51,6 +51,7 @@ export interface ListenerTask extends BaseTask {
 	listenAt: string;
 	event: string;
 	callback: EventListener;
+	capture?: boolean;
 	controller?: AbortController;
 	activitySignal?: TaskActivitySignal;
 
@@ -61,6 +62,7 @@ export type TaskListenerFeature = {
 	listenAt: string;
 	event: string;
 	callback: EventListener;
+	capture?: boolean;
 	controller?: AbortController;
 	activitySignal?: TaskActivitySignal;
 };
