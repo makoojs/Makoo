@@ -254,9 +254,23 @@ Standalone listener fields have these roles:
 - `listenAt`: selects the event target understood by the Makoo listener runtime.
 - `type`: provides the DOM event type.
 - `callback`: provides the event handler.
+- `capture`: optionally selects the DOM capture phase when `true`; omitted or `false` uses bubbling.
 - `activitySignal`: optionally controls whether the listener task is active.
 - `match`: limits registration by URL after the userscript has loaded.
 - `enabled`: removes a disabled listener from the generated runtime.
+
+Use the same `capture` field on an injection module's `on` listener when the component-owned event must run during capture:
+
+```ts
+on: {
+	listenAt: 'body',
+	type: 'click',
+	capture: true,
+	callback: onClick
+}
+```
+
+`capture: false` is meaningful and should be kept when explicitly configured; do not replace presence checks with a truthy check in generated code.
 
 Do not add `injectAt`, `alive`, `scope`, or `timeout` to standalone listeners. Those fields belong to component injection tasks.
 
@@ -405,5 +419,6 @@ Before finishing injection work, check:
 - `timeout` reflects when the target node appears and is not hiding an incorrect selector.
 - Module and top-level injection configs follow shallow top-level field precedence; `hooks` and `on` each have one authoritative source.
 - Standalone listeners are declared in the top-level manifest and do not use injection-only fields.
+- Listener `capture` is optional, defaults to bubbling when omitted, and is preserved when explicitly set to `false`.
 - Hooks, callbacks, activity signals, and their helper chains use static relative imports and remain browser-bundleable.
 - If the project mixes React and Vue, dependencies, Vite plugins, and userscript external globals support the selected frameworks.

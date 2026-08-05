@@ -207,11 +207,11 @@ export default defineInjections({
 		}
 	},
 	listeners: {
-			escape: {
-				listenAt: 'body',
-				type: 'keydown',
-				capture: true,
-				callback: onEscape
+		escape: {
+			listenAt: 'body',
+			type: 'keydown',
+			capture: true,
+			callback: onEscape
 		}
 	}
 });

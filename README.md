@@ -226,11 +226,11 @@ the listener task ID:
 ```ts
 export default defineInjections({
 	listeners: {
-			escapeClose: {
-				listenAt: 'body',
-				type: 'keydown',
-				capture: true,
-				callback: (event) => {
+		escapeClose: {
+			listenAt: 'body',
+			type: 'keydown',
+			capture: true,
+			callback: (event) => {
 				if (event instanceof KeyboardEvent && event.key === 'Escape') console.log('close');
 			},
 			match: ['https://example.com/*']
