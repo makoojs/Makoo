@@ -1,5 +1,11 @@
 # @makoojs/cli
 
+## 0.4.1
+
+### Patch Changes
+
+Add a capture option to listener injection so that operations can be performed during the capture phase.
+
 ## 0.4.0
 
 ### Minor Changes
