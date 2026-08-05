@@ -1,5 +1,11 @@
 # @makoojs/core
 
+## 0.3.1
+
+### Patch Changes
+
+Add a capture option to listener injection so that operations can be performed during the capture phase.
+
 ## 0.3.0
 
 ### Minor Changes

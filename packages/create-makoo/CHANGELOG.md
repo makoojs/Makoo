@@ -1,5 +1,11 @@
 # @makoojs/create-makoo
 
+## 0.1.8
+
+### Patch Changes
+
+Add a capture option to listener injection so that operations can be performed during the capture phase.
+
 ## 0.1.7
 
 ### Patch Changes
