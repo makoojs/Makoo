@@ -14,7 +14,7 @@ import { createObserveEmitter } from '../src/hooks/util';
 import { Logger } from '../src/logger/Logger';
 import type { MakooRuntimeState } from '../src/runtime/types';
 import { createActivityStore } from '../src/signal/observeActivitySignal';
-import type { SignalUnsubscribe } from '../src/signal/types';
+import type { ActivitySignalSource, SignalUnsubscribe } from '../src/signal/types';
 import { createTaskContext, type TaskContext } from '../src/Task/TaskContext';
 import {
 	bindListenerSignal,
@@ -1050,6 +1050,37 @@ describe('TaskRunner', () => {
 			)
 		);
 		expect(errorSpy.mock.calls[0][0]).toEqual(expect.stringContaining('Error: watch failed'));
+	});
+
+	it('should add task context to an existing signal error', () => {
+		taskContext.set(
+			'invalid-signal-task',
+			createListenerTask({
+				taskId: 'invalid-signal-task',
+				withEvent: true,
+				listenAt: '#btn',
+				event: 'click',
+				callback: vi.fn()
+			})
+		);
+		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+		const result = bindListenerSignal(
+			runtime,
+			'invalid-signal-task',
+			{} as ActivitySignalSource<boolean>
+		);
+
+		expect(result).toBe(false);
+		expect(errorSpy.mock.calls[0]).toHaveLength(1);
+		expect(errorSpy.mock.calls[0][0]).toEqual(
+			expect.stringContaining(
+				'SignalError [MAKOO_TASK_SIGNAL_INVALID]:\n' +
+					'Invalid activity signal source\n' +
+					'  - activitySignal: must provide get() and subscribe() methods\n' +
+					'(taskId: "invalid-signal-task", signal: "activitySignal")'
+			)
+		);
 	});
 
 	it('should return false when task is missing in controlListener', () => {

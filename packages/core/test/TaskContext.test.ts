@@ -701,6 +701,37 @@ describe('TaskContext', () => {
 		it('should not throw error if context is undefined', () => {
 			expect(() => taskContext.reset('nonexistent')).not.toThrow();
 		});
+		it('should include task context when unmounting fails during reset', () => {
+			const mockUnmount = vi.fn().mockImplementation(() => {
+				throw new Error('Unmount failed');
+			});
+			const context: Task = createArtifactTask({
+				taskId: 'test',
+				artifactName: 'TestComponent',
+				injectAt: '#app',
+				mountHandle: { unmount: mockUnmount },
+				appRoot: document.createElement('div'),
+				instance: {}
+			});
+
+			taskContext.set('test', context);
+			const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+			taskContext.reset('test');
+
+			expect(mockUnmount).toHaveBeenCalled();
+			expect(consoleWarnSpy.mock.calls[0]).toHaveLength(1);
+			expect(consoleWarnSpy.mock.calls[0][0]).toEqual(
+				expect.stringContaining(
+					'VueAdapterError [MAKOO_ADAPTER_UNMOUNT_FAIL]:\n' +
+						'Failed to unmount Vue component\n' +
+						'(taskId: "test", artifact: "TestComponent", injectAt: "#app", adapter: "vue", reason: "reset")'
+				)
+			);
+			expect(consoleWarnSpy.mock.calls[0][0]).toEqual(
+				expect.stringContaining('Error: Unmount failed')
+			);
+		});
 		it('should stay in map after reset', () => {
 			const context: Task = createArtifactTask({
 				taskId: 'test',

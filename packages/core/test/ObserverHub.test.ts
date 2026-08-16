@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { MakooError } from '../src/error/MakooError';
 import { createObserverHub } from '../src/hooks/ObserverHub';
 import type { ObserveEvent } from '../src/hooks/types';
 
@@ -308,5 +309,29 @@ describe('ObserverHub', () => {
 			)
 		);
 		expect(logger.error.mock.calls[0][0]).toEqual(expect.stringContaining('Error: boom'));
+	});
+
+	it('should add event context to an existing MakooError', () => {
+		const logger = {
+			info: vi.fn(),
+			warn: vi.fn(),
+			error: vi.fn(),
+			debug: vi.fn()
+		};
+		const hub = createObserverHub(logger);
+		hub.on('start:requested', () => {
+			throw new MakooError('Known hook failure');
+		});
+
+		hub.emit(makeEvent('start:requested'));
+
+		expect(logger.error.mock.calls[0]).toHaveLength(1);
+		expect(logger.error.mock.calls[0][0]).toEqual(
+			expect.stringContaining(
+				'MakooError [MAKOO_UNKNOWN]:\n' +
+					'Known hook failure\n' +
+					'(event: "start:requested", taskId: "task-1")'
+			)
+		);
 	});
 });

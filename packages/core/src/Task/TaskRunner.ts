@@ -261,7 +261,8 @@ export function bindListenerSignal(
 						undefined,
 						ErrorCode.TASK_SIGNAL_BIND_FAIL,
 						error instanceof Error ? error : new Error(String(error))
-					).withContext({ taskId, signal: 'activitySignal' });
+					);
+		signalError.withContext({ taskId, signal: 'activitySignal' });
 		runtime.logger.error(formatMakooError(signalError));
 		return false;
 	}

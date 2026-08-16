@@ -89,10 +89,11 @@ export function createObserverHub(logger: ILogger = new Logger()): ObserverHub {
 							undefined,
 							ErrorCode.HOOK_EXECUTION_FAIL,
 							error instanceof Error ? error : new Error(String(error))
-						).withContext({
-							event: event.name,
-							taskId: event.taskId ?? null
-						});
+						);
+			hookError.withContext({
+				event: event.name,
+				taskId: event.taskId ?? null
+			});
 			logger.error(formatMakooError(hookError));
 		}
 	}

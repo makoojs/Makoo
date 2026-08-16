@@ -187,13 +187,14 @@ export function createTaskContext(
 									undefined,
 									ErrorCode.ADAPTER_UNMOUNT_FAIL,
 									error instanceof Error ? error : new Error(String(error))
-								).withContext({
-									taskId: id,
-									artifact: context.artifactName,
-									injectAt: context.injectAt,
-									adapter: context.adapter.name,
-									reason: 'destroy'
-								});
+								);
+					adapterError.withContext({
+						taskId: id,
+						artifact: context.artifactName,
+						injectAt: context.injectAt,
+						adapter: context.adapter.name,
+						reason: 'destroy'
+					});
 					logger.error(formatMakooError(adapterError));
 				}
 			} else {
@@ -334,13 +335,14 @@ export function createTaskContext(
 									undefined,
 									ErrorCode.ADAPTER_UNMOUNT_FAIL,
 									error instanceof Error ? error : new Error(String(error))
-								).withContext({
-									taskId: id,
-									artifact: context.artifactName,
-									injectAt: context.injectAt,
-									adapter: context.adapter.name,
-									reason: 'reset'
-								});
+								);
+					adapterError.withContext({
+						taskId: id,
+						artifact: context.artifactName,
+						injectAt: context.injectAt,
+						adapter: context.adapter.name,
+						reason: 'reset'
+					});
 					logger.warn(formatMakooError(adapterError));
 				}
 			}
