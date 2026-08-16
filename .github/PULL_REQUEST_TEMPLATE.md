@@ -24,7 +24,7 @@
 
 ## Changeset
 
-<!-- Select one. Publishable package changes require a changeset. -->
+<!-- Select one. A changeset is recommended for publishable package changes. -->
 
 - [ ] I added a `.changeset/*.md` file.
 - [ ] This change does not affect published package behavior.
