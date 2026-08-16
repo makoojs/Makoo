@@ -11,7 +11,11 @@ export type {
 export { AdapterError } from './error/AdapterError';
 export type { ErrorCodeValue } from './error/ErrorCode';
 export { ErrorCode } from './error/ErrorCode';
-export type { MakooIssue } from './error/MakooError';
+export type {
+	MakooErrorContext,
+	MakooErrorContextValue,
+	MakooIssue
+} from './error/MakooError';
 export { MakooError } from './error/MakooError';
 export { SignalError } from './error/SignalError';
 export { TaskError } from './error/TaskError';

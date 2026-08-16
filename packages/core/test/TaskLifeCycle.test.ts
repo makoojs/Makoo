@@ -64,7 +64,11 @@ describe('TaskLifeCycle', () => {
 	it('should warn for non-existent task on enableAlive', () => {
 		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 		lifecycle.enableAlive(runtime, 'missing');
-		expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Task "missing" not found'));
+		expect(errorSpy).toHaveBeenCalledWith(
+			expect.stringContaining(
+				'TaskError [MAKOO_TASK_NOT_FOUND]:\nTask not found\n(taskId: "missing")'
+			)
+		);
 	});
 
 	it('should warn for listener-only task on enableAlive', () => {
@@ -461,7 +465,11 @@ describe('TaskLifeCycle', () => {
 		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 		lifecycle.disableAlive(runtime, 'missing-disable-task');
 		expect(errorSpy).toHaveBeenCalledWith(
-			expect.stringContaining('Task "missing-disable-task" not found')
+			expect.stringContaining(
+				'TaskError [MAKOO_TASK_NOT_FOUND]:\n' +
+					'Task not found\n' +
+					'(taskId: "missing-disable-task")'
+			)
 		);
 	});
 

@@ -1,3 +1,6 @@
+import { ErrorCode } from '../error/ErrorCode';
+import { formatMakooError } from '../error/formatMakooError';
+import { MakooError } from '../error/MakooError';
 import { Logger } from '../logger/Logger';
 import type { ILogger } from '../logger/types';
 import type {
@@ -78,7 +81,19 @@ export function createObserverHub(logger: ILogger = new Logger()): ObserverHub {
 		try {
 			hook(event, ctrl);
 		} catch (error) {
-			logger.error(`Hook execution failed for event "${event.name}".`, error);
+			const hookError =
+				error instanceof MakooError
+					? error
+					: new MakooError(
+							`Hook execution failed for event "${event.name}"`,
+							undefined,
+							ErrorCode.HOOK_EXECUTION_FAIL,
+							error instanceof Error ? error : new Error(String(error))
+						).withContext({
+							event: event.name,
+							taskId: event.taskId ?? null
+						});
+			logger.error(formatMakooError(hookError));
 		}
 	}
 

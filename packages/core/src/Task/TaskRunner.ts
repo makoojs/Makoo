@@ -1,5 +1,6 @@
 import { AdapterError } from '../error/AdapterError';
 import { ErrorCode } from '../error/ErrorCode';
+import { formatMakooError } from '../error/formatMakooError';
 import { SignalError } from '../error/SignalError';
 import { TaskError } from '../error/TaskError';
 import type { ActionEvent } from '../Makoo/types';
@@ -111,7 +112,12 @@ export function onTargetReady(
 ): void {
 	const context = runtime.taskContext.get(taskId);
 	if (!context) {
-		runtime.logger.error(`Task "${taskId}" not found, unable to proceed with injection`);
+		const error = new TaskError(
+			'Task not found, unable to proceed with injection',
+			undefined,
+			ErrorCode.TASK_NOT_FOUND
+		).withContext({ taskId });
+		runtime.logger.error(formatMakooError(error));
 		return;
 	}
 
@@ -222,7 +228,12 @@ export function bindListenerSignal(
 ): boolean {
 	const context: Task | undefined = runtime.taskContext.get(taskId);
 	if (!context) {
-		runtime.logger.error(`Task "${taskId}" not found, unable to bind activity signal`);
+		const error = new TaskError(
+			'Task not found, unable to bind activity signal',
+			undefined,
+			ErrorCode.TASK_NOT_FOUND
+		).withContext({ taskId, signal: 'activitySignal' });
+		runtime.logger.error(formatMakooError(error));
 		return false;
 	}
 
@@ -246,12 +257,12 @@ export function bindListenerSignal(
 			error instanceof SignalError
 				? error
 				: new SignalError(
-						`Failed to bind activity signal for task "${taskId}"`,
-						[{ path: 'taskId', message: taskId }],
+						'Failed to bind activity signal',
+						undefined,
 						ErrorCode.TASK_SIGNAL_BIND_FAIL,
-						error instanceof Error ? error : undefined
-					);
-		runtime.logger.error(`Failed to bind activity signal for task "${taskId}":`, signalError);
+						error instanceof Error ? error : new Error(String(error))
+					).withContext({ taskId, signal: 'activitySignal' });
+		runtime.logger.error(formatMakooError(signalError));
 		return false;
 	}
 }
@@ -263,7 +274,12 @@ export function controlListener(
 ): boolean {
 	const context: Task | undefined = runtime.taskContext.get(taskId);
 	if (!context) {
-		runtime.logger.error(`Task "${taskId}" not found, unable to manage listener state`);
+		const error = new TaskError(
+			'Task not found, unable to manage listener state',
+			undefined,
+			ErrorCode.TASK_NOT_FOUND
+		).withContext({ taskId });
+		runtime.logger.error(formatMakooError(error));
 		return false;
 	}
 	const listener = getTaskListener(context);
@@ -305,14 +321,14 @@ export function controlListener(
 			} else {
 				const error = new TaskError(
 					`Failed to attach event "${listener.event}" for task "${taskId}"`,
-					[
-						{ path: 'taskId', message: taskId },
-						{ path: 'listener.event', message: listener.event },
-						{ path: 'listener.listenAt', message: listener.listenAt }
-					],
+					undefined,
 					ErrorCode.TASK_LISTENER_ATTACH_FAIL
-				);
-				runtime.logger.error(error.message);
+				).withContext({
+					taskId,
+					event: listener.event,
+					listenAt: listener.listenAt
+				});
+				runtime.logger.error(formatMakooError(error));
 				runtime.emit(
 					'listener:attachFail',
 					buildListenerObservePayload('listener:attachFail', {
@@ -416,10 +432,10 @@ function injectArtifact(
 	if (!context || !isArtifactTask(context)) {
 		const error = new TaskError(
 			`Task "${taskId}" context missing, injection aborted`,
-			[{ path: 'taskId', message: taskId }],
+			undefined,
 			ErrorCode.TASK_NOT_FOUND
-		);
-		runtime.logger.error(error.message);
+		).withContext({ taskId });
+		runtime.logger.error(formatMakooError(error));
 		return {
 			isSuccess: false,
 			error
@@ -429,10 +445,15 @@ function injectArtifact(
 	if (!context.taskId) {
 		const error = new TaskError(
 			`No artifact found for task "${taskId}", injection aborted`,
-			[{ path: 'taskId', message: taskId }],
+			undefined,
 			ErrorCode.TASK_INJECT_FAIL
-		);
-		runtime.logger.error(error.message);
+		).withContext({
+			taskId,
+			artifact: context.artifactName,
+			injectAt: context.injectAt,
+			adapter: context.adapter.name
+		});
+		runtime.logger.error(formatMakooError(error));
 		return {
 			isSuccess: false,
 			error
@@ -442,10 +463,15 @@ function injectArtifact(
 	if (context.mountHandle) {
 		const error = new TaskError(
 			`Task "${taskId}" is already mounted, skipping`,
-			[{ path: 'taskId', message: taskId }],
+			undefined,
 			ErrorCode.TASK_ALREADY_MOUNTED
-		);
-		runtime.logger.warn(error.message);
+		).withContext({
+			taskId,
+			artifact: context.artifactName,
+			injectAt: context.injectAt,
+			adapter: context.adapter.name
+		});
+		runtime.logger.warn(formatMakooError(error));
 		return {
 			isSuccess: false,
 			error
@@ -465,10 +491,15 @@ function injectArtifact(
 	} else {
 		const error = new TaskError(
 			`Target element for task "${taskId}" is detached from DOM, injection skipped`,
-			[{ path: 'taskId', message: taskId }],
+			undefined,
 			ErrorCode.TASK_TARGET_DETACHED
-		);
-		runtime.logger.warn(error.message);
+		).withContext({
+			taskId,
+			artifact: context.artifactName,
+			injectAt: context.injectAt,
+			adapter: context.adapter.name
+		});
+		runtime.logger.warn(formatMakooError(error));
 		return {
 			isSuccess: false,
 			error
@@ -541,13 +572,22 @@ function injectArtifact(
 			isSuccess: true
 		};
 	} catch (error) {
-		const adapterError = new AdapterError(
-			`Artifact mount failed for task "${taskId}"`,
-			[{ path: 'taskId', message: taskId }],
-			ErrorCode.ADAPTER_MOUNT_FAIL,
-			error instanceof Error ? error : undefined
-		);
-		runtime.logger.error(`Artifact mount failed for task "${taskId}":`, adapterError);
+		const adapterError =
+			error instanceof AdapterError
+				? error
+				: new AdapterError(
+						`Failed to mount artifact at "${injectAt}"`,
+						undefined,
+						ErrorCode.ADAPTER_MOUNT_FAIL,
+						error instanceof Error ? error : new Error(String(error))
+					);
+		adapterError.withContext({
+			taskId,
+			artifact: context.artifactName,
+			injectAt,
+			adapter: context.adapter.name
+		});
+		runtime.logger.error(formatMakooError(adapterError));
 		appRoot.remove();
 		return {
 			isSuccess: false,

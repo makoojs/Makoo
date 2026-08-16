@@ -299,9 +299,14 @@ describe('ObserverHub', () => {
 
 		expect(badHook).toHaveBeenCalledOnce();
 		expect(goodHook).toHaveBeenCalledOnce();
-		expect(logger.error).toHaveBeenCalledWith(
-			expect.stringContaining('Hook execution failed for event "start:requested".'),
-			expect.any(Error)
+		expect(logger.error.mock.calls[0]).toHaveLength(1);
+		expect(logger.error.mock.calls[0][0]).toEqual(
+			expect.stringContaining(
+				'MakooError [MAKOO_HOOK_EXECUTION_FAIL]:\n' +
+					'Hook execution failed for event "start:requested"\n' +
+					'(event: "start:requested", taskId: "task-1")'
+			)
 		);
+		expect(logger.error.mock.calls[0][0]).toEqual(expect.stringContaining('Error: boom'));
 	});
 });
