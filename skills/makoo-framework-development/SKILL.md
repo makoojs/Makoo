@@ -1,25 +1,25 @@
 ---
 name: makoo-framework-development
-description: Use when developing the Makoo framework/monorepo itself, especially when changing packages/core, packages/cli, packages/react, packages/vue, packages/create-makoo, repository config, tests, package APIs, generators, adapters, or internal documentation. Do not use for ordinary downstream projects that only consume Makoo.
+description: Use when developing the Makoo framework/monorepo itself, especially when changing packages/core, packages/cli, packages/react, packages/vue, packages/create-makoo, repository config, tests, package APIs, adapters, or internal documentation. Do not use for ordinary downstream projects that only consume Makoo.
 ---
 
 # Makoo Framework Development
 
 Follow this skill when developing Makoo itself: the framework monorepo, its packages, adapters, CLI, scaffolding templates, tests, docs, or shared configuration. Preserve the repo's current library-first architecture, naming, and testing style instead of introducing generic app-framework patterns.
 
-Do not use this skill for ordinary downstream projects that only use Makoo to build userscripts. For injection module and manifest work in a Makoo-powered project, use the Makoo injection workflow skill instead.
+Do not use this skill for ordinary downstream projects that only use Makoo to build userscripts. For task composition and injection module work in a Makoo-powered project, use the Makoo injection workflow skill instead.
 
 ## Start Here
 
 Identify the target package before editing:
 
 - `packages/core`: framework-agnostic runtime core
-- `packages/cli`: config resolution, scanning, code generation, Vite plugin integration
+- `packages/cli`: config resolution, Vite and userscript integration, project commands
 - `packages/react`: React adapter only
-- `packages/vue`: Vue adapter and Vue plugin helpers
+- `packages/vue`: Vue adapter and Vue plugin registration
 - `packages/create-makoo`: project scaffolding templates
 
-Keep code inside the package that already owns the responsibility. Prefer extracting shared runtime behavior into `core` rather than duplicating it in adapters or CLI code.
+Keep code inside the package that already owns the responsibility.
 
 If the task touches multiple areas or you need a fuller package map, read `references/project-map.md`.
 
@@ -28,8 +28,7 @@ If the task touches multiple areas or you need a fuller package map, read `refer
 - Write TypeScript with ESM imports and exports.
 - Match the repository formatter: tabs for indentation, single quotes, semicolons, no trailing commas, and a soft line width around 100 characters.
 - Prefer named exports. Use barrel exports only in package entrypoints such as `src/index.ts`.
-- Keep filenames and directories descriptive and consistent with the existing package vocabulary. Use `PascalCase` for classes and class-like files, `camelCase` for utility and builder files, and `types.ts` for tightly related type groups.
-- Keep functions small and explicit. Favor clear local helpers over clever abstractions.
+- Keep filenames and directories descriptive and consistent with the existing package vocabulary. Use `PascalCase` for classes and class-like files, `camelCase` for functions and builders, and `types.ts` for tightly related type groups.
 - Add comments only when they explain intent, invariants, or subtle behavior. Do not narrate obvious code.
 
 ## Documentation Rules
@@ -38,7 +37,7 @@ If the task touches multiple areas or you need a fuller package map, read `refer
 - Keep implementation history and migration rationale in changesets, changelogs, ADRs, commit messages, or pull-request descriptions. Do not turn user documentation into a record of superseded technical decisions.
 - Describe current behavior positively and in terms users already know. For example, write "hooks and callbacks may be declared inline or imported from browser-compatible files" rather than explaining an old serialization mechanism.
 - Prefer public field and API names over invented umbrella terms. Do not introduce labels such as "runtime functions" when the documentation can name `hooks`, `callback`, and `activitySignal` directly.
-- Keep scanner, binding, generated-code, and module-graph details in architecture or internal CLI documentation unless a user must understand them to use or debug a documented feature. In usage guides, explain the observable result and the required user action.
+- Keep internal config resolution and plugin wiring details in architecture or internal CLI documentation unless a user must understand them to use or debug a documented feature. In usage guides, explain the observable result and the required user action.
 - Use negative wording when it communicates a current user-facing requirement or boundary, such as an unsupported import or an unnecessary setup file. Do not use it merely to contrast the current architecture with an abandoned internal approach.
 - When the user edits one language of paired documentation, treat that edited version as the source for the requested synchronization. Preserve its meaning and structure, then update the other language without rewriting the user's source text beyond necessary correctness fixes.
 - Before finishing a documentation change, scan the affected public docs for stale migration language such as `now`, `no longer`, `formerly`, `instead of the old`, `不再`, `以前`, or comparisons with a removed mechanism. Review matches in context rather than replacing unrelated prose blindly.
@@ -49,15 +48,13 @@ If the task touches multiple areas or you need a fuller package map, read `refer
   - runtime orchestration in `Makoo/`, `runtime/`, `Task/`, `watcher/`, `payload/`
   - adapter contracts in `adapter/` or package-local adapter files
   - configuration defaults, validation, and resolution in `config/`
-  - code generation split into `render/import`, `render/init`, and `render/run`
 - Add new subdirectories only when they create a real domain boundary, not for one-off indirection.
 - Keep entrypoints minimal. Re-export public API from `src/index.ts`; do not hide substantial logic there.
-- Prefer pure helper functions for normalization, derivation, and transformation code.
-- Keep package public APIs explicit. If a type or helper is not meant to be public, avoid exporting it from the package entrypoint.
+- Keep package public APIs explicit. If a symbol is not meant to be public, avoid exporting it from the package entrypoint.
 
 ## Naming And API Design
 
-- Use domain terms that already exist in the repo: `inject`, `register`, `resolve`, `normalize`, `build`, `render`, `observe`, `watch`, `adapter`, `manifest`, `config`.
+- Use domain terms that already exist in the repo: `inject`, `listen`, `register`, `resolve`, `normalize`, `build`, `observe`, `watch`, `adapter`, `task`, `config`.
 - Name booleans and state transitions clearly, such as `enabled`, `alive`, `pending`, `active`, `idle`, `isSuccess`.
 - Prefer `ResolvedX`, `XConfig`, `XResult`, `XError`, and `XOptions` naming for structured types.
 - Keep defaults centralized in `defaults.ts`-style files when the values are shared or semantically important.
@@ -71,19 +68,13 @@ If the task touches multiple areas or you need a fuller package map, read `refer
 - Validate config and user input close to the boundary. Normalized internal code should operate on resolved, typed data.
 - Prefer returning normalized objects from resolver functions instead of mutating input.
 
-## Fallback And Helper Function Rules
+## Fallback Rules
 
-- Do not add preventive fallback branches, fallback values, fallback helpers, or compatibility code by default.
+- Do not add preventive fallback branches, fallback values, or compatibility code by default.
 - Add fallback logic only when runtime constraints, business semantics, or an existing local package pattern clearly require it.
-- Before adding fallback logic, inspect the current package for an existing implementation, utility, or handling pattern with the same purpose.
+- Before adding fallback logic, inspect the current package for an existing implementation or handling pattern with the same purpose.
 - Only add new fallback logic when no suitable package-local precedent exists.
 - If the surrounding code prefers explicit failure over silent recovery, preserve explicit failure.
-- When a small helper is needed, first check whether it can be inlined into the current function, method, or class implementation without harming readability or responsibilities.
-- If a helper cannot be cleanly inlined, it may stay in the same file only when it is simple, local to that file, and does not blur the file's main responsibility.
-- If helper logic becomes non-trivial, is reused, or starts to distract from the file's primary logic, extract it.
-- When extracting a helper, prefer the current directory's existing `util` file. If none exists, create one that matches the repository's naming style and export the helper from there.
-- Do not extract helpers prematurely for hypothetical reuse.
-- Do not move one-off, short, context-heavy logic into `util` unless extraction materially improves clarity.
 
 ## Testing Rules
 
@@ -91,24 +82,13 @@ If the task touches multiple areas or you need a fuller package map, read `refer
 - Place tests in the package-local `test/` directory and keep filenames aligned with the target unit or feature.
 - Match current test style: `describe` and `it`, straightforward fixture setup, explicit expectations, and `vi.spyOn` for interaction testing.
 - Test observable behavior and normalization results, not private implementation trivia, unless the repo already exposes internals for that pattern.
-- For generator, config, and resolver work, assert concrete output shape and edge cases.
+- For config and resolver work, assert concrete output shape and edge cases.
 - Do not run `pnpm exec tsc -p packages/*/tsconfig.json` or similar package-level `tsc -p` commands as routine verification because these package tsconfig files emit `.d.ts` files into source directories. Prefer Vitest coverage, targeted runtime checks, or the package's actual build pipeline instead.
 
-## CLI Scanner And Inspect Rules
+## CLI Config Rules
 
-- Keep scanner result fields semantically separated; do not merge unrelated dependency sources for convenience.
-- Track top-level manifest dependencies separately from module manifest dependencies.
-- Keep runtime setup files separate from dependencies imported by runtime setup files.
-- Avoid dumping raw resolved config objects in `makoo inspect` when they duplicate scanner output.
-- Prefer grouped inspect output for project, source, runtime, monkey, injection defaults, injections, and frameworks.
-- Keep display-only inspect formatting close to `packages/cli/src/command/inspect.ts` unless another command actually reuses it.
-- Use `packages/cli/src/shared/terminalColor.ts` for CLI colors instead of introducing another coloring helper.
-
-## Injection Defaults
-
-- Injection runtime defaults belong to manifest scanning via `injectionDefaults`, not Vite config.
-- Module injection config resolves defaults field-by-field: module config overrides manifest defaults, and manifest defaults override Makoo defaults.
-- Reject unsupported Vite-level injector config with a clear CLI validation error instead of silently accepting or migrating it.
+- Keep `entry`, app metadata, and monkey options semantically separated in resolved config.
+- Resolve the configured application module relative to the project root and pass it to `vite-plugin-monkey`.
 
 ## Release And Changesets
 
@@ -120,7 +100,6 @@ If the task touches multiple areas or you need a fuller package map, read `refer
 - Makoo uses Changesets for published package versioning and changelogs.
 - Published packages maintain package-level changelogs under `packages/*/CHANGELOG.md`.
 - The root `CHANGELOG.md` is a legacy project-level archive, not the current release changelog source.
-- When one PR affects multiple published packages and each package needs different release notes, create one changeset per package instead of selecting multiple packages in one changeset.
 - Do not manually edit package versions except in Changesets-generated version PRs.
 - The release workflow is `.github/workflows/changesets-release.yml`: it creates a `Version Packages` PR first, then publishes after that PR merges.
 - For npm publishing in Actions, keep `NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}` available to publish steps that run npm commands.

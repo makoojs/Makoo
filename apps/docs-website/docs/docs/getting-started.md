@@ -37,33 +37,44 @@ A new Vue project usually looks like this:
 ├─ assets
 │  ├─ makoo-icon-transparent.png
 │  └─ vue.svg
+├─ .gitignore
+├─ env.d.ts
 ├─ package.json
+├─ tsconfig.json
+├─ tsconfig.app.json
+├─ tsconfig.node.json
 ├─ vite.config.ts
-└─ injections
-   ├─ manifest.ts
-   └─ hello-world
-      └─ app.vue
+└─ src
+   ├─ main.ts
+   └─ injections
+      └─ hello-world
+         └─ App.vue
 ```
 
-A React project uses the same shape, with `app.tsx` and a module stylesheet:
+A React project uses the same shape, with `App.tsx` and a module stylesheet:
 
 ```txt
 .
 ├─ assets
 │  ├─ makoo-icon-transparent.png
 │  └─ react.svg
+├─ .gitignore
+├─ env.d.ts
 ├─ package.json
+├─ tsconfig.json
+├─ tsconfig.app.json
+├─ tsconfig.node.json
 ├─ vite.config.ts
-└─ injections
-   ├─ manifest.ts
-   └─ hello-world
-      ├─ app.tsx
-      └─ style.css
+└─ src
+   ├─ main.ts
+   └─ injections
+      └─ hello-world
+         ├─ App.tsx
+         └─ style.css
 ```
 
-The important directory is `injections/`. Makoo scans this area, reads the manifest, and
-generates the runtime entry that registers your modules.
-You do not need to create or maintain a `main.ts` entry file.
+The generated template uses `createMakoo()` and `inject()` to declare tasks and start the runtime.
+The example keeps its feature code under `src/injections/`.
 
 ## Configure The Userscript
 
@@ -71,19 +82,28 @@ The generated `vite.config.ts` contains the Makoo plugin:
 
 ```ts
 import { defineConfig } from 'vite';
-import { makoo } from '@makoojs/cli';
+import { cdn, makoo } from '@makoojs/cli';
+import vue from '@vitejs/plugin-vue';
 
 export default defineConfig({
 	plugins: [
-		...makoo({
+		vue(),
+		makoo({
+			entry: './src/main.ts',
 			app: {
 				name: 'makoo-project',
 				version: '0.0.1'
 			},
 			monkey: {
 				userscript: {
+					icon: 'https://vitejs.dev/logo.svg',
 					namespace: 'npm/makoo',
 					match: ['https://example.com/*']
+				},
+				build: {
+					externalGlobals: {
+						vue: cdn.jsdelivr('Vue', 'dist/vue.global.min.js')
+					}
 				}
 			}
 		})
@@ -91,9 +111,9 @@ export default defineConfig({
 });
 ```
 
-The `app` field provides Makoo-level project metadata. The `monkey.userscript` field is
-passed to `vite-plugin-monkey` and becomes userscript metadata such as `@name`,
-`@namespace`, and `@match`.
+The `app` field provides Makoo-level project metadata. Makoo applies defaults and normalizes
+the supported `monkey` options before passing them to `vite-plugin-monkey`, which generates
+metadata such as `@name`, `@namespace`, and `@match`.
 
 During development, choose a `match` pattern that includes the page you are testing. If the
 userscript manager does not run the script on that page, Makoo cannot register any
@@ -101,72 +121,61 @@ injection modules there.
 
 ## Define The First Injection
 
-The generated manifest registers a single `hello-world` module:
+The generated application code registers a single `hello-world` task:
 
 ```ts
-import { defineInjections } from '@makoojs/cli/manifest';
+import { createMakoo, inject } from '@makoojs/core';
+import { createVueAdapter } from '@makoojs/vue';
+import App from './injections/hello-world/App.vue';
 
-export default defineInjections({
-	injections: {
-		'hello-world': {
-			injectAt: 'body',
-			component: './hello-world/app.vue'
-		}
-	}
-});
+const tasks = createMakoo({ adapters: [createVueAdapter()] }).start([
+	inject({ id: 'hello-world', injectAt: 'body', artifact: App })
+]);
+
+if (import.meta.hot) {
+	import.meta.hot.dispose(() => tasks.destroyAll());
+}
 ```
 
-Each entry describes one injection module:
+This task declaration contains the following information:
 
 | Field | Meaning |
 | --- | --- |
-| `hello-world` | Module name |
+| `id` | Task id; the example value is `hello-world` |
 | `injectAt` | CSS selector for the target node |
-| `component` | Component path relative to the manifest |
+| `artifact` | Imported component |
 
-When the target node appears, Makoo mounts the component into that target. In the scaffolded
-project, `injectAt: 'body'` makes the demo easy to see on almost any matching page.
+When the target node appears, Makoo creates a mount point inside it and the adapter mounts the
+component into that mount point. In the scaffolded project, `injectAt: 'body'` makes the demo
+easy to see on almost any matching page.
 
 ## Change The Target
 
 To mount into a more specific part of a page, change `injectAt`:
 
 ```ts
-export default defineInjections({
-	injections: {
-		toolbar: {
-			injectAt: '#toolbar',
-			component: './toolbar/app.vue'
-		}
-	}
-});
+inject({ id: 'toolbar', injectAt: '#toolbar', artifact: Toolbar });
 ```
 
-Then create the matching module directory:
+In this example, the matching component lives here:
 
 ```txt
-injections
-├─ manifest.ts
+src/injections
 └─ toolbar
-   └─ app.vue
+   └─ App.vue
 ```
 
-For React, use `app.tsx` instead:
+For React, import `createReactAdapter()` and the React component:
 
 ```ts
-export default defineInjections({
-	injections: {
-		toolbar: {
-			injectAt: '#toolbar',
-			component: './toolbar/app.tsx'
-		}
-	}
-});
-```
+import { createMakoo, inject } from '@makoojs/core';
+import { createReactAdapter } from '@makoojs/react';
+import Toolbar from './injections/toolbar/App.tsx';
 
-Makoo can infer the framework from the component extension. You can still set
-`framework: 'Vue'` or `framework: 'React'` explicitly when you want the manifest to be
-clearer.
+createMakoo({ adapters: [createReactAdapter()] }).start([
+	inject({ id: 'toolbar', injectAt: '#toolbar', artifact: Toolbar })
+]);
+```
 
 ## Test In The Browser
 
@@ -180,16 +189,11 @@ Open the dev userscript URL printed by the command, install it in your userscrip
 and then open a page that matches your `monkey.userscript.match` rule. The generated
 `hello-world` component should appear on the page.
 
-While the dev server is running:
-
-- editing a Vue or React component uses normal Vite HMR
-- editing `injections/manifest.ts` triggers Makoo's structural update flow
-- changing the userscript `match` rule may require reinstalling or refreshing the dev
-  userscript in your script manager
+Changing the userscript `match` rule may require reinstalling or refreshing the development
+userscript in your script manager.
 
 ## Next Steps
 
-Continue with [Core Concepts](./concepts.md) to understand how the runtime, modules,
-manifests, and adapters fit together. Then use [Manifest Reference](./manifest.md) when you
-need module-level options such as `match`, `alive`, `timeout`, `scope`, and lifecycle
-`hooks`.
+Continue with [Core Concepts](./concepts.md) to understand how the runtime, tasks, modules,
+and adapters fit together. The Core API documents task options such as `alive`, `timeout`,
+`scope`, listeners, and lifecycle hooks.

@@ -4,7 +4,7 @@
 
 示例目标是做一个通用的 **DOM Selector Picker**：脚本运行在任意网页上，右下角注入一个小面板。开启选择模式后，鼠标悬停页面元素会显示高亮框；点击某个元素后锁定当前目标，并展示这个元素的 CSS selector、DOM path、标签、尺寸、class 和文本预览。
 
-这个例子不是为了展示复杂业务，而是展示 userscript 项目变成“小型前端工具”之后，如何用 Makoo 维持清晰边界。
+这个例子展示一个小型前端工具如何用 Makoo 编排任务并组织组件代码。
 
 ## 最终效果
 
@@ -21,85 +21,77 @@
 
 ## 项目结构
 
-推荐把一个注入工具作为独立模块放在 `injections/<module-name>/` 下。这个例子使用 React：
+这个例子使用 React，并把相关代码放在同一个功能目录下：
 
 ```txt
-injections
-├─ manifest.js
-└─ devtools
-   ├─ app.jsx
-   ├─ constants.js
-   ├─ style.css
-   ├─ components
-   │  ├─ CopyField.jsx
-   │  ├─ PickerHeader.jsx
-   │  └─ SelectorPicker.jsx
-   ├─ hooks
-   │  ├─ useDraggablePanel.js
-   │  └─ useElementPicker.js
-   └─ utils
-      ├─ clipboard.js
-      └─ domSnapshot.js
+src
+├─ main.ts
+└─ injections
+   └─ devtools
+      ├─ App.tsx
+      ├─ constants.ts
+      ├─ style.css
+      ├─ components
+      │  ├─ CopyField.tsx
+      │  ├─ PickerHeader.tsx
+      │  └─ SelectorPicker.tsx
+      ├─ hooks
+      │  ├─ useDraggablePanel.ts
+      │  └─ useElementPicker.ts
+      └─ utils
+         ├─ clipboard.ts
+         └─ domSnapshot.ts
 ```
 
 这几个目录的职责如下：
 
 | 位置 | 职责 |
 | --- | --- |
-| `app.jsx` | 注入模块入口，只做顶层状态和组件组装 |
+| `App.tsx` | 引入样式、维护顶层展开状态并组装组件 |
 | `components/` | 面板、字段、头部等 React UI |
 | `hooks/` | 选择元素、拖动面板等浏览器交互逻辑 |
 | `utils/` | DOM selector 生成、复制文本等纯工具函数 |
-| `constants.js` | 模块内共享的 DOM id、忽略选择器等常量 |
-| `style.css` | 当前注入模块的样式 |
+| `constants.ts` | 功能内共享的 DOM id、忽略选择器等常量 |
+| `style.css` | 当前功能的样式 |
 
-这样拆分后，模块不会变成一个同时处理 DOM 计算、事件监听、拖动状态、复制逻辑和 JSX 的大文件。
+这样拆分后，模块不会变成一个同时处理 DOM 计算、事件监听、拖动状态、复制逻辑和 TSX 的大文件。
 
-## Manifest 配置
+## 声明任务
 
-顶层 `injections/manifest.js` 声明这个注入模块：
+应用代码创建 Makoo runtime、注册 React adapter，并声明 `selector-picker` task：
 
-```js
-import { defineInjections } from '@makoojs/cli/manifest';
+```ts
+import { createMakoo, inject } from '@makoojs/core';
+import { createReactAdapter } from '@makoojs/react';
+import DevtoolsPanel from './injections/devtools/App.tsx';
 
-export default defineInjections({
-	injectionDefaults: {
-		alive: true,
-		scope: 'global',
-		timeout: 10000
-	},
-	injections: {
-		'selector-picker': {
-			injectAt: 'body',
-			component: './devtools/app.jsx',
-			framework: 'React',
-			alive: true,
-			match: {
-				include: ['http://*/*', 'https://*/*']
-			}
-		}
-	}
-});
+const tasks = createMakoo({ adapters: [createReactAdapter()] }).start([
+	inject({
+		id: 'selector-picker',
+		injectAt: 'body',
+		artifact: DevtoolsPanel
+	})
+]);
+
+if (import.meta.hot) {
+	import.meta.hot.dispose(() => tasks.destroyAll());
+}
 ```
 
 这里有几个关键点：
 
-- `selector-picker` 是模块 id，建议用能描述功能的稳定名称。
-- `injectAt: 'body'` 表示把工具挂到页面级容器上，适合浮窗类工具。
-- `framework: 'React'` 显式声明组件框架，避免从路径推断时产生歧义。
-- `alive: true` 让工具在宿主页面重绘后仍有机会重新挂载。
-- 模块级 `match` 使用通配规则，让这个工具可以在普通网页上运行。
+- `selector-picker` 是稳定的 task id。
+- `injectAt: 'body'` 把浮窗挂载到页面级目标。
+- `createReactAdapter()` 负责挂载和卸载 React 组件。
+- 这个浮窗以 `body` 为宿主，不需要开启 `alive`。
 
-如果你的工具只服务某个网站，可以把 `match.include` 收窄到对应域名。模块级 `match` 是 Makoo 运行时判断，脚本管理器自己的 `monkey.userscript.match` 仍然需要覆盖目标页面。
+脚本在哪些页面加载，由 `vite.config.ts` 中的 `monkey.userscript.match` 决定。如果组件改为挂载到可能被宿主页面移除并重新创建的节点，可以在 task 的 `options` 中开启 `alive`。
 
-> [!NOTE]
-> 浮窗类工具虽然经常注入到 `body`，但如果宿主页面本身使用 React、Turbo 或其他复杂运行时，实际项目里更推荐先创建一个独立 host 节点，再把 React 组件挂到这个 host。这样可以避免和宿主页面的 DOM 结构互相影响。
+## 根组件
 
-## 入口文件
+`App.tsx` 引入样式、维护顶层展开状态，并渲染工具组件：
 
-`app.jsx` 应该尽量薄，只负责引入样式、维护顶层展开状态，并渲染真正的工具组件：
-
-```jsx
+```tsx
 import { useEffect, useState } from 'react';
 import { TOOL_ROOT_ID } from './constants';
 import { SelectorPicker } from './components/SelectorPicker';
@@ -118,19 +110,22 @@ export default function DevtoolsPanel() {
 
 	return (
 		<div id={TOOL_ROOT_ID}>
-			<SelectorPicker collapsed={collapsed} onToggleCollapsed={() => setCollapsed(!collapsed)} />
+			<SelectorPicker
+				collapsed={collapsed}
+				onToggleCollapsed={() => setCollapsed((value) => !value)}
+			/>
 		</div>
 	);
 }
 ```
 
-入口层不直接写 selector 计算、事件监听或拖动细节。这样后续即使面板 UI 改版，也不会影响模块入口。
+这一层不处理 selector 计算、事件监听或拖动细节。面板 UI 调整时，不需要改动 task 声明。
 
 ## 常量
 
-`constants.js` 保存跨文件共享的固定值：
+`constants.ts` 保存跨文件共享的固定值：
 
-```js
+```ts
 export const TOOL_ROOT_ID = 'makoo-devtools-panel-root';
 export const IGNORED_SELECTOR = '#makoo-devtools-panel-root, #makoo-devtools-panel-root *';
 ```
@@ -139,10 +134,19 @@ export const IGNORED_SELECTOR = '#makoo-devtools-panel-root, #makoo-devtools-pan
 
 ## DOM 快照工具
 
-`utils/domSnapshot.js` 负责把一个真实 DOM 元素转换成面板可展示的数据：
+`utils/domSnapshot.ts` 负责把一个真实 DOM 元素转换成面板可展示的数据：
 
-```js
-export function getElementSnapshot(element) {
+```ts
+export type ElementSnapshot = {
+	selector: string;
+	path: string;
+	tag: string;
+	classes: string[];
+	text: string;
+	size: string;
+};
+
+export function getElementSnapshot(element: Element): ElementSnapshot {
 	const rect = element.getBoundingClientRect();
 
 	return {
@@ -151,7 +155,7 @@ export function getElementSnapshot(element) {
 		tag: element.tagName.toLowerCase(),
 		classes: Array.from(element.classList).slice(0, 8),
 		text: (element.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 120),
-		size: Math.round(rect.width) + ' x ' + Math.round(rect.height)
+		size: `${Math.round(rect.width)} x ${Math.round(rect.height)}`
 	};
 }
 ```
@@ -166,14 +170,28 @@ export function getElementSnapshot(element) {
 - DOM path 用较短的父级链路帮助用户理解元素位置
 - 文本预览会压缩空白，并限制最大长度
 
-这类逻辑放在 `utils/` 中，方便后续单独测试或替换策略。
+这部分逻辑可以单独测试或替换生成策略。
 
 ## 选择元素 Hook
 
-`hooks/useElementPicker.js` 负责选择模式：
+`hooks/useElementPicker.ts` 负责选择模式：
 
-```js
-export function useElementPicker({ enabled, onPreview, onLock }) {
+```ts
+import { useEffect } from 'react';
+import { IGNORED_SELECTOR } from '../constants';
+import { getElementSnapshot, type ElementSnapshot } from '../utils/domSnapshot';
+
+type UseElementPickerOptions = {
+	enabled: boolean;
+	onPreview: (snapshot: ElementSnapshot) => void;
+	onLock: (snapshot: ElementSnapshot) => void;
+};
+
+export function useElementPicker({
+	enabled,
+	onPreview,
+	onLock
+}: UseElementPickerOptions): void {
 	useEffect(() => {
 		if (!enabled) return undefined;
 
@@ -181,7 +199,7 @@ export function useElementPicker({ enabled, onPreview, onLock }) {
 		overlay.className = 'makoo-picker-outline';
 		document.body.appendChild(overlay);
 
-		function onPointerMove(event) {
+		function onPointerMove(event: PointerEvent): void {
 			const target = event.target;
 			if (!(target instanceof Element) || target.matches(IGNORED_SELECTOR)) return;
 
@@ -189,7 +207,7 @@ export function useElementPicker({ enabled, onPreview, onLock }) {
 			onPreview(getElementSnapshot(target));
 		}
 
-		function onPointerDown(event) {
+		function onPointerDown(event: PointerEvent): void {
 			const target = event.target;
 			if (!(target instanceof Element) || target.matches(IGNORED_SELECTOR)) return;
 
@@ -221,16 +239,17 @@ export function useElementPicker({ enabled, onPreview, onLock }) {
 
 ## 拖动面板 Hook
 
-`hooks/useDraggablePanel.js` 管理窗口拖动：
+`hooks/useDraggablePanel.ts` 管理窗口拖动：
 
-```js
-export function useDraggablePanel(panelRef) {
-	const [position, setPosition] = useState(null);
+```ts
+export function useDraggablePanel(panelRef: RefObject<HTMLDivElement | null>) {
+	const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
 	const [dragging, setDragging] = useState(false);
-	const dragRef = useRef(null);
+	const dragRef = useRef<{ offsetX: number; offsetY: number } | null>(null);
 
-	function startDrag(event) {
-		if (event.target.closest('button') || !panelRef.current) return;
+	function startDrag(event: ReactPointerEvent<HTMLDivElement>): void {
+		if (event.target instanceof Element && event.target.closest('button')) return;
+		if (!panelRef.current) return;
 
 		const rect = panelRef.current.getBoundingClientRect();
 		dragRef.current = {
@@ -244,7 +263,7 @@ export function useDraggablePanel(panelRef) {
 	return {
 		dragging,
 		startDrag,
-		style
+		style: position ? { left: position.x, top: position.y } : undefined
 	};
 }
 ```
@@ -258,20 +277,25 @@ export function useDraggablePanel(panelRef) {
 
 ## 主组件
 
-`components/SelectorPicker.jsx` 负责把状态、hook 和 UI 拼起来：
+`components/SelectorPicker.tsx` 负责把状态、hook 和 UI 拼起来：
 
-```jsx
-export function SelectorPicker({ collapsed, onToggleCollapsed }) {
+```tsx
+type SelectorPickerProps = {
+	collapsed: boolean;
+	onToggleCollapsed: () => void;
+};
+
+export function SelectorPicker({ collapsed, onToggleCollapsed }: SelectorPickerProps) {
 	const [enabled, setEnabled] = useState(true);
-	const [snapshot, setSnapshot] = useState(null);
-	const pickerRef = useRef(null);
+	const [snapshot, setSnapshot] = useState<ElementSnapshot | null>(null);
+	const pickerRef = useRef<HTMLDivElement>(null);
 	const { dragging, startDrag, style } = useDraggablePanel(pickerRef);
 
-	const previewElement = useCallback((nextSnapshot) => {
+	const previewElement = useCallback((nextSnapshot: ElementSnapshot) => {
 		setSnapshot(nextSnapshot);
 	}, []);
 
-	const lockElement = useCallback((nextSnapshot) => {
+	const lockElement = useCallback((nextSnapshot: ElementSnapshot) => {
 		setSnapshot(nextSnapshot);
 		setEnabled(false);
 	}, []);
@@ -283,9 +307,10 @@ export function SelectorPicker({ collapsed, onToggleCollapsed }) {
 	});
 
 	return (
-		<div ref={pickerRef} className={pickerClassName} style={style}>
-			<PickerHeader />
-			{/* detail fields */}
+		<div ref={pickerRef} className="makoo-picker" style={style} onPointerDown={startDrag}>
+			<PickerHeader collapsed={collapsed} onToggle={onToggleCollapsed} />
+			{!collapsed && snapshot ? <div>{snapshot.selector}</div> : null}
+			{dragging ? <span>Moving</span> : null}
 		</div>
 	);
 }
@@ -302,18 +327,25 @@ UI 细节继续拆到 `PickerHeader` 和 `CopyField` 中。
 
 ## 字段组件
 
-`components/CopyField.jsx` 用来渲染可复制的长文本字段：
+`components/CopyField.tsx` 用来渲染可复制的长文本字段：
 
-```jsx
-export function CopyField({ label, value, placeholder, copyLabel }) {
+```tsx
+type CopyFieldProps = {
+	label: string;
+	value?: string;
+	placeholder: string;
+	copyLabel: string;
+};
+
+export function CopyField({ label, value, placeholder, copyLabel }: CopyFieldProps) {
 	const text = value || placeholder;
 
 	return (
 		<div className="makoo-selector-field">
 			<div className="makoo-field-header">
 				<label>{label}</label>
-				<button disabled={!value} onClick={() => safeCopy(value)}>
-					Copy
+				<button type="button" disabled={!value} onClick={() => value && safeCopy(value)}>
+					{copyLabel}
 				</button>
 			</div>
 			<div className="makoo-selector-box">
@@ -328,7 +360,7 @@ Selector 和 DOM path 都可能很长，所以它们用同一个字段组件，�
 
 ## 样式组织
 
-这个例子把样式放在模块内的 `style.css`。重点不是做复杂视觉，而是避免和宿主页面互相污染：
+这个例子把样式放在功能目录内的 `style.css`，并通过选择器限制样式范围，避免影响宿主页面：
 
 ```css
 #makoo-devtools-panel-root,
@@ -362,18 +394,17 @@ Selector 和 DOM path 都可能很长，所以它们用同一个字段组件，�
 
 ## 小结
 
-这个示例里，Makoo 负责的是 userscript 项目的结构入口：
+这个示例里，Makoo 负责：
 
-- 通过 manifest 声明模块和 URL 规则
+- 通过 `inject()` 声明 task、目标节点和 React artifact
 - 等待目标 DOM 并挂载 React 组件
-- 在页面重绘后按 `alive` 策略保持工具可用
-- 让注入模块像普通前端组件一样开发和拆分
+- 在 task 销毁时卸载组件并释放运行时资源
 
-而具体业务逻辑仍然属于模块内部：
+具体业务逻辑仍然属于功能代码：
 
 - DOM selector 如何生成
 - 选择模式如何监听页面事件
 - 面板如何拖动
 - 字段如何复制和展示
 
-这也是 Makoo 推荐的实践方式：把注入规则交给 manifest，把运行时协调交给 Makoo，把真正的产品逻辑放回清晰的模块目录中。
+应用代码负责组合 task，Makoo 负责运行时调度，React 组件负责工具本身的交互和界面。

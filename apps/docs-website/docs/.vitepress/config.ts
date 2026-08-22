@@ -14,7 +14,6 @@ const enGuideSidebar = [
 			{ text: 'Getting Started', link: '/docs/getting-started' },
 			{ text: 'Core Concepts', link: '/docs/concepts' },
 			{ text: 'Configuration', link: '/docs/configuration' },
-			{ text: 'Manifest Reference', link: '/docs/manifest' },
 			{ text: 'HMR Behavior', link: '/docs/hmr' },
 			{ text: 'Recipes', link: '/docs/recipes' }
 		]
@@ -29,7 +28,6 @@ const zhGuideSidebar = [
 			{ text: '快速开始', link: '/zh/docs/getting-started' },
 			{ text: '核心概念', link: '/zh/docs/concepts' },
 			{ text: '配置', link: '/zh/docs/configuration' },
-			{ text: 'Manifest 参考', link: '/zh/docs/manifest' },
 			{ text: 'HMR 行为', link: '/zh/docs/hmr' },
 			{ text: '实践示例', link: '/zh/docs/recipes' }
 		]

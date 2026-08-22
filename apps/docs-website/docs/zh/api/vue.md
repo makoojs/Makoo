@@ -19,7 +19,7 @@ function createVueAdapter(): VueMountAdapter;
 
 ### Returns
 
-返回 `VueMountAdapter`。
+返回一个用于 Vue 组件的 Makoo 可解析挂载 adapter。
 
 ### Details
 
@@ -90,6 +90,16 @@ class VueAdapterError extends AdapterError {
 `code` 省略时使用 `ErrorCode.ADAPTER_MOUNT_FAIL`。
 
 ## TypeScript 类型
+
+### `VueMountAdapter`
+
+```ts
+type VueMountAdapter = ResolvableMountAdapter<
+	VueMountArtifact,
+	VueMountHandle,
+	VueMountInstance
+>;
+```
 
 ### `VueMountProps`
 

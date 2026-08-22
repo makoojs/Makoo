@@ -8,12 +8,11 @@ Use this file when the requested change spans packages, adds new files, or needs
   - Own runtime primitives, injection lifecycle, adapters contracts, observer payloads, watcher behavior, task orchestration, logger, and shared error types.
   - Keep this package framework-agnostic.
 - `packages/cli`
-  - Own config parsing and normalization, source scanning, manifest loading, validation, renderers, and the Vite plugin surface.
-  - Keep file generation split by concern rather than one monolithic renderer.
+	- Own config parsing and normalization, validation, project commands, and the Vite plugin surface.
 - `packages/react`
   - Own React-specific mount and unmount behavior plus React-facing errors and type guards.
 - `packages/vue`
-  - Own Vue-specific mount and unmount behavior, Vue plugin registration helpers, Vue-facing errors, and Vue type guards.
+  - Own Vue-specific mount and unmount behavior, Vue plugin registration, Vue-facing errors, and Vue type guards.
 - `packages/create-makoo`
   - Own starter project templates and scaffold-time file content.
 
@@ -35,7 +34,6 @@ Use this file when the requested change spans packages, adds new files, or needs
 ## Style Signals To Preserve
 
 - Prefer explicit imports over wildcard patterns.
-- Prefer short pure helpers such as `resolveFramework`, `resolveFileSystemPath`, or `normalizeInjectionManifest`.
 - Prefer early returns for guard cases.
 - Keep state machines and lifecycle transitions explicit instead of hiding them in compact expressions.
 - Build structured payload objects close to the emit site when event semantics matter.
@@ -45,7 +43,7 @@ Use this file when the requested change spans packages, adds new files, or needs
 - Resolver tests assert merged defaults, path normalization, and override precedence.
 - Runtime tests create realistic DOM or adapter fixtures and verify lifecycle transitions.
 - Adapter tests focus on mount and unmount success and wrapped failure behavior.
-- CLI and generator tests verify emitted code fragments and config transformation results.
+- CLI tests verify config transformation, command behavior, and Vite plugin options.
 
 ## Edit Checklist
 

@@ -23,7 +23,7 @@ pnpm changeset
 ## 项目结构
 
 - `packages/core`：框架无关的运行时核心。
-- `packages/cli`：CLI、配置解析、扫描、代码生成和 Vite 插件。
+- `packages/cli`：CLI、配置解析、Vite 和 userscript 集成。
 - `packages/react`：React adapter。
 - `packages/vue`：Vue adapter 和 Vue plugin。
 - `packages/create-makoo`：项目脚手架。

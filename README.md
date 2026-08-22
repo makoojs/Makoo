@@ -1,5 +1,5 @@
 <p align="center">
-  <img width="150" src="./apps/docs-website/docs/public/makoo-icon-transparent.png">
+  <img width="250" src="./apps/docs-website/docs/public/makoo-icon-transparent.png">
 </p>
 
 <h1 align="center">Makoo</h1>
@@ -18,7 +18,7 @@
 
 Makoo is a userscript development framework for building maintainable Vue / React injection apps for browser script managers such as Tampermonkey, Violentmonkey, and ScriptCat.
 
-It focuses on the parts of userscript development that tend to get messy: waiting for target DOM nodes, mounting components, handling page redraws, managing injection modules, and keeping structural changes hot-updated during development. Build output, userscript metadata, and install flows are still handled by [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey); Makoo adds a structured framework layer for component-driven userscript projects.
+It focuses on waiting for target DOM nodes, mounting components, reinjecting after a host target is removed, and composing multiple injection tasks. [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) handles build output, userscript metadata, and installation. Makoo provides runtime composition and adapters for component injection.
 
 ## When To Use Makoo
 
@@ -28,7 +28,7 @@ Makoo is a better fit for userscripts that start behaving like small frontend ap
 
 - building injected UI with Vue or React to modify existing web pages
 - multiple injection points or feature modules on the same page
-- host pages that redraw or partially refresh, requiring stable remount behavior
+- host target nodes that are removed and recreated, requiring component reinjection
 - modules that need to be enabled by URL or page state
 - growing codebases that need clear structure, configuration, and development workflow
 
@@ -41,7 +41,7 @@ Makoo becomes useful when lifecycle, module boundaries, and long-term maintenanc
 - [Core Concepts](#core-concepts)
 - [Project Structure](#project-structure)
 - [Configuration Overview](#configuration-overview)
-- [Manifest Reference](#manifest-reference)
+- [Runtime Composition](#runtime-composition)
 - [HMR Behavior](#hmr-behavior)
 - [Recipes](#recipes)
 - [Packages](#packages)
@@ -64,276 +64,189 @@ pnpm install
 pnpm dev
 ```
 
-A minimal project usually looks like this:
-
-```txt
-.
-├─ vite.config.ts
-└─ injections
-   ├─ manifest.ts
-   └─ hello-world
-      └─ app.vue
-```
+A project includes Vite configuration, application code, and an example injection.
 
 ## Core Concepts
 
 `createMakoo()` creates Makoo's runtime scheduler. It starts declared injection tasks, waits for target nodes, asks the matching adapter to mount components, and handles reinjection when needed.
 
-`Injection Module` is a single injection unit. A module usually maps to a component under `injections/<module-name>/`, and it may also provide its own module-level `manifest.ts`.
+`Injection Module` represents an independent injection feature or mount unit. It can include components, styles, and related application logic.
 
-`Manifest` is the declarative injection configuration. The top-level `injections/manifest.ts` describes which modules should be injected; module-level files such as `injections/foo/manifest.ts` can contribute fields for the same module, with explicit module fields taking priority.
+`Task` is a runtime declaration. `inject()` declares a component injection and `listen()` declares an event listener. The application composes these tasks and passes them to `makoo.start()`.
 
 `Adapter` is the component mounting bridge. Makoo supports Vue and React through `@makoojs/vue` and `@makoojs/react`, and the adapter model can support other mountable artifacts later.
 
 ## Project Structure
 
-The recommended structure keeps all injection modules under `injections/`:
+Projects can organize injection-related code as needed. For example:
 
 ```txt
-injections
-├─ manifest.ts
+src/injections
 ├─ profile-card
-│  ├─ app.vue
-│  └─ manifest.ts
+│  ├─ App.vue
+│  └─ style.css
 └─ react-badge
-   ├─ app.tsx
-   └─ manifest.ts
+   ├─ App.tsx
+   └─ style.css
 ```
 
-Use the top-level `manifest.ts` as the project entry configuration. Use module-level `manifest.ts` files when a module should own fields such as `injectAt`, `framework`, `match`, or `hooks`.
-
-Makoo scans these manifests and automatically generates the runtime entry, so a normal project does not need a `main.ts` just to import the manifest or start Makoo.
+`createMakoo()`, `inject()`, and `listen()` provide runtime composition. Projects can organize the related code according to their own conventions.
 
 ## Configuration Overview
 
-Makoo's Vite plugin config has four main areas:
+Makoo's Vite plugin config describes the build toolchain:
 
 ```ts
-makoo({
-	app: {
-		name: 'my-script',
-		version: '0.0.1'
-	},
-	source: {
-		include: ['*'],
-		exclude: []
-	},
-	monkey: {
-		userscript: {
-			match: ['https://example.com/*']
-		}
-	}
+import { defineConfig } from 'vite';
+import { makoo } from '@makoojs/cli';
+import vue from '@vitejs/plugin-vue';
+
+export default defineConfig({
+	plugins: [
+		vue(),
+		makoo({
+			entry: './src/main.ts',
+			app: {
+				name: 'my-script',
+				version: '0.0.1'
+			},
+			monkey: {
+				userscript: {
+					match: ['https://example.com/*']
+				}
+			}
+		})
+	]
 });
 ```
 
 `app` is used to generate userscript metadata such as name, version, and description.
 
-`source` controls where Makoo scans injection modules. Its current `include` and `exclude` fields filter module directories, not page URLs.
+`entry` specifies the application file bundled by Vite. It can import Vue, React, components, stores, hooks, and other browser code directly.
 
-Most `monkey` options are passed through to [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) for userscript metadata, dev server behavior, and build behavior. Makoo manages `clientAlias` and `server.mountGmApi` internally, so those options are not user-configurable.
+Most `monkey` options are passed through to [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) for userscript metadata, dev server behavior, and build behavior.
 
-## Manifest Reference
+## Runtime Composition
 
-The top-level manifest supports both object and array forms.
-
-`injectionDefaults` defines shared runtime defaults. Modules inherit scalar options such as `alive`, `scope`, and `timeout`; its `hooks` are registered as shared runtime hooks.
-
-`defineInjection` / `defineInjections` and their related types come from `@makoojs/cli/manifest`. Manifests are scanned in Node during a build, while their hooks, callbacks, and activity signals are bundled with the userscript and run in the browser. Keep manifest top-level evaluation free of application side effects and Node-only dependencies, and ensure every file imported by these functions can be bundled for the browser.
-
-Object form is recommended for most projects:
+`@makoojs/core` provides `createMakoo()`, `inject()`, and `listen()` for creating the runtime and declaring tasks. This example uses both Vue and React modules:
 
 ```ts
-import { defineInjections } from '@makoojs/cli/manifest';
+import { createMakoo, inject } from '@makoojs/core';
+import { createReactAdapter } from '@makoojs/react';
+import { createVueAdapter } from '@makoojs/vue';
+import Header from './injections/header/App.vue';
+import Badge from './injections/badge/App.tsx';
 
-export default defineInjections({
-	injectionDefaults: {
+const makoo = createMakoo({
+	adapters: [createVueAdapter(), createReactAdapter()],
+	defaults: {
 		alive: false,
 		scope: 'local'
-	},
-	injections: {
-		header: {
-			injectAt: '#header',
-			component: './header/app.vue',
-			framework: 'Vue'
-		},
-		badge: {
-			injectAt: 'body',
-			component: './badge/app.tsx',
-			framework: 'React',
-			match: {
-				include: ['https://example.com/profile/*'],
-				exclude: ['https://example.com/profile/settings']
-			}
-		}
 	}
 });
-```
 
-Array form is useful when entries are generated or need an explicit `name`:
+const tasks = makoo.start([
+	inject({ id: 'header', injectAt: '#header', artifact: Header }),
+	inject({
+		id: 'badge',
+		injectAt: 'body',
+		artifact: Badge,
+		options: { alive: true, timeout: 10_000 }
+	})
+]);
 
-```ts
-import { defineInjections } from '@makoojs/cli/manifest';
-
-export default defineInjections({
-	injections: [
-		{
-			name: 'header',
-			injectAt: '#header',
-			component: './header/app.vue',
-			framework: 'Vue'
-		}
-	]
-});
-```
-
-Common module fields:
-
-| Field | Description |
-| --- | --- |
-| `injectAt` | Target selector for injection |
-| `component` | Component path relative to `injections/manifest.ts` or the module directory |
-| `framework` | `Vue`, `React`, or `auto`; when omitted, Makoo infers it from the component extension |
-| `enabled` | Whether the module is enabled, defaults to `true` |
-| `alive` | Whether to retry injection after target DOM changes |
-| `scope` | Reinjection observation scope, supports `local` and `global` |
-| `timeout` | Timeout for waiting for the target node |
-| `hooks` | Lifecycle hooks for the current module |
-| `match` | URL matching rule for the current module |
-
-`injectAt` must be a CSS selector; `document` and `window` are not supported injection targets.
-
-Module-level URL `match` supports shorthand and object forms:
-
-```ts
-match: ['https://example.com/*']
-```
-
-```ts
-match: {
-	include: ['https://example.com/*'],
-	exclude: ['https://example.com/admin/*']
+if (import.meta.hot) {
+	import.meta.hot.dispose(() => tasks.destroyAll());
 }
 ```
 
-When `match` is omitted, the module is registered on pages where the userscript itself runs. When `match` is provided, Makoo checks `location.href` at runtime before registering that module.
+Common injection fields:
+
+| Field | Description |
+| --- | --- |
+| `id` | Stable task id |
+| `injectAt` | Target selector for injection |
+| `artifact` | Component or other value mounted by an adapter |
+| `options.alive` | Whether to wait for the same selector and reinject after the host target node is removed |
+| `options.scope` | Removal observation scope used by alive mode, supports `local` and `global` |
+| `options.timeout` | Timeout for waiting for the target node |
+| `options.hooks` | Lifecycle hooks for the current task |
+| `options.on` | Listener declaration owned by the component task |
+
+`injectAt` must be a CSS selector; `document` and `window` are not supported injection targets.
 
 ### Standalone Listeners
 
-Top-level `listeners` declares event tasks that are not owned by an injection module. They do
-not need a component directory or a framework adapter. In object form, the record key becomes
-the listener task ID:
+`listen()` declares event tasks that are not owned by an injection module. They do not need a component directory or framework adapter:
 
 ```ts
-export default defineInjections({
-	listeners: {
-		escapeClose: {
-			listenAt: 'body',
-			type: 'keydown',
-			capture: true,
-			callback: (event) => {
-				if (event instanceof KeyboardEvent && event.key === 'Escape') console.log('close');
-			},
-			match: ['https://example.com/*']
-		}
+import { listen } from '@makoojs/core';
+
+const escapeClose = listen({
+	id: 'escape-close',
+	listenAt: 'body',
+	type: 'keydown',
+	capture: true,
+	callback: (event) => {
+		if (event instanceof KeyboardEvent && event.key === 'Escape') console.log('close');
 	}
 });
 ```
 
-Makoo generates `listen({ id: 'escapeClose', ... })` for this entry. Listeners also support
-`enabled`, `capture`, `activitySignal`, and the same `match` rules as modules. `capture` defaults
-to `false`; set it to `true` to listen during the DOM capture phase. Use `name` in array form
-when a listener needs a stable ID. `listenAt` must be a CSS selector; `document` and `window`
-are not supported listener targets.
-
-Standalone listeners belong to the top-level manifest. A module-level manifest describes one injection module; use its `on` field when the event belongs to that component task.
+Listeners support `capture` and `activitySignal`. `capture` defaults to `false`; set it to `true` to listen during the DOM capture phase. `listenAt` must be a CSS selector; `document` and `window` are not supported listener targets.
 
 ## HMR Behavior
 
-Makoo separates structural changes from regular component updates in dev mode.
-
-| Change | Behavior |
-| --- | --- |
-| Top-level `injections/manifest.ts` changes | Rescan and update the virtual entry |
-| Module-level `injections/foo/manifest.ts` changes | Rescan and update the virtual entry |
-| Local hooks, callbacks, activity signals, or files they import change | Recursively track the local dependency and rescan |
-| Module-level `manifest.ts` is added or removed | Trigger a structural update |
-| Regular component file changes | Let Vite handle native HMR |
-| Third-party package dependency changes | Not tracked by Makoo structural scanning |
-
-When splitting hooks into a separate file, prefer static relative imports:
-
-```ts
-import { hooks } from './hooks';
-```
-
-Makoo continues tracking local files statically imported by hooks and callbacks. Dynamic `import()`, path aliases, and third-party packages are not part of Makoo's structural dependency tracking.
-
-You can write hooks, callbacks, and activity signals directly, use functions already declared in the current file, or import functions from other files. A function can also use variables and other utility functions from the file where it is declared.
+When using HMR, call `destroyAll()` on the `StartedTasks` returned by `start()` inside `import.meta.hot.dispose`, so replaced modules do not leave old tasks active.
 
 ## Recipes
 
 ### Enable a Module by URL
 
 ```ts
-import { defineInjections } from '@makoojs/cli/manifest';
+const isProfilePage = location.pathname.startsWith('/users/') &&
+	location.pathname !== '/users/settings';
 
-export default defineInjections({
-	injections: {
-		profile: {
-			injectAt: '#app',
-			component: './profile/app.vue',
-			match: {
-				include: ['https://example.com/users/*'],
-				exclude: ['https://example.com/users/settings']
-			}
-		}
-	}
-});
+if (isProfilePage) {
+	makoo.start([
+		inject({ id: 'profile', injectAt: '#app', artifact: Profile })
+	]);
+}
 ```
 
 ### Use a Vue Module
 
 ```ts
-import { defineInjections } from '@makoojs/cli/manifest';
+import { createMakoo, inject } from '@makoojs/core';
+import { createVueAdapter } from '@makoojs/vue';
+import Panel from './injections/panel/App.vue';
 
-export default defineInjections({
-	injections: {
-		panel: {
-			injectAt: 'body',
-			component: './panel/app.vue',
-			framework: 'Vue'
-		}
-	}
-});
+createMakoo({ adapters: [createVueAdapter()] }).start([
+	inject({ id: 'panel', injectAt: 'body', artifact: Panel })
+]);
 ```
 
 ### Split Hooks
 
 ```ts
-// injections/hooks.ts
+// src/hooks.ts
 export const hooks = {
-	'start:start': () => {
-		console.log('[makoo] injector started');
+	'start:requested': () => {
+		console.log('[makoo] start requested');
 	}
 };
 ```
 
 ```ts
-// injections/manifest.ts
+// src/main.ts
 import { hooks } from './hooks';
-import { defineInjections } from '@makoojs/cli/manifest';
+import { createMakoo, inject } from '@makoojs/core';
+import App from './injections/hello-world/App.vue';
 
-export default defineInjections({
-	injectionDefaults: {
-		hooks
-	},
-	injections: {
-		'hello-world': {
-			injectAt: 'body',
-			component: './hello-world/app.vue'
-		}
-	}
-});
+const makoo = createMakoo({ hooks });
+makoo.start([
+	inject({ id: 'hello-world', injectAt: 'body', artifact: App })
+]);
 ```
 
 ### Reduce Bundle Size with `externalGlobals`
@@ -343,27 +256,32 @@ export default defineInjections({
 ```ts
 import { defineConfig } from 'vite';
 import { cdn, makoo } from '@makoojs/cli';
+import vue from '@vitejs/plugin-vue';
 
 export default defineConfig({
-	plugins: makoo({
-		app: {
-			name: 'my-script',
-			version: '0.0.1'
-		},
-		monkey: {
-			build: {
-				externalGlobals: {
-					vue: cdn.jsdelivr('Vue', 'dist/vue.global.prod.js')
+	plugins: [
+		vue(),
+		makoo({
+			entry: './src/main.ts',
+			app: {
+				name: 'my-script',
+				version: '0.0.1'
+			},
+			monkey: {
+				build: {
+					externalGlobals: {
+						vue: cdn.jsdelivr('Vue', 'dist/vue.global.prod.js')
+					}
 				}
 			}
-		}
-	})
+		})
+	]
 });
 ```
 
 ### Use GM APIs
 
-Makoo exposes `@makoojs/cli/monkey` as a stable entry for [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) GM APIs. Prefer capability-level imports so the final userscript only references the GM APIs it actually uses:
+Makoo provides a stable [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) GM API import path through `@makoojs/cli/monkey`. Prefer capability-level imports so the final userscript only references the GM APIs it actually uses:
 
 ```ts
 import { gmRequest, gmStorage, gmStyle } from '@makoojs/cli/monkey';
@@ -381,7 +299,7 @@ gmRequest.get('https://api.example.com/data', {
 });
 ```
 
-You can also use the grouped entry. Prefer capability-level imports when you want the smallest generated `@grant` surface; `GMapi` is a convenience entry for shared or exploratory code:
+You can also use grouped imports. Prefer capability-level imports when you want the smallest generated `@grant` surface; `GMapi` is convenient for shared or exploratory code:
 
 ```ts
 import { GMapi } from '@makoojs/cli/monkey';
@@ -398,10 +316,10 @@ When `monkey.build.autoGrant` is enabled, which is the default, `@grant` is stil
 | `@makoojs/core` | Framework-agnostic injection runtime |
 | `@makoojs/vue` | Vue mount adapter |
 | `@makoojs/react` | React mount adapter |
-| `@makoojs/cli` | Vite plugin, config resolution, scanning, and code generation |
+| `@makoojs/cli` | Vite and userscript integration, config resolution, and project commands |
 | `@makoojs/create-makoo` | Project scaffold |
 
-Most userscript projects should start with `@makoojs/cli`. You usually only need to touch `@makoojs/core`, `@makoojs/vue`, or `@makoojs/react` for custom runtime integrations.
+A typical project uses `@makoojs/cli` for Vite and userscript integration, `@makoojs/core` for task composition, and either `@makoojs/vue` or `@makoojs/react` for its component adapter.
 
 ## Special Thanks
 
@@ -414,8 +332,6 @@ Makoo is built on top of these excellent open-source projects:
 | [Vue](https://vuejs.org/) | Vue component ecosystem and runtime |
 | [React](https://react.dev/) | React component ecosystem and runtime |
 | [Vitest](https://vitest.dev/) | Test runner |
-| [jiti](https://github.com/unjs/jiti) | TypeScript manifest loading |
-| [picomatch](https://github.com/micromatch/picomatch) | Module directory matching |
 
 ## Development
 

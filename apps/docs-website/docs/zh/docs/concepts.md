@@ -1,136 +1,103 @@
 # 核心概念
 
-Makoo 的概念不多，但它们不是孤立的名词，而是一条完整链路：项目配置决定 Makoo 如何扫描和构建，
-manifest 描述要注入什么，生成的运行时入口声明这些注入任务，最后由 Makoo runtime 在目标页面准备好后启动和挂载。
+Makoo 只有几种概念需要了解，它们组成一条完整链路：项目配置选择应用文件和 userscript
+选项，`createMakoo()`、`inject()` 和 `listen()` 提供运行时编排能力；应用调用 `start()` 后，Makoo runtime 注册任务、等待各自的目标 DOM，再完成挂载。
 
 ```txt
 vite.config.ts
-   -> 扫描 injections/
-   -> 读取 manifest
-   -> 生成运行时入口
+   -> 加载配置的应用模块
    -> 注册任务
    -> 等待目标 DOM
    -> 通过 Vue 或 React adapter 挂载组件
 ```
-
-理解这条流程后，后面的配置、manifest、HMR 和 recipes 会更容易读。
 
 ## 项目配置
 
 Makoo 的项目级配置写在 `vite.config.ts` 的 `makoo()` 插件里：
 
 ```ts
-makoo({
-	app: {
-		name: 'my-script',
-		version: '0.0.1'
-	},
-	source: {
-		include: ['*']
-	},
-	monkey: {
-		userscript: {
-			match: ['https://example.com/*']
-		}
-	}
+import { defineConfig } from 'vite';
+import { makoo } from '@makoojs/cli';
+import vue from '@vitejs/plugin-vue';
+
+export default defineConfig({
+	plugins: [
+		vue(),
+		makoo({
+			entry: './src/main.ts',
+			app: {
+				name: 'my-script',
+				version: '0.0.1'
+			},
+			monkey: {
+				userscript: {
+					match: ['https://example.com/*']
+				}
+			}
+		})
+	]
 });
 ```
 
 这个文件适合放项目级行为：
 
 - `app` 描述 Makoo 应用元信息。
-- `source` 控制 Makoo 扫描哪些注入模块。
-- `monkey` 会透传给 `vite-plugin-monkey`，用于 userscript 元信息、开发服务和构建行为。
+- `entry` 选择 Vite 加载的应用模块。
+- Makoo 会补充默认值并规范化支持的 `monkey` 配置，再交给 `vite-plugin-monkey` 处理 userscript 元信息、开发服务和构建行为。
 
-它回答的是“这个项目应该如何运行和构建”。它不应该变成每个模块具体注入行为的集中配置文件。
+它回答的是“这个项目应该如何运行和构建”。`createMakoo()`、`inject()` 和 `listen()` 用于配置运行时 task 行为。
 
-## Manifest
+## 运行时编排
 
-Manifest 用来声明“要注入什么”。顶层 `injections/manifest.ts` 描述项目里的模块：
+Vue 项目一般可以这样编排多个 task：
 
 ```ts
-import { defineInjections } from '@makoojs/cli/manifest';
+import { createMakoo, inject } from '@makoojs/core';
+import { createVueAdapter } from '@makoojs/vue';
+import Header from './injections/header/App.vue';
 
-export default defineInjections({
-	injectionDefaults: {
-		alive: false,
-		scope: 'local',
-		timeout: 5000
-	},
-	injections: {
-		header: {
-			injectAt: '#header',
-			component: './header/app.vue'
-		},
-		badge: {
-			injectAt: 'body',
-			component: './badge/app.tsx',
-			match: {
-				include: ['https://example.com/profile/*']
-			}
-		}
-	}
-});
+createMakoo({ adapters: [createVueAdapter()] }).start([
+	inject({
+		id: 'header',
+		injectAt: '#header',
+		artifact: Header,
+		options: { alive: true, timeout: 5000 }
+	})
+]);
 ```
 
-Manifest 适合放模块级行为：
+运行时编排主要包括：
 
-- 有哪些模块
-- 每个模块挂载哪个组件
+- 有哪些 task
+- 每个 task 挂载哪个组件
 - 每个模块等待哪个 DOM 选择器
-- 模块是否启用
-- 模块级 URL 匹配规则
-- 共享 `injectionDefaults`，以及模块级运行时选项，例如 `alive`、`scope`、`timeout`、`hooks` 和事件绑定
+- `alive`、`scope`、`timeout`、`hooks` 和事件绑定等 task 选项
 
-简单说：`vite.config.ts` 配置项目，`injections/manifest.ts` 配置注入模块。
+`vite.config.ts` 配置工具链，`createMakoo()`、`inject()` 和 `listen()` 提供运行时编排能力。
 
 ## Injection Module
 
-注入模块是 userscript 中的一个独立功能或挂载点。它通常对应 `injections/` 下的一个目录：
+注入模块是 userscript 中的一个独立功能或挂载点，可以包含组件、样式和相关业务逻辑。
+项目可以按需要组织这些代码，例如：
 
 ```txt
-injections
-├─ manifest.ts
+src/injections
 ├─ profile-card
-│  └─ app.vue
+│  └─ App.vue
 └─ react-badge
-   ├─ app.tsx
+   ├─ App.tsx
    └─ style.css
 ```
 
-一个模块应该维护这个注入点需要的代码：组件、样式、本地工具函数，以及可选的模块级 manifest
-信息。这样大型 userscript 就不会变成一个同时知道所有页面、所有目标节点、所有功能的大文件。
-
-模块名可以来自对象写法里的 manifest key：
+Task id 由 `inject()` 显式声明：
 
 ```ts
-defineInjections({
-	injections: {
-		'profile-card': {
-			injectAt: '.profile',
-			component: './profile-card/app.vue'
-		}
-	}
-});
-```
-
-也可以来自数组写法里的 `name` 字段：
-
-```ts
-defineInjections({
-	injections: [
-		{
-			name: 'profile-card',
-			injectAt: '.profile',
-			component: './profile-card/app.vue'
-		}
-	]
-});
+inject({ id: 'profile-card', injectAt: '.profile', artifact: ProfileCard });
 ```
 
 ## Makoo Runtime
 
-Makoo runtime 是生成入口创建的运行时调度器。它会把解析后的模块变成任务声明，并通过 `createMakoo().start(...)` 启动。
+`createMakoo()` 创建 Makoo runtime 调度器，并通过 `start(...)` 启动注册的 task。
 
 运行时，Makoo 会做这些事：
 
@@ -140,10 +107,10 @@ Makoo runtime 是生成入口创建的运行时调度器。它会把解析后的
 - 调用匹配的 adapter 挂载组件
 - 向挂载后的组件暴露 Makoo context
 - 在需要时重置或销毁任务
-- 在启用 `alive` 时处理重新注入
+- 在启用 `alive` 时处理宿主目标节点移除后的重新注入
 
-一般 Makoo 项目里，用户不需要手动创建 runtime。Vite 插件会生成运行时入口、导入所需 adapter、构造任务列表，并调用 `makoo.start(makooTasks)`。
-你主要通过 manifest 选项和 adapter 传入组件的 `makoo` context 间接和 runtime 交互。
+一般项目会导入对应的前端框架 adapter、构造 task 列表，并调用 `makoo.start(tasks)` 启动任务。挂载后的组件
+也可以通过 adapter 传入的 `makoo` context 与 runtime 交互。
 
 ## Task
 
@@ -158,13 +125,12 @@ adapter、timeout、alive 设置和挂载状态。
 | `pending` | 正在等待目标 DOM 节点 |
 | `active` | 已找到目标，并完成模块挂载或监听器绑定 |
 
-通常你不会直接创建 task，而是通过 manifest 字段间接配置它们。运行时会用 task 协调 DOM
+你通过 `inject()` 和 `listen()` 配置 task。运行时会用 task 协调 DOM
 ready、挂载、监听器和清理行为。
 
 ## Adapter
 
-Adapter 是 Makoo 运行时和组件框架之间的桥接层。Makoo 不会把 Vue 或 React 的挂载逻辑硬编码在
-运行时调度器里，而是交给 adapter 来说明：
+Adapter 是 Makoo 运行时和组件框架之间的桥接层，负责说明：
 
 - 它是否能处理某个组件 artifact
 - 如何把这个 artifact 挂载到 Makoo 创建的 mount point
@@ -177,60 +143,57 @@ Makoo 目前通过 `@makoojs/vue` 和 `@makoojs/react` 提供 Vue / React adapte
 
 ## Alive 重新注入
 
-宿主页面经常会在 userscript 挂载后重绘或替换 DOM。`alive` 就是 Makoo 为这种情况提供的重新注入机制。
+`alive` 用于处理宿主目标节点被移除并重新创建的情况。
 
-模块启用 `alive` 后，Makoo 会观察目标区域，并在原来的挂载不再存活时尝试重新挂载模块。观察范围由
-`scope` 控制：
+模块启用 `alive` 后，Makoo 会观察已经匹配的宿主目标节点。该节点被移除后，Makoo 会等待同一
+`injectAt` 选择器重新出现并尝试挂载。目标节点的移除观察范围由 `scope` 控制：
 
 | Scope | 含义 |
 | --- | --- |
 | `local` | 观察目标附近区域 |
 | `global` | 观察更大的 document 范围 |
 
-对于频繁替换内容的页面，可以启用 `alive`。对于稳定目标，建议保持关闭，避免不必要的观察开销。
+宿主页面会移除并重新创建目标节点时，可以启用 `alive`。目标节点稳定时保持关闭，避免不必要的观察开销。
 
 ## Hooks
 
 Hooks 用来观察 Makoo 的生命周期事件。它适合做日志、调试、统计，或者围绕注册、运行、挂载、监听器和
 DOM 事件协调一些行为。
 
-Hooks 可以通过 manifest 级 `injectionDefaults` 共享设置，也可以通过 manifest 给单个模块设置：
+Hooks 可以在创建 Makoo 时全局设置，也可以配置到单个 task：
 
 ```ts
-defineInjections({
-	injectionDefaults: {
-		hooks: {
-			'start:requested': (payload) => {
-				console.log('[makoo] start requested', payload);
-			}
-		}
-	},
-	injections: {
-		panel: {
-			injectAt: 'body',
-			component: './panel/app.vue',
-			hooks: {
-				'artifact:mountSuccess': (payload) => {
-					console.log('[makoo] panel mounted', payload);
-				}
-			}
-		}
+const makoo = createMakoo({
+	hooks: {
+		'start:requested': (payload) => console.log(payload)
 	}
 });
+
+makoo.start([
+	inject({
+		id: 'panel',
+		injectAt: 'body',
+		artifact: Panel,
+		options: {
+			hooks: {
+				'artifact:mountSuccess': (payload) => console.log(payload)
+			}
+		}
+	})
+]);
 ```
 
 全局 hooks 适合项目级观察。模块 hooks 更适合只属于某个注入模块的逻辑。
 
 ## 这些概念如何配合
 
-最重要的边界是：
+各部分的职责如下：
 
 | 层级 | 文件 | 职责 |
 | --- | --- | --- |
-| 项目配置 | `vite.config.ts` | 构建、扫描、setup import、userscript 元信息 |
-| 注入配置 | `injections/manifest.ts` | 模块、目标节点、组件、模块行为 |
-| 运行时 | 生成入口和 Makoo runtime | 声明、启动、等待、挂载、重新注入、清理 |
+| 项目配置 | `vite.config.ts` | 应用文件、userscript 元信息、构建与开发选项 |
+| Task 编排 | `@makoojs/core` | 创建 runtime、声明 task、启动 Makoo |
+| 运行时 | Makoo core | 等待、挂载、重新注入和清理 task |
 | 框架桥接 | Vue 或 React adapter | 挂载和卸载框架组件 |
 
-这层分离正是 Makoo 更像框架层、而不只是工具函数库的原因。它定义了一个 userscript 项目如何配置、
-组织、生成和运行。
+这些部分共同完成 userscript 的配置、任务编排、组件挂载和清理。

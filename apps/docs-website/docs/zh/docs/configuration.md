@@ -1,25 +1,21 @@
 # 配置
 
-Makoo 通过 Vite 插件 `makoo()` 配置。这个文件描述项目级行为：Makoo 如何扫描模块、哪些 setup 文件进入生成的运行时，以及最终 userscript 如何交给 `vite-plugin-monkey`。
+Makoo 通过 Vite 插件 `makoo()` 来配置。从而选择应用模块、定义项目元信息，并把 userscript 选项交给 `vite-plugin-monkey`。
 
 ```ts
 import { defineConfig } from 'vite';
 import { makoo } from '@makoojs/cli';
+import vue from '@vitejs/plugin-vue';
 
 export default defineConfig({
 	plugins: [
-		...makoo({
+		vue(),
+		makoo({
+			entry: './src/main.ts',
 			app: {
 				name: 'my-script',
 				version: '0.0.1',
 				description: 'Enhance example.com with injected UI'
-			},
-			source: {
-				include: ['*'],
-				exclude: []
-			},
-			runtime: {
-				setup: ['./injections/setup.ts']
 			},
 			monkey: {
 				userscript: {
@@ -31,15 +27,14 @@ export default defineConfig({
 });
 ```
 
-`vite.config.ts` 适合放影响整个项目的配置。具体到某个模块的 `injectAt`、`component`、`match`、`alive`、共享 `injectionDefaults` 和 hooks，应放在 `injections/manifest.ts`。
+`vite.config.ts` 通过 `makoo()` 配置应用模块、项目元信息和 userscript 选项。`injectAt`、组件、listener 和生命周期行为放在应用代码中。
 
 ## 配置分组
 
 | 分组 | 作用 |
 | --- | --- |
+| `entry` | Vite 与 userscript 构建加载的应用模块 |
 | `app` | Makoo 应用元信息，以及默认 userscript 名称和版本 |
-| `source` | 控制 `injections/` 下哪些模块目录会被扫描 |
-| `runtime` | Makoo 声明并启动任务前导入的副作用 setup 文件 |
 | `monkey` | `vite-plugin-monkey` 的 userscript、开发服务和构建配置 |
 
 ## `app`
@@ -47,12 +42,22 @@ export default defineConfig({
 `app` 是必填项。
 
 ```ts
-makoo({
-	app: {
-		name: 'my-script',
-		version: '0.0.1',
-		description: 'Optional script description'
-	}
+import { defineConfig } from 'vite';
+import { makoo } from '@makoojs/cli';
+import vue from '@vitejs/plugin-vue';
+
+export default defineConfig({
+	plugins: [
+		vue(),
+		makoo({
+			entry: './src/main.ts',
+			app: {
+				name: 'my-script',
+				version: '0.0.1',
+				description: 'Optional script description'
+			}
+		})
+	]
 });
 ```
 
@@ -64,117 +69,51 @@ makoo({
 
 如果需要更细的控制，可以在 `monkey.userscript` 中覆盖最终 userscript 元信息。
 
-## `source`
-
-`source` 控制模块扫描。
-
-```ts
-makoo({
-	source: {
-		include: ['*'],
-		exclude: ['draft-*']
-	}
-});
-```
-
-Makoo 当前扫描固定的 `injections/` 目录。顶层 manifest 文件名也固定为 `manifest`，所以 Makoo 会查找 `injections/manifest.ts`，以及 `injections/panel/manifest.ts` 这样的模块级 manifest。
-
-| 字段 | 默认值 | 说明 |
-| --- | --- | --- |
-| `include` | `['*']` | 要包含的 `injections/` 下目录名模式 |
-| `exclude` | `[]` | 要排除的 `injections/` 下目录名模式 |
-
-这些模式过滤的是模块目录，不是页面 URL。页面 URL 匹配应使用整体 userscript 的 `monkey.userscript.match`，或 manifest 中的模块级 `match`。
-
-## 运行时默认值
-
-运行时默认值属于 `injections/manifest.ts`，不属于 `vite.config.ts`。多个模块需要共享 `alive`、`scope`、`timeout` 或 `hooks` 时，使用 `injectionDefaults`：
-
-```ts
-import { defineInjections } from '@makoojs/cli/manifest';
-
-export default defineInjections({
-	injectionDefaults: {
-		alive: false,
-		scope: 'local',
-		timeout: 5000,
-		hooks: {
-			'start:requested': (payload) => {
-				console.log('[makoo] start requested', payload);
-			}
-		}
-	},
-	injections: {}
-});
-```
-
-| 字段 | 默认值 | 说明 |
-| --- | --- | --- |
-| `alive` | `false` | 模块挂载消失后是否尝试重新注入 |
-| `scope` | `'local'` | 重新注入观察范围，可选 `'local'` 或 `'global'` |
-| `timeout` | `5000` | 等待每个目标选择器的毫秒数 |
-| `hooks` | `{}` | 当前 manifest 下模块共享的生命周期 hooks |
-
-模块会继承这些默认值，除非在 manifest 中设置自己的 `alive`、`scope`、`timeout` 或 `hooks`。
-
-## `runtime`
-
-`runtime.setup` 会在 Makoo 初始化 adapter、声明 injection、执行 `makoo.start(...)` 前导入副作用文件。
-
-```ts
-makoo({
-	runtime: {
-		setup: ['./injections/setup.ts', './injections/polyfills.ts']
-	}
-});
-```
-
-Setup 文件适合放项目级运行时准备工作，例如安装全局变量、初始化共享服务，或导入副作用样式。开发时，Makoo 会追踪 setup 文件及其本地依赖，修改它们会触发结构更新。
-
 ## `monkey`
 
 大多数 `monkey` 配置会透传给 `vite-plugin-monkey`。
 
 ```ts
-makoo({
-	monkey: {
-		userscript: {
-			namespace: 'npm/makoo',
-			match: ['https://example.com/*'],
-			grant: ['GM_getValue', 'GM_setValue']
-		},
-		server: {
-			open: true,
-			prefix: 'server:'
-		},
-		build: {
-			fileName: 'my-script.user.js',
-			metaFileName: true,
-			autoGrant: true
-		}
-	}
+import { defineConfig } from 'vite';
+import { makoo } from '@makoojs/cli';
+import vue from '@vitejs/plugin-vue';
+
+export default defineConfig({
+	plugins: [
+		vue(),
+		makoo({
+			entry: './src/main.ts',
+			app: {
+				name: 'my-script',
+				version: '0.0.1'
+			},
+			monkey: {
+				userscript: {
+					namespace: 'npm/makoo',
+					match: ['https://example.com/*'],
+					grant: ['GM_getValue', 'GM_setValue']
+				},
+				server: {
+					open: true,
+					prefix: 'server:'
+				},
+				build: {
+					fileName: 'my-script.user.js',
+					metaFileName: true,
+					autoGrant: true
+				}
+			}
+		})
+	]
 });
 ```
 
-Makoo 会内部管理一部分 `vite-plugin-monkey` 细节：
-
-| 选项 | Makoo 行为 |
-| --- | --- |
-| `entry` | 由 Makoo 生成 |
-| `clientAlias` | 内部固定 |
-| `server.mountGmApi` | 内部固定 |
-
-不要设置 `monkey.clientAlias` 或 `monkey.server.mountGmApi`；Makoo 会校验并拒绝这些选项，因为它们会和运行时集成冲突。
-
 ## 默认值
 
-主要默认值如下：
+默认值：
 
 | 选项 | 默认值 |
 | --- | --- |
-| `source.include` | `['*']` |
-| `source.exclude` | `[]` |
-| `runtime.setup` | `[]` |
 | `monkey.align` | `2` |
 | `monkey.styleImport` | `true` |
 | `monkey.server.prefix` | `'server:'` |
@@ -184,12 +123,12 @@ Makoo 会内部管理一部分 `vite-plugin-monkey` 细节：
 
 ## 配置边界
 
-记住这个分工：
+配置分工如下：
 
 | 文件 | 负责 |
 | --- | --- |
-| `vite.config.ts` | 项目元信息、扫描、setup import、userscript 开发/构建选项 |
-| `injections/manifest.ts` | 注入模块、共享运行时默认值、目标选择器、组件路径、模块 URL 规则 |
-| `injections/<module>/` | 组件代码、模块样式、模块工具函数、可选模块级 manifest |
+| `vite.config.ts` | 应用模块、项目元信息、userscript 开发/构建选项 |
+| 应用代码 | adapter、task、目标节点和生命周期选项 |
+| 功能模块 | 组件代码和样式 |
 
 这个边界能让 Makoo 项目变大后仍然清楚。

@@ -19,7 +19,7 @@ function createVueAdapter(): VueMountAdapter;
 
 ### Returns
 
-Returns `VueMountAdapter`.
+Returns a resolvable Makoo mount adapter for Vue components.
 
 ### Details
 
@@ -90,6 +90,16 @@ class VueAdapterError extends AdapterError {
 When `code` is omitted, it defaults to `ErrorCode.ADAPTER_MOUNT_FAIL`.
 
 ## TypeScript types
+
+### `VueMountAdapter`
+
+```ts
+type VueMountAdapter = ResolvableMountAdapter<
+	VueMountArtifact,
+	VueMountHandle,
+	VueMountInstance
+>;
+```
 
 ### `VueMountProps`
 

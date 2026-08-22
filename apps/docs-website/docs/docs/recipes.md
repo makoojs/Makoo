@@ -4,7 +4,7 @@ This chapter uses a complete small-tool example to show how a Makoo project can 
 
 The example is a generic **DOM Selector Picker**. The script runs on regular web pages and injects a small panel in the bottom-right corner. When picking mode is enabled, hovering an element shows a highlight outline. Clicking an element locks the current target and shows its CSS selector, DOM path, tag, size, classes, and text preview.
 
-The point of this example is not complex business logic. It is meant to show how Makoo helps keep clear boundaries once a userscript becomes a small frontend tool.
+This example shows how a small frontend tool uses Makoo to compose tasks and organize component code.
 
 ## Final Behavior
 
@@ -21,85 +21,77 @@ The same pattern also works for page debugging panels, selection tools, reading 
 
 ## Project Structure
 
-Put one injected tool in its own module under `injections/<module-name>/`. This example uses React:
+This example uses React and keeps the related code in one feature directory:
 
 ```txt
-injections
-├─ manifest.js
-└─ devtools
-   ├─ app.jsx
-   ├─ constants.js
-   ├─ style.css
-   ├─ components
-   │  ├─ CopyField.jsx
-   │  ├─ PickerHeader.jsx
-   │  └─ SelectorPicker.jsx
-   ├─ hooks
-   │  ├─ useDraggablePanel.js
-   │  └─ useElementPicker.js
-   └─ utils
-      ├─ clipboard.js
-      └─ domSnapshot.js
+src
+├─ main.ts
+└─ injections
+   └─ devtools
+      ├─ App.tsx
+      ├─ constants.ts
+      ├─ style.css
+      ├─ components
+      │  ├─ CopyField.tsx
+      │  ├─ PickerHeader.tsx
+      │  └─ SelectorPicker.tsx
+      ├─ hooks
+      │  ├─ useDraggablePanel.ts
+      │  └─ useElementPicker.ts
+      └─ utils
+         ├─ clipboard.ts
+         └─ domSnapshot.ts
 ```
 
 Each part has a narrow responsibility:
 
 | Location | Responsibility |
 | --- | --- |
-| `app.jsx` | Injection module entry; only top-level state and composition |
+| `App.tsx` | Imports styles, owns top-level collapsed state, and composes components |
 | `components/` | React UI such as the panel, fields, and header |
 | `hooks/` | Browser interaction logic such as element picking and panel dragging |
 | `utils/` | Pure utility functions such as selector generation and clipboard copying |
-| `constants.js` | Shared DOM ids, ignored selectors, and other module constants |
-| `style.css` | Styles for this injection module |
+| `constants.ts` | Shared DOM ids, ignored selectors, and other feature constants |
+| `style.css` | Styles for this feature |
 
-With this split, the module does not become one large file that mixes DOM calculation, event listeners, drag state, copy behavior, and JSX.
+With this split, the module does not become one large file that mixes DOM calculation, event listeners, drag state, copy behavior, and TSX.
 
-## Manifest Config
+## Declare the Task
 
-The top-level `injections/manifest.js` declares the module:
+Application code creates the Makoo runtime, registers the React adapter, and declares the `selector-picker` task:
 
-```js
-import { defineInjections } from '@makoojs/cli/manifest';
+```ts
+import { createMakoo, inject } from '@makoojs/core';
+import { createReactAdapter } from '@makoojs/react';
+import DevtoolsPanel from './injections/devtools/App.tsx';
 
-export default defineInjections({
-	injectionDefaults: {
-		alive: true,
-		scope: 'global',
-		timeout: 10000
-	},
-	injections: {
-		'selector-picker': {
-			injectAt: 'body',
-			component: './devtools/app.jsx',
-			framework: 'React',
-			alive: true,
-			match: {
-				include: ['http://*/*', 'https://*/*']
-			}
-		}
-	}
-});
+const tasks = createMakoo({ adapters: [createReactAdapter()] }).start([
+	inject({
+		id: 'selector-picker',
+		injectAt: 'body',
+		artifact: DevtoolsPanel
+	})
+]);
+
+if (import.meta.hot) {
+	import.meta.hot.dispose(() => tasks.destroyAll());
+}
 ```
 
 Important details:
 
-- `selector-picker` is the module id. Use a stable name that describes the feature.
-- `injectAt: 'body'` mounts the tool at the page level, which fits floating tools.
-- `framework: 'React'` makes the adapter explicit and avoids path inference ambiguity.
-- `alive: true` lets the tool recover when the host page redraws large parts of the DOM.
-- The module-level `match` uses broad patterns so the tool can run on normal web pages.
+- `selector-picker` is the stable task id.
+- `injectAt: 'body'` mounts the floating tool at a page-level target.
+- `createReactAdapter()` mounts and unmounts the React component.
+- This floating tool uses `body` as its host and does not need `alive`.
 
-If the tool only targets one site, narrow `match.include` to that domain. Module-level `match` is evaluated by Makoo at runtime. The userscript manager still needs `monkey.userscript.match` to cover the target pages.
+The userscript pages are controlled by `monkey.userscript.match` in `vite.config.ts`. If the component instead mounts under a host-page node that can be removed and recreated, enable `alive` under the task's `options`.
 
-> [!NOTE]
-> Floating tools often inject into `body`, but on pages that already use React, Turbo, or another complex runtime, production projects should create a dedicated host node first and mount the React component into that host. This avoids interfering with the host page's DOM structure.
+## Root Component
 
-## Entry File
+`App.tsx` imports styles, owns the top-level collapsed state, and renders the tool component:
 
-`app.jsx` should stay thin. It imports styles, owns the top-level collapsed state, and renders the actual tool component:
-
-```jsx
+```tsx
 import { useEffect, useState } from 'react';
 import { TOOL_ROOT_ID } from './constants';
 import { SelectorPicker } from './components/SelectorPicker';
@@ -118,19 +110,22 @@ export default function DevtoolsPanel() {
 
 	return (
 		<div id={TOOL_ROOT_ID}>
-			<SelectorPicker collapsed={collapsed} onToggleCollapsed={() => setCollapsed(!collapsed)} />
+			<SelectorPicker
+				collapsed={collapsed}
+				onToggleCollapsed={() => setCollapsed((value) => !value)}
+			/>
 		</div>
 	);
 }
 ```
 
-The entry layer does not calculate selectors, listen to page events, or implement dragging. That keeps the module entry stable even if the panel UI changes later.
+This layer does not calculate selectors, listen to page events, or implement dragging. Panel UI changes do not require changes to the task declaration.
 
 ## Constants
 
-`constants.js` stores shared fixed values:
+`constants.ts` stores shared fixed values:
 
-```js
+```ts
 export const TOOL_ROOT_ID = 'makoo-devtools-panel-root';
 export const IGNORED_SELECTOR = '#makoo-devtools-panel-root, #makoo-devtools-panel-root *';
 ```
@@ -139,10 +134,19 @@ export const IGNORED_SELECTOR = '#makoo-devtools-panel-root, #makoo-devtools-pan
 
 ## DOM Snapshot Utility
 
-`utils/domSnapshot.js` converts a real DOM element into data the panel can render:
+`utils/domSnapshot.ts` converts a real DOM element into data the panel can render:
 
-```js
-export function getElementSnapshot(element) {
+```ts
+export type ElementSnapshot = {
+	selector: string;
+	path: string;
+	tag: string;
+	classes: string[];
+	text: string;
+	size: string;
+};
+
+export function getElementSnapshot(element: Element): ElementSnapshot {
 	const rect = element.getBoundingClientRect();
 
 	return {
@@ -151,7 +155,7 @@ export function getElementSnapshot(element) {
 		tag: element.tagName.toLowerCase(),
 		classes: Array.from(element.classList).slice(0, 8),
 		text: (element.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 120),
-		size: Math.round(rect.width) + ' x ' + Math.round(rect.height)
+		size: `${Math.round(rect.width)} x ${Math.round(rect.height)}`
 	};
 }
 ```
@@ -166,14 +170,28 @@ In this example:
 - DOM path gives a short parent chain to help users understand the element location
 - text preview compresses whitespace and limits the preview length
 
-Keeping this logic in `utils/` makes it easier to test or replace the selector strategy later.
+This logic can be tested independently or replaced with another selector strategy.
 
 ## Element Picking Hook
 
-`hooks/useElementPicker.js` owns picking mode:
+`hooks/useElementPicker.ts` owns picking mode:
 
-```js
-export function useElementPicker({ enabled, onPreview, onLock }) {
+```ts
+import { useEffect } from 'react';
+import { IGNORED_SELECTOR } from '../constants';
+import { getElementSnapshot, type ElementSnapshot } from '../utils/domSnapshot';
+
+type UseElementPickerOptions = {
+	enabled: boolean;
+	onPreview: (snapshot: ElementSnapshot) => void;
+	onLock: (snapshot: ElementSnapshot) => void;
+};
+
+export function useElementPicker({
+	enabled,
+	onPreview,
+	onLock
+}: UseElementPickerOptions): void {
 	useEffect(() => {
 		if (!enabled) return undefined;
 
@@ -181,7 +199,7 @@ export function useElementPicker({ enabled, onPreview, onLock }) {
 		overlay.className = 'makoo-picker-outline';
 		document.body.appendChild(overlay);
 
-		function onPointerMove(event) {
+		function onPointerMove(event: PointerEvent): void {
 			const target = event.target;
 			if (!(target instanceof Element) || target.matches(IGNORED_SELECTOR)) return;
 
@@ -189,7 +207,7 @@ export function useElementPicker({ enabled, onPreview, onLock }) {
 			onPreview(getElementSnapshot(target));
 		}
 
-		function onPointerDown(event) {
+		function onPointerDown(event: PointerEvent): void {
 			const target = event.target;
 			if (!(target instanceof Element) || target.matches(IGNORED_SELECTOR)) return;
 
@@ -221,16 +239,17 @@ The component decides how those moments affect state.
 
 ## Draggable Panel Hook
 
-`hooks/useDraggablePanel.js` manages panel dragging:
+`hooks/useDraggablePanel.ts` manages panel dragging:
 
-```js
-export function useDraggablePanel(panelRef) {
-	const [position, setPosition] = useState(null);
+```ts
+export function useDraggablePanel(panelRef: RefObject<HTMLDivElement | null>) {
+	const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
 	const [dragging, setDragging] = useState(false);
-	const dragRef = useRef(null);
+	const dragRef = useRef<{ offsetX: number; offsetY: number } | null>(null);
 
-	function startDrag(event) {
-		if (event.target.closest('button') || !panelRef.current) return;
+	function startDrag(event: ReactPointerEvent<HTMLDivElement>): void {
+		if (event.target instanceof Element && event.target.closest('button')) return;
+		if (!panelRef.current) return;
 
 		const rect = panelRef.current.getBoundingClientRect();
 		dragRef.current = {
@@ -244,7 +263,7 @@ export function useDraggablePanel(panelRef) {
 	return {
 		dragging,
 		startDrag,
-		style
+		style: position ? { left: position.x, top: position.y } : undefined
 	};
 }
 ```
@@ -258,20 +277,25 @@ Implementation notes:
 
 ## Main Component
 
-`components/SelectorPicker.jsx` composes state, hooks, and UI:
+`components/SelectorPicker.tsx` composes state, hooks, and UI:
 
-```jsx
-export function SelectorPicker({ collapsed, onToggleCollapsed }) {
+```tsx
+type SelectorPickerProps = {
+	collapsed: boolean;
+	onToggleCollapsed: () => void;
+};
+
+export function SelectorPicker({ collapsed, onToggleCollapsed }: SelectorPickerProps) {
 	const [enabled, setEnabled] = useState(true);
-	const [snapshot, setSnapshot] = useState(null);
-	const pickerRef = useRef(null);
+	const [snapshot, setSnapshot] = useState<ElementSnapshot | null>(null);
+	const pickerRef = useRef<HTMLDivElement>(null);
 	const { dragging, startDrag, style } = useDraggablePanel(pickerRef);
 
-	const previewElement = useCallback((nextSnapshot) => {
+	const previewElement = useCallback((nextSnapshot: ElementSnapshot) => {
 		setSnapshot(nextSnapshot);
 	}, []);
 
-	const lockElement = useCallback((nextSnapshot) => {
+	const lockElement = useCallback((nextSnapshot: ElementSnapshot) => {
 		setSnapshot(nextSnapshot);
 		setEnabled(false);
 	}, []);
@@ -283,9 +307,10 @@ export function SelectorPicker({ collapsed, onToggleCollapsed }) {
 	});
 
 	return (
-		<div ref={pickerRef} className={pickerClassName} style={style}>
-			<PickerHeader />
-			{/* detail fields */}
+		<div ref={pickerRef} className="makoo-picker" style={style} onPointerDown={startDrag}>
+			<PickerHeader collapsed={collapsed} onToggle={onToggleCollapsed} />
+			{!collapsed && snapshot ? <div>{snapshot.selector}</div> : null}
+			{dragging ? <span>Moving</span> : null}
 		</div>
 	);
 }
@@ -302,18 +327,25 @@ UI details are delegated to `PickerHeader` and `CopyField`.
 
 ## Field Component
 
-`components/CopyField.jsx` renders long copyable text fields:
+`components/CopyField.tsx` renders long copyable text fields:
 
-```jsx
-export function CopyField({ label, value, placeholder, copyLabel }) {
+```tsx
+type CopyFieldProps = {
+	label: string;
+	value?: string;
+	placeholder: string;
+	copyLabel: string;
+};
+
+export function CopyField({ label, value, placeholder, copyLabel }: CopyFieldProps) {
 	const text = value || placeholder;
 
 	return (
 		<div className="makoo-selector-field">
 			<div className="makoo-field-header">
 				<label>{label}</label>
-				<button disabled={!value} onClick={() => safeCopy(value)}>
-					Copy
+				<button type="button" disabled={!value} onClick={() => value && safeCopy(value)}>
+					{copyLabel}
 				</button>
 			</div>
 			<div className="makoo-selector-box">
@@ -328,7 +360,7 @@ Selectors and DOM paths can both be long, so they share the same field component
 
 ## Styles
 
-This example keeps styles inside the module's `style.css`. The goal is not elaborate visuals, but avoiding conflicts with the host page:
+This example keeps styles in the feature's `style.css` and scopes the selectors to avoid affecting the host page:
 
 ```css
 #makoo-devtools-panel-root,
@@ -362,18 +394,17 @@ Style guidelines:
 
 ## Summary
 
-In this example, Makoo owns the userscript project structure:
+In this example, Makoo is responsible for:
 
-- manifest declares the module and URL rules
-- Makoo waits for the target DOM and mounts the React component
-- `alive` helps the tool recover after host page redraws
-- the injected module can be developed and split like a regular frontend feature
+- declaring the task, target node, and React artifact through `inject()`
+- waiting for the target DOM and mounting the React component
+- unmounting the component and releasing runtime resources when the task is destroyed
 
-The module itself owns the product logic:
+The feature code owns the product logic:
 
 - how a DOM selector is generated
 - how picking mode listens to page events
 - how the panel is dragged
 - how fields are copied and displayed
 
-This is the recommended Makoo workflow: put injection rules in the manifest, let Makoo coordinate runtime behavior, and keep product logic inside a clearly structured module directory.
+Application code composes tasks, Makoo schedules them at runtime, and React components own the tool's interactions and UI.

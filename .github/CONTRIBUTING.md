@@ -24,7 +24,7 @@ pnpm changeset
 ## Project Structure
 
 - `packages/core`: framework-agnostic runtime core.
-- `packages/cli`: CLI, config resolution, scanning, code generation, and Vite plugin.
+- `packages/cli`: CLI, config resolution, Vite integration, and userscript integration.
 - `packages/react`: React adapter.
 - `packages/vue`: Vue adapter and Vue plugin.
 - `packages/create-makoo`: project scaffolding.
