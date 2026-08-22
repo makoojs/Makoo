@@ -1,6 +1,6 @@
 import { createServer } from 'vite';
 import { ansi, colorize } from '../shared/terminalColor';
-import { loadCliVersion } from './_util';
+import { loadCliVersion } from './util';
 
 const cliVersionCache: string | null = null;
 

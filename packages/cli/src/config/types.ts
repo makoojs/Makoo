@@ -1,42 +1,12 @@
 import type {
-	ActivitySignalSource,
-	LifecycleHookMap,
-	InjectionConfig as RuntimeInjectionConfig
-} from '@makoojs/core';
-import type {
 	ExternalGlobals,
 	ExternalResource,
 	MonkeyOption,
 	MonkeyUserScript
 } from 'vite-plugin-monkey';
 
-export type StrictShape<Shape, Value extends Shape> = Value &
-	Record<Exclude<keyof Value, keyof Shape>, never>;
 export type Thenable<T> = T | Promise<T>;
-
 export type MonkeyMode = 'serve' | 'build' | 'meta';
-export type ResolveConfigOptions = {
-	root?: string;
-};
-
-export type ResolveInjectionOptions = {
-	root?: string;
-	source?: ResolvedSourceConfig;
-	injectionDefaults?: ResolvedInjectionDefaults;
-	moduleId?: string;
-	moduleDir?: string;
-	componentPath?: string;
-	moduleManifestFile?: string;
-	fallbackName?: string;
-	index?: number;
-};
-
-export type ResolveListenerOptions = {
-	root?: string;
-	listenerId?: string;
-	fallbackName?: string;
-	index?: number;
-};
 
 export type MonkeyGenerateContext = {
 	userscript: string;
@@ -80,111 +50,6 @@ export type AppConfig = {
 	description?: string;
 };
 
-// consider to how to move the other object inside
-export type SourceConfig = {
-	include?: string[];
-	exclude?: string[];
-};
-
-export type RuntimeConfig = {
-	setup?: string | string[];
-};
-
-export type ResolvedRuntimeConfig = {
-	setup: string[];
-};
-
-export type ResolvedSourceConfig = {
-	dir: string; // Injected Components Directory
-	include: string[];
-	exclude: string[];
-	manifest: string; // manifest file basename (no extension), e.g. 'manifest'
-};
-
-export type InjectionDefaults = Partial<
-	Pick<RuntimeInjectionConfig, 'alive' | 'scope' | 'timeout' | 'hooks'>
->;
-
-export type ResolvedInjectionDefaults = Pick<
-	RuntimeInjectionConfig,
-	'alive' | 'scope' | 'timeout'
-> & {
-	hooks?: LifecycleHookMap;
-};
-
-export type InjectionFramework = 'auto' | 'Vue' | 'React';
-
-export type ResolvedInjectionFramework = Exclude<InjectionFramework, 'auto'>;
-
-export type InjectionMatchObject = {
-	include?: string[];
-	exclude?: string[];
-};
-
-export type InjectionMatchConfig = string[] | InjectionMatchObject;
-
-export type InjectionModuleListenerConfig = {
-	listenAt: string;
-	type: string;
-	callback: EventListener;
-	capture?: boolean;
-	activitySignal?: () => ActivitySignalSource<boolean>;
-};
-
-export type InjectionListenerConfig = InjectionModuleListenerConfig & {
-	name?: string;
-	enabled?: boolean;
-	match?: InjectionMatchConfig;
-};
-
-export type InjectionModuleOptions = Partial<
-	Pick<RuntimeInjectionConfig, 'alive' | 'scope' | 'timeout' | 'hooks'>
-> & {
-	on?: InjectionModuleListenerConfig;
-};
-
-export type InjectionModuleConfig = InjectionModuleOptions & {
-	name?: string;
-	injectAt: string;
-	component: string;
-	framework?: InjectionFramework;
-	enabled?: boolean;
-	match?: InjectionMatchConfig;
-};
-
-export type InjectionManifestRecord = Record<string, Omit<InjectionModuleConfig, 'name'>>;
-export type InjectionListenerRecord = Record<string, Omit<InjectionListenerConfig, 'name'>>;
-export type InjectionManifest = {
-	injectionDefaults?: InjectionDefaults;
-	injections?: InjectionModuleConfig[] | InjectionManifestRecord;
-	listeners?: InjectionListenerConfig[] | InjectionListenerRecord;
-};
-
-export type ResolvedInjectionManifest = InjectionModuleConfig[];
-export type ResolvedListenerManifest = InjectionListenerConfig[];
-
-export type ResolvedInjectionModule = Omit<
-	InjectionModuleConfig,
-	'name' | 'component' | 'framework' | 'enabled' | 'alive' | 'scope' | 'timeout'
-> & {
-	moduleId: string;
-	componentPath: string;
-	framework: ResolvedInjectionFramework;
-	moduleDir: string;
-	moduleManifestFile?: string;
-	enabled: boolean;
-	alive: ResolvedInjectionDefaults['alive'];
-	scope: ResolvedInjectionDefaults['scope'];
-	timeout: ResolvedInjectionDefaults['timeout'];
-	match?: InjectionMatchObject;
-};
-
-export type ResolvedListener = Omit<InjectionListenerConfig, 'name' | 'enabled' | 'match'> & {
-	listenerId: string;
-	enabled: boolean;
-	match?: InjectionMatchObject;
-};
-
 export type ResolvedMonkeyServerConfig = {
 	open: boolean;
 	prefix: string | ((name: string) => string) | false;
@@ -207,26 +72,22 @@ export type ResolvedMonkeyConfig = Omit<
 > & {
 	userscript: MonkeyUserScript;
 	align: number | false;
-	clientAlias: string;
 	styleImport: boolean;
 	server: ResolvedMonkeyServerConfig;
 	build: ResolvedMonkeyBuildConfig;
 };
 
-// config type
 export type CliConfig = {
+	entry: string;
 	app: AppConfig;
 	monkey?: MonkeyConfig;
-	source?: SourceConfig;
-	runtime?: RuntimeConfig;
 };
-// CliConfig -> ResolvedConfig
-//resolved config type
+
 export type ResolvedConfig = {
-	root: string; //project root path, default value is `Process.cwd()`
-	app: AppConfig; // user script meta message  app <=> Tampermonkey header
-	monkey: ResolvedMonkeyConfig; // vite-plugin-monkey build config
-	source: ResolvedSourceConfig; // tell cli where find the injection components
-	runtime: ResolvedRuntimeConfig; // runtime side-effect imports before Makoo setup
+	root: string;
+	entry: string;
+	app: AppConfig;
+	monkey: ResolvedMonkeyConfig;
 };
+
 export type MonkeyUserscriptOption = NonNullable<MonkeyOption['userscript']>;

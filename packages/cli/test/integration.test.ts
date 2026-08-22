@@ -2,142 +2,19 @@ import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { build } from 'vite';
 import { afterEach, describe, expect, it } from 'vitest';
-import { resolveConfig } from '../src/config/resolve';
-import { scanner } from '../src/scanner/scanner';
 import { makoo } from '../src/vitePlugin/makoo';
 import { cleanupTempProjects, trackProject, withCwd } from './utils/tempProject';
 
 afterEach(cleanupTempProjects);
 
-describe('scanner integration', () => {
-	it('loads real config and manifests, merges module metadata and filters disabled injections', async () => {
-		const root = await trackProject({
-			'injections/manifest.ts': `
-				export default {
-					injectionDefaults: { timeout: 9000 },
-					injections: [
-						{ name: 'from-manifest', injectAt: 'body', component: './from-manifest/index.tsx', framework: 'React' },
-						{ name: 'override-me', injectAt: '#old', component: './override-me/old.tsx', framework: 'React', timeout: 1 },
-						{ name: 'disabled-manifest', injectAt: '#skip', component: './disabled/index.tsx', framework: 'React', enabled: false }
-					]
-				};
-			`,
-			'injections/from-manifest/index.tsx':
-				'export default function FromManifest() { return null; }',
-			'injections/override-me/manifest.ts': `
-				export default {
-					name: 'override-me',
-					injectAt: '#new',
-					component: './index.tsx',
-					framework: 'React',
-					alive: true,
-					timeout: 123
-				};
-			`,
-			'injections/override-me/index.tsx':
-				'export default function OverrideMe() { return null; }',
-			'injections/module-only/manifest.ts': `
-				export default {
-					name: 'module-only',
-					injectAt: '#module',
-					component: './index.tsx',
-					framework: 'React'
-				};
-			`,
-			'injections/module-only/index.tsx':
-				'export default function ModuleOnly() { return null; }',
-			'injections/disabled-module/manifest.ts': `
-				export default {
-					name: 'disabled-module',
-					injectAt: '#disabled',
-					component: './index.tsx',
-					framework: 'React',
-					enabled: false
-				};
-			`,
-			'injections/disabled-module/index.tsx':
-				'export default function DisabledModule() { return null; }'
-		});
-
-		const result = await withCwd(root, () =>
-			scanner(
-				resolveConfig(
-					{
-						app: { name: 'scan-script', version: '0.0.1' }
-					},
-					root
-				)
-			)
-		);
-		const modules = Object.fromEntries(
-			result.injections.map((injection) => [injection.moduleId, injection])
-		);
-
-		expect(result.manifestFile).toBe(path.join(root, 'injections/manifest.ts'));
-		expect(result.config.source.dir).toBe(path.join(root, 'injections'));
-		expect(result.injections.map((injection) => injection.moduleId)).toEqual([
-			'from-manifest',
-			'module-only',
-			'override-me'
-		]);
-		expect(modules['from-manifest']).toMatchObject({
-			injectAt: 'body',
-			framework: 'React',
-			timeout: 9000,
-			enabled: true
-		});
-		expect(modules['override-me']).toMatchObject({
-			injectAt: '#new',
-			framework: 'React',
-			alive: true,
-			timeout: 123,
-			enabled: true
-		});
-		expect(modules['override-me'].componentPath).toBe(
-			path.join(root, 'injections/override-me/index.tsx')
-		);
-		expect(modules['module-only']).toMatchObject({
-			injectAt: '#module',
-			framework: 'React',
-			timeout: 9000,
-			enabled: true
-		});
-		expect(modules['disabled-manifest']).toBeUndefined();
-		expect(modules['disabled-module']).toBeUndefined();
-		expect(result.frameworks).toEqual(['React']);
-	});
-});
-
 describe('makoo build integration', () => {
-	it('injects makooMonkey and vite-plugin-monkey so Vite builds the generated virtual entry into a userscript', async () => {
+	it('builds the user-authored browser entry directly', async () => {
 		const root = await trackProject({
-			'injections/manifest.ts': `
-				import { callback } from './listenerCallback';
-				export default {
-					injections: [
-						{ name: 'hello-widget', injectAt: 'body', component: './hello/index.ts', framework: 'React' }
-					],
-					listeners: {
-						closureListener: {
-							listenAt: 'body',
-							type: 'makoo:closure',
-							callback
-						}
-					}
-				};
-			`,
-			'injections/listenerCallback.ts': `
-				import { closureValue } from './listenerValue';
-				export const callback = () => {
-					(globalThis as { __makooClosureValue?: string }).__makooClosureValue = closureValue;
-				};
-			`,
-			'injections/listenerValue.ts':
-				"export const closureValue = 'closure-import-preserved';",
-			'injections/runtime-setup.ts':
-				'(globalThis as { __makooRuntimeSetup?: string }).__makooRuntimeSetup = "ready";',
-			'injections/hello/index.ts': 'export default function HelloWidget() { return null; }'
+			'src/main.ts': `
+				(globalThis as { __makooManualEntry?: string }).__makooManualEntry = 'manual-main';
+			`
 		});
+
 		await withCwd(root, async () => {
 			await build({
 				root,
@@ -145,60 +22,28 @@ describe('makoo build integration', () => {
 				logLevel: 'silent',
 				plugins: makoo({
 					root,
+					entry: './src/main.ts',
 					app: {
 						name: 'build-script',
 						version: '0.0.7',
 						description: 'build integration test'
-					},
-					runtime: {
-						setup: './injections/runtime-setup.ts'
 					},
 					monkey: {
 						userscript: {
 							namespace: 'https://makoo.test',
 							match: ['https://example.com/*']
 						},
-						build: {
-							fileName: 'build-script.user.js',
-							metaFileName: false
-						}
+						build: { fileName: 'build-script.user.js', metaFileName: false }
 					}
 				}),
-				resolve: {
-					alias: {
-						'@makoojs/core': path.resolve(__dirname, '../../core/src/index.ts'),
-						'@makoojs/react': path.resolve(__dirname, '../../react/src/index.ts'),
-						'@makoojs/vue': path.resolve(__dirname, '../../vue/src/index.ts')
-					}
-				},
-				build: {
-					outDir: 'dist',
-					emptyOutDir: true,
-					minify: false
-				}
+				build: { outDir: 'dist', emptyOutDir: true, minify: false }
 			});
 		});
 
-		const distFiles = await readdir(path.join(root, 'dist'));
-		expect(distFiles).toContain('build-script.user.js');
-		expect(distFiles).not.toContain('build-script.meta.js');
-
+		expect(await readdir(path.join(root, 'dist'))).toContain('build-script.user.js');
 		const userscript = await readFile(path.join(root, 'dist/build-script.user.js'), 'utf8');
-		const header = userscript.slice(0, 1000);
-		expect(header).toMatch(/\/\/ @name\s+build-script/);
-		expect(header).toMatch(/\/\/ @namespace\s+https:\/\/makoo\.test/);
-		expect(header).toMatch(/\/\/ @version\s+0\.0\.7/);
-		expect(header).toMatch(/\/\/ @description\s+build integration test/);
-		expect(header).toMatch(/\/\/ @match\s+https:\/\/example\.com\/\*/);
-		expect(userscript).toContain('__makooRuntimeSetup');
-		expect(userscript).toContain('createReactAdapter');
-		expect(userscript).toContain('createMakoo');
-		expect(userscript).toContain('"id": "hello-widget"');
-		expect(userscript).toContain('"injectAt": "body"');
-		expect(userscript).toContain('"id": "closureListener"');
-		expect(userscript).toContain('__makooClosureValue');
-		expect(userscript).toContain('closure-import-preserved');
-		expect(userscript).toContain('makoo.start(makooTasks)');
+		expect(userscript).toMatch(/\/\/ @name\s+build-script/);
+		expect(userscript).toContain('manual-main');
 		expect(userscript).not.toContain('virtual:makoo/entry');
 	});
 });

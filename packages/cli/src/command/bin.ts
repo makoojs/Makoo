@@ -1,10 +1,9 @@
 #!/usr/bin/env node
 import { MakooError } from '@makoojs/core';
 import cac from 'cac';
-import { addCommand } from './add';
 import { buildCommand } from './build';
 import { devCommand } from './dev';
-import { inspectCommand } from './inspect';
+import { loadCliVersion } from './util';
 
 const cli = cac('makoo');
 
@@ -16,18 +15,8 @@ cli.command('dev', 'Start the dev server').action(async () => {
 	await devCommand();
 });
 
-cli.command('add <name>', 'Add a new injection module')
-	.option('--framework <framework>', 'Framework to use', { default: 'React' })
-	.action(async (name, options) => {
-		await addCommand(name, options.framework);
-	});
-
-cli.command('inspect', 'Inspect resolved makoo config').action(async () => {
-	await inspectCommand();
-});
-
 cli.help();
-cli.version('1.3.1');
+cli.version(await loadCliVersion(null));
 
 process.on('unhandledRejection', (err) => {
 	if (err instanceof MakooError) {

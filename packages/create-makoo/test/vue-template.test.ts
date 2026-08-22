@@ -14,7 +14,7 @@ function createInitData(variant: 'ts' | 'js', dependencyMode: 'npm' | 'local' = 
 		scriptName: 'demo-app',
 		version: '0.0.1',
 		nameSpace: 'npm/makoo',
-		userScriptMatch: 'https://example.com/*',
+		userScriptMatch: 'https://www.google.com/',
 		variant,
 		framework: 'Vue',
 		dependencyMode
@@ -46,8 +46,8 @@ describe('generateVueTemplate', () => {
 			const viteConfigPath = path.join(projectRoot, 'vite.config.ts');
 			const vueAssetPath = path.join(projectRoot, 'assets', 'vue.svg');
 			const makooAssetPath = path.join(projectRoot, 'assets', 'makoo-icon-transparent.png');
-			const appPath = path.join(projectRoot, 'injections', 'hello-world', 'app.vue');
-			const manifestPath = path.join(projectRoot, 'injections', 'manifest.ts');
+			const mainPath = path.join(projectRoot, 'src', 'main.ts');
+			const appPath = path.join(projectRoot, 'src', 'injections', 'hello-world', 'App.vue');
 
 			expect(existsSync(tsconfigPath)).toBe(true);
 			expect(existsSync(appTsconfigPath)).toBe(true);
@@ -58,7 +58,7 @@ describe('generateVueTemplate', () => {
 			expect(existsSync(makooAssetPath)).toBe(true);
 
 			expect(readFileSync(tsconfigPath, 'utf-8')).toContain('./tsconfig.app.json');
-			expect(readFileSync(appTsconfigPath, 'utf-8')).toContain('injections/**/*.vue');
+			expect(readFileSync(appTsconfigPath, 'utf-8')).toContain('src/**/*.vue');
 			expect(readFileSync(appTsconfigPath, 'utf-8')).toContain('"skipLibCheck": true');
 			expect(readFileSync(nodeTsconfigPath, 'utf-8')).toContain('vite.config.ts');
 			expect(readFileSync(nodeTsconfigPath, 'utf-8')).toContain('"skipLibCheck": true');
@@ -73,10 +73,20 @@ describe('generateVueTemplate', () => {
 			expect(packageJson.dependencies['@makoojs/vue']).toBe(recommendedMakooVersions.vue);
 			expect(packageJson.devDependencies['@makoojs/cli']).toBe(recommendedMakooVersions.cli);
 			expect(readFileSync(viteConfigPath, 'utf-8')).not.toContain("dedupe: ['vue']");
-			expect(readFileSync(appPath, 'utf-8')).toContain(
-				'../../assets/makoo-icon-transparent.png'
+			expect(readFileSync(viteConfigPath, 'utf-8')).toContain("entry: './src/main.ts'");
+			expect(readFileSync(viteConfigPath, 'utf-8')).toContain(
+				'// This match rule is only an example.'
 			);
-			expect(readFileSync(manifestPath, 'utf-8')).toContain("from '@makoojs/cli/manifest'");
+			expect(readFileSync(viteConfigPath, 'utf-8')).toContain(
+				"match: ['https://www.google.com/']"
+			);
+			expect(readFileSync(appPath, 'utf-8')).toContain(
+				'../../../assets/makoo-icon-transparent.png'
+			);
+			expect(readFileSync(mainPath, 'utf-8')).toContain('createVueAdapter()');
+			expect(readFileSync(mainPath, 'utf-8')).toContain("injectAt: 'body'");
+			expect(readFileSync(mainPath, 'utf-8')).toContain('tasks.destroyAll()');
+			expect(existsSync(path.join(projectRoot, 'injections', 'manifest.ts'))).toBe(false);
 			expect(readFileSync(appPath, 'utf-8')).toContain('<h1>Makoo</h1>');
 		});
 	});
@@ -93,6 +103,7 @@ describe('generateVueTemplate', () => {
 			expect(existsSync(path.join(projectRoot, 'tsconfig.node.json'))).toBe(false);
 			expect(existsSync(path.join(projectRoot, 'env.d.ts'))).toBe(false);
 			expect(existsSync(path.join(projectRoot, '.gitignore'))).toBe(true);
+			expect(existsSync(path.join(projectRoot, 'src', 'main.js'))).toBe(true);
 			expect(existsSync(path.join(projectRoot, 'assets', 'vue.svg'))).toBe(true);
 			expect(existsSync(path.join(projectRoot, 'assets', 'makoo-icon-transparent.png'))).toBe(
 				true

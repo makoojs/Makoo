@@ -3,94 +3,37 @@ import { validateCliConfig } from '../src/config/validation';
 import { ConfigValidationError } from '../src/error/MakooCliError';
 
 describe('validateCliConfig', () => {
-	it('accepts a minimal valid CLI config', () => {
+	it('accepts the toolchain config', () => {
 		expect(() =>
 			validateCliConfig({
-				app: {
-					name: 'demo-script',
-					version: '1.0.0'
-				}
+				entry: './src/main.ts',
+				app: { name: 'demo-script', version: '1.0.0' },
+				monkey: { server: { open: false } }
 			})
 		).not.toThrow();
 	});
 
-	it('throws ConfigValidationError for invalid CLI config input', () => {
-		try {
+	it('requires entry and app metadata', () => {
+		expect(() =>
 			validateCliConfig({
-				app: {
-					name: '',
-					version: ''
-				}
-			});
-			throw new Error('expected validation to throw');
-		} catch (error) {
-			expect(error).toBeInstanceOf(ConfigValidationError);
-			expect(error).toMatchObject({
-				name: 'ConfigValidationError',
-				issues: [
-					{ path: 'app.name', message: 'app.name is required' },
-					{ path: 'app.version', message: 'app.version is required' }
-				]
-			});
-		}
+				app: { name: '', version: '' }
+			})
+		).toThrow(ConfigValidationError);
 	});
 
-	it('rejects monkey.clientAlias and monkey.server.mountGmApi', () => {
+	it('rejects removed manifest-era config instead of accepting it as compatibility input', () => {
 		try {
 			validateCliConfig({
-				app: {
-					name: 'demo-script',
-					version: '1.0.0'
-				},
-				monkey: {
-					clientAlias: '$',
-					server: {
-						mountGmApi: true
-					}
-				}
+				entry: './src/main.ts',
+				app: { name: 'demo-script', version: '1.0.0' },
+				source: {},
+				runtime: {}
 			});
 			throw new Error('expected validation to throw');
 		} catch (error) {
 			expect(error).toBeInstanceOf(ConfigValidationError);
 			expect(error).toMatchObject({
-				name: 'ConfigValidationError',
-				issues: [
-					{
-						path: 'monkey.clientAlias',
-						message: 'monkey.clientAlias is not supported by makoo'
-					},
-					{
-						path: 'monkey.server.mountGmApi',
-						message: 'monkey.server.mountGmApi is not supported by makoo'
-					}
-				]
-			});
-		}
-	});
-
-	it('rejects injector in CLI config', () => {
-		try {
-			validateCliConfig({
-				app: {
-					name: 'demo-script',
-					version: '1.0.0'
-				},
-				injector: {
-					alive: true
-				}
-			});
-			throw new Error('expected validation to throw');
-		} catch (error) {
-			expect(error).toBeInstanceOf(ConfigValidationError);
-			expect(error).toMatchObject({
-				name: 'ConfigValidationError',
-				issues: [
-					{
-						path: 'injector',
-						message:
-							'injector is not supported in vite config; use manifest injectionDefaults instead'
-					}
-				]
+				issues: [{ path: '(root)', message: expect.stringContaining('source') }]
 			});
 		}
 	});

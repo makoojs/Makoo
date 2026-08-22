@@ -686,24 +686,24 @@ describe('TaskRunner', () => {
 		});
 	});
 
-	it('should default to the bubbling phase when capture is omitted', () => {
+	it('should pass capture false when capture is omitted', () => {
 		const btn = document.createElement('button');
-		btn.id = 'bubble-listener-btn';
+		btn.id = 'default-listener-btn';
 		document.body.appendChild(btn);
 		const callback = vi.fn();
 		const addEventSpy = vi.spyOn(btn, 'addEventListener');
 		taskContext.set(
-			'bubble-listener-task',
+			'default-listener-task',
 			createListenerTask({
-				taskId: 'bubble-listener-task',
+				taskId: 'default-listener-task',
 				withEvent: true,
-				listenAt: '#bubble-listener-btn',
+				listenAt: '#default-listener-btn',
 				event: 'click',
 				callback
 			})
 		);
 
-		expect(controlListener(runtime, 'bubble-listener-task', Action.OPEN)).toBe(true);
+		expect(controlListener(runtime, 'default-listener-task', Action.OPEN)).toBe(true);
 		expect(addEventSpy).toHaveBeenCalledWith('click', callback, {
 			capture: false,
 			signal: expect.any(AbortSignal)

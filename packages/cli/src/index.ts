@@ -4,8 +4,7 @@ export type {
 	CliConfig,
 	MonkeyBuildConfig,
 	MonkeyConfig,
-	MonkeyServerConfig,
-	SourceConfig
+	MonkeyServerConfig
 } from './config/types';
 export { makoo } from './vitePlugin/makoo';
 export type { MakooOptions } from './vitePlugin/types';
