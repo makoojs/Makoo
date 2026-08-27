@@ -140,7 +140,7 @@ function reactComponentTemplate(data: InitData): string {
 
 	return `${stateImport}
 import './style.css';
-import makooLogo from '../../../assets/makoo-icon-transparent.png';
+import makooLogo from '../../../assets/makoo-icon.png';
 import reactLogo from '../../../assets/react.svg';
 
 export default function App() {
@@ -301,7 +301,7 @@ export function generateReactTemplate(data: InitData): void {
 	writeGitignoreFile(root);
 	copyTemplateAssets(root, [
 		{ source: 'react.svg', target: 'assets/react.svg' },
-		{ source: 'makoo-icon-transparent.png', target: 'assets/makoo-icon-transparent.png' }
+		{ source: 'makoo-icon.png', target: 'assets/makoo-icon.png' }
 	]);
 
 	if (data.variant === 'ts') {

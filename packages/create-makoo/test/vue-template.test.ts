@@ -45,7 +45,7 @@ describe('generateVueTemplate', () => {
 			const packageJsonPath = path.join(projectRoot, 'package.json');
 			const viteConfigPath = path.join(projectRoot, 'vite.config.ts');
 			const vueAssetPath = path.join(projectRoot, 'assets', 'vue.svg');
-			const makooAssetPath = path.join(projectRoot, 'assets', 'makoo-icon-transparent.png');
+			const makooAssetPath = path.join(projectRoot, 'assets', 'makoo-icon.png');
 			const mainPath = path.join(projectRoot, 'src', 'main.ts');
 			const appPath = path.join(projectRoot, 'src', 'injections', 'hello-world', 'App.vue');
 
@@ -81,7 +81,7 @@ describe('generateVueTemplate', () => {
 				"match: ['https://www.google.com/']"
 			);
 			expect(readFileSync(appPath, 'utf-8')).toContain(
-				'../../../assets/makoo-icon-transparent.png'
+				'../../../assets/makoo-icon.png'
 			);
 			expect(readFileSync(mainPath, 'utf-8')).toContain('createVueAdapter()');
 			expect(readFileSync(mainPath, 'utf-8')).toContain("injectAt: 'body'");
@@ -105,7 +105,7 @@ describe('generateVueTemplate', () => {
 			expect(existsSync(path.join(projectRoot, '.gitignore'))).toBe(true);
 			expect(existsSync(path.join(projectRoot, 'src', 'main.js'))).toBe(true);
 			expect(existsSync(path.join(projectRoot, 'assets', 'vue.svg'))).toBe(true);
-			expect(existsSync(path.join(projectRoot, 'assets', 'makoo-icon-transparent.png'))).toBe(
+			expect(existsSync(path.join(projectRoot, 'assets', 'makoo-icon.png'))).toBe(
 				true
 			);
 		});

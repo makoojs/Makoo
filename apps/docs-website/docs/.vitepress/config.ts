@@ -102,7 +102,7 @@ export default defineConfig({
 		}
 	},
 	themeConfig: {
-		logo: '/makoo-icon-transparent.png',
+		logo: '/makoo-icon.png',
 		siteTitle: 'Makoo',
 		search: {
 			provider: 'local'

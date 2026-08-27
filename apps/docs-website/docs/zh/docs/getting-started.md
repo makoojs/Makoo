@@ -33,7 +33,7 @@ Framework: Vue
 ```txt
 .
 ├─ assets
-│  ├─ makoo-icon-transparent.png
+│  ├─ makoo-icon.png
 │  └─ vue.svg
 ├─ .gitignore
 ├─ env.d.ts
@@ -54,7 +54,7 @@ React 项目结构类似，只是组件文件会变成 `App.tsx`，并带有模�
 ```txt
 .
 ├─ assets
-│  ├─ makoo-icon-transparent.png
+│  ├─ makoo-icon.png
 │  └─ react.svg
 ├─ .gitignore
 ├─ env.d.ts

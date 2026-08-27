@@ -121,7 +121,7 @@ if (import.meta.hot) {
 function vueComponentTemplate(data: InitData): string {
 	return `<script setup${data.variant === 'ts' ? ' lang="ts"' : ''}>
 import { ref } from 'vue';
-import makooLogo from '../../../assets/makoo-icon-transparent.png';
+import makooLogo from '../../../assets/makoo-icon.png';
 import vueLogo from '../../../assets/vue.svg';
 
 const count = ref(0);
@@ -275,7 +275,7 @@ export function generateVueTemplate(data: InitData): void {
 	writeGitignoreFile(root);
 	copyTemplateAssets(root, [
 		{ source: 'vue.svg', target: 'assets/vue.svg' },
-		{ source: 'makoo-icon-transparent.png', target: 'assets/makoo-icon-transparent.png' }
+		{ source: 'makoo-icon.png', target: 'assets/makoo-icon.png' }
 	]);
 
 	if (data.variant === 'ts') {

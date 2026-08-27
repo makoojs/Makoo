@@ -35,7 +35,7 @@ A new Vue project usually looks like this:
 ```txt
 .
 ├─ assets
-│  ├─ makoo-icon-transparent.png
+│  ├─ makoo-icon.png
 │  └─ vue.svg
 ├─ .gitignore
 ├─ env.d.ts
@@ -56,7 +56,7 @@ A React project uses the same shape, with `App.tsx` and a module stylesheet:
 ```txt
 .
 ├─ assets
-│  ├─ makoo-icon-transparent.png
+│  ├─ makoo-icon.png
 │  └─ react.svg
 ├─ .gitignore
 ├─ env.d.ts

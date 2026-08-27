@@ -51,7 +51,7 @@ vite.config.ts/js
 src/main.ts/js
 src/injections/hello-world/App.vue
 assets/vue.svg
-assets/makoo-icon-transparent.png
+assets/makoo-icon.png
 .gitignore
 ```
 
@@ -64,7 +64,7 @@ src/main.ts/js
 src/injections/hello-world/App.tsx/jsx
 src/injections/hello-world/style.css
 assets/react.svg
-assets/makoo-icon-transparent.png
+assets/makoo-icon.png
 .gitignore
 ```
 
