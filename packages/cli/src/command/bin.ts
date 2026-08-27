@@ -3,6 +3,7 @@ import { MakooError } from '@makoojs/core';
 import cac from 'cac';
 import { buildCommand } from './build';
 import { devCommand } from './dev';
+import { previewCommand } from './preview';
 import { loadCliVersion } from './util';
 
 const cli = cac('makoo');
@@ -13,6 +14,10 @@ cli.command('build', 'Build the userscript').action(async () => {
 
 cli.command('dev', 'Start the dev server').action(async () => {
 	await devCommand();
+});
+
+cli.command('preview', 'Preview the built userscript').action(async () => {
+	await previewCommand();
 });
 
 cli.help();

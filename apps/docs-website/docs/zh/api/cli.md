@@ -233,3 +233,4 @@ type GmRequestOptions<R extends GmResponseType = 'text', C = unknown> = Omit<
 | --- | --- |
 | `makoo dev` | 启动 Vite 开发服务器 |
 | `makoo build` | 执行 Vite 构建 |
+| `makoo preview` | 为构建后的 userscript 启动 Vite preview server |

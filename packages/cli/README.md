@@ -90,6 +90,7 @@ After installation, you can use the `makoo` command:
 | --- | --- |
 | `makoo dev` | Starts the Vite dev server and prints the local URL |
 | `makoo build` | Runs Vite build and generates userscript output |
+| `makoo preview` | Previews the built userscript with the Vite preview server |
 
 ## Use GM APIs
 

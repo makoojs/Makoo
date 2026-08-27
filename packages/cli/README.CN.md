@@ -90,6 +90,7 @@ makoo({
 | --- | --- |
 | `makoo dev` | 启动 Vite dev server，并打印本地访问地址 |
 | `makoo build` | 执行 Vite build，生成 userscript 构建产物 |
+| `makoo preview` | 使用 Vite preview server 预览构建后的 userscript |
 
 ## 使用 GM API
 
