@@ -118,17 +118,13 @@ function mainTemplate(data: InitData): string {
 import { createReactAdapter } from '@makoojs/react';
 import App from './injections/hello-world/App.${data.variant === 'ts' ? 'tsx' : 'jsx'}';
 
-const tasks = createMakoo({ adapters: [createReactAdapter()] }).start([
+createMakoo({ adapters: [createReactAdapter()] }).start([
   inject({
     id: 'hello-world',
     injectAt: 'body',
     artifact: App,
   }),
 ]);
-
-if (import.meta.hot) {
-  import.meta.hot.dispose(() => tasks.destroyAll());
-}
 `;
 }
 

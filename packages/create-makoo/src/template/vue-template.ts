@@ -104,17 +104,13 @@ function mainTemplate(): string {
 import { createVueAdapter } from '@makoojs/vue';
 import App from './injections/hello-world/App.vue';
 
-const tasks = createMakoo({ adapters: [createVueAdapter()] }).start([
+createMakoo({ adapters: [createVueAdapter()] }).start([
   inject({
     id: 'hello-world',
     injectAt: 'body',
     artifact: App,
   }),
 ]);
-
-if (import.meta.hot) {
-  import.meta.hot.dispose(() => tasks.destroyAll());
-}
 `;
 }
 
