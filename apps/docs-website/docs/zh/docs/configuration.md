@@ -55,7 +55,8 @@ export default defineConfig({
 				name: 'my-script',
 				version: '0.0.1',
 				description: 'Optional script description'
-			}
+			},
+			monkey: {}
 		})
 	]
 });

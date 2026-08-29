@@ -29,7 +29,7 @@ function makoo(options: MakooOptions): Plugin[];
 
 ### Parameters
 
-`options` uses `MakooOptions`. Its `entry` and `app` fields are required.
+`options` uses `MakooOptions`.
 
 ### Returns
 
@@ -105,7 +105,7 @@ type MakooOptions = CliConfig & {
 type CliConfig = {
 	entry: string;
 	app: AppConfig;
-	monkey?: MonkeyConfig;
+	monkey: MonkeyConfig;
 };
 ```
 

@@ -1,4 +1,10 @@
-import { ErrorCode, MakooError, type MakooIssue } from '@makoojs/core';
+import { MakooError, type MakooIssue } from '@makoojs/core';
+
+export const ErrorCode = {
+	CLI_CONFIG_INVALID: 'MAKOO_CLI_CONFIG_INVALID'
+} as const;
+
+export type ErrorCodeValue = (typeof ErrorCode)[keyof typeof ErrorCode];
 
 export interface ValidationIssue {
 	code: string;

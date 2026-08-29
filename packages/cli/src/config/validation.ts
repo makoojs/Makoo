@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ConfigValidationError, toMakooIssue } from '../error/MakooCliError';
+import { ConfigValidationError, toMakooIssue } from './errors';
 
 const AppConfigSchema = z.strictObject({
 	name: z.string().min(1, 'app.name is required'),
@@ -12,7 +12,7 @@ const MonkeyConfigSchema = z.object({}).loose();
 export const CliConfigSchema = z.strictObject({
 	entry: z.string().min(1, 'entry is required'),
 	app: AppConfigSchema,
-	monkey: MonkeyConfigSchema.optional()
+	monkey: MonkeyConfigSchema
 });
 
 export function validateCliConfig(data: unknown): asserts data is z.infer<typeof CliConfigSchema> {

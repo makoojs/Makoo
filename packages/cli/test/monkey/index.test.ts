@@ -46,7 +46,7 @@ import {
 	gmStorage,
 	gmStyle,
 	gmTab
-} from '../src/monkey';
+} from '../../src/monkey';
 
 describe('monkey api exports', () => {
 	it('groups GM helpers under GMapi', () => {

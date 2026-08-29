@@ -1,6 +1,5 @@
-import { ErrorCode } from '@makoojs/core';
 import { describe, expect, it } from 'vitest';
-import { ConfigValidationError, toMakooIssue } from '../src/error/MakooCliError';
+import { ConfigValidationError, ErrorCode, toMakooIssue } from '../../src/config/errors';
 
 describe('CLI errors', () => {
 	it('uses the CLI config validation error code', () => {

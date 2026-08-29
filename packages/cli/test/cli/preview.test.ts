@@ -1,6 +1,6 @@
 import { type PreviewServer, preview } from 'vite';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { previewCommand } from '../src/command/preview';
+import { previewCommand } from '../../src/cli/commands/preview';
 
 vi.mock('vite', () => ({
 	preview: vi.fn()

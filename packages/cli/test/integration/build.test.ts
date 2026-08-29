@@ -2,8 +2,8 @@ import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { build } from 'vite';
 import { afterEach, describe, expect, it } from 'vitest';
-import { makoo } from '../src/vitePlugin/makoo';
-import { cleanupTempProjects, trackProject, withCwd } from './utils/tempProject';
+import { makoo } from '../../src/vite/makoo';
+import { cleanupTempProjects, trackProject, withCwd } from '../utils/tempProject';
 
 afterEach(cleanupTempProjects);
 

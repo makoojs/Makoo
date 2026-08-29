@@ -80,7 +80,7 @@ export type ResolvedMonkeyConfig = Omit<
 export type CliConfig = {
 	entry: string;
 	app: AppConfig;
-	monkey?: MonkeyConfig;
+	monkey: MonkeyConfig;
 };
 
 export type ResolvedConfig = {

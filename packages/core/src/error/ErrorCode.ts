@@ -21,10 +21,7 @@ export const ErrorCode = {
 	TASK_SIGNAL_BIND_FAIL: 'MAKOO_TASK_SIGNAL_BIND_FAIL',
 
 	// --- Hook ---
-	HOOK_EXECUTION_FAIL: 'MAKOO_HOOK_EXECUTION_FAIL',
-
-	// --- CLI ---
-	CLI_CONFIG_INVALID: 'MAKOO_CLI_CONFIG_INVALID'
+	HOOK_EXECUTION_FAIL: 'MAKOO_HOOK_EXECUTION_FAIL'
 } as const;
 
 export type ErrorCodeValue = (typeof ErrorCode)[keyof typeof ErrorCode];

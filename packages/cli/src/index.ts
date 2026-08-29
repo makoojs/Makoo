@@ -6,5 +6,5 @@ export type {
 	MonkeyConfig,
 	MonkeyServerConfig
 } from './config/types';
-export { makoo } from './vitePlugin/makoo';
-export type { MakooOptions } from './vitePlugin/types';
+export { makoo } from './vite/makoo';
+export type { MakooOptions } from './vite/types';

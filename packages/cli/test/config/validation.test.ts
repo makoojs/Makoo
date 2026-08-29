@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { validateCliConfig } from '../src/config/validation';
-import { ConfigValidationError } from '../src/error/MakooCliError';
+import { ConfigValidationError } from '../../src/config/errors';
+import { validateCliConfig } from '../../src/config/validation';
 
 describe('validateCliConfig', () => {
 	it('accepts the toolchain config', () => {
@@ -13,10 +13,17 @@ describe('validateCliConfig', () => {
 		).not.toThrow();
 	});
 
-	it('requires entry and app metadata', () => {
+	it('requires entry, app metadata, and monkey', () => {
 		expect(() =>
 			validateCliConfig({
 				app: { name: '', version: '' }
+			})
+		).toThrow(ConfigValidationError);
+
+		expect(() =>
+			validateCliConfig({
+				entry: './src/main.ts',
+				app: { name: 'demo-script', version: '1.0.0' }
 			})
 		).toThrow(ConfigValidationError);
 	});
@@ -26,6 +33,7 @@ describe('validateCliConfig', () => {
 			validateCliConfig({
 				entry: './src/main.ts',
 				app: { name: 'demo-script', version: '1.0.0' },
+				monkey: {},
 				source: {},
 				runtime: {}
 			});

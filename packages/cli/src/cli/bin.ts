@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 import { MakooError } from '@makoojs/core';
 import cac from 'cac';
-import { buildCommand } from './build';
-import { devCommand } from './dev';
-import { previewCommand } from './preview';
-import { loadCliVersion } from './util';
+import { buildCommand } from './commands/build';
+import { devCommand } from './commands/dev';
+import { previewCommand } from './commands/preview';
+import { loadCliVersion } from './version';
 
 const cli = cac('makoo');
 

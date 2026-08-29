@@ -29,7 +29,7 @@ function makoo(options: MakooOptions): Plugin[];
 
 ### Parameters
 
-`options` 使用 `MakooOptions`，其中 `entry` 和 `app` 为必填字段。
+`options` 使用 `MakooOptions`。
 
 ### Returns
 
@@ -105,7 +105,7 @@ type MakooOptions = CliConfig & {
 type CliConfig = {
 	entry: string;
 	app: AppConfig;
-	monkey?: MonkeyConfig;
+	monkey: MonkeyConfig;
 };
 ```
 

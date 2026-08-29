@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { makoo } from '../src/vitePlugin/makoo';
+import { makoo } from '../../src/vite/makoo';
 
 describe('makoo', () => {
 	it('returns the vite-plugin-monkey plugins', () => {
@@ -8,7 +8,8 @@ describe('makoo', () => {
 		const plugins = makoo({
 			root,
 			entry: './src/main.ts',
-			app: { name: 'plugin-test', version: '0.0.1' }
+			app: { name: 'plugin-test', version: '0.0.1' },
+			monkey: {}
 		});
 
 		expect(plugins.length).toBeGreaterThan(0);

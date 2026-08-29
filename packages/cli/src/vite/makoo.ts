@@ -1,6 +1,7 @@
 import type { Plugin } from 'vite';
 import monkey from 'vite-plugin-monkey';
-import { resolveConfig, resolveMonkeyPluginOptions } from '../config/resolve';
+import { resolveConfig } from '../config/resolve';
+import { resolveMonkeyPluginOptions } from './toMonkeyOptions';
 import type { MakooOptions } from './types';
 
 export function makoo(options: MakooOptions): Plugin[] {
