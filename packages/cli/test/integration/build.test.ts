@@ -3,7 +3,11 @@ import path from 'node:path';
 import { build } from 'vite';
 import { afterEach, describe, expect, it } from 'vitest';
 import { makoo } from '../../src/vite/makoo';
+import { makooDev } from '../../src/vite/makooDev';
 import { cleanupTempProjects, trackProject, withCwd } from '../utils/tempProject';
+
+const repoRoot = path.resolve(__dirname, '../../../..');
+const coreEntry = path.join(repoRoot, 'packages/core/src/index.ts');
 
 afterEach(cleanupTempProjects);
 
@@ -45,5 +49,55 @@ describe('makoo build integration', () => {
 		expect(userscript).toMatch(/\/\/ @name\s+build-script/);
 		expect(userscript).toContain('manual-main');
 		expect(userscript).not.toContain('virtual:makoo/entry');
+	});
+
+	it('does not inject runtime session code into production builds', async () => {
+		const root = await trackProject({
+			'src/main.ts': `
+				import { createMakoo } from '@makoojs/core';
+
+				createMakoo();
+				(globalThis as { __makooManualEntry?: string }).__makooManualEntry = 'manual-main';
+			`
+		});
+
+		await withCwd(root, async () => {
+			await build({
+				root,
+				configFile: false,
+				logLevel: 'silent',
+				resolve: {
+					alias: { '@makoojs/core': coreEntry }
+				},
+				plugins: [
+					makooDev(),
+					...makoo({
+						root,
+						entry: './src/main.ts',
+						app: {
+							name: 'dev-session-build',
+							version: '0.0.1'
+						},
+						monkey: {
+							userscript: {
+								namespace: 'https://makoo.test',
+								match: ['https://example.com/*']
+							},
+							build: { fileName: 'dev-session-build.user.js', metaFileName: false }
+						}
+					})
+				],
+				build: { outDir: 'dist', emptyOutDir: true, minify: false }
+			});
+		});
+
+		const userscript = await readFile(
+			path.join(root, 'dist/dev-session-build.user.js'),
+			'utf8'
+		);
+		expect(userscript).toContain('manual-main');
+		expect(userscript).not.toContain('makoo:runtime:open');
+		expect(userscript).not.toContain('makoo:runtime:event');
+		expect(userscript).not.toContain('virtual:makoo-dev');
 	});
 });
