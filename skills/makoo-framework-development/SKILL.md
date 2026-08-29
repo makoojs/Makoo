@@ -102,7 +102,7 @@ If the task touches multiple areas or you need a fuller package map, read `refer
 - The root `CHANGELOG.md` is a legacy project-level archive, not the current release changelog source.
 - Do not manually edit package versions except in Changesets-generated version PRs.
 - The release workflow is `.github/workflows/changesets-release.yml`: it creates a `Version Packages` PR first, then publishes after that PR merges.
-- For npm publishing in Actions, keep `NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}` available to publish steps that run npm commands.
+- Publish from Actions with npm trusted publishing (OIDC). Keep `id-token: write` on the release job, do not pass `NPM_TOKEN` or `NODE_AUTH_TOKEN` into publish steps, and do not use `npm whoami` as an auth check. Configure a GitHub Actions trusted publisher on each published package at npmjs.com, using workflow filename `changesets-release.yml`.
 - If Actions cannot create the version PR, check repository or organization workflow permissions for pull request creation before changing release code.
 
 ## Change Workflow

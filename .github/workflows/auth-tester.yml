@@ -3,6 +3,10 @@ name: NPM & GitHub Auth Tester
 on:
   workflow_dispatch: # 只允许手动点击触发，不干扰任何提交
 
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
   test-auth:
     runs-on: ubuntu-latest
@@ -13,7 +17,6 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
 
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -21,6 +24,13 @@ jobs:
           cache: "pnpm"
           cache-dependency-path: pnpm-lock.yaml
           registry-url: https://registry.npmjs.org
+          always-auth: false
+
+      - name: Ensure npm supports trusted publishing
+        run: |
+          npm install -g npm@latest
+          npm --version
+          npm config delete "//registry.npmjs.org/:_authToken" || true
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -28,15 +38,14 @@ jobs:
       - name: Build packages
         run: pnpm build
 
-      - name: Validate NPM Token
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Validate npm trusted publishing
         run: |
-          echo "Checking NPM Identity..."
-          npm whoami
-          echo "Simulating workspace publish..."
+          if [ -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ] || [ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ]; then
+            echo "OIDC is not available. The job needs id-token: write."
+            exit 1
+          fi
+          echo "OIDC is available for npm trusted publishing."
           pnpm publish -r --dry-run --access public --no-git-checks
-          echo "✅ NPM Token is valid and has publish permission."
 
       - name: Validate GitHub Token
         # 检查是否有权访问 gh cli 和 release 接口
@@ -45,4 +54,4 @@ jobs:
         run: |
           echo "Checking GitHub CLI..."
           gh release list --limit 1
-          echo "✅ GitHub Token has sufficient permissions."
+          echo "GitHub Token has sufficient permissions."
