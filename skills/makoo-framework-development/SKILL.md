@@ -23,12 +23,31 @@ Keep code inside the package that already owns the responsibility.
 
 If the task touches multiple areas or you need a fuller package map, read `references/project-map.md`.
 
+## Build, Test, And Dev Commands
+
+Prefer this repo's package-manager scripts for install, build, test, lint, and docs work. Do not invoke tools by reaching into `node_modules` and calling package JS files directly. For adding or removing dependencies, use `pnpm` commands; do not hand-edit `package.json` or lockfiles to change deps.
+
+- `pnpm install`: install dependencies from the lockfile.
+- `pnpm build`: build all publishable packages into their `dist/` outputs.
+- `pnpm build:core` / `pnpm build:cli` / `pnpm build:react` / `pnpm build:vue` / `pnpm build:create-makoo`: build one package when the change is scoped.
+- `pnpm test`: run the Vitest suite (`packages/*/test/**/*.test.ts`).
+- `pnpm test:watch`: run Vitest in watch mode during local iteration.
+- `pnpm test:coverage`: run Vitest with coverage.
+- `pnpm lint`: run Biome format, lint, and import checks.
+- `pnpm lint:fix`: apply safe Biome autofixes.
+- `pnpm format`: write Biome formatting only.
+- `pnpm docs:dev` / `pnpm docs:build`: work on the docs website when docs are in scope.
+- Run a single test file or directory with `pnpm exec vitest run packages/cli/test/vite/makooDev.test.ts` (adjust the path). Prefer the smallest relevant target before a full `pnpm test`.
+
+Do not run `pnpm exec tsc -p packages/*/tsconfig.json` or similar package-level `tsc -p` commands as routine verification: those package tsconfigs emit `.d.ts` files into source directories. Prefer Vitest, targeted runtime checks, or the package's actual build pipeline instead.
+
 ## Non-Negotiable Style Rules
 
 - Write TypeScript with ESM imports and exports.
-- Match the repository formatter: tabs for indentation, single quotes, semicolons, no trailing commas, and a soft line width around 100 characters.
+- Match the repository formatter: tabs for indentation, single quotes, semicolons, no trailing commas, and a soft line width around 100 characters. Biome owns formatting and lint.
 - Prefer named exports. Use barrel exports only in package entrypoints such as `src/index.ts`.
-- Keep filenames and directories descriptive and consistent with the existing package vocabulary. Use `PascalCase` for classes and class-like files, `camelCase` for functions and builders, and `types.ts` for tightly related type groups.
+- Keep filenames and directories descriptive and consistent with the existing package vocabulary. Use `PascalCase` for classes and class-like files, `camelCase` for functions and builders, and `types.ts` for tightly related type groups. Tests live under the package-local `test/` directory and follow the target name, such as `resolve.test.ts` or `makooDev.test.ts`.
+- Keep focused changes focused. Do not casually edit unrelated packages, generated outputs, scaffold templates, docs, or release metadata while handling a narrow task.
 - Add comments only when they explain intent, invariants, or subtle behavior. Do not narrate obvious code.
 
 ## Documentation Rules
@@ -68,13 +87,25 @@ If the task touches multiple areas or you need a fuller package map, read `refer
 - Validate config and user input close to the boundary. Normalized internal code should operate on resolved, typed data.
 - Prefer returning normalized objects from resolver functions instead of mutating input.
 
-## Fallback Rules
+## Avoid Fallbacks And Over-Engineering
+
+Keep engineering restrained. Engineering should reduce complexity, unify constraints, and improve maintainability. It should not invent abstraction layers, generic frameworks, complex configuration, or unused extension points just to look architecturally complete. Prefer the simplest clear implementation that solves the current, concrete need. Abstract or generalize only after real repetition appears and the boundary has stabilized.
+
+Also avoid protective over-fallback: do not paper over missing values with ternaries, defaults, `??`, optional chaining, or recovery branches that force variables to "always exist." When data is required by the contract or domain, missing data is already an abnormal state. Validate close to the source and fail explicitly instead of masking the problem so it spreads downstream as a harder-to-debug failure.
+
+Fallback policy:
 
 - Do not add preventive fallback branches, fallback values, or compatibility code by default.
-- Add fallback logic only when runtime constraints, business semantics, or an existing local package pattern clearly require it.
+- Add fallback logic only when runtime constraints, public API semantics, or an existing local package pattern clearly require it.
 - Before adding fallback logic, inspect the current package for an existing implementation or handling pattern with the same purpose.
 - Only add new fallback logic when no suitable package-local precedent exists.
 - If the surrounding code prefers explicit failure over silent recovery, preserve explicit failure.
+
+## Function Splitting And Recursion
+
+Keep simple, continuous control flow intact. Do not mechanically split a main function into private helpers just to shorten it. Helpers that are called once, only wrap a few expressions or forward arguments, and have no independent domain meaning should stay inline. Do not fill a file with tiny helpers that force readers to jump around. "Single responsibility" does not mean "one or two lines per function." Extract a function only when it is reused, names a real domain concept, contains a complex algorithm worth isolating for tests, or materially removes duplication or nested branching.
+
+Never declare a recursive function inside another function. Lift recursive traversal to a module-level named function or a dedicated module, and pass context and accumulators explicitly through parameters instead of hiding data flow in outer closures. Recursive function names must say what is traversed and why, such as `collectWatcherTargets` or `traverseAdapterTree`. Do not use context-free names like `walk`, `process`, `handle`, or `recurse`.
 
 ## Testing Rules
 
@@ -83,7 +114,6 @@ If the task touches multiple areas or you need a fuller package map, read `refer
 - Match current test style: `describe` and `it`, straightforward fixture setup, explicit expectations, and `vi.spyOn` for interaction testing.
 - Test observable behavior and normalization results, not private implementation trivia, unless the repo already exposes internals for that pattern.
 - For config and resolver work, assert concrete output shape and edge cases.
-- Do not run `pnpm exec tsc -p packages/*/tsconfig.json` or similar package-level `tsc -p` commands as routine verification because these package tsconfig files emit `.d.ts` files into source directories. Prefer Vitest coverage, targeted runtime checks, or the package's actual build pipeline instead.
 
 ## CLI Config Rules
 
