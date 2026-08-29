@@ -2,7 +2,7 @@
   "name": "makoo",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "pnpm@11.20.0",
+  "packageManager": "pnpm@11.24.0",
   "description": "A userscript development framework for Tampermonkey, Violentmonkey, and ScriptCat",
   "type": "module",
   "license": "MIT",

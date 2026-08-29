@@ -1,170 +1,157 @@
-@import "tailwindcss";
-
-@custom-variant dark (&:where(.dark, .dark *));
+@import 'tailwindcss';
+@import './docs.css';
+@import './home.css';
 
 :root {
-	--vp-c-brand-1: #2f80ed;
-	--vp-c-brand-2: #15b89a;
-	--vp-c-brand-3: #7c3aed;
-	--vp-c-brand-soft: rgba(47, 128, 237, 0.14);
-	--makoo-home-bg:
-		linear-gradient(180deg, #fbfffd 0%, #f3fbf8 52%, #fff 100%);
-	--makoo-home-bg-end: #fff;
-	--vp-home-hero-name-color: transparent;
-	--vp-home-hero-name-background: linear-gradient(120deg, #169c82 0%, #2563eb 100%);
-	--vp-font-family-base:
-		Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-	--vp-font-family-mono:
-		"SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+	/* Signal Cyan — neutral paper + electric cyan signal (from Makoo logo) */
+	--makoo-bg: oklch(97.4% 0.006 250);
+	--makoo-surface: oklch(100% 0 0);
+	--makoo-surface-subtle: oklch(96% 0.01 250);
+	--makoo-surface-hover: oklch(93.2% 0.014 245);
+	--makoo-fg: oklch(22% 0.045 265);
+	--makoo-muted: oklch(45% 0.028 255);
+	--makoo-border: oklch(88% 0.012 250);
+	--makoo-border-strong: oklch(72% 0.045 230);
+	--makoo-accent: oklch(54% 0.14 200);
+	--makoo-accent-ink: oklch(42% 0.12 205);
+	--makoo-accent-on-dark: oklch(84% 0.13 195);
+	--makoo-accent-soft: oklch(94.2% 0.042 200);
+	--makoo-accent-glow: oklch(72% 0.12 200 / 0.16);
+	--makoo-spark: oklch(62% 0.2 350);
+	--makoo-spark-soft: oklch(94% 0.04 350);
+	--makoo-success: oklch(48% 0.12 155);
+	--makoo-success-soft: oklch(94% 0.035 155);
+	--makoo-danger: oklch(50% 0.16 25);
+	--makoo-danger-soft: oklch(95% 0.035 25);
+	--makoo-dark: oklch(20% 0.045 265);
+	--makoo-dark-surface: oklch(25% 0.04 262);
+	--makoo-dark-raised: oklch(30% 0.036 258);
+	--makoo-dark-fg: oklch(96.5% 0.01 210);
+	--makoo-dark-muted: oklch(74% 0.035 230);
+	--makoo-dark-border: oklch(100% 0 0 / 0.1);
+	--makoo-dark-border-strong: oklch(100% 0 0 / 0.18);
+	--makoo-shadow-soft: oklch(25% 0.04 265 / 0.08);
+	--makoo-shadow-medium: oklch(20% 0.05 265 / 0.16);
+	--makoo-shadow-strong: oklch(12% 0.05 265 / 0.32);
+	--font-display: 'Avenir Next', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+	--font-body: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+	--font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+	--vp-c-bg: var(--makoo-bg);
+	--vp-c-bg-alt: var(--makoo-surface);
+	--vp-c-bg-elv: var(--makoo-surface);
+	--vp-c-bg-soft: var(--makoo-surface-subtle);
+	--vp-c-text-1: var(--makoo-fg);
+	--vp-c-text-2: var(--makoo-muted);
+	--vp-c-text-3: color-mix(in oklch, var(--makoo-muted) 72%, transparent);
+	--vp-c-divider: var(--makoo-border);
+	--vp-c-border: var(--makoo-border-strong);
+	--vp-c-gutter: var(--makoo-border);
+	--vp-c-brand-1: var(--makoo-accent);
+	--vp-c-brand-2: var(--makoo-accent);
+	--vp-c-brand-3: var(--makoo-fg);
+	--vp-c-brand-soft: var(--makoo-accent-soft);
+	--vp-code-color: var(--makoo-accent-ink);
+	--vp-code-bg: var(--makoo-accent-soft);
+	--vp-code-block-bg: var(--makoo-dark);
+	--vp-code-copy-code-bg: var(--makoo-dark-raised);
+	--vp-font-family-base: var(--font-body);
+	--vp-font-family-mono: var(--font-mono);
+	--vp-nav-height: 70px;
+	--vp-sidebar-width: 250px;
 }
 
 .dark {
-	--vp-c-brand-1: #8ab8ff;
-	--vp-c-brand-2: #5eead4;
-	--vp-c-brand-3: #a78bfa;
-	--vp-c-brand-soft: rgba(138, 184, 255, 0.16);
-	--makoo-home-bg:
-		linear-gradient(180deg, #070a16 0%, #0b1020 52%, #020617 100%);
-	--makoo-home-bg-end: #020617;
+	--makoo-bg: oklch(15.5% 0.035 265);
+	--makoo-surface: oklch(19.5% 0.038 262);
+	--makoo-surface-subtle: oklch(23% 0.04 260);
+	--makoo-surface-hover: oklch(27.5% 0.042 258);
+	--makoo-fg: oklch(96.5% 0.01 210);
+	--makoo-muted: oklch(74% 0.035 230);
+	--makoo-border: oklch(100% 0 0 / 0.1);
+	--makoo-border-strong: oklch(100% 0 0 / 0.2);
+	--makoo-accent: oklch(80% 0.13 195);
+	--makoo-accent-ink: oklch(85% 0.11 195);
+	--makoo-accent-soft: oklch(80% 0.13 195 / 0.14);
+	--makoo-accent-glow: oklch(80% 0.13 195 / 0.18);
+	--makoo-spark: oklch(72% 0.16 350);
+	--makoo-spark-soft: oklch(72% 0.16 350 / 0.14);
+	--makoo-success: oklch(74% 0.11 155);
+	--makoo-success-soft: oklch(74% 0.11 155 / 0.14);
+	--makoo-danger: oklch(74% 0.12 25);
+	--makoo-danger-soft: oklch(74% 0.12 25 / 0.14);
+	--makoo-dark: oklch(11.5% 0.03 265);
+	--makoo-dark-surface: oklch(16.5% 0.032 262);
+	--makoo-dark-raised: oklch(22% 0.034 258);
+	--makoo-dark-border-strong: oklch(100% 0 0 / 0.16);
+	--makoo-shadow-soft: oklch(0% 0 0 / 0.28);
+	--makoo-shadow-medium: oklch(0% 0 0 / 0.42);
+	--makoo-shadow-strong: oklch(0% 0 0 / 0.55);
+	--vp-c-bg: var(--makoo-bg);
+	--vp-c-bg-alt: var(--makoo-surface);
+	--vp-c-bg-elv: var(--makoo-surface);
+	--vp-c-bg-soft: var(--makoo-surface-subtle);
+	--vp-c-text-1: var(--makoo-fg);
+	--vp-c-text-2: var(--makoo-muted);
+	--vp-c-divider: var(--makoo-border);
+	--vp-c-border: var(--makoo-border-strong);
 }
 
-.VPHome {
-	padding-bottom: 0 !important;
-}
+html { scroll-padding-top: calc(var(--vp-nav-height) + 24px); }
+body { overflow-x: hidden; background: var(--vp-c-bg); color: var(--vp-c-text-1); font-family: var(--font-body); -webkit-font-smoothing: antialiased; }
+:where(a, button, input, select, textarea, [role='button']):focus-visible { outline: 3px solid var(--makoo-accent); outline-offset: 3px; }
+:where(a, button, input, select, textarea) { transition: background-color 150ms cubic-bezier(0.2, 0, 0, 1), border-color 150ms cubic-bezier(0.2, 0, 0, 1), color 150ms cubic-bezier(0.2, 0, 0, 1), box-shadow 150ms cubic-bezier(0.2, 0, 0, 1); }
 
-.VPHome .VPHero {
-	display: none;
-}
-
-.VPContent.is-home {
-	padding-bottom: 0;
-	background: var(--makoo-home-bg-end);
-}
-
-.VPHome {
-	background: var(--makoo-home-bg-end);
-}
-
-.VPHome .vp-doc.container {
-	max-width: none !important;
-	width: 100% !important;
+.VPNavBar { height: var(--vp-nav-height); border-bottom: 1px solid color-mix(in oklch, var(--makoo-border) 84%, transparent); background: color-mix(in oklch, var(--makoo-bg) 92%, transparent); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
+.VPNavBar.has-sidebar .content-body { background: transparent; }
+.VPNavBarTitle .title { min-height: 44px; font-family: var(--font-display); font-size: 18px; font-weight: 600; letter-spacing: 0.01em; }
+.VPNavBarTitle .logo { width: 34px; height: 34px; margin-right: 10px; border-radius: 9px; }
+.VPNavBarMenuLink, .VPNavBarMenuGroup .button { color: var(--makoo-muted); font-size: 14px; font-weight: 550; letter-spacing: 0.02em; }
+.VPNavBarMenuLink:hover, .VPNavBarMenuLink.active, .VPNavBarMenuGroup .button:hover { color: var(--makoo-fg); }
+.VPNavBarMenuLink.active { box-shadow: inset 0 -2px var(--makoo-accent); }
+.VPNavBarMenuLink, .VPNavBarMenuGroup .button, .VPNavBarTranslations, .VPSocialLink { min-width: 44px; min-height: 44px; }
+.VPNavBarAppearance,
+.VPNavBarTranslations,
+.VPNavBarSocialLinks { display: flex; align-items: center; justify-content: center; height: var(--vp-nav-height); }
+.VPNavBarAppearance { margin-right: 8px; }
+.VPNavBarAppearance .VPSwitchAppearance {
+	box-sizing: border-box;
+	width: 40px !important;
+	height: 22px !important;
+	min-width: 40px !important;
+	min-height: 22px !important;
 	padding: 0 !important;
-	background: var(--makoo-home-bg-end);
+	border-radius: 11px !important;
+	flex-shrink: 0;
+	overflow: hidden;
 }
-
-.VPNavBarTitle .logo {
-	border-radius: 8px;
+.VPNavBarAppearance .VPSwitchAppearance:focus-visible {
+	outline: 2px solid var(--makoo-accent);
+	outline-offset: 3px;
 }
-
-.makoo-home-shell {
-	background: var(--makoo-home-bg);
+.VPNavBarAppearance .VPSwitchAppearance .check {
+	top: 1px;
+	left: 1px;
+	width: 18px;
+	height: 18px;
+	border-radius: 50%;
 }
+.VPNavBarMenuLink.vp-external-link-icon::after { display: none; }
+.VPNavBarSearch .DocSearch-Button, .VPNavBarSearch .VPLocalSearchBox button { min-height: 40px; border: 1px solid var(--makoo-border); border-radius: 8px; background: var(--makoo-surface); color: var(--makoo-muted); }
+.VPNavBarSearch .DocSearch-Button:hover, .VPNavBarSearch .VPLocalSearchBox button:hover { border-color: var(--makoo-border-strong); background: var(--makoo-surface-hover); color: var(--makoo-fg); }
+.VPLocalSearchBox .shell { border-color: var(--makoo-border); background: var(--makoo-surface); }
+.VPLocalSearchBox .result { border-radius: 8px; }
+.VPLocalSearchBox .result.selected { background: var(--makoo-surface-hover); }
+.VPLocalNav { background: color-mix(in oklch, var(--makoo-bg) 92%, transparent); border-bottom: 1px solid var(--makoo-border); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.VPLocalNav .menu, .VPLocalNav .outline-link { color: var(--makoo-fg); }
 
-.makoo-hero-section {
-	min-height: auto;
-}
-
-.makoo-hero-name {
-	display: inline-block;
-	margin: 0;
-	background: linear-gradient(120deg, #15b89a 0%, #2f80ed 58%, #7c3aed 100%);
-	background-clip: text;
-	color: transparent;
-	font-size: 64px;
-	font-weight: 800;
-	letter-spacing: 0;
-	line-height: 1;
-	-webkit-background-clip: text;
-}
-
-.makoo-gradient-text {
-	display: inline-block;
-	background: linear-gradient(120deg, #15b89a 0%, #2f80ed 58%, #7c3aed 100%);
-	background-clip: text;
-	color: transparent;
-	-webkit-background-clip: text;
-}
-
-.makoo-hero-title {
-	line-height: 1.05;
-}
-
-.makoo-console-stack {
-	font-size: 9px;
-}
-
-@media (min-width: 768px) {
-	.makoo-hero-section {
-		min-height: calc(100vh - 64px);
-	}
-
-	.makoo-hero-title {
-		font-size: 56px;
-		line-height: 1.08;
-	}
-
-	.makoo-hero-name {
-		font-size: 88px;
-	}
-
-	.makoo-console-stack {
-		font-size: 10px;
-	}
-}
-
-@media (min-width: 1024px) {
-	.makoo-hero-section {
-		grid-template-columns: minmax(460px, 0.9fr) minmax(0, 1.1fr);
-	}
-
-	.makoo-preview-grid {
-		grid-template-columns: 0.62fr 1.38fr;
-	}
-}
-
-@media (min-width: 1280px) {
-	.makoo-console-stack {
-		font-size: 10.5px;
-	}
-}
-
-.makoo-primary-link,
-.makoo-primary-link:hover {
-	background: linear-gradient(120deg, #15b89a 0%, #2f80ed 58%, #7c3aed 100%);
-	box-shadow: 0 16px 32px rgba(47, 128, 237, 0.22);
-	color: #fff !important;
-	text-decoration: none !important;
-}
-
-.makoo-primary-link:hover {
-	filter: brightness(1.05);
-}
-
-.makoo-secondary-link {
-	color: #1e293b !important;
-	text-decoration: none !important;
-}
-
-.makoo-secondary-link:hover {
-	color: #2f80ed !important;
-	text-decoration: none !important;
-}
-
-.dark .makoo-secondary-link {
-	color: #f8fafc !important;
-}
-
-.dark .makoo-secondary-link:hover {
-	color: #a78bfa !important;
+@media (min-width: 960px) {
+	.VPNavBar .container { max-width: 1360px; }
+	.VPNavBarMenu { gap: 2px; }
+	.VPNavBarMenuLink { padding: 0 12px; }
+	.VPNavBarSearch { margin-left: auto; }
+	.VPNavBarSearch .DocSearch-Button, .VPNavBarSearch .VPLocalSearchBox { width: min(100%, 240px); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-	*,
-	*::before,
-	*::after {
-		animation-duration: 0.001ms !important;
-		animation-iteration-count: 1 !important;
-		scroll-behavior: auto !important;
-		transition-duration: 0.001ms !important;
-	}
+	*, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
