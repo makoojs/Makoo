@@ -12,7 +12,7 @@ import {
 function packageJsonTemplate(data: InitData): string {
 	const devDeps: Record<string, string> = {
 		esbuild: '^0.27.0',
-		vite: '^8.0.14'
+		vite: '^8.2.2'
 	};
 
 	if (data.variant === 'ts') {
@@ -75,6 +75,7 @@ export default defineConfig({
   plugins: [
     vue(),
     makoo({
+      entry: './src/main.${data.variant}',
       app: {
         name: '${data.scriptName}',
         version: '${data.version}'
@@ -83,6 +84,7 @@ export default defineConfig({
         userscript: {
           icon: 'https://vitejs.dev/logo.svg',
           namespace: '${data.nameSpace}',
+          // This match rule is only an example. Replace it with the pages your userscript supports.
           match: [${matches}],
         },
         build: {
@@ -97,25 +99,30 @@ export default defineConfig({
 `;
 }
 
-function manifestTemplate(): string {
-	return `import { defineInjections } from '@makoojs/cli/manifest';
+function mainTemplate(): string {
+	return `import { createMakoo, inject } from '@makoojs/core';
+import { createVueAdapter } from '@makoojs/vue';
+import App from './injections/hello-world/App.vue';
 
-export default defineInjections({
-  injections: {
-    'hello-world': {
-      injectAt: 'body',
-      component: './hello-world/app.vue',
-    }
-  }
-});
+const tasks = createMakoo({ adapters: [createVueAdapter()] }).start([
+  inject({
+    id: 'hello-world',
+    injectAt: 'body',
+    artifact: App,
+  }),
+]);
+
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => tasks.destroyAll());
+}
 `;
 }
 
 function vueComponentTemplate(data: InitData): string {
 	return `<script setup${data.variant === 'ts' ? ' lang="ts"' : ''}>
 import { ref } from 'vue';
-import makooLogo from '../../assets/makoo-icon-transparent.png';
-import vueLogo from '../../assets/vue.svg';
+import makooLogo from '../../../assets/makoo-icon.png';
+import vueLogo from '../../../assets/vue.svg';
 
 const count = ref(0);
 </script>
@@ -130,7 +137,7 @@ const count = ref(0);
 
     <div class="content">
       <h1>Makoo</h1>
-      <p>Edit <code>app.vue</code> and save to test HMR.</p>
+      <p>Edit <code>App.vue</code> and save to test HMR.</p>
     </div>
 
     <button type="button" class="counter" @click="count += 1">
@@ -262,18 +269,18 @@ export function generateVueTemplate(data: InitData): void {
 	writeTemplateFiles(root, {
 		'package.json': packageJsonTemplate(data),
 		[`vite.config.${ext}`]: viteConfigTemplate(data),
-		[`injections/manifest.${ext}`]: manifestTemplate(),
-		'injections/hello-world/app.vue': vueComponentTemplate(data)
+		[`src/main.${ext}`]: mainTemplate(),
+		'src/injections/hello-world/App.vue': vueComponentTemplate(data)
 	});
 	writeGitignoreFile(root);
 	copyTemplateAssets(root, [
 		{ source: 'vue.svg', target: 'assets/vue.svg' },
-		{ source: 'makoo-icon-transparent.png', target: 'assets/makoo-icon-transparent.png' }
+		{ source: 'makoo-icon.png', target: 'assets/makoo-icon.png' }
 	]);
 
 	if (data.variant === 'ts') {
 		createTypeScriptConfigFiles(root, {
-			appInclude: ['env.d.ts', 'injections/**/*.ts', 'injections/**/*.vue'],
+			appInclude: ['env.d.ts', 'src/**/*.ts', 'src/**/*.vue'],
 			nodeInclude: ['vite.config.ts']
 		});
 	}

@@ -1,96 +1,114 @@
-# React API
+# @makoojs/react
 
-## API 索引
+`@makoojs/react` 是 Makoo 的 React 挂载适配器。它把 React 组件接入 `@makoojs/core` 的 adapter 协议，让 Makoo runtime 可以在目标 DOM 出现后创建 React root、渲染组件，并在任务销毁或重置时正确卸载。
 
-- [`createReactAdapter()`](#createreactadapter)：创建 React 挂载 adapter
-- [`ReactAdapterError`](#reactadaptererror)：React 挂载错误
-- [TypeScript 类型](#typescript-类型)：React adapter 的公开类型
+## 适用场景
 
-## `createReactAdapter()`
+- 在 Makoo 项目中注入 React 组件。
+- 让 `@makoojs/core` runtime 能识别并挂载 React artifact。
+- 直接使用 core runtime 时手动注册 React adapter。
+- 在 React 组件中读取 Makoo 传入的任务上下文 `makoo`。
 
-创建用于挂载 React 组件的 Makoo adapter。
+## 安装
 
-### Type
-
-```ts
-function createReactAdapter(): ReactMountAdapter;
+```bash
+# npm install @makoojs/react
+# yarn add @makoojs/react
+pnpm add @makoojs/react
 ```
 
-### Returns
+`@makoojs/react` 依赖 `@makoojs/core`，并把 `react`、`react-dom` 作为 peer dependencies，所以使用该包之前要安装好`react`、`react-dom`
 
-返回 `ReactMountAdapter`。
+## React 组件中的 Makoo 上下文
 
-### Details
-
-adapter 使用 `createRoot()` 在任务的 `mountPoint` 中渲染组件，并把 `makoo` 作为组件 props 传入。任务卸载时调用 React root 的 `unmount()`。
-
-挂载或卸载失败时抛出 `ReactAdapterError`。
-
-### Example
+React adapter 会把 `makoo` 作为组件 props 传入。组件可以通过它读取当前任务 ID、目标选择器、logger，或控制当前任务生命周期。
 
 ```tsx
-const makoo = createMakoo({
-	adapters: [createReactAdapter()]
-});
+import type { ReactMountProps } from '@makoojs/react';
 
-makoo.start([
-	inject({ injectAt: '#app', artifact: Badge })
-]);
-```
-
-## `ReactAdapterError`
-
-React adapter 挂载或卸载失败时使用的错误类，继承自 `AdapterError`。
-
-### Type
-
-```ts
-class ReactAdapterError extends AdapterError {
-	constructor(
-		message: string,
-		issues?: MakooIssue[],
-		code?: string,
-		cause?: Error
+export default function Badge({ makoo }: ReactMountProps) {
+	return (
+		<button
+			type="button"
+			onClick={() => {
+				makoo.getLogger().info(`clicked ${makoo.taskId}`);
+			}}
+		>
+			Makoo Badge
+		</button>
 	);
 }
 ```
 
-`code` 省略时使用 `ErrorCode.ADAPTER_MOUNT_FAIL`。
+`makoo` 来自 `@makoojs/core` 的 `MakooContext`，常用能力包括：
 
-## TypeScript 类型
+| 能力 | 说明 |
+| --- | --- |
+| `taskId` | 当前注入任务 ID |
+| `injectAt` | 当前任务的目标选择器 |
+| `enableAlive()` / `disableAlive()` | 控制当前任务的 alive 重注入 |
+| `reset()` / `destroy()` | 重置或销毁当前任务 |
+| `on()` / `onTask()` | 监听生命周期观察事件 |
+| `getLogger()` | 获取当前 runtime 的 logger |
 
-### `ReactMountProps`
+## 配合 @makoojs/core 使用
 
-React 根组件接收的 props。
+把 React adapter 传给 `createMakoo()`，再通过 `inject()` 声明 React 组件任务。
 
-```ts
-type ReactMountProps = {
-	makoo: MakooContext;
-};
+```tsx
+import { createMakoo, inject } from '@makoojs/core';
+import { createReactAdapter } from '@makoojs/react';
+import Badge from './Badge';
+
+const makoo = createMakoo({
+	defaults: {
+		alive: true,
+		scope: 'local',
+		timeout: 5000
+	},
+	adapters: [createReactAdapter()]
+});
+
+makoo.start([
+	inject({
+		id: 'badge',
+		injectAt: '#app',
+		artifact: Badge
+	})
+]);
 ```
 
-### `ReactMountArtifact`
+`createReactAdapter()` 返回的 adapter 会：
 
-Makoo React adapter 可以挂载的组件类型。
+- 使用 `react-dom/client` 的 `createRoot(mountPoint)` 创建 React root。
+- 使用 `root.render(createElement(artifact, { makoo }))` 渲染组件。
+- 在 unmount 时调用 `root.unmount()`。
+- 将 mount/unmount 错误包装成 `ReactAdapterError`。
 
-```ts
-type ReactMountArtifact =
-	| ComponentType<ReactMountProps>
-	| ExoticComponent<ReactMountProps>;
-```
+## 类型导出
 
-### `ReactMountRoot`
+`@makoojs/react` 导出以下常用类型：
 
-```ts
-type ReactMountRoot = Root;
-```
+| 类型 | 说明 |
+| --- | --- |
+| `ReactMountProps` | React 组件接收到的 props，包含 `makoo` |
+| `ReactMountArtifact` | Makoo 可识别的 React artifact 类型 |
+| `ReactMountAdapter` | React adapter 类型 |
+| `ReactMountRoot` | React root handle 类型 |
 
-### `ReactMountAdapter`
+也会导出：
 
-```ts
-type ReactMountAdapter = ResolvableMountAdapter<
-	ReactMountArtifact,
-	ReactMountRoot,
-	undefined
->;
-```
+- `createReactAdapter`
+- `ReactAdapterError`
+
+详细接口见文档站的 React API。
+
+## 与其他包的关系
+
+| 包 | 职责 |
+| --- | --- |
+| `@makoojs/react` | React 挂载适配器 |
+| `@makoojs/core` | 提供 runtime API、adapter 协议和 Makoo runtime context |
+| `@makoojs/cli` | 提供 Makoo 项目的开发与构建能力 |
+
+`@makoojs/react` 需要配合 `@makoojs/core` 的注入调度能力使用。

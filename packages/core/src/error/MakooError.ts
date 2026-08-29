@@ -5,19 +5,14 @@ export type MakooIssue = {
 	message: string;
 };
 
-function collectCauseChain(cause?: Error): string[] {
-	const lines: string[] = [];
-	let current = cause;
-	while (current) {
-		lines.push(`  cause: ${current.message}`);
-		current = current.cause as Error | undefined;
-	}
-	return lines;
-}
+export type MakooErrorContextValue = string | number | boolean | null;
+export type MakooErrorContext = Record<string, MakooErrorContextValue>;
 
 export class MakooError extends Error {
 	readonly code: string;
 	readonly issues: MakooIssue[];
+	readonly summary: string;
+	readonly context: MakooErrorContext = {};
 	override readonly cause?: Error;
 
 	constructor(
@@ -32,13 +27,16 @@ export class MakooError extends Error {
 				parts.push(`  - ${i.path}: ${i.message}`);
 			}
 		}
-		for (const line of collectCauseChain(cause)) {
-			parts.push(line);
-		}
 		super(parts.join('\n'));
 		this.name = 'MakooError';
 		this.code = code;
 		this.issues = issues ?? [];
+		this.summary = message;
 		if (cause) this.cause = cause;
+	}
+
+	withContext(context: MakooErrorContext): this {
+		Object.assign(this.context, context);
+		return this;
 	}
 }

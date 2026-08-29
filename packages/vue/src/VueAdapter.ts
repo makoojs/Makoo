@@ -24,15 +24,10 @@ export function createVueAdapter(): VueMountAdapter {
 				};
 			} catch (cause) {
 				throw new VueAdapterError(
-					`Failed to mount Vue component at "${mountPoint}"`,
-					[
-						{
-							path: '(mount)',
-							message: cause instanceof Error ? cause.message : String(cause)
-						}
-					],
+					`Failed to mount Vue component at "${makoo.injectAt}"`,
+					undefined,
 					ErrorCode.ADAPTER_MOUNT_FAIL,
-					cause instanceof Error ? cause : undefined
+					cause instanceof Error ? cause : new Error(String(cause))
 				);
 			}
 		},
@@ -42,14 +37,9 @@ export function createVueAdapter(): VueMountAdapter {
 			} catch (cause) {
 				throw new VueAdapterError(
 					'Failed to unmount Vue component',
-					[
-						{
-							path: '(unmount)',
-							message: cause instanceof Error ? cause.message : String(cause)
-						}
-					],
+					undefined,
 					ErrorCode.ADAPTER_UNMOUNT_FAIL,
-					cause instanceof Error ? cause : undefined
+					cause instanceof Error ? cause : new Error(String(cause))
 				);
 			}
 		}

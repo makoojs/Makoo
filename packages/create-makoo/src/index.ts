@@ -108,7 +108,7 @@ export async function createMakoo() {
 		});
 
 		const userScriptMatch: string = await input({
-			message: '🎯  Match URL(s)  (comma-separated, e.g. https://example.com/*):',
+			message: '🎯  Match URL(s)  (comma-separated):',
 			default: 'https://www.google.com/',
 			theme
 		});

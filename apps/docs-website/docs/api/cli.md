@@ -8,12 +8,6 @@
 - [`cdn`](#cdn): creates CDN configuration for external dependencies
 - [Configuration types](#configuration-types): `MakooOptions`, `CliConfig`, and monkey configuration
 
-### `@makoojs/cli/manifest`
-
-- [`defineInjections()`](#defineinjections): declares a top-level manifest
-- [`defineInjection()`](#defineinjection): declares a module manifest
-- [Manifest types](#manifest-types)
-
 ### `@makoojs/cli/monkey`
 
 - [GM APIs](#gm-apis): userscript API wrappers
@@ -35,18 +29,24 @@ function makoo(options: MakooOptions): Plugin[];
 
 ### Parameters
 
-`options` uses `MakooOptions`. Its `app` field is required.
+`options` uses `MakooOptions`.
 
 ### Returns
 
-Returns `Plugin[]`. Use spread syntax in the Vite configuration.
+Returns `Plugin[]`.
 
 ### Example
 
 ```ts
+import { defineConfig } from 'vite';
+import { makoo } from '@makoojs/cli';
+import vue from '@vitejs/plugin-vue';
+
 export default defineConfig({
 	plugins: [
-		...makoo({
+		vue(),
+		makoo({
+			entry: './src/main.ts',
 			app: {
 				name: 'my-script',
 				version: '0.0.1'
@@ -103,12 +103,9 @@ type MakooOptions = CliConfig & {
 
 ```ts
 type CliConfig = {
+	entry: string;
 	app: AppConfig;
-	monkey?: MonkeyConfig;
-	source?: SourceConfig;
-	runtime?: {
-		setup?: string | string[];
-	};
+	monkey: MonkeyConfig;
 };
 ```
 
@@ -121,17 +118,6 @@ type AppConfig = {
 	description?: string;
 };
 ```
-
-### `SourceConfig`
-
-```ts
-type SourceConfig = {
-	include?: string[];
-	exclude?: string[];
-};
-```
-
-`include` and `exclude` match injection module directory names.
 
 ### `MonkeyConfig`
 
@@ -175,161 +161,6 @@ type MonkeyBuildConfig = {
 	) => string);
 	cssSideEffects?: string | ((css: string) => void);
 };
-```
-
-## `defineInjections()`
-
-Declares a top-level `InjectionManifest` while preserving the specific type of the provided object.
-
-### Type
-
-```ts
-function defineInjections<T extends InjectionManifest>(
-	manifest: StrictShape<InjectionManifest, T>
-): T;
-```
-
-### Returns
-
-Returns `manifest` unchanged.
-
-### Example
-
-```ts
-export default defineInjections({
-	injectionDefaults: {
-		alive: true
-	},
-	injections: {
-		panel: {
-			injectAt: 'body',
-			component: './panel/App.vue'
-		}
-	},
-	listeners: {
-		escape: {
-			listenAt: 'body',
-			type: 'keydown',
-			callback: onEscape
-		}
-	}
-});
-```
-
-## `defineInjection()`
-
-Declares one `InjectionModuleConfig` while preserving the specific type of the provided object.
-
-### Type
-
-```ts
-function defineInjection<T extends InjectionModuleConfig>(
-	config: StrictShape<InjectionModuleConfig, T>
-): T;
-```
-
-### Returns
-
-Returns `config` unchanged.
-
-### Example
-
-```ts
-export default defineInjection({
-	name: 'panel',
-	injectAt: 'body',
-	component: './App.vue',
-	hooks: {
-		'artifact:mountSuccess': onMounted
-	},
-	on: {
-		listenAt: 'body',
-		type: 'click',
-		callback: onClick
-	}
-});
-```
-
-## Manifest types
-
-### `InjectionManifest`
-
-```ts
-type InjectionManifest = {
-	injectionDefaults?: InjectionDefaults;
-	injections?: InjectionModuleConfig[] | Record<
-		string,
-		Omit<InjectionModuleConfig, 'name'>
-	>;
-	listeners?: InjectionListenerConfig[] | Record<
-		string,
-		Omit<InjectionListenerConfig, 'name'>
-	>;
-};
-```
-
-### `InjectionDefaults`
-
-```ts
-type InjectionDefaults = {
-	alive?: boolean;
-	scope?: 'local' | 'global';
-	timeout?: number;
-	hooks?: LifecycleHookMap;
-};
-```
-
-### `InjectionModuleConfig`
-
-```ts
-type InjectionModuleConfig = {
-	name?: string;
-	injectAt: string;
-	component: string;
-	framework?: InjectionFramework;
-	enabled?: boolean;
-	match?: InjectionMatchConfig;
-	alive?: boolean;
-	scope?: 'local' | 'global';
-	timeout?: number;
-	hooks?: LifecycleHookMap;
-	on?: InjectionModuleListenerConfig;
-};
-```
-
-### `InjectionListenerConfig`
-
-```ts
-type InjectionModuleListenerConfig = {
-	listenAt: string;
-	type: string;
-	callback: EventListener;
-	capture?: boolean;
-	activitySignal?: () => ActivitySignalSource<boolean>;
-};
-
-type InjectionListenerConfig = InjectionModuleListenerConfig & {
-	name?: string;
-	enabled?: boolean;
-	match?: InjectionMatchConfig;
-};
-```
-
-### `InjectionFramework`
-
-```ts
-type InjectionFramework = 'auto' | 'Vue' | 'React';
-```
-
-### `InjectionMatchConfig`
-
-```ts
-type InjectionMatchConfig =
-	| string[]
-	| {
-		include?: string[];
-		exclude?: string[];
-	};
 ```
 
 ## GM APIs
@@ -402,6 +233,4 @@ type GmRequestOptions<R extends GmResponseType = 'text', C = unknown> = Omit<
 | --- | --- |
 | `makoo dev` | Starts the Vite development server |
 | `makoo build` | Runs a Vite build |
-| `makoo add <name>` | Creates a React injection module and updates the manifest |
-| `makoo add <name> --framework Vue` | Creates a Vue injection module and updates the manifest |
-| `makoo inspect` | Prints resolved configuration, scan results, and framework information |
+| `makoo preview` | Starts the Vite preview server for the built userscript |

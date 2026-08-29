@@ -1,59 +1,50 @@
-# CLI API
+# @makoojs/cli
 
-## API 索引
+`@makoojs/cli` 提供 Makoo 的 Vite 插件和 CLI 命令，并通过 [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) 提供 userscript 的开发与构建能力。
 
-### `@makoojs/cli`
+应用代码通过 `@makoojs/core` 的 `createMakoo()`、`inject()` 和 `listen()` 编排运行时行为；`@makoojs/cli` 负责 Vite 和 userscript 构建部分。
 
-- [`makoo()`](#makoo)：创建 Makoo 与 userscript Vite plugins
-- [`cdn`](#cdn)：生成外部依赖的 CDN 配置
-- [配置类型](#配置类型)：`MakooOptions`、`CliConfig` 和 monkey 配置
+## 适用场景
 
-### `@makoojs/cli/manifest`
+- 使用 Vite 开发 Makoo userscript 项目。
+- 通过 [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) 生成 userscript 元信息、开发入口和构建产物。
+- 使用 `makoo dev` 和 `makoo build` 命令。
+- 通过 `@makoojs/cli/monkey` 使用 GM API 的 Makoo 稳定入口。
 
-- [`defineInjections()`](#defineinjections)：声明顶层 manifest
-- [`defineInjection()`](#defineinjection)：声明模块 manifest
-- [Manifest 类型](#manifest-类型)
+## 安装
 
-### `@makoojs/cli/monkey`
-
-- [GM API](#gm-api)：userscript API 封装
-- [GM 类型](#gm-类型)
-
-### 命令行
-
-- [CLI 命令](#cli-命令)
-
-## `makoo()`
-
-根据 Makoo 配置创建 Vite plugins。
-
-### Type
-
-```ts
-function makoo(options: MakooOptions): Plugin[];
+```bash
+# npm install @makoojs/cli
+# yarn add @makoojs/cli
+pnpm add @makoojs/cli
 ```
 
-### Parameters
+如果你使用 `@makoojs/create-makoo` 创建项目，通常会自动配置好 `@makoojs/cli`。
 
-`options` 使用 `MakooOptions`，其中 `app` 为必填字段。
+## 最小 Vite 配置
 
-### Returns
-
-返回一个 `Plugin[]`。在 Vite 配置中需要使用展开语法。
-
-### Example
+在 Vite 配置中使用 `makoo()`：
 
 ```ts
+import { defineConfig } from 'vite';
+import { makoo } from '@makoojs/cli';
+import vue from '@vitejs/plugin-vue';
+
 export default defineConfig({
 	plugins: [
-		...makoo({
+		vue(),
+		makoo({
+			entry: './src/app.ts',
 			app: {
-				name: 'my-script',
-				version: '0.0.1'
+				name: 'my-userscript',
+				version: '0.0.1',
+				description: 'My first Makoo script'
 			},
 			monkey: {
 				userscript: {
-					match: ['https://example.com/*']
+					namespace: 'https://example.com',
+					// 这里只是示例，请替换为 userscript 实际支持的页面。
+					match: ['https://www.google.com/']
 				}
 			}
 		})
@@ -61,352 +52,103 @@ export default defineConfig({
 });
 ```
 
-## `cdn`
+`makoo()` 将配置交给 [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) 完成 userscript 的开发与构建。
 
-从 `vite-plugin-monkey` 重新导出的 CDN 配置生成器。
+## 配置概览
 
-### Type
-
-```ts
-type CdnFactory = (
-	exportVarName?: string,
-	pathname?: string
-) => [string, ModuleToUrlFc];
-
-const cdn: {
-	jsdelivr: CdnFactory;
-	jsdelivrFastly: CdnFactory;
-	unpkg: CdnFactory;
-	cdnjs: CdnFactory;
-	zhimg: CdnFactory;
-	elemecdn: CdnFactory;
-	bdstatic: CdnFactory;
-	npmmirror: CdnFactory;
-	bootcdn: CdnFactory;
-	staticfile: CdnFactory;
-};
-```
-
-`bootcdn` 和 `staticfile` 由 `vite-plugin-monkey` 标记为 deprecated。
-
-## 配置类型
-
-### `MakooOptions`
+`makoo()` 的主要配置分为三块：
 
 ```ts
-type MakooOptions = CliConfig & {
-	root?: string;
-};
-```
-
-### `CliConfig`
-
-```ts
-type CliConfig = {
-	app: AppConfig;
-	monkey?: MonkeyConfig;
-	source?: SourceConfig;
-	runtime?: {
-		setup?: string | string[];
-	};
-};
-```
-
-### `AppConfig`
-
-```ts
-type AppConfig = {
-	name: string;
-	version: string;
-	description?: string;
-};
-```
-
-### `SourceConfig`
-
-```ts
-type SourceConfig = {
-	include?: string[];
-	exclude?: string[];
-};
-```
-
-`include` 和 `exclude` 匹配 injection 模块目录名。
-
-### `MonkeyConfig`
-
-```ts
-type MonkeyConfig = {
-	userscript?: MonkeyUserScript;
-	align?: number | false;
-	generate?: (options: {
-		userscript: string;
-		mode: 'serve' | 'build' | 'meta';
-	}) => string | Promise<string>;
-	styleImport?: boolean;
-	server?: MonkeyServerConfig;
-	build?: MonkeyBuildConfig;
-};
-```
-
-### `MonkeyServerConfig`
-
-```ts
-type MonkeyServerConfig = {
-	open?: boolean;
-	prefix?: string | ((name: string) => string) | false;
-};
-```
-
-### `MonkeyBuildConfig`
-
-```ts
-type MonkeyBuildConfig = {
-	fileName?: string;
-	metaFileName?: string | boolean | ((fileName: string) => string);
-	externalGlobals?: ExternalGlobals;
-	autoGrant?: boolean;
-	externalResource?: ExternalResource;
-	systemjs?: 'inline' | ((
-		version: string,
-		packageName: string,
-		importName?: string,
-		resolveName?: string
-	) => string);
-	cssSideEffects?: string | ((css: string) => void);
-};
-```
-
-## `defineInjections()`
-
-声明顶层 `InjectionManifest`，并保留传入对象的具体类型。
-
-### Type
-
-```ts
-function defineInjections<T extends InjectionManifest>(
-	manifest: StrictShape<InjectionManifest, T>
-): T;
-```
-
-### Returns
-
-原样返回 `manifest`。
-
-### Example
-
-```ts
-export default defineInjections({
-	injectionDefaults: {
-		alive: true
+makoo({
+	entry: './src/app.ts',
+	app: {
+		name: 'my-script',
+		version: '0.0.1',
+		description: 'demo script'
 	},
-	injections: {
-		panel: {
-			injectAt: 'body',
-			component: './panel/App.vue'
-		}
-	},
-	listeners: {
-		escape: {
-			listenAt: 'body',
-			type: 'keydown',
-			capture: true,
-			callback: onEscape
+	monkey: {
+		userscript: {
+			match: ['https://www.google.com/']
 		}
 	}
 });
 ```
 
-## `defineInjection()`
-
-声明单个 `InjectionModuleConfig`，并保留传入对象的具体类型。
-
-### Type
-
-```ts
-function defineInjection<T extends InjectionModuleConfig>(
-	config: StrictShape<InjectionModuleConfig, T>
-): T;
-```
-
-### Returns
-
-原样返回 `config`。
-
-### Example
-
-```ts
-export default defineInjection({
-	name: 'panel',
-	injectAt: 'body',
-	component: './App.vue',
-	hooks: {
-		'artifact:mountSuccess': onMounted
-	},
-	on: {
-		listenAt: 'body',
-		type: 'click',
-		capture: true,
-		callback: onClick
-	}
-});
-```
-
-## Manifest 类型
-
-### `InjectionManifest`
-
-```ts
-type InjectionManifest = {
-	injectionDefaults?: InjectionDefaults;
-	injections?: InjectionModuleConfig[] | Record<
-		string,
-		Omit<InjectionModuleConfig, 'name'>
-	>;
-	listeners?: InjectionListenerConfig[] | Record<
-		string,
-		Omit<InjectionListenerConfig, 'name'>
-	>;
-};
-```
-
-### `InjectionDefaults`
-
-```ts
-type InjectionDefaults = {
-	alive?: boolean;
-	scope?: 'local' | 'global';
-	timeout?: number;
-	hooks?: LifecycleHookMap;
-};
-```
-
-### `InjectionModuleConfig`
-
-```ts
-type InjectionModuleConfig = {
-	name?: string;
-	injectAt: string;
-	component: string;
-	framework?: InjectionFramework;
-	enabled?: boolean;
-	match?: InjectionMatchConfig;
-	alive?: boolean;
-	scope?: 'local' | 'global';
-	timeout?: number;
-	hooks?: LifecycleHookMap;
-	on?: InjectionModuleListenerConfig;
-};
-```
-
-### `InjectionListenerConfig`
-
-```ts
-type InjectionModuleListenerConfig = {
-	listenAt: string;
-	type: string;
-	callback: EventListener;
-	capture?: boolean;
-	activitySignal?: () => ActivitySignalSource<boolean>;
-};
-
-type InjectionListenerConfig = InjectionModuleListenerConfig & {
-	name?: string;
-	enabled?: boolean;
-	match?: InjectionMatchConfig;
-};
-```
-
-设置 `capture: true` 后，listener 会在 DOM 捕获阶段处理事件。该字段默认为 `false`，
-未配置时使用冒泡阶段。事件 listener 的 signal 仍由 Makoo 内部管理。
-
-### `InjectionFramework`
-
-```ts
-type InjectionFramework = 'auto' | 'Vue' | 'React';
-```
-
-### `InjectionMatchConfig`
-
-```ts
-type InjectionMatchConfig =
-	| string[]
-	| {
-		include?: string[];
-		exclude?: string[];
-	};
-```
-
-## GM API
-
-以下值从 `@makoojs/cli/monkey` 导出。
-
-| 导出 | 方法或值 |
+| 配置 | 说明 |
 | --- | --- |
-| `GMapi` | 包含 `raw`、`info`、`log`、`storage`、`style`、`request`、`menu`、`clipboard`、`notification`、`tab`、`download` 和 `resource` |
-| `gm` | 原始 `GM` 对象 |
-| `gmInfo` | `GM_info` |
-| `gmLog` | `GM_log` |
-| `monkeyWindow` | userscript window |
-| `unsafeWindow` | 页面 window |
-| `gmClipboard` | `set(data, type?, callback?)` |
-| `gmDownload` | `start` |
-| `gmMenu` | `register`、`unregister` |
-| `gmNotification` | `show` |
-| `gmRequest` | `send`、`get`、`post` |
-| `gmResource` | `text`、`url` |
-| `gmStorage` | `get`、`getMany`、`set`、`setMany`、`remove`、`removeMany`、`keys`、`watch`、`unwatch` |
-| `gmStyle` | `add`、`element` |
-| `gmTab` | `open`、`get`、`getAll`、`save` |
+| `entry` | 交给 Vite 构建的应用模块 |
+| `app` | 用于生成 userscript 的 `name`、`version`、`description` |
+| `monkey` | 大多数配置会透传给 [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) |
 
-### `gmRequest.get()` / `gmRequest.post()`
-
-```ts
-gmRequest.get<R extends GmResponseType = 'text', C = unknown>(
-	url: string,
-	options?: GmRequestOptions<R, C>
-): GmAbortHandle;
-
-gmRequest.post<R extends GmResponseType = 'text', C = unknown>(
-	url: string,
-	options?: GmRequestOptions<R, C>
-): GmAbortHandle;
-```
-
-`get()` 和 `post()` 分别固定请求方法为 `GET` 和 `POST`。
-
-## GM 类型
-
-```ts
-type GmRequestOptions<R extends GmResponseType = 'text', C = unknown> = Omit<
-	GmXmlhttpRequestOption<R, C>,
-	'url' | 'method'
->;
-```
-
-`@makoojs/cli/monkey` 还重新导出以下 `vite-plugin-monkey` 类型：
-
-- `GmAbortHandle`
-- `GmAddElementAttributes`
-- `GmDownloadOptions`
-- `GmInfoType`
-- `GmMenuCommandOptions`
-- `GmNotificationOptions`
-- `GmOpenInTabOptions`
-- `GmResponseEvent`
-- `GmResponseType`
-- `GmTabControl`
-- `GmType`
-- `GmValueListenerId`
-- `GmXmlhttpRequestOption`
-- `MonkeyWindow`
+默认情况下，`monkey.build.autoGrant` 为 `true`，[lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) 会根据最终代码生成 `@grant`。
 
 ## CLI 命令
 
+安装后可以使用 `makoo` 命令：
+
 | 命令 | 说明 |
 | --- | --- |
-| `makoo dev` | 启动 Vite 开发服务器 |
-| `makoo build` | 执行 Vite 构建 |
-| `makoo add <name>` | 创建 React injection 模块并更新 manifest |
-| `makoo add <name> --framework Vue` | 创建 Vue injection 模块并更新 manifest |
-| `makoo inspect` | 输出解析后的配置、扫描结果和 framework 信息 |
+| `makoo dev` | 启动 Vite dev server，并打印本地访问地址 |
+| `makoo build` | 执行 Vite build，生成 userscript 构建产物 |
+| `makoo preview` | 使用 Vite preview server 预览构建后的 userscript |
+
+## 使用 GM API
+
+`@makoojs/cli` 提供 `@makoojs/cli/monkey` 子入口，作为 [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) GM API 的 Makoo 稳定封装。
+
+```ts
+import { gmStorage, gmStyle } from '@makoojs/cli/monkey';
+
+gmStyle.add('.makoo-panel { z-index: 999999; }');
+gmStorage.set('enabled', true);
+```
+
+也可以使用聚合入口：
+
+```ts
+import { GMapi } from '@makoojs/cli/monkey';
+
+GMapi.storage.set('enabled', true);
+```
+
+如果希望生成的 `@grant` 范围尽量小，可以按能力导入。完整 GM API 见 CLI API 文档。
+
+## 减小构建体积
+
+`@makoojs/cli` 重新导出了 [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) 的 `cdn`。可以配合 `monkey.build.externalGlobals` 使用 CDN 外部依赖，减小 userscript 构建体积。
+
+```ts
+import { defineConfig } from 'vite';
+import { cdn, makoo } from '@makoojs/cli';
+
+export default defineConfig({
+	plugins: [
+		makoo({
+			entry: './src/app.ts',
+			app: {
+				name: 'my-script',
+				version: '0.0.1'
+			},
+			monkey: {
+				build: {
+					externalGlobals: {
+						vue: cdn.jsdelivr('Vue', 'dist/vue.global.prod.js')
+					}
+				}
+			}
+		})
+	]
+});
+```
+
+## 与其他包的关系
+
+| 包 | 职责 |
+| --- | --- |
+| `@makoojs/cli` | Vite 插件、CLI 命令和 userscript 构建接入 |
+| `@makoojs/core` | 框架无关的注入运行时内核 |
+| `@makoojs/vue` | Vue adapter 与 Vue 插件注册 |
+| `@makoojs/react` | React adapter |
+| `@makoojs/create-makoo` | 项目脚手架 |
+
+运行时行为由应用代码通过 `@makoojs/core` 进行编排。

@@ -1,3 +1,8 @@
+import { AdapterError } from '../error/AdapterError';
+import { ErrorCode } from '../error/ErrorCode';
+import { formatMakooError } from '../error/formatMakooError';
+import { SignalError } from '../error/SignalError';
+import { TaskError } from '../error/TaskError';
 import type { ObserveEmitter } from '../hooks/types';
 import { noopObserveEmitter } from '../hooks/util';
 import { Logger } from '../logger/Logger';
@@ -174,7 +179,23 @@ export function createTaskContext(
 						})
 					);
 				} catch (error) {
-					logger.error(`Failed to unmount component for task "${id}":`, error);
+					const adapterError =
+						error instanceof AdapterError
+							? error
+							: new AdapterError(
+									'Failed to unmount component',
+									undefined,
+									ErrorCode.ADAPTER_UNMOUNT_FAIL,
+									error instanceof Error ? error : new Error(String(error))
+								);
+					adapterError.withContext({
+						taskId: id,
+						artifact: context.artifactName,
+						injectAt: context.injectAt,
+						adapter: context.adapter.name,
+						reason: 'destroy'
+					});
+					logger.error(formatMakooError(adapterError));
 				}
 			} else {
 				logger.warn(`Component for task "${id}" already unmounted`);
@@ -195,7 +216,18 @@ export function createTaskContext(
 				context.appRoot = undefined;
 				context.hostElement = undefined;
 			} catch (error) {
-				logger.error(`Failed to remove root element for task "${id}":`, error);
+				const taskError = new TaskError(
+					'Failed to remove component root element',
+					undefined,
+					ErrorCode.TASK_ROOT_REMOVE_FAIL,
+					error instanceof Error ? error : new Error(String(error))
+				).withContext({
+					taskId: id,
+					artifact: context.artifactName,
+					injectAt: context.injectAt,
+					adapter: context.adapter.name
+				});
+				logger.error(formatMakooError(taskError));
 			}
 		},
 		releaseListener(id) {
@@ -213,7 +245,17 @@ export function createTaskContext(
 				try {
 					listener.controller.abort();
 				} catch (error) {
-					logger.error(`Failed to abort listener for task "${id}":`, error);
+					const taskError = new TaskError(
+						'Failed to abort task listener',
+						undefined,
+						ErrorCode.TASK_LISTENER_ABORT_FAIL,
+						error instanceof Error ? error : new Error(String(error))
+					).withContext({
+						taskId: id,
+						event: listenerEvent ?? null,
+						listenAt: listenAt ?? null
+					});
+					logger.error(formatMakooError(taskError));
 				}
 			}
 
@@ -253,7 +295,18 @@ export function createTaskContext(
 						})
 					);
 				} catch (error) {
-					logger.error(`Failed to stop watcher for task "${id}":`, error);
+					const signalError = new SignalError(
+						'Failed to stop activity signal watcher',
+						undefined,
+						ErrorCode.TASK_WATCHER_STOP_FAIL,
+						error instanceof Error ? error : new Error(String(error))
+					).withContext({
+						taskId: id,
+						signal: 'activitySignal',
+						kind: context.kind,
+						injectAt: getTaskInjectAt(context)
+					});
+					logger.error(formatMakooError(signalError));
 				}
 			}
 		},
@@ -274,10 +327,23 @@ export function createTaskContext(
 					});
 					didUnmountComponent = true;
 				} catch (error) {
-					logger.warn(
-						`Failed to unmount component for task "${id}" during reset:`,
-						error
-					);
+					const adapterError =
+						error instanceof AdapterError
+							? error
+							: new AdapterError(
+									'Failed to unmount component',
+									undefined,
+									ErrorCode.ADAPTER_UNMOUNT_FAIL,
+									error instanceof Error ? error : new Error(String(error))
+								);
+					adapterError.withContext({
+						taskId: id,
+						artifact: context.artifactName,
+						injectAt: context.injectAt,
+						adapter: context.adapter.name,
+						reason: 'reset'
+					});
+					logger.warn(formatMakooError(adapterError));
 				}
 			}
 

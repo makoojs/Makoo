@@ -111,12 +111,13 @@ describe('ReactAdapter', () => {
 			expect.objectContaining({
 				name: 'ReactAdapterError',
 				code: ErrorCode.ADAPTER_MOUNT_FAIL,
+				summary: 'Failed to mount React component at "#react-adapter"',
 				cause
 			})
 		);
 	});
 
-	it('converts non-Error mount failures into readable adapter issues', () => {
+	it('normalizes non-Error mount failures into an Error cause', () => {
 		reactDomClientMock.createRoot.mockImplementationOnce(() => {
 			throw 'boom';
 		});
@@ -147,11 +148,9 @@ describe('ReactAdapter', () => {
 			throw new Error('expected mount to throw');
 		} catch (error) {
 			expect(error).toBeInstanceOf(ReactAdapterError);
-			expect(error).toMatchObject({
-				code: ErrorCode.ADAPTER_MOUNT_FAIL,
-				cause: undefined,
-				issues: [{ path: '(mount)', message: 'boom' }]
-			});
+			expect((error as ReactAdapterError).code).toBe(ErrorCode.ADAPTER_MOUNT_FAIL);
+			expect((error as ReactAdapterError).issues).toEqual([]);
+			expect((error as ReactAdapterError).cause).toMatchObject({ message: 'boom' });
 		}
 	});
 
@@ -182,7 +181,7 @@ describe('ReactAdapter', () => {
 		);
 	});
 
-	it('converts non-Error unmount failures into readable adapter issues', () => {
+	it('normalizes non-Error unmount failures into an Error cause', () => {
 		const mountPoint = document.createElement('div');
 		const handle = {
 			render: vi.fn(),
@@ -202,10 +201,10 @@ describe('ReactAdapter', () => {
 			throw new Error('expected unmount to throw');
 		} catch (error) {
 			expect(error).toBeInstanceOf(ReactAdapterError);
-			expect(error).toMatchObject({
-				code: ErrorCode.ADAPTER_UNMOUNT_FAIL,
-				cause: undefined,
-				issues: [{ path: '(unmount)', message: 'unmount exploded' }]
+			expect((error as ReactAdapterError).code).toBe(ErrorCode.ADAPTER_UNMOUNT_FAIL);
+			expect((error as ReactAdapterError).issues).toEqual([]);
+			expect((error as ReactAdapterError).cause).toMatchObject({
+				message: 'unmount exploded'
 			});
 		}
 	});

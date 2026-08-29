@@ -1,59 +1,50 @@
-# CLI API Reference
+# @makoojs/cli
 
-## API Index
+`@makoojs/cli` provides Makoo's Vite plugin and CLI commands, with userscript development and build capabilities powered by [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey).
 
-### `@makoojs/cli`
+Application code composes runtime behavior through `createMakoo()`, `inject()`, and `listen()` from `@makoojs/core`. `@makoojs/cli` handles the Vite and userscript build integration.
 
-- [`makoo()`](#makoo): creates the Makoo and userscript Vite plugins
-- [`cdn`](#cdn): creates CDN configuration for external dependencies
-- [Configuration types](#configuration-types): `MakooOptions`, `CliConfig`, and monkey configuration
+## Use Cases
 
-### `@makoojs/cli/manifest`
+- Develop Makoo userscript projects with Vite.
+- Generate userscript metadata, dev entries, and build output through [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey).
+- Use the `makoo dev` and `makoo build` commands.
+- Use Makoo's stable GM API entry through `@makoojs/cli/monkey`.
 
-- [`defineInjections()`](#defineinjections): declares a top-level manifest
-- [`defineInjection()`](#defineinjection): declares a module manifest
-- [Manifest types](#manifest-types)
+## Installation
 
-### `@makoojs/cli/monkey`
-
-- [GM APIs](#gm-apis): userscript API wrappers
-- [GM types](#gm-types)
-
-### Command line
-
-- [CLI commands](#cli-commands)
-
-## `makoo()`
-
-Creates Vite plugins from Makoo configuration.
-
-### Type
-
-```ts
-function makoo(options: MakooOptions): Plugin[];
+```bash
+# npm install @makoojs/cli
+# yarn add @makoojs/cli
+pnpm add @makoojs/cli
 ```
 
-### Parameters
+If you create a project with `@makoojs/create-makoo`, `@makoojs/cli` is usually configured for you.
 
-`options` uses `MakooOptions`. Its `app` field is required.
+## Minimal Vite Config
 
-### Returns
-
-Returns `Plugin[]`. Use spread syntax in the Vite configuration.
-
-### Example
+Use `makoo()` in the Vite configuration:
 
 ```ts
+import { defineConfig } from 'vite';
+import { makoo } from '@makoojs/cli';
+import vue from '@vitejs/plugin-vue';
+
 export default defineConfig({
 	plugins: [
-		...makoo({
+		vue(),
+		makoo({
+			entry: './src/app.ts',
 			app: {
-				name: 'my-script',
-				version: '0.0.1'
+				name: 'my-userscript',
+				version: '0.0.1',
+				description: 'My first Makoo script'
 			},
 			monkey: {
 				userscript: {
-					match: ['https://example.com/*']
+					namespace: 'https://example.com',
+					// This is only an example. Replace it with the pages supported by the userscript.
+					match: ['https://www.google.com/']
 				}
 			}
 		})
@@ -61,352 +52,103 @@ export default defineConfig({
 });
 ```
 
-## `cdn`
+`makoo()` passes the configuration to [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) for userscript development and builds.
 
-CDN configuration factories re-exported from `vite-plugin-monkey`.
+## Configuration Overview
 
-### Type
-
-```ts
-type CdnFactory = (
-	exportVarName?: string,
-	pathname?: string
-) => [string, ModuleToUrlFc];
-
-const cdn: {
-	jsdelivr: CdnFactory;
-	jsdelivrFastly: CdnFactory;
-	unpkg: CdnFactory;
-	cdnjs: CdnFactory;
-	zhimg: CdnFactory;
-	elemecdn: CdnFactory;
-	bdstatic: CdnFactory;
-	npmmirror: CdnFactory;
-	bootcdn: CdnFactory;
-	staticfile: CdnFactory;
-};
-```
-
-`bootcdn` and `staticfile` are marked as deprecated by `vite-plugin-monkey`.
-
-## Configuration types
-
-### `MakooOptions`
+`makoo()` has three main configuration areas:
 
 ```ts
-type MakooOptions = CliConfig & {
-	root?: string;
-};
-```
-
-### `CliConfig`
-
-```ts
-type CliConfig = {
-	app: AppConfig;
-	monkey?: MonkeyConfig;
-	source?: SourceConfig;
-	runtime?: {
-		setup?: string | string[];
-	};
-};
-```
-
-### `AppConfig`
-
-```ts
-type AppConfig = {
-	name: string;
-	version: string;
-	description?: string;
-};
-```
-
-### `SourceConfig`
-
-```ts
-type SourceConfig = {
-	include?: string[];
-	exclude?: string[];
-};
-```
-
-`include` and `exclude` match injection module directory names.
-
-### `MonkeyConfig`
-
-```ts
-type MonkeyConfig = {
-	userscript?: MonkeyUserScript;
-	align?: number | false;
-	generate?: (options: {
-		userscript: string;
-		mode: 'serve' | 'build' | 'meta';
-	}) => string | Promise<string>;
-	styleImport?: boolean;
-	server?: MonkeyServerConfig;
-	build?: MonkeyBuildConfig;
-};
-```
-
-### `MonkeyServerConfig`
-
-```ts
-type MonkeyServerConfig = {
-	open?: boolean;
-	prefix?: string | ((name: string) => string) | false;
-};
-```
-
-### `MonkeyBuildConfig`
-
-```ts
-type MonkeyBuildConfig = {
-	fileName?: string;
-	metaFileName?: string | boolean | ((fileName: string) => string);
-	externalGlobals?: ExternalGlobals;
-	autoGrant?: boolean;
-	externalResource?: ExternalResource;
-	systemjs?: 'inline' | ((
-		version: string,
-		packageName: string,
-		importName?: string,
-		resolveName?: string
-	) => string);
-	cssSideEffects?: string | ((css: string) => void);
-};
-```
-
-## `defineInjections()`
-
-Declares a top-level `InjectionManifest` while preserving the specific type of the provided object.
-
-### Type
-
-```ts
-function defineInjections<T extends InjectionManifest>(
-	manifest: StrictShape<InjectionManifest, T>
-): T;
-```
-
-### Returns
-
-Returns `manifest` unchanged.
-
-### Example
-
-```ts
-export default defineInjections({
-	injectionDefaults: {
-		alive: true
+makoo({
+	entry: './src/app.ts',
+	app: {
+		name: 'my-script',
+		version: '0.0.1',
+		description: 'demo script'
 	},
-	injections: {
-		panel: {
-			injectAt: 'body',
-			component: './panel/App.vue'
-		}
-	},
-	listeners: {
-		escape: {
-			listenAt: 'body',
-			type: 'keydown',
-			capture: true,
-			callback: onEscape
+	monkey: {
+		userscript: {
+			match: ['https://www.google.com/']
 		}
 	}
 });
 ```
 
-## `defineInjection()`
-
-Declares one `InjectionModuleConfig` while preserving the specific type of the provided object.
-
-### Type
-
-```ts
-function defineInjection<T extends InjectionModuleConfig>(
-	config: StrictShape<InjectionModuleConfig, T>
-): T;
-```
-
-### Returns
-
-Returns `config` unchanged.
-
-### Example
-
-```ts
-export default defineInjection({
-	name: 'panel',
-	injectAt: 'body',
-	component: './App.vue',
-	hooks: {
-		'artifact:mountSuccess': onMounted
-	},
-	on: {
-		listenAt: 'body',
-		type: 'click',
-		capture: true,
-		callback: onClick
-	}
-});
-```
-
-## Manifest types
-
-### `InjectionManifest`
-
-```ts
-type InjectionManifest = {
-	injectionDefaults?: InjectionDefaults;
-	injections?: InjectionModuleConfig[] | Record<
-		string,
-		Omit<InjectionModuleConfig, 'name'>
-	>;
-	listeners?: InjectionListenerConfig[] | Record<
-		string,
-		Omit<InjectionListenerConfig, 'name'>
-	>;
-};
-```
-
-### `InjectionDefaults`
-
-```ts
-type InjectionDefaults = {
-	alive?: boolean;
-	scope?: 'local' | 'global';
-	timeout?: number;
-	hooks?: LifecycleHookMap;
-};
-```
-
-### `InjectionModuleConfig`
-
-```ts
-type InjectionModuleConfig = {
-	name?: string;
-	injectAt: string;
-	component: string;
-	framework?: InjectionFramework;
-	enabled?: boolean;
-	match?: InjectionMatchConfig;
-	alive?: boolean;
-	scope?: 'local' | 'global';
-	timeout?: number;
-	hooks?: LifecycleHookMap;
-	on?: InjectionModuleListenerConfig;
-};
-```
-
-### `InjectionListenerConfig`
-
-```ts
-type InjectionModuleListenerConfig = {
-	listenAt: string;
-	type: string;
-	callback: EventListener;
-	capture?: boolean;
-	activitySignal?: () => ActivitySignalSource<boolean>;
-};
-
-type InjectionListenerConfig = InjectionModuleListenerConfig & {
-	name?: string;
-	enabled?: boolean;
-	match?: InjectionMatchConfig;
-};
-```
-
-Set `capture: true` to listen during the DOM capture phase. It defaults to `false`, so listeners
-use the bubbling phase unless explicitly configured. Makoo manages the event listener signal.
-
-### `InjectionFramework`
-
-```ts
-type InjectionFramework = 'auto' | 'Vue' | 'React';
-```
-
-### `InjectionMatchConfig`
-
-```ts
-type InjectionMatchConfig =
-	| string[]
-	| {
-		include?: string[];
-		exclude?: string[];
-	};
-```
-
-## GM APIs
-
-The following values are exported from `@makoojs/cli/monkey`.
-
-| Export | Methods or value |
+| Config | Description |
 | --- | --- |
-| `GMapi` | Contains `raw`, `info`, `log`, `storage`, `style`, `request`, `menu`, `clipboard`, `notification`, `tab`, `download`, and `resource` |
-| `gm` | Original `GM` object |
-| `gmInfo` | `GM_info` |
-| `gmLog` | `GM_log` |
-| `monkeyWindow` | Userscript window |
-| `unsafeWindow` | Page window |
-| `gmClipboard` | `set(data, type?, callback?)` |
-| `gmDownload` | `start` |
-| `gmMenu` | `register`, `unregister` |
-| `gmNotification` | `show` |
-| `gmRequest` | `send`, `get`, `post` |
-| `gmResource` | `text`, `url` |
-| `gmStorage` | `get`, `getMany`, `set`, `setMany`, `remove`, `removeMany`, `keys`, `watch`, `unwatch` |
-| `gmStyle` | `add`, `element` |
-| `gmTab` | `open`, `get`, `getAll`, `save` |
+| `entry` | Application module passed to Vite for building |
+| `app` | Generates userscript `name`, `version`, and `description` |
+| `monkey` | Most options are passed through to [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) |
 
-### `gmRequest.get()` / `gmRequest.post()`
+By default, `monkey.build.autoGrant` is `true`, so [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) generates `@grant` from the final code.
 
-```ts
-gmRequest.get<R extends GmResponseType = 'text', C = unknown>(
-	url: string,
-	options?: GmRequestOptions<R, C>
-): GmAbortHandle;
+## CLI Commands
 
-gmRequest.post<R extends GmResponseType = 'text', C = unknown>(
-	url: string,
-	options?: GmRequestOptions<R, C>
-): GmAbortHandle;
-```
-
-`get()` and `post()` set the request method to `GET` and `POST`, respectively.
-
-## GM types
-
-```ts
-type GmRequestOptions<R extends GmResponseType = 'text', C = unknown> = Omit<
-	GmXmlhttpRequestOption<R, C>,
-	'url' | 'method'
->;
-```
-
-`@makoojs/cli/monkey` also re-exports these types from `vite-plugin-monkey`:
-
-- `GmAbortHandle`
-- `GmAddElementAttributes`
-- `GmDownloadOptions`
-- `GmInfoType`
-- `GmMenuCommandOptions`
-- `GmNotificationOptions`
-- `GmOpenInTabOptions`
-- `GmResponseEvent`
-- `GmResponseType`
-- `GmTabControl`
-- `GmType`
-- `GmValueListenerId`
-- `GmXmlhttpRequestOption`
-- `MonkeyWindow`
-
-## CLI commands
+After installation, you can use the `makoo` command:
 
 | Command | Description |
 | --- | --- |
-| `makoo dev` | Starts the Vite development server |
-| `makoo build` | Runs a Vite build |
-| `makoo add <name>` | Creates a React injection module and updates the manifest |
-| `makoo add <name> --framework Vue` | Creates a Vue injection module and updates the manifest |
-| `makoo inspect` | Prints resolved configuration, scan results, and framework information |
+| `makoo dev` | Starts the Vite dev server and prints the local URL |
+| `makoo build` | Runs Vite build and generates userscript output |
+| `makoo preview` | Previews the built userscript with the Vite preview server |
+
+## Use GM APIs
+
+`@makoojs/cli` provides the `@makoojs/cli/monkey` subpath as Makoo's stable wrapper around [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) GM APIs.
+
+```ts
+import { gmStorage, gmStyle } from '@makoojs/cli/monkey';
+
+gmStyle.add('.makoo-panel { z-index: 999999; }');
+gmStorage.set('enabled', true);
+```
+
+You can also use the grouped entry:
+
+```ts
+import { GMapi } from '@makoojs/cli/monkey';
+
+GMapi.storage.set('enabled', true);
+```
+
+Use capability-level imports when you want the generated `@grant` surface to stay as small as possible. See the CLI API documentation for the complete GM API.
+
+## Reduce Build Size
+
+`@makoojs/cli` re-exports `cdn` from [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey). Use it with `monkey.build.externalGlobals` to load external dependencies from a CDN and reduce userscript bundle size.
+
+```ts
+import { defineConfig } from 'vite';
+import { cdn, makoo } from '@makoojs/cli';
+
+export default defineConfig({
+	plugins: [
+		makoo({
+			entry: './src/app.ts',
+			app: {
+				name: 'my-script',
+				version: '0.0.1'
+			},
+			monkey: {
+				build: {
+					externalGlobals: {
+						vue: cdn.jsdelivr('Vue', 'dist/vue.global.prod.js')
+					}
+				}
+			}
+		})
+	]
+});
+```
+
+## Relationship To Other Packages
+
+| Package | Responsibility |
+| --- | --- |
+| `@makoojs/cli` | Vite plugin, CLI commands, and userscript build integration |
+| `@makoojs/core` | Framework-agnostic injection runtime core |
+| `@makoojs/vue` | Vue adapter and Vue plugin registration |
+| `@makoojs/react` | React adapter |
+| `@makoojs/create-makoo` | Project scaffold |
+
+Application code composes runtime behavior through `@makoojs/core`.

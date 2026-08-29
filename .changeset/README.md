@@ -49,7 +49,6 @@ pnpm changeset
 - `minor`：新增能力，且保持向后兼容。
 - `major`：破坏性变更，用户需要改代码或改配置。
 
-如果一次改动影响多个包，应该在同一个 Changeset 中选择所有受影响的包。
 例如 core 的公开行为变化同时影响 React/Vue adapter 时，应同时选择相关包。
 
 ## CI 如何处理版本和 CHANGELOG

@@ -1,27 +1,22 @@
 # Configuration
 
-Makoo is configured through the `makoo()` Vite plugin. This file describes project-level
-behavior: how Makoo scans modules, which setup files enter the generated runtime, and how
-the final userscript is passed to `vite-plugin-monkey`.
+Makoo is configured through the `makoo()` Vite plugin. This file selects the application
+module, defines project metadata, and passes userscript options to `vite-plugin-monkey`.
 
 ```ts
 import { defineConfig } from 'vite';
 import { makoo } from '@makoojs/cli';
+import vue from '@vitejs/plugin-vue';
 
 export default defineConfig({
 	plugins: [
-		...makoo({
+		vue(),
+		makoo({
+			entry: './src/main.ts',
 			app: {
 				name: 'my-script',
 				version: '0.0.1',
 				description: 'Enhance example.com with injected UI'
-			},
-			source: {
-				include: ['*'],
-				exclude: []
-			},
-			runtime: {
-				setup: ['./injections/setup.ts']
 			},
 			monkey: {
 				userscript: {
@@ -33,17 +28,15 @@ export default defineConfig({
 });
 ```
 
-Use `vite.config.ts` for settings that affect the whole project. Use
-`injections/manifest.ts` for module-level behavior such as `injectAt`, `component`, `match`,
-`alive`, shared `injectionDefaults`, and hooks for a specific injection.
+Use `vite.config.ts` for settings that affect the whole project. Declare `injectAt`,
+components, listeners, and lifecycle behavior in application code.
 
 ## Option Groups
 
 | Group | Purpose |
 | --- | --- |
+| `entry` | Application module loaded by Vite and the userscript build |
 | `app` | Makoo app metadata and default userscript name/version |
-| `source` | Which module folders are scanned under `injections/` |
-| `runtime` | Side-effect setup files imported before Makoo declares and starts tasks |
 | `monkey` | `vite-plugin-monkey` userscript, server, and build options |
 
 ## `app`
@@ -51,12 +44,23 @@ Use `vite.config.ts` for settings that affect the whole project. Use
 `app` is required.
 
 ```ts
-makoo({
-	app: {
-		name: 'my-script',
-		version: '0.0.1',
-		description: 'Optional script description'
-	}
+import { defineConfig } from 'vite';
+import { makoo } from '@makoojs/cli';
+import vue from '@vitejs/plugin-vue';
+
+export default defineConfig({
+	plugins: [
+		vue(),
+		makoo({
+			entry: './src/main.ts',
+			app: {
+				name: 'my-script',
+				version: '0.0.1',
+				description: 'Optional script description'
+			},
+			monkey: {}
+		})
+	]
 });
 ```
 
@@ -69,127 +73,51 @@ makoo({
 Values in `monkey.userscript` can still override the generated userscript metadata when you
 need more control.
 
-## `source`
-
-`source` controls module scanning.
-
-```ts
-makoo({
-	source: {
-		include: ['*'],
-		exclude: ['draft-*']
-	}
-});
-```
-
-Makoo currently scans the fixed `injections/` directory. The top-level manifest file is also
-fixed to `manifest`, so Makoo will look for files such as `injections/manifest.ts` and
-module-level files such as `injections/panel/manifest.ts`.
-
-| Field | Default | Description |
-| --- | --- | --- |
-| `include` | `['*']` | Folder-name patterns to include under `injections/` |
-| `exclude` | `[]` | Folder-name patterns to exclude under `injections/` |
-
-These patterns filter module folders, not page URLs. For page URL matching, use
-`monkey.userscript.match` for the whole userscript or module-level `match` in the manifest.
-
-## Runtime Defaults
-
-Runtime defaults belong to `injections/manifest.ts`, not `vite.config.ts`. Use
-`injectionDefaults` when multiple modules should share `alive`, `scope`, `timeout`, or
-`hooks`:
-
-```ts
-import { defineInjections } from '@makoojs/cli/manifest';
-
-export default defineInjections({
-	injectionDefaults: {
-		alive: false,
-		scope: 'local',
-		timeout: 5000,
-		hooks: {
-			'start:requested': (payload) => {
-				console.log('[makoo] start requested', payload);
-			}
-		}
-	},
-	injections: {}
-});
-```
-
-| Field | Default | Description |
-| --- | --- | --- |
-| `alive` | `false` | Whether modules should reinject when their mount disappears |
-| `scope` | `'local'` | Reinjection observation scope, either `'local'` or `'global'` |
-| `timeout` | `5000` | Time in milliseconds to wait for each target selector |
-| `hooks` | `{}` | Shared lifecycle hooks for modules in this manifest |
-
-Modules inherit these defaults unless they set their own `alive`, `scope`, `timeout`, or
-`hooks`.
-
-## `runtime`
-
-`runtime.setup` imports side-effect files before Makoo initializes adapters, declares
-injections, and calls `makoo.start(...)`.
-
-```ts
-makoo({
-	runtime: {
-		setup: ['./injections/setup.ts', './injections/polyfills.ts']
-	}
-});
-```
-
-Use setup files for project-wide runtime preparation, such as installing globals, initializing
-shared services, or importing side-effect styles. Makoo tracks setup files and their local
-dependencies during development, so changing them triggers a structural update.
-
 ## `monkey`
 
 Most `monkey` options are passed to `vite-plugin-monkey`.
 
 ```ts
-makoo({
-	monkey: {
-		userscript: {
-			namespace: 'npm/makoo',
-			match: ['https://example.com/*'],
-			grant: ['GM_getValue', 'GM_setValue']
-		},
-		server: {
-			open: true,
-			prefix: 'server:'
-		},
-		build: {
-			fileName: 'my-script.user.js',
-			metaFileName: true,
-			autoGrant: true
-		}
-	}
+import { defineConfig } from 'vite';
+import { makoo } from '@makoojs/cli';
+import vue from '@vitejs/plugin-vue';
+
+export default defineConfig({
+	plugins: [
+		vue(),
+		makoo({
+			entry: './src/main.ts',
+			app: {
+				name: 'my-script',
+				version: '0.0.1'
+			},
+			monkey: {
+				userscript: {
+					namespace: 'npm/makoo',
+					match: ['https://example.com/*'],
+					grant: ['GM_getValue', 'GM_setValue']
+				},
+				server: {
+					open: true,
+					prefix: 'server:'
+				},
+				build: {
+					fileName: 'my-script.user.js',
+					metaFileName: true,
+					autoGrant: true
+				}
+			}
+		})
+	]
 });
 ```
 
-Makoo manages a few `vite-plugin-monkey` details internally:
-
-| Option | Makoo behavior |
-| --- | --- |
-| `entry` | Generated by Makoo |
-| `clientAlias` | Fixed internally |
-| `server.mountGmApi` | Fixed internally |
-
-Do not set `monkey.clientAlias` or `monkey.server.mountGmApi`; Makoo validates and rejects
-those options because they would conflict with its runtime integration.
-
 ## Defaults
 
-The main defaults are:
+Defaults:
 
 | Option | Default |
 | --- | --- |
-| `source.include` | `['*']` |
-| `source.exclude` | `[]` |
-| `runtime.setup` | `[]` |
 | `monkey.align` | `2` |
 | `monkey.styleImport` | `true` |
 | `monkey.server.prefix` | `'server:'` |
@@ -203,8 +131,8 @@ Keep this split in mind:
 
 | File | Owns |
 | --- | --- |
-| `vite.config.ts` | Project metadata, scanning, setup imports, userscript build/dev options |
-| `injections/manifest.ts` | Injection modules, shared runtime defaults, target selectors, component paths, module URL rules |
-| `injections/<module>/` | Component code, module styles, module utility functions, optional module manifest |
+| `vite.config.ts` | Application module, project metadata, userscript build/dev options |
+| Application code | Runtime setup, adapters, tasks, targets, and lifecycle options |
+| Feature modules | Component code and styles |
 
 This boundary keeps Makoo projects understandable as they grow.

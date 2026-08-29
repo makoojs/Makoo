@@ -33,34 +33,45 @@ Framework: Vue
 ```txt
 .
 ├─ assets
-│  ├─ makoo-icon-transparent.png
+│  ├─ makoo-icon.png
 │  └─ vue.svg
+├─ .gitignore
+├─ env.d.ts
 ├─ package.json
+├─ tsconfig.json
+├─ tsconfig.app.json
+├─ tsconfig.node.json
 ├─ vite.config.ts
-└─ injections
-   ├─ manifest.ts
-   └─ hello-world
-      └─ app.vue
+└─ src
+   ├─ main.ts
+   └─ injections
+      └─ hello-world
+         └─ App.vue
 ```
 
-React 项目结构类似，只是组件文件会变成 `app.tsx`，并带有模块样式文件：
+React 项目结构类似，只是组件文件会变成 `App.tsx`，并带有模块样式文件：
 
 ```txt
 .
 ├─ assets
-│  ├─ makoo-icon-transparent.png
+│  ├─ makoo-icon.png
 │  └─ react.svg
+├─ .gitignore
+├─ env.d.ts
 ├─ package.json
+├─ tsconfig.json
+├─ tsconfig.app.json
+├─ tsconfig.node.json
 ├─ vite.config.ts
-└─ injections
-   ├─ manifest.ts
-   └─ hello-world
-      ├─ app.tsx
-      └─ style.css
+└─ src
+   ├─ main.ts
+   └─ injections
+      └─ hello-world
+         ├─ App.tsx
+         └─ style.css
 ```
 
-最重要的是 `injections/` 目录。Makoo 会扫描这里，读取 manifest，并生成运行时入口来注册你的模块。
-你不需要额外创建或维护 `main.ts` 入口文件。
+生成模板通过 `createMakoo()` 和 `inject()` 声明 task 并启动 runtime。示例将功能代码放在 `src/injections/` 下。
 
 ## 配置 userscript
 
@@ -68,19 +79,28 @@ React 项目结构类似，只是组件文件会变成 `app.tsx`，并带有模�
 
 ```ts
 import { defineConfig } from 'vite';
-import { makoo } from '@makoojs/cli';
+import { cdn, makoo } from '@makoojs/cli';
+import vue from '@vitejs/plugin-vue';
 
 export default defineConfig({
 	plugins: [
-		...makoo({
+		vue(),
+		makoo({
+			entry: './src/main.ts',
 			app: {
 				name: 'makoo-project',
 				version: '0.0.1'
 			},
 			monkey: {
 				userscript: {
+					icon: 'https://vitejs.dev/logo.svg',
 					namespace: 'npm/makoo',
 					match: ['https://example.com/*']
+				},
+				build: {
+					externalGlobals: {
+						vue: cdn.jsdelivr('Vue', 'dist/vue.global.min.js')
+					}
 				}
 			}
 		})
@@ -88,79 +108,68 @@ export default defineConfig({
 });
 ```
 
-`app` 字段提供 Makoo 层面的项目信息。`monkey.userscript` 会透传给 `vite-plugin-monkey`，
-并成为 userscript 元信息，例如 `@name`、`@namespace` 和 `@match`。
+`app` 字段提供 Makoo 层面的项目信息。Makoo 会补充默认值并规范化支持的 `monkey`
+配置，再交给 `vite-plugin-monkey` 生成 `@name`、`@namespace` 和 `@match` 等元信息。
 
 开发时，`match` 应该覆盖你正在测试的页面。如果脚本管理器没有在当前页面运行脚本，Makoo
 也就无法在这个页面注册注入模块。
 
 ## 定义第一个注入任务
 
-生成的 manifest 会注册一个 `hello-world` 模块：
+生成的应用代码会注册一个 `hello-world` task：
 
 ```ts
-import { defineInjections } from '@makoojs/cli/manifest';
+import { createMakoo, inject } from '@makoojs/core';
+import { createVueAdapter } from '@makoojs/vue';
+import App from './injections/hello-world/App.vue';
 
-export default defineInjections({
-	injections: {
-		'hello-world': {
-			injectAt: 'body',
-			component: './hello-world/app.vue'
-		}
-	}
-});
+const tasks = createMakoo({ adapters: [createVueAdapter()] }).start([
+	inject({ id: 'hello-world', injectAt: 'body', artifact: App })
+]);
+
+if (import.meta.hot) {
+	import.meta.hot.dispose(() => tasks.destroyAll());
+}
 ```
 
-每个 entry 都描述一个注入模块：
+这个 task 声明包含以下信息：
 
 | 字段 | 含义 |
 | --- | --- |
-| `hello-world` | 模块名 |
+| `id` | Task id；示例值为 `hello-world` |
 | `injectAt` | 目标节点的 CSS 选择器 |
-| `component` | 相对于 manifest 的组件路径 |
+| `artifact` | 导入的组件 |
 
-当目标节点出现后，Makoo 会把组件挂载到这个节点上。脚手架默认使用 `injectAt: 'body'`，
-这样在大多数匹配页面上都能直接看到 demo。
+当目标节点出现后，Makoo 会在该节点下创建 mount point，再由 adapter 把组件挂载到
+mount point。脚手架默认使用 `injectAt: 'body'`，这样在大多数匹配页面上都能直接看到 demo。
 
 ## 修改注入目标
 
 如果要挂载到页面中更具体的位置，可以修改 `injectAt`：
 
 ```ts
-export default defineInjections({
-	injections: {
-		toolbar: {
-			injectAt: '#toolbar',
-			component: './toolbar/app.vue'
-		}
-	}
-});
+inject({ id: 'toolbar', injectAt: '#toolbar', artifact: Toolbar });
 ```
 
-然后创建对应的模块目录：
+这个示例把对应组件放在下面的位置：
 
 ```txt
-injections
-├─ manifest.ts
+src/injections
 └─ toolbar
-   └─ app.vue
+   └─ App.vue
 ```
 
-React 项目则使用 `app.tsx`：
+React 项目导入 `createReactAdapter()` 和 React 组件：
 
 ```ts
-export default defineInjections({
-	injections: {
-		toolbar: {
-			injectAt: '#toolbar',
-			component: './toolbar/app.tsx'
-		}
-	}
-});
-```
+import { createMakoo, inject } from '@makoojs/core';
+import { createReactAdapter } from '@makoojs/react';
+import Toolbar from './injections/toolbar/App.tsx';
 
-Makoo 可以从组件扩展名推断框架。你也可以显式写上 `framework: 'Vue'` 或
-`framework: 'React'`，让 manifest 更清楚。
+createMakoo({ adapters: [createReactAdapter()] }).start([
+	inject({ id: 'toolbar', injectAt: '#toolbar', artifact: Toolbar })
+]);
+```
 
 ## 在浏览器中测试
 
@@ -173,14 +182,9 @@ pnpm dev
 打开命令输出中的开发 userscript 地址，把它安装到你的脚本管理器里，然后访问一个匹配
 `monkey.userscript.match` 规则的页面。生成的 `hello-world` 组件应该会出现在页面上。
 
-开发服务运行时：
-
-- 修改 Vue 或 React 组件会走 Vite 原生 HMR
-- 修改 `injections/manifest.ts` 会触发 Makoo 的结构更新流程
-- 修改 userscript 的 `match` 规则后，可能需要在脚本管理器中重新安装或刷新开发脚本
+修改 userscript 的 `match` 规则后，可能需要在脚本管理器中重新安装或刷新开发脚本。
 
 ## 下一步
 
-继续阅读 [核心概念](./concepts.md)，理解 runtime、模块、manifest 和 adapter 如何配合。之后可以在
-[Manifest 参考](./manifest.md) 中查询 `match`、`alive`、`timeout`、`scope`、生命周期 `hooks`
-等模块级配置。
+继续阅读 [核心概念](./concepts.md)，理解 runtime、task、模块和 adapter 如何配合。Core API
+中可以查询 `alive`、`timeout`、`scope`、listener 和生命周期 hooks 等 task 配置。

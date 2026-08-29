@@ -128,7 +128,7 @@ type MakooInjectionInput<TArtifact = unknown> = {
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `alive` | `boolean` | 是否在目标被替换后尝试重新挂载 |
+| `alive` | `boolean` | 宿主目标节点被移除后，是否等待同一选择器重新出现并重新挂载 |
 | `scope` | `'local' \| 'global'` | alive 观察范围 |
 | `timeout` | `number` | 等待目标元素的毫秒数 |
 | `on` | `MakooListenerDeclaration` | 随 component 一起注册的事件监听 |
@@ -171,11 +171,14 @@ type MakooListenerInput = {
 	listenAt: string;
 	type: string;
 	callback: EventListener;
+	capture?: boolean;
 	activitySignal?: () => ActivitySignalSource<boolean>;
 };
 ```
 
 `id` 省略时，运行时使用 `listener-${listenAt}-${type}` 作为任务 ID。
+`capture` 默认为 `false`；设置为 `true` 后，监听器会在 DOM 捕获阶段执行。listener 使用的
+abort signal 仍由 Makoo 内部管理。
 
 ### Returns
 
@@ -188,6 +191,7 @@ const declaration = listen({
 	id: 'escape-close',
 	listenAt: 'body',
 	type: 'keydown',
+	capture: true,
 	callback: onEscape
 });
 ```
@@ -372,6 +376,8 @@ class Logger implements ILogger {
 class MakooError extends Error {
 	readonly code: string;
 	readonly issues: MakooIssue[];
+	readonly summary: string;
+	readonly context: MakooErrorContext;
 	override readonly cause?: Error;
 
 	constructor(
@@ -380,10 +386,12 @@ class MakooError extends Error {
 		code?: string,
 		cause?: Error
 	);
+
+	withContext(context: MakooErrorContext): this;
 }
 ```
 
-`message` 会添加 `[makoo]` 前缀，并包含 `issues` 和 `cause` 错误链。
+`message` 会添加 `[makoo]` 前缀并包含 `issues`。`cause` 保存在错误对象上，Makoo 格式化日志时会输出它的堆栈。`withContext()` 用于补充结构化上下文，不会改变错误码和摘要。
 
 ### `AdapterError`
 
@@ -473,25 +481,12 @@ const OBSERVE_EVENT_NAMES = [
 | `TASK_ALREADY_MOUNTED` | `MAKOO_TASK_ALREADY_MOUNTED` |
 | `TASK_TARGET_DETACHED` | `MAKOO_TASK_TARGET_DETACHED` |
 | `TASK_LISTENER_ATTACH_FAIL` | `MAKOO_TASK_LISTENER_ATTACH_FAIL` |
+| `TASK_ROOT_REMOVE_FAIL` | `MAKOO_TASK_ROOT_REMOVE_FAIL` |
+| `TASK_LISTENER_ABORT_FAIL` | `MAKOO_TASK_LISTENER_ABORT_FAIL` |
+| `TASK_WATCHER_STOP_FAIL` | `MAKOO_TASK_WATCHER_STOP_FAIL` |
 | `TASK_SIGNAL_INVALID` | `MAKOO_TASK_SIGNAL_INVALID` |
 | `TASK_SIGNAL_BIND_FAIL` | `MAKOO_TASK_SIGNAL_BIND_FAIL` |
-| `CLI_SOURCE_DIR_NOT_FOUND` | `MAKOO_CLI_SOURCE_DIR_NOT_FOUND` |
-| `CLI_MANIFEST_LOAD_FAIL` | `MAKOO_CLI_MANIFEST_LOAD_FAIL` |
-| `CLI_MODULE_MANIFEST_LOAD_FAIL` | `MAKOO_CLI_MODULE_MANIFEST_LOAD_FAIL` |
-| `CLI_MANIFEST_NOT_FOUND` | `MAKOO_CLI_MANIFEST_NOT_FOUND` |
-| `CLI_MANIFEST_BINDING_NOT_FOUND` | `MAKOO_CLI_MANIFEST_BINDING_NOT_FOUND` |
-| `CLI_MANIFEST_IMPORT_NOT_FOUND` | `MAKOO_CLI_MANIFEST_IMPORT_NOT_FOUND` |
-| `CLI_FUNCTION_SERIALIZATION_UNSUPPORTED` | `MAKOO_CLI_FUNCTION_SERIALIZATION_UNSUPPORTED` |
-| `CLI_NO_ENABLED_TASKS` | `MAKOO_CLI_NO_ENABLED_TASKS` |
-| `CLI_COMPONENT_NOT_FOUND` | `MAKOO_CLI_COMPONENT_NOT_FOUND` |
-| `CLI_CONFIG_INVALID` | `MAKOO_CLI_CONFIG_INVALID` |
-| `CLI_UNKNOWN_FRAMEWORK` | `MAKOO_CLI_UNKNOWN_FRAMEWORK` |
-| `CLI_UNSUPPORTED_FRAMEWORK` | `MAKOO_CLI_UNSUPPORTED_FRAMEWORK` |
-| `CLI_MODULE_ALREADY_EXISTS` | `MAKOO_CLI_MODULE_ALREADY_EXISTS` |
-| `CLI_MANIFEST_VALIDATION_FAIL` | `MAKOO_CLI_MANIFEST_VALIDATION_FAIL` |
-| `CLI_VITE_CONFIG_NOT_FOUND` | `MAKOO_CLI_VITE_CONFIG_NOT_FOUND` |
-| `CLI_PLUGIN_NOT_FOUND` | `MAKOO_CLI_PLUGIN_NOT_FOUND` |
-| `CLI_RUNTIME_SETUP_NOT_FOUND` | `MAKOO_CLI_RUNTIME_SETUP_NOT_FOUND` |
+| `HOOK_EXECUTION_FAIL` | `MAKOO_HOOK_EXECUTION_FAIL` |
 
 ## Adapter 类型
 
@@ -594,6 +589,7 @@ type MakooListenerDeclaration = {
 	event: string;
 	type: string;
 	callback: EventListener;
+	capture?: boolean;
 	activitySignal?: () => ActivitySignalSource<boolean>;
 };
 
@@ -708,6 +704,9 @@ type MakooIssue = {
 	path: string;
 	message: string;
 };
+
+type MakooErrorContextValue = string | number | boolean | null;
+type MakooErrorContext = Record<string, MakooErrorContextValue>;
 
 type ErrorCodeValue = (typeof ErrorCode)[keyof typeof ErrorCode];
 ```

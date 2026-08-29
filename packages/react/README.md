@@ -1,96 +1,114 @@
-# React API Reference
+# @makoojs/react
 
-## API Index
+`@makoojs/react` is Makoo's React mount adapter. It connects React components to the `@makoojs/core` adapter protocol, allowing the Makoo runtime to create React roots after target DOM nodes appear, render components, and unmount them correctly when tasks are destroyed or reset.
 
-- [`createReactAdapter()`](#createreactadapter): creates the React mounting adapter
-- [`ReactAdapterError`](#reactadaptererror): reports React mounting errors
-- [TypeScript types](#typescript-types): public React adapter types
+## Use Cases
 
-## `createReactAdapter()`
+- Inject React components in a Makoo project.
+- Let the `@makoojs/core` runtime recognize and mount React artifacts.
+- Register the React adapter manually when using the core runtime directly.
+- Read the Makoo task context `makoo` inside React components.
 
-Creates a Makoo adapter that mounts React components.
+## Installation
 
-### Type
-
-```ts
-function createReactAdapter(): ReactMountAdapter;
+```bash
+# npm install @makoojs/react
+# yarn add @makoojs/react
+pnpm add @makoojs/react
 ```
 
-### Returns
+`@makoojs/react` depends on `@makoojs/core` and declares `react` and `react-dom` as peer dependencies, so make sure both `react` and `react-dom` are installed before using this package.
 
-Returns `ReactMountAdapter`.
+## Makoo Context In React Components
 
-### Details
-
-The adapter uses `createRoot()` to render a component into the task's `mountPoint` and passes `makoo` as component props. It calls `unmount()` on the React root when the task is unmounted.
-
-Mounting or unmounting failures throw `ReactAdapterError`.
-
-### Example
+The React adapter passes `makoo` to the component as props. Components can use it to read the current task ID, target selector, logger, or control the current task lifecycle.
 
 ```tsx
-const makoo = createMakoo({
-	adapters: [createReactAdapter()]
-});
+import type { ReactMountProps } from '@makoojs/react';
 
-makoo.start([
-	inject({ injectAt: '#app', artifact: Badge })
-]);
-```
-
-## `ReactAdapterError`
-
-Error class used when the React adapter cannot mount or unmount a component. It extends `AdapterError`.
-
-### Type
-
-```ts
-class ReactAdapterError extends AdapterError {
-	constructor(
-		message: string,
-		issues?: MakooIssue[],
-		code?: string,
-		cause?: Error
+export default function Badge({ makoo }: ReactMountProps) {
+	return (
+		<button
+			type="button"
+			onClick={() => {
+				makoo.getLogger().info(`clicked ${makoo.taskId}`);
+			}}
+		>
+			Makoo Badge
+		</button>
 	);
 }
 ```
 
-When `code` is omitted, it defaults to `ErrorCode.ADAPTER_MOUNT_FAIL`.
+`makoo` comes from `@makoojs/core`'s `MakooContext`. Common capabilities include:
 
-## TypeScript types
+| Capability | Description |
+| --- | --- |
+| `taskId` | Current injection task ID |
+| `injectAt` | Target selector for the current task |
+| `enableAlive()` / `disableAlive()` | Control alive reinjection for the current task |
+| `reset()` / `destroy()` | Reset or destroy the current task |
+| `on()` / `onTask()` | Listen to lifecycle observation events |
+| `getLogger()` | Get the current runtime logger |
 
-### `ReactMountProps`
+## Usage With @makoojs/core
 
-Props received by the React root component.
+Pass the React adapter to `createMakoo()`, then declare React component tasks with `inject()`.
 
-```ts
-type ReactMountProps = {
-	makoo: MakooContext;
-};
+```tsx
+import { createMakoo, inject } from '@makoojs/core';
+import { createReactAdapter } from '@makoojs/react';
+import Badge from './Badge';
+
+const makoo = createMakoo({
+	defaults: {
+		alive: true,
+		scope: 'local',
+		timeout: 5000
+	},
+	adapters: [createReactAdapter()]
+});
+
+makoo.start([
+	inject({
+		id: 'badge',
+		injectAt: '#app',
+		artifact: Badge
+	})
+]);
 ```
 
-### `ReactMountArtifact`
+The adapter returned by `createReactAdapter()` will:
 
-Component types accepted by the Makoo React adapter.
+- Create a React root with `react-dom/client`'s `createRoot(mountPoint)`.
+- Render the component with `root.render(createElement(artifact, { makoo }))`.
+- Call `root.unmount()` during unmount.
+- Wrap mount/unmount failures as `ReactAdapterError`.
 
-```ts
-type ReactMountArtifact =
-	| ComponentType<ReactMountProps>
-	| ExoticComponent<ReactMountProps>;
-```
+## Type Exports
 
-### `ReactMountRoot`
+`@makoojs/react` exports these commonly used types:
 
-```ts
-type ReactMountRoot = Root;
-```
+| Type | Description |
+| --- | --- |
+| `ReactMountProps` | Props received by the React component, including `makoo` |
+| `ReactMountArtifact` | React artifact type recognized by Makoo |
+| `ReactMountAdapter` | React adapter type |
+| `ReactMountRoot` | React root handle type |
 
-### `ReactMountAdapter`
+It also exports:
 
-```ts
-type ReactMountAdapter = ResolvableMountAdapter<
-	ReactMountArtifact,
-	ReactMountRoot,
-	undefined
->;
-```
+- `createReactAdapter`
+- `ReactAdapterError`
+
+See the React API documentation for complete interface details.
+
+## Relationship With Other Packages
+
+| Package | Responsibility |
+| --- | --- |
+| `@makoojs/react` | React mount adapter |
+| `@makoojs/core` | Provides the runtime API, adapter protocol, and Makoo runtime context |
+| `@makoojs/cli` | Provides development and build capabilities for Makoo projects |
+
+`@makoojs/react` works with the injection runtime provided by `@makoojs/core`.

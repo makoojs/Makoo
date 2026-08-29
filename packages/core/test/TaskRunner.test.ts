@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { VueAdapterError } from '../../vue/src/error';
 import { createVueAdapter } from '../../vue/src/VueAdapter';
 import { VuePlugin } from '../../vue/src/VuePlugin';
 import { Action } from '../src';
@@ -13,7 +14,7 @@ import { createObserveEmitter } from '../src/hooks/util';
 import { Logger } from '../src/logger/Logger';
 import type { MakooRuntimeState } from '../src/runtime/types';
 import { createActivityStore } from '../src/signal/observeActivitySignal';
-import type { SignalUnsubscribe } from '../src/signal/types';
+import type { ActivitySignalSource, SignalUnsubscribe } from '../src/signal/types';
 import { createTaskContext, type TaskContext } from '../src/Task/TaskContext';
 import {
 	bindListenerSignal,
@@ -685,24 +686,24 @@ describe('TaskRunner', () => {
 		});
 	});
 
-	it('should default to the bubbling phase when capture is omitted', () => {
+	it('should pass capture false when capture is omitted', () => {
 		const btn = document.createElement('button');
-		btn.id = 'bubble-listener-btn';
+		btn.id = 'default-listener-btn';
 		document.body.appendChild(btn);
 		const callback = vi.fn();
 		const addEventSpy = vi.spyOn(btn, 'addEventListener');
 		taskContext.set(
-			'bubble-listener-task',
+			'default-listener-task',
 			createListenerTask({
-				taskId: 'bubble-listener-task',
+				taskId: 'default-listener-task',
 				withEvent: true,
-				listenAt: '#bubble-listener-btn',
+				listenAt: '#default-listener-btn',
 				event: 'click',
 				callback
 			})
 		);
 
-		expect(controlListener(runtime, 'bubble-listener-task', Action.OPEN)).toBe(true);
+		expect(controlListener(runtime, 'default-listener-task', Action.OPEN)).toBe(true);
 		expect(addEventSpy).toHaveBeenCalledWith('click', callback, {
 			capture: false,
 			signal: expect.any(AbortSignal)
@@ -953,7 +954,11 @@ describe('TaskRunner', () => {
 		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 		onTargetReady(runtime, document.createElement('div'), 'missing-task');
 		expect(errorSpy).toHaveBeenCalledWith(
-			expect.stringContaining('Task "missing-task" not found')
+			expect.stringContaining(
+				'TaskError [MAKOO_TASK_NOT_FOUND]:\n' +
+					'Task not found, unable to proceed with injection\n' +
+					'(taskId: "missing-task")'
+			)
 		);
 	});
 
@@ -1036,9 +1041,45 @@ describe('TaskRunner', () => {
 		const result = bindListenerSignal(runtime, 'watch-error-task', createActivityStore(true));
 
 		expect(result).toBe(false);
-		expect(errorSpy).toHaveBeenCalledWith(
-			expect.stringContaining('Failed to bind activity signal'),
-			expect.any(Error)
+		expect(errorSpy.mock.calls[0]).toHaveLength(1);
+		expect(errorSpy.mock.calls[0][0]).toEqual(
+			expect.stringContaining(
+				'SignalError [MAKOO_TASK_SIGNAL_BIND_FAIL]:\n' +
+					'Failed to bind activity signal\n' +
+					'(taskId: "watch-error-task", signal: "activitySignal")'
+			)
+		);
+		expect(errorSpy.mock.calls[0][0]).toEqual(expect.stringContaining('Error: watch failed'));
+	});
+
+	it('should add task context to an existing signal error', () => {
+		taskContext.set(
+			'invalid-signal-task',
+			createListenerTask({
+				taskId: 'invalid-signal-task',
+				withEvent: true,
+				listenAt: '#btn',
+				event: 'click',
+				callback: vi.fn()
+			})
+		);
+		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+		const result = bindListenerSignal(
+			runtime,
+			'invalid-signal-task',
+			{} as ActivitySignalSource<boolean>
+		);
+
+		expect(result).toBe(false);
+		expect(errorSpy.mock.calls[0]).toHaveLength(1);
+		expect(errorSpy.mock.calls[0][0]).toEqual(
+			expect.stringContaining(
+				'SignalError [MAKOO_TASK_SIGNAL_INVALID]:\n' +
+					'Invalid activity signal source\n' +
+					'  - activitySignal: must provide get() and subscribe() methods\n' +
+					'(taskId: "invalid-signal-task", signal: "activitySignal")'
+			)
 		);
 	});
 
@@ -1166,6 +1207,19 @@ describe('TaskRunner', () => {
 		const host = document.createElement('div');
 		document.body.appendChild(host);
 		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+		const observer = createObserverHub();
+		runtime = createRuntime(observer);
+		const cause = new TypeError('mount failed');
+		const mountError = new VueAdapterError(
+			'Failed to mount Vue component at "#host"',
+			undefined,
+			ErrorCode.ADAPTER_MOUNT_FAIL,
+			cause
+		);
+		let emittedError: unknown;
+		observer.on('artifact:mountFail', (event) => {
+			emittedError = event.error;
+		});
 
 		taskContext.set(
 			'mount-error-task',
@@ -1174,22 +1228,74 @@ describe('TaskRunner', () => {
 				taskStatus: 'pending',
 				artifactName: 'MountErrorComp',
 				injectAt: '#host',
-				artifact: {
-					name: 'MountErrorComp',
-					render: () => {
-						throw new Error('mount failed');
-					}
+				adapter: {
+					name: 'vue',
+					mount() {
+						throw mountError;
+					},
+					unmount: vi.fn()
 				}
 			})
 		);
 
 		onTargetReady(runtime, host, 'mount-error-task');
 		expect(taskContext.get('mount-error-task')?.taskStatus).toBe('idle');
-		expect(errorSpy).toHaveBeenCalledWith(
-			expect.stringContaining('Artifact mount failed for task'),
-			expect.any(AdapterError)
+		expect(emittedError).toBe(mountError);
+		expect(mountError.context).toEqual({
+			taskId: 'mount-error-task',
+			artifact: 'MountErrorComp',
+			injectAt: '#host',
+			adapter: 'vue'
+		});
+		expect(errorSpy.mock.calls[0]).toHaveLength(1);
+		expect(errorSpy.mock.calls[0][0]).toEqual(
+			expect.stringContaining(
+				'VueAdapterError [MAKOO_ADAPTER_MOUNT_FAIL]:\n' +
+					'Failed to mount Vue component at "#host"\n' +
+					'(taskId: "mount-error-task", artifact: "MountErrorComp", injectAt: "#host", adapter: "vue")'
+			)
 		);
-		expect((errorSpy.mock.calls[0][1] as AdapterError).code).toBe(ErrorCode.ADAPTER_MOUNT_FAIL);
+	});
+
+	it('should wrap a raw adapter mount error once and attach task context', () => {
+		const host = document.createElement('div');
+		document.body.appendChild(host);
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		const observer = createObserverHub();
+		runtime = createRuntime(observer);
+		const cause = new Error('raw adapter failure');
+		let emittedError: unknown;
+		observer.on('artifact:mountFail', (event) => {
+			emittedError = event.error;
+		});
+
+		taskContext.set(
+			'raw-mount-error-task',
+			createArtifactTask({
+				taskId: 'raw-mount-error-task',
+				taskStatus: 'pending',
+				artifactName: 'RawMountErrorComp',
+				injectAt: '#raw-host',
+				adapter: {
+					name: 'custom',
+					mount() {
+						throw cause;
+					},
+					unmount: vi.fn()
+				}
+			})
+		);
+
+		onTargetReady(runtime, host, 'raw-mount-error-task');
+
+		expect(emittedError).toBeInstanceOf(AdapterError);
+		expect((emittedError as AdapterError).cause).toBe(cause);
+		expect((emittedError as AdapterError).context).toEqual({
+			taskId: 'raw-mount-error-task',
+			artifact: 'RawMountErrorComp',
+			injectAt: '#raw-host',
+			adapter: 'custom'
+		});
 	});
 
 	it('should use document root for onDomAlive when scope is global', () => {

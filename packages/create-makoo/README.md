@@ -2,14 +2,14 @@
 
 `@makoojs/create-makoo` is Makoo's project scaffolding tool. It creates a ready-to-run userscript project through an interactive command and generates either a Vue or React template based on your choices.
 
-The generated project uses `@makoojs/cli` as its development and build entry. Use `makoo dev` to start the development server and `makoo build` to build the final userscript.
+The generated project uses the development and build commands from `@makoojs/cli`. Use `makoo dev` to start the development server and `makoo build` to build the final userscript.
 
 ## Use Cases
 
 - Quickly create a new Makoo userscript project.
 - Choose between Vue and React templates.
 - Choose a TypeScript or JavaScript project structure.
-- Generate a project with a manifest, Vite config, example injection, and basic assets.
+- Generate a project with Vite config, an example injection, and basic assets.
 
 ## Usage
 
@@ -48,10 +48,10 @@ The Vue template generates:
 ```txt
 package.json
 vite.config.ts/js
-injections/manifest.ts/js
-injections/hello-world/app.vue
+src/main.ts/js
+src/injections/hello-world/App.vue
 assets/vue.svg
-assets/makoo-icon-transparent.png
+assets/makoo-icon.png
 .gitignore
 ```
 
@@ -60,11 +60,11 @@ The React template generates:
 ```txt
 package.json
 vite.config.ts/js
-injections/manifest.ts/js
-injections/hello-world/app.tsx/jsx
-injections/hello-world/style.css
+src/main.ts/js
+src/injections/hello-world/App.tsx/jsx
+src/injections/hello-world/style.css
 assets/react.svg
-assets/makoo-icon-transparent.png
+assets/makoo-icon.png
 .gitignore
 ```
 
@@ -74,6 +74,7 @@ When TypeScript is selected, it also generates:
 tsconfig.json
 tsconfig.app.json
 tsconfig.node.json
+env.d.ts
 ```
 
 ## Project Scripts
@@ -110,7 +111,7 @@ makoo build
 
 ## Template Notes
 
-The generated `injections/manifest.ts/js` registers a `hello-world` injection that targets `body` by default.
+The generated application code starts Makoo and registers a `hello-world` injection that targets `body` by default.
 
 The Vue template configures `@vitejs/plugin-vue` and loads Vue as an external global dependency during userscript builds.
 
@@ -120,10 +121,10 @@ The React template configures `@vitejs/plugin-react`. Because React 19 related p
 
 | Package | Responsibility |
 | --- | --- |
-| `@makoojs/create-makoo` | Interactive Makoo project creation |
-| `@makoojs/cli` | dev/build command entry in generated projects |
-| `@makoojs/core` | Injection scheduling runtime |
-| `@makoojs/vue` | Mount adapter used by the Vue template |
-| `@makoojs/react` | Mount adapter used by the React template |
+| `@makoojs/create-makoo` | Interactive project creation |
+| `@makoojs/cli` | Development and build capabilities for Makoo projects |
+| `@makoojs/core` | Injection task scheduling |
+| `@makoojs/vue` | Vue component mounting |
+| `@makoojs/react` | React component mounting |
 
-`@makoojs/create-makoo` only creates the project. Later development, manifest scanning, virtual entry generation, and userscript builds are handled by `@makoojs/cli` in the generated project.
+`@makoojs/create-makoo` provides project creation, `@makoojs/cli` provides development and build capabilities, and `@makoojs/core` provides runtime task composition.

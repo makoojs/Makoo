@@ -4,10 +4,9 @@ Makoo is a userscript development framework for building maintainable Vue and Re
 injection apps for browser script managers such as Tampermonkey, Violentmonkey, and
 ScriptCat.
 
-It is designed for scripts that are no longer just a few lines of DOM manipulation. Once
-your userscript starts mounting UI, reacting to page redraws, sharing state across multiple
-injection points, or splitting features into separate modules, the hard part becomes keeping
-the runtime predictable. Makoo gives that work a framework-shaped structure.
+It is designed for userscripts that mount components, compose multiple feature tasks, or
+activate different injection points on different pages. Makoo runs, mounts, and cleans up
+those tasks.
 
 ## Why Makoo Exists
 
@@ -20,28 +19,23 @@ cleanly in a script manager.
 Makoo focuses on that middle layer between your component code and the userscript manager:
 
 - waiting for target DOM nodes before mounting
-- registering injection modules from a declarative manifest
+- composing injection tasks with `inject()` and `listen()`
 - mounting Vue and React components through adapters
-- observing page changes and reinjecting modules when needed
-- keeping manifest and module structure changes hot-updated during development
+- observing removal of a host target and reinjecting when the same selector appears again
 
-Build output, userscript metadata, install behavior, and script-manager integration are still
-handled by `vite-plugin-monkey`. Makoo builds on top of it with a project model for
-component-driven injection apps.
+`vite-plugin-monkey` handles build output, userscript metadata, installation, and script-manager
+integration. Makoo provides runtime composition and adapters for component injection.
 
 ## When To Use It
 
-Makoo is a good fit when you are building a userscript that behaves more like a small
-frontend application than a single snippet.
+Makoo can compose userscripts that contain multiple components, tasks, or lifecycle behaviors.
 
 Use it when your project has one or more of these needs:
 
 - multiple injection points on the same page
 - Vue or React components mounted into an existing website
 - page-specific modules controlled by URL rules
-- reinjection after the host page redraws or replaces content
-- a predictable project structure for a growing userscript codebase
-- Vite-based development with structural HMR for manifests and modules
+- reinjection after a host target node is removed and recreated
 
 For very small scripts that only tweak one element once, plain userscript code may still be
 enough. Makoo becomes useful when the lifecycle, structure, or long-term maintenance starts
@@ -53,21 +47,22 @@ A Makoo app is built from a few small pieces:
 
 | Piece | Role |
 | --- | --- |
-| Manifest | Declares which modules exist, where they mount, and when they run |
-| Injection module | Owns a single feature or mount point under `injections/` |
+| Task declarations | Define which tasks exist, where they mount, and when they run |
+| Injection module | An independent injection feature or mount unit |
 | Makoo runtime | Declares tasks, waits for targets, mounts modules, and manages reinjection |
 | Adapter | Bridges Makoo's runtime to Vue or React mounting behavior |
-| Vite plugin | Scans manifests, generates the virtual entry, and integrates with `vite-plugin-monkey` |
+| Vite plugin | Connects Makoo configuration to Vite and `vite-plugin-monkey` |
 
-In practice, you describe the desired injections in `injections/manifest.ts`, place each
-feature under its own module directory, and let Makoo generate the runtime entry that mounts
-those modules on matching pages.
+`monkey.userscript.match` controls where the script manager loads the userscript.
+Application code uses `createMakoo()`, `inject()`, and `listen()` to compose the tasks to start,
+and the Makoo runtime waits for target DOM nodes before mounting. Projects can organize the
+related code according to their own conventions.
 
 ## What Makoo Adds
 
-- A declarative injection manifest
+- Explicit runtime composition with `inject()` and `listen()`
 - A runtime scheduler for component mounting
-- DOM watching and alive reinjection
+- host target removal observation and alive reinjection
 - Vue and React adapters
 - Vite plugin integration for development and build flows
 
@@ -77,12 +72,11 @@ If you are new to Makoo, read the guide in this order:
 
 1. [Getting Started](./getting-started.md) to scaffold a project and define your first
    injection.
-2. [Core Concepts](./concepts.md) to understand the runtime, modules, manifests, and adapters.
+2. [Core Concepts](./concepts.md) to understand the runtime, tasks, modules, and adapters.
 3. [Configuration](./configuration.md) to learn how Makoo, Vite, and `vite-plugin-monkey`
    fit together.
-4. [Manifest Reference](./manifest.md) when you need exact fields for module behavior.
-5. [HMR](./hmr.md) to understand what updates automatically during development.
-6. [Recipes](./recipes.md) for common patterns you can adapt directly.
+4. [HMR](./hmr.md) to understand development updates and cleanup.
+5. [Recipes](./recipes.md) for common patterns you can adapt directly.
 
 ## Quick Start Preview
 

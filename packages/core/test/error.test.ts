@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { AdapterError } from '../src/error/AdapterError';
 import { ErrorCode } from '../src/error/ErrorCode';
+import { formatMakooError } from '../src/error/formatMakooError';
 import { MakooError } from '../src/error/MakooError';
 import { SignalError } from '../src/error/SignalError';
 import { TaskError } from '../src/error/TaskError';
@@ -16,10 +17,11 @@ describe('MakooError', () => {
 		expect(err.code).toBe(ErrorCode.ADAPTER_NOT_FOUND);
 	});
 
-	it('appends cause chain to formatted message', () => {
+	it('retains cause without appending it to the message', () => {
 		const root = new Error('root problem');
 		const err = new MakooError('outer error', undefined, undefined, root);
-		expect(err.message).toContain('cause: root problem');
+		expect(err.message).toBe('[makoo] outer error');
+		expect(err.cause).toBe(root);
 	});
 
 	it('formats message with issues', () => {
@@ -42,6 +44,59 @@ describe('MakooError', () => {
 		const issues = [{ path: 'x', message: 'bad' }];
 		const err = new MakooError('msg', issues);
 		expect(err.issues).toBe(issues);
+	});
+
+	it('merges structured context without replacing the error', () => {
+		const err = new MakooError('msg');
+
+		expect(
+			err.withContext({
+				taskId: 'main-panel',
+				artifact: 'Panel',
+				injectAt: 'body',
+				adapter: 'vue'
+			})
+		).toBe(err);
+		expect(err.context).toEqual({
+			taskId: 'main-panel',
+			artifact: 'Panel',
+			injectAt: 'body',
+			adapter: 'vue'
+		});
+	});
+});
+
+describe('formatMakooError', () => {
+	it('formats the error, context and original cause as one readable message', () => {
+		const cause = new TypeError("Cannot read properties of null (reading 'toString')");
+		cause.stack = [
+			"TypeError: Cannot read properties of null (reading 'toString')",
+			'    at Object.mount (@makoojs_vue.js:47:15)',
+			'    at injectArtifact (TaskRunner.ts:479:25)'
+		].join('\n');
+		const error = new AdapterError(
+			'Failed to mount Vue component at "body"',
+			undefined,
+			ErrorCode.ADAPTER_MOUNT_FAIL,
+			cause
+		).withContext({
+			taskId: 'main-panel',
+			artifact: 'Panel',
+			injectAt: 'body',
+			adapter: 'vue'
+		});
+
+		expect(formatMakooError(error)).toBe(
+			[
+				'AdapterError [MAKOO_ADAPTER_MOUNT_FAIL]:',
+				'Failed to mount Vue component at "body"',
+				'(taskId: "main-panel", artifact: "Panel", injectAt: "body", adapter: "vue")',
+				'',
+				"  TypeError: Cannot read properties of null (reading 'toString')",
+				'      at Object.mount (@makoojs_vue.js:47:15)',
+				'      at injectArtifact (TaskRunner.ts:479:25)'
+			].join('\n')
+		);
 	});
 });
 

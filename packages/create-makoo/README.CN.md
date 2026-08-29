@@ -2,14 +2,14 @@
 
 `@makoojs/create-makoo` 是 Makoo 的项目脚手架。它通过交互式命令生成一个可以直接运行的 userscript 项目，并根据选择创建 Vue 或 React 模板。
 
-生成后的项目会使用 `@makoojs/cli` 作为开发和构建入口，通过 `makoo dev` 启动开发服务，通过 `makoo build` 构建最终 userscript。
+生成后的项目使用 `@makoojs/cli` 提供的开发和构建命令，通过 `makoo dev` 启动开发服务，通过 `makoo build` 构建最终 userscript。
 
 ## 适用场景
 
 - 快速创建一个新的 Makoo userscript 项目。
 - 在 Vue 和 React 模板之间选择起点。
 - 选择 TypeScript 或 JavaScript 项目结构。
-- 生成包含 manifest、Vite 配置、示例 injection 和基础资源的项目。
+- 生成包含 Vite 配置、示例 injection 和基础资源的项目。
 
 ## 使用
 
@@ -48,10 +48,10 @@ Vue 模板会生成：
 ```txt
 package.json
 vite.config.ts/js
-injections/manifest.ts/js
-injections/hello-world/app.vue
+src/main.ts/js
+src/injections/hello-world/App.vue
 assets/vue.svg
-assets/makoo-icon-transparent.png
+assets/makoo-icon.png
 .gitignore
 ```
 
@@ -60,11 +60,11 @@ React 模板会生成：
 ```txt
 package.json
 vite.config.ts/js
-injections/manifest.ts/js
-injections/hello-world/app.tsx/jsx
-injections/hello-world/style.css
+src/main.ts/js
+src/injections/hello-world/App.tsx/jsx
+src/injections/hello-world/style.css
 assets/react.svg
-assets/makoo-icon-transparent.png
+assets/makoo-icon.png
 .gitignore
 ```
 
@@ -74,6 +74,7 @@ assets/makoo-icon-transparent.png
 tsconfig.json
 tsconfig.app.json
 tsconfig.node.json
+env.d.ts
 ```
 
 ## 项目脚本
@@ -110,7 +111,7 @@ makoo build
 
 ## 模板说明
 
-生成的 `injections/manifest.ts/js` 会注册一个 `hello-world` injection，默认注入到 `body`。
+生成的应用代码会启动 Makoo，并注册一个默认注入到 `body` 的 `hello-world` injection。
 
 Vue 模板会配置 `@vitejs/plugin-vue`，并在 userscript 构建中把 Vue 作为外部全局依赖加载。
 
@@ -120,10 +121,10 @@ React 模板会配置 `@vitejs/plugin-react`。由于 React 19 相关包不再�
 
 | 包 | 职责 |
 | --- | --- |
-| `@makoojs/create-makoo` | 交互式创建 Makoo 项目 |
-| `@makoojs/cli` | 生成项目中的 dev/build 命令入口 |
-| `@makoojs/core` | 注入调度 runtime |
-| `@makoojs/vue` | Vue 模板使用的挂载适配器 |
-| `@makoojs/react` | React 模板使用的挂载适配器 |
+| `@makoojs/create-makoo` | 提供交互式项目创建能力 |
+| `@makoojs/cli` | 提供 Makoo 项目的 dev/build 等相关能力 |
+| `@makoojs/core` | 提供 injection task 调度能力 |
+| `@makoojs/vue` | 提供 Vue 组件挂载能力 |
+| `@makoojs/react` | 提供 React 组件挂载能力 |
 
-`@makoojs/create-makoo` 只负责创建项目。后续开发、扫描 manifest、生成虚拟入口和构建 userscript 都由生成项目中的 `@makoojs/cli` 完成。
+`@makoojs/create-makoo` 提供项目创建能力，`@makoojs/cli` 提供开发和构建能力，`@makoojs/core` 提供运行时任务编排能力。

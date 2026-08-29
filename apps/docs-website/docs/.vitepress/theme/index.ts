@@ -1,10 +1,15 @@
 import DefaultTheme from 'vitepress/theme';
 import type { Theme } from 'vitepress';
+import { h } from 'vue';
+import MakooBreadcrumb from './components/MakooBreadcrumb.vue';
 import MakooHero from './components/MakooHero.vue';
 import './style.css';
 
 export default {
 	extends: DefaultTheme,
+	Layout: () => h(DefaultTheme.Layout, null, {
+		'doc-before': () => h(MakooBreadcrumb)
+	}),
 	enhanceApp({ app }) {
 		app.component('MakooHero', MakooHero);
 		if (typeof window === 'undefined') return;

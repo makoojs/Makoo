@@ -12,7 +12,7 @@ import {
 function packageJsonTemplate(data: InitData): string {
 	const devDeps: Record<string, string> = {
 		esbuild: '^0.27.0',
-		vite: '^8.0.14',
+		vite: '^8.2.2',
 		'@vitejs/plugin-react': '^5.2.0'
 	};
 
@@ -72,6 +72,7 @@ export default defineConfig({
   ${localResolveBlock}plugins: [
     react(),
     makoo({
+      entry: './src/main.${data.variant}',
       app: {
         name: '${data.scriptName}',
         version: '${data.version}'
@@ -80,6 +81,7 @@ export default defineConfig({
         userscript: {
           icon: 'https://vitejs.dev/logo.svg',
           namespace: '${data.nameSpace}',
+          // This match rule is only an example. Replace it with the pages your userscript supports.
           match: [${matches}],
         },
         // Uses the third-party umd-react package because React 19 and related
@@ -111,17 +113,22 @@ export default defineConfig({
 `;
 }
 
-function manifestTemplate(data: InitData): string {
-	return `import { defineInjections } from '@makoojs/cli/manifest';
+function mainTemplate(data: InitData): string {
+	return `import { createMakoo, inject } from '@makoojs/core';
+import { createReactAdapter } from '@makoojs/react';
+import App from './injections/hello-world/App.${data.variant === 'ts' ? 'tsx' : 'jsx'}';
 
-export default defineInjections({
-  injections: {
-    'hello-world': {
-      injectAt: 'body',
-      component: './hello-world/app.${data.variant === 'ts' ? 'tsx' : 'jsx'}',
-    }
-  }
-});
+const tasks = createMakoo({ adapters: [createReactAdapter()] }).start([
+  inject({
+    id: 'hello-world',
+    injectAt: 'body',
+    artifact: App,
+  }),
+]);
+
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => tasks.destroyAll());
+}
 `;
 }
 
@@ -133,8 +140,8 @@ function reactComponentTemplate(data: InitData): string {
 
 	return `${stateImport}
 import './style.css';
-import makooLogo from '../../assets/makoo-icon-transparent.png';
-import reactLogo from '../../assets/react.svg';
+import makooLogo from '../../../assets/makoo-icon.png';
+import reactLogo from '../../../assets/react.svg';
 
 export default function App() {
   const [count, setCount] = useState(0);
@@ -150,7 +157,7 @@ export default function App() {
       <div className="content">
         <h1>Makoo</h1>
         <p>
-          Edit <code>app.${data.variant === 'ts' ? 'tsx' : 'jsx'}</code> and save to test HMR.
+          Edit <code>App.${data.variant === 'ts' ? 'tsx' : 'jsx'}</code> and save to test HMR.
         </p>
       </div>
 
@@ -287,19 +294,19 @@ export function generateReactTemplate(data: InitData): void {
 	writeTemplateFiles(root, {
 		'package.json': packageJsonTemplate(data),
 		[`vite.config.${ext}`]: viteConfigTemplate(data),
-		[`injections/manifest.${ext}`]: manifestTemplate(data),
-		[`injections/hello-world/app.${componentExt}`]: reactComponentTemplate(data),
-		'injections/hello-world/style.css': reactStyleTemplate()
+		[`src/main.${ext}`]: mainTemplate(data),
+		[`src/injections/hello-world/App.${componentExt}`]: reactComponentTemplate(data),
+		'src/injections/hello-world/style.css': reactStyleTemplate()
 	});
 	writeGitignoreFile(root);
 	copyTemplateAssets(root, [
 		{ source: 'react.svg', target: 'assets/react.svg' },
-		{ source: 'makoo-icon-transparent.png', target: 'assets/makoo-icon-transparent.png' }
+		{ source: 'makoo-icon.png', target: 'assets/makoo-icon.png' }
 	]);
 
 	if (data.variant === 'ts') {
 		createTypeScriptConfigFiles(root, {
-			appInclude: ['env.d.ts', 'injections/**/*.ts', 'injections/**/*.tsx'],
+			appInclude: ['env.d.ts', 'src/**/*.ts', 'src/**/*.tsx'],
 			nodeInclude: ['vite.config.ts'],
 			appCompilerOptions: {
 				jsx: 'react-jsx'

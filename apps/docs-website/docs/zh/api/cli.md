@@ -8,12 +8,6 @@
 - [`cdn`](#cdn)：生成外部依赖的 CDN 配置
 - [配置类型](#配置类型)：`MakooOptions`、`CliConfig` 和 monkey 配置
 
-### `@makoojs/cli/manifest`
-
-- [`defineInjections()`](#defineinjections)：声明顶层 manifest
-- [`defineInjection()`](#defineinjection)：声明模块 manifest
-- [Manifest 类型](#manifest-类型)
-
 ### `@makoojs/cli/monkey`
 
 - [GM API](#gm-api)：userscript API 封装
@@ -35,18 +29,24 @@ function makoo(options: MakooOptions): Plugin[];
 
 ### Parameters
 
-`options` 使用 `MakooOptions`，其中 `app` 为必填字段。
+`options` 使用 `MakooOptions`。
 
 ### Returns
 
-返回一个 `Plugin[]`。在 Vite 配置中需要使用展开语法。
+返回一个 `Plugin[]`。
 
 ### Example
 
 ```ts
+import { defineConfig } from 'vite';
+import { makoo } from '@makoojs/cli';
+import vue from '@vitejs/plugin-vue';
+
 export default defineConfig({
 	plugins: [
-		...makoo({
+		vue(),
+		makoo({
+			entry: './src/main.ts',
 			app: {
 				name: 'my-script',
 				version: '0.0.1'
@@ -103,12 +103,9 @@ type MakooOptions = CliConfig & {
 
 ```ts
 type CliConfig = {
+	entry: string;
 	app: AppConfig;
-	monkey?: MonkeyConfig;
-	source?: SourceConfig;
-	runtime?: {
-		setup?: string | string[];
-	};
+	monkey: MonkeyConfig;
 };
 ```
 
@@ -121,17 +118,6 @@ type AppConfig = {
 	description?: string;
 };
 ```
-
-### `SourceConfig`
-
-```ts
-type SourceConfig = {
-	include?: string[];
-	exclude?: string[];
-};
-```
-
-`include` 和 `exclude` 匹配 injection 模块目录名。
 
 ### `MonkeyConfig`
 
@@ -175,161 +161,6 @@ type MonkeyBuildConfig = {
 	) => string);
 	cssSideEffects?: string | ((css: string) => void);
 };
-```
-
-## `defineInjections()`
-
-声明顶层 `InjectionManifest`，并保留传入对象的具体类型。
-
-### Type
-
-```ts
-function defineInjections<T extends InjectionManifest>(
-	manifest: StrictShape<InjectionManifest, T>
-): T;
-```
-
-### Returns
-
-原样返回 `manifest`。
-
-### Example
-
-```ts
-export default defineInjections({
-	injectionDefaults: {
-		alive: true
-	},
-	injections: {
-		panel: {
-			injectAt: 'body',
-			component: './panel/App.vue'
-		}
-	},
-	listeners: {
-		escape: {
-			listenAt: 'body',
-			type: 'keydown',
-			callback: onEscape
-		}
-	}
-});
-```
-
-## `defineInjection()`
-
-声明单个 `InjectionModuleConfig`，并保留传入对象的具体类型。
-
-### Type
-
-```ts
-function defineInjection<T extends InjectionModuleConfig>(
-	config: StrictShape<InjectionModuleConfig, T>
-): T;
-```
-
-### Returns
-
-原样返回 `config`。
-
-### Example
-
-```ts
-export default defineInjection({
-	name: 'panel',
-	injectAt: 'body',
-	component: './App.vue',
-	hooks: {
-		'artifact:mountSuccess': onMounted
-	},
-	on: {
-		listenAt: 'body',
-		type: 'click',
-		callback: onClick
-	}
-});
-```
-
-## Manifest 类型
-
-### `InjectionManifest`
-
-```ts
-type InjectionManifest = {
-	injectionDefaults?: InjectionDefaults;
-	injections?: InjectionModuleConfig[] | Record<
-		string,
-		Omit<InjectionModuleConfig, 'name'>
-	>;
-	listeners?: InjectionListenerConfig[] | Record<
-		string,
-		Omit<InjectionListenerConfig, 'name'>
-	>;
-};
-```
-
-### `InjectionDefaults`
-
-```ts
-type InjectionDefaults = {
-	alive?: boolean;
-	scope?: 'local' | 'global';
-	timeout?: number;
-	hooks?: LifecycleHookMap;
-};
-```
-
-### `InjectionModuleConfig`
-
-```ts
-type InjectionModuleConfig = {
-	name?: string;
-	injectAt: string;
-	component: string;
-	framework?: InjectionFramework;
-	enabled?: boolean;
-	match?: InjectionMatchConfig;
-	alive?: boolean;
-	scope?: 'local' | 'global';
-	timeout?: number;
-	hooks?: LifecycleHookMap;
-	on?: InjectionModuleListenerConfig;
-};
-```
-
-### `InjectionListenerConfig`
-
-```ts
-type InjectionModuleListenerConfig = {
-	listenAt: string;
-	type: string;
-	callback: EventListener;
-	capture?: boolean;
-	activitySignal?: () => ActivitySignalSource<boolean>;
-};
-
-type InjectionListenerConfig = InjectionModuleListenerConfig & {
-	name?: string;
-	enabled?: boolean;
-	match?: InjectionMatchConfig;
-};
-```
-
-### `InjectionFramework`
-
-```ts
-type InjectionFramework = 'auto' | 'Vue' | 'React';
-```
-
-### `InjectionMatchConfig`
-
-```ts
-type InjectionMatchConfig =
-	| string[]
-	| {
-		include?: string[];
-		exclude?: string[];
-	};
 ```
 
 ## GM API
@@ -402,6 +233,4 @@ type GmRequestOptions<R extends GmResponseType = 'text', C = unknown> = Omit<
 | --- | --- |
 | `makoo dev` | 启动 Vite 开发服务器 |
 | `makoo build` | 执行 Vite 构建 |
-| `makoo add <name>` | 创建 React injection 模块并更新 manifest |
-| `makoo add <name> --framework Vue` | 创建 Vue injection 模块并更新 manifest |
-| `makoo inspect` | 输出解析后的配置、扫描结果和 framework 信息 |
+| `makoo preview` | 为构建后的 userscript 启动 Vite preview server |

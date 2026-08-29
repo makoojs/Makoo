@@ -423,9 +423,16 @@ describe('TaskContext', () => {
 			taskContext.releaseComponentInstance('test');
 
 			expect(mockUnmount).toHaveBeenCalled();
-			expect(consoleErrorSpy).toHaveBeenCalledWith(
-				expect.stringContaining('Failed to unmount component for task "test"'),
-				expect.any(Error)
+			expect(consoleErrorSpy.mock.calls[0]).toHaveLength(1);
+			expect(consoleErrorSpy.mock.calls[0][0]).toEqual(
+				expect.stringContaining(
+					'VueAdapterError [MAKOO_ADAPTER_UNMOUNT_FAIL]:\n' +
+						'Failed to unmount Vue component\n' +
+						'(taskId: "test", artifact: "TestComponent", injectAt: "#app", adapter: "vue", reason: "destroy")'
+				)
+			);
+			expect(consoleErrorSpy.mock.calls[0][0]).toEqual(
+				expect.stringContaining('Error: Unmount failed')
 			);
 		});
 		it('should warn if component is already unmounted', () => {
@@ -487,9 +494,16 @@ describe('TaskContext', () => {
 			const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 			taskContext.releaseDomElement('test');
 			expect(mockRemove).toHaveBeenCalled();
-			expect(consoleErrorSpy).toHaveBeenCalledWith(
-				expect.stringContaining('Failed to remove root element for task "test"'),
-				expect.any(Error)
+			expect(consoleErrorSpy.mock.calls[0]).toHaveLength(1);
+			expect(consoleErrorSpy.mock.calls[0][0]).toEqual(
+				expect.stringContaining(
+					'TaskError [MAKOO_TASK_ROOT_REMOVE_FAIL]:\n' +
+						'Failed to remove component root element\n' +
+						'(taskId: "test", artifact: "TestComponent", injectAt: "#app", adapter: "vue")'
+				)
+			);
+			expect(consoleErrorSpy.mock.calls[0][0]).toEqual(
+				expect.stringContaining('Error: Remove failed')
 			);
 		});
 	});
@@ -537,9 +551,16 @@ describe('TaskContext', () => {
 			const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 			taskContext.releaseListener('test');
 			expect(mockAbort).toHaveBeenCalled();
-			expect(consoleErrorSpy).toHaveBeenCalledWith(
-				expect.stringContaining('Failed to abort listener for task "test"'),
-				expect.any(Error)
+			expect(consoleErrorSpy.mock.calls[0]).toHaveLength(1);
+			expect(consoleErrorSpy.mock.calls[0][0]).toEqual(
+				expect.stringContaining(
+					'TaskError [MAKOO_TASK_LISTENER_ABORT_FAIL]:\n' +
+						'Failed to abort task listener\n' +
+						'(taskId: "test", event: "click", listenAt: "testListenAt")'
+				)
+			);
+			expect(consoleErrorSpy.mock.calls[0][0]).toEqual(
+				expect.stringContaining('Error: Abort failed')
 			);
 		});
 
@@ -606,9 +627,16 @@ describe('TaskContext', () => {
 			const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 			taskContext.releaseWatcher('test');
 			expect(mockWatcher).toHaveBeenCalled();
-			expect(consoleErrorSpy).toHaveBeenCalledWith(
-				expect.stringContaining('Failed to stop watcher for task "test"'),
-				expect.any(Error)
+			expect(consoleErrorSpy.mock.calls[0]).toHaveLength(1);
+			expect(consoleErrorSpy.mock.calls[0][0]).toEqual(
+				expect.stringContaining(
+					'SignalError [MAKOO_TASK_WATCHER_STOP_FAIL]:\n' +
+						'Failed to stop activity signal watcher\n' +
+						'(taskId: "test", signal: "activitySignal", kind: "component", injectAt: "#app")'
+				)
+			);
+			expect(consoleErrorSpy.mock.calls[0][0]).toEqual(
+				expect.stringContaining('Error: Stop failed')
 			);
 		});
 	});
@@ -672,6 +700,37 @@ describe('TaskContext', () => {
 		});
 		it('should not throw error if context is undefined', () => {
 			expect(() => taskContext.reset('nonexistent')).not.toThrow();
+		});
+		it('should include task context when unmounting fails during reset', () => {
+			const mockUnmount = vi.fn().mockImplementation(() => {
+				throw new Error('Unmount failed');
+			});
+			const context: Task = createArtifactTask({
+				taskId: 'test',
+				artifactName: 'TestComponent',
+				injectAt: '#app',
+				mountHandle: { unmount: mockUnmount },
+				appRoot: document.createElement('div'),
+				instance: {}
+			});
+
+			taskContext.set('test', context);
+			const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+			taskContext.reset('test');
+
+			expect(mockUnmount).toHaveBeenCalled();
+			expect(consoleWarnSpy.mock.calls[0]).toHaveLength(1);
+			expect(consoleWarnSpy.mock.calls[0][0]).toEqual(
+				expect.stringContaining(
+					'VueAdapterError [MAKOO_ADAPTER_UNMOUNT_FAIL]:\n' +
+						'Failed to unmount Vue component\n' +
+						'(taskId: "test", artifact: "TestComponent", injectAt: "#app", adapter: "vue", reason: "reset")'
+				)
+			);
+			expect(consoleWarnSpy.mock.calls[0][0]).toEqual(
+				expect.stringContaining('Error: Unmount failed')
+			);
 		});
 		it('should stay in map after reset', () => {
 			const context: Task = createArtifactTask({

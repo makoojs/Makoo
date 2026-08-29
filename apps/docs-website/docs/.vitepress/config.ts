@@ -14,7 +14,6 @@ const enGuideSidebar = [
 			{ text: 'Getting Started', link: '/docs/getting-started' },
 			{ text: 'Core Concepts', link: '/docs/concepts' },
 			{ text: 'Configuration', link: '/docs/configuration' },
-			{ text: 'Manifest Reference', link: '/docs/manifest' },
 			{ text: 'HMR Behavior', link: '/docs/hmr' },
 			{ text: 'Recipes', link: '/docs/recipes' }
 		]
@@ -29,7 +28,6 @@ const zhGuideSidebar = [
 			{ text: '快速开始', link: '/zh/docs/getting-started' },
 			{ text: '核心概念', link: '/zh/docs/concepts' },
 			{ text: '配置', link: '/zh/docs/configuration' },
-			{ text: 'Manifest 参考', link: '/zh/docs/manifest' },
 			{ text: 'HMR 行为', link: '/zh/docs/hmr' },
 			{ text: '实践示例', link: '/zh/docs/recipes' }
 		]
@@ -75,8 +73,7 @@ export default defineConfig({
 			themeConfig: {
 				nav: [
 					{ text: 'Docs', link: '/docs/' },
-					{ text: 'API', link: '/api/core' },
-					{ text: 'GitHub', link: 'https://github.com/makoojs/Makoo' }
+					{ text: 'API', link: '/api/core' }
 				],
 				sidebar: {
 					'/docs/': enGuideSidebar,
@@ -93,8 +90,7 @@ export default defineConfig({
 			themeConfig: {
 				nav: [
 					{ text: '文档', link: '/zh/docs/' },
-					{ text: 'API', link: '/zh/api/core' },
-					{ text: 'GitHub', link: 'https://github.com/makoojs/Makoo' }
+					{ text: 'API', link: '/zh/api/core' }
 				],
 				sidebar: {
 					'/zh/docs/': zhGuideSidebar,
@@ -103,8 +99,11 @@ export default defineConfig({
 			}
 		}
 	},
+	head: [
+		['link', { rel: 'icon', href: '/makoo-icon.png', type: 'image/png' }]
+	],
 	themeConfig: {
-		logo: '/makoo-icon-transparent.png',
+		logo: '/makoo-icon.png',
 		siteTitle: 'Makoo',
 		search: {
 			provider: 'local'

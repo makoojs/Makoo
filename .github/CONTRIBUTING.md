@@ -24,7 +24,7 @@ pnpm changeset
 ## Project Structure
 
 - `packages/core`: framework-agnostic runtime core.
-- `packages/cli`: CLI, config resolution, scanning, code generation, and Vite plugin.
+- `packages/cli`: CLI, config resolution, Vite integration, and userscript integration.
 - `packages/react`: React adapter.
 - `packages/vue`: Vue adapter and Vue plugin.
 - `packages/create-makoo`: project scaffolding.
@@ -178,9 +178,9 @@ Cases that usually do not need a Changeset:
 - Internal CI or tooling configuration changes.
 - Refactors that do not affect published package behavior.
 
-CI checks that publishable package changes include a `.changeset/*.md` file.
-`Version Packages` PRs are generated automatically by Changesets and do not need
-a manual Changeset.
+CI warns when publishable package changes do not include a `.changeset/*.md` file,
+but the warning does not fail the workflow. `Version Packages` PRs are generated
+automatically by Changesets and do not need a manual Changeset.
 
 ## Versioning and Release
 

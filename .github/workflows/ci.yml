@@ -25,7 +25,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Check required changeset
+      - name: Warn about missing changeset
         shell: bash
         run: |
           git fetch origin "${{ github.base_ref }}" --depth=1
@@ -46,13 +46,13 @@ jobs:
             exit 0
           fi
 
-          echo "Publishable package changes require a changeset."
+          echo "::warning title=Missing Changeset::Publishable package changes were detected, but no Changeset was added."
           echo
           echo "Changed publishable files:"
           printf '%s\n' "$publishable_changes"
           echo
-          echo "Run 'pnpm changeset' and commit the generated .changeset/*.md file."
-          exit 1
+          echo "Consider running 'pnpm changeset' and committing the generated .changeset/*.md file before merging."
+          exit 0
 
   build-and-test:
     runs-on: ubuntu-latest

@@ -127,7 +127,7 @@ When `id` is omitted, the runtime derives a task ID from the artifact and `injec
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `alive` | `boolean` | Attempts to mount again after the target is replaced |
+| `alive` | `boolean` | Waits for the same selector and mounts again after the host target is removed |
 | `scope` | `'local' \| 'global'` | Observation scope used by alive mode |
 | `timeout` | `number` | Milliseconds to wait for the target element |
 | `on` | `MakooListenerDeclaration` | Event listener registered with the component |
@@ -169,11 +169,14 @@ type MakooListenerInput = {
 	listenAt: string;
 	type: string;
 	callback: EventListener;
+	capture?: boolean;
 	activitySignal?: () => ActivitySignalSource<boolean>;
 };
 ```
 
 When `id` is omitted, the runtime uses `listener-${listenAt}-${type}` as the task ID.
+`capture` defaults to `false`. Set it to `true` to run the listener during the DOM capture phase.
+Makoo continues to manage the listener's abort signal internally.
 
 ### Returns
 
@@ -186,6 +189,7 @@ const declaration = listen({
 	id: 'escape-close',
 	listenAt: 'body',
 	type: 'keydown',
+	capture: true,
 	callback: onEscape
 });
 ```
@@ -368,6 +372,8 @@ The default level is `info`. Level order is `debug`, `info`, `warn`, and `error`
 class MakooError extends Error {
 	readonly code: string;
 	readonly issues: MakooIssue[];
+	readonly summary: string;
+	readonly context: MakooErrorContext;
 	override readonly cause?: Error;
 
 	constructor(
@@ -376,10 +382,12 @@ class MakooError extends Error {
 		code?: string,
 		cause?: Error
 	);
+
+	withContext(context: MakooErrorContext): this;
 }
 ```
 
-`message` receives a `[makoo]` prefix and includes the `issues` and `cause` error chain.
+`message` receives a `[makoo]` prefix and includes `issues`. `cause` is stored on the error and its stack is included when Makoo formats the error for logging. `withContext()` appends structured context without changing the error code or summary.
 
 ### `AdapterError`
 
@@ -469,25 +477,12 @@ const OBSERVE_EVENT_NAMES = [
 | `TASK_ALREADY_MOUNTED` | `MAKOO_TASK_ALREADY_MOUNTED` |
 | `TASK_TARGET_DETACHED` | `MAKOO_TASK_TARGET_DETACHED` |
 | `TASK_LISTENER_ATTACH_FAIL` | `MAKOO_TASK_LISTENER_ATTACH_FAIL` |
+| `TASK_ROOT_REMOVE_FAIL` | `MAKOO_TASK_ROOT_REMOVE_FAIL` |
+| `TASK_LISTENER_ABORT_FAIL` | `MAKOO_TASK_LISTENER_ABORT_FAIL` |
+| `TASK_WATCHER_STOP_FAIL` | `MAKOO_TASK_WATCHER_STOP_FAIL` |
 | `TASK_SIGNAL_INVALID` | `MAKOO_TASK_SIGNAL_INVALID` |
 | `TASK_SIGNAL_BIND_FAIL` | `MAKOO_TASK_SIGNAL_BIND_FAIL` |
-| `CLI_SOURCE_DIR_NOT_FOUND` | `MAKOO_CLI_SOURCE_DIR_NOT_FOUND` |
-| `CLI_MANIFEST_LOAD_FAIL` | `MAKOO_CLI_MANIFEST_LOAD_FAIL` |
-| `CLI_MODULE_MANIFEST_LOAD_FAIL` | `MAKOO_CLI_MODULE_MANIFEST_LOAD_FAIL` |
-| `CLI_MANIFEST_NOT_FOUND` | `MAKOO_CLI_MANIFEST_NOT_FOUND` |
-| `CLI_MANIFEST_BINDING_NOT_FOUND` | `MAKOO_CLI_MANIFEST_BINDING_NOT_FOUND` |
-| `CLI_MANIFEST_IMPORT_NOT_FOUND` | `MAKOO_CLI_MANIFEST_IMPORT_NOT_FOUND` |
-| `CLI_FUNCTION_SERIALIZATION_UNSUPPORTED` | `MAKOO_CLI_FUNCTION_SERIALIZATION_UNSUPPORTED` |
-| `CLI_NO_ENABLED_TASKS` | `MAKOO_CLI_NO_ENABLED_TASKS` |
-| `CLI_COMPONENT_NOT_FOUND` | `MAKOO_CLI_COMPONENT_NOT_FOUND` |
-| `CLI_CONFIG_INVALID` | `MAKOO_CLI_CONFIG_INVALID` |
-| `CLI_UNKNOWN_FRAMEWORK` | `MAKOO_CLI_UNKNOWN_FRAMEWORK` |
-| `CLI_UNSUPPORTED_FRAMEWORK` | `MAKOO_CLI_UNSUPPORTED_FRAMEWORK` |
-| `CLI_MODULE_ALREADY_EXISTS` | `MAKOO_CLI_MODULE_ALREADY_EXISTS` |
-| `CLI_MANIFEST_VALIDATION_FAIL` | `MAKOO_CLI_MANIFEST_VALIDATION_FAIL` |
-| `CLI_VITE_CONFIG_NOT_FOUND` | `MAKOO_CLI_VITE_CONFIG_NOT_FOUND` |
-| `CLI_PLUGIN_NOT_FOUND` | `MAKOO_CLI_PLUGIN_NOT_FOUND` |
-| `CLI_RUNTIME_SETUP_NOT_FOUND` | `MAKOO_CLI_RUNTIME_SETUP_NOT_FOUND` |
+| `HOOK_EXECUTION_FAIL` | `MAKOO_HOOK_EXECUTION_FAIL` |
 
 ## Adapter types
 
@@ -590,6 +585,7 @@ type MakooListenerDeclaration = {
 	event: string;
 	type: string;
 	callback: EventListener;
+	capture?: boolean;
 	activitySignal?: () => ActivitySignalSource<boolean>;
 };
 
@@ -704,6 +700,9 @@ type MakooIssue = {
 	path: string;
 	message: string;
 };
+
+type MakooErrorContextValue = string | number | boolean | null;
+type MakooErrorContext = Record<string, MakooErrorContextValue>;
 
 type ErrorCodeValue = (typeof ErrorCode)[keyof typeof ErrorCode];
 ```

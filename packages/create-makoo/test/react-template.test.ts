@@ -14,7 +14,7 @@ function createInitData(variant: 'ts' | 'js', dependencyMode: 'npm' | 'local' = 
 		scriptName: 'demo-react-app',
 		version: '0.0.1',
 		nameSpace: 'npm/makoo',
-		userScriptMatch: 'https://example.com/*',
+		userScriptMatch: 'https://www.google.com/',
 		variant,
 		framework: 'React',
 		dependencyMode
@@ -41,10 +41,16 @@ describe('generateReactTemplate', () => {
 			const appTsconfigPath = path.join(projectRoot, 'tsconfig.app.json');
 			const viteConfigPath = path.join(projectRoot, 'vite.config.ts');
 			const reactAssetPath = path.join(projectRoot, 'assets', 'react.svg');
-			const makooAssetPath = path.join(projectRoot, 'assets', 'makoo-icon-transparent.png');
-			const appPath = path.join(projectRoot, 'injections', 'hello-world', 'app.tsx');
-			const manifestPath = path.join(projectRoot, 'injections', 'manifest.ts');
-			const stylePath = path.join(projectRoot, 'injections', 'hello-world', 'style.css');
+			const makooAssetPath = path.join(projectRoot, 'assets', 'makoo-icon.png');
+			const mainPath = path.join(projectRoot, 'src', 'main.ts');
+			const appPath = path.join(projectRoot, 'src', 'injections', 'hello-world', 'App.tsx');
+			const stylePath = path.join(
+				projectRoot,
+				'src',
+				'injections',
+				'hello-world',
+				'style.css'
+			);
 
 			expect(existsSync(packageJsonPath)).toBe(true);
 			expect(existsSync(tsconfigPath)).toBe(true);
@@ -65,8 +71,18 @@ describe('generateReactTemplate', () => {
 			expect(readFileSync(viteConfigPath, 'utf-8')).not.toContain(
 				"dedupe: ['react', 'react-dom']"
 			);
-			expect(readFileSync(appPath, 'utf-8')).toContain('../../assets/react.svg');
-			expect(readFileSync(manifestPath, 'utf-8')).toContain("from '@makoojs/cli/manifest'");
+			expect(readFileSync(viteConfigPath, 'utf-8')).toContain("entry: './src/main.ts'");
+			expect(readFileSync(viteConfigPath, 'utf-8')).toContain(
+				'// This match rule is only an example.'
+			);
+			expect(readFileSync(viteConfigPath, 'utf-8')).toContain(
+				"match: ['https://www.google.com/']"
+			);
+			expect(readFileSync(appPath, 'utf-8')).toContain('../../../assets/react.svg');
+			expect(readFileSync(mainPath, 'utf-8')).toContain('createReactAdapter()');
+			expect(readFileSync(mainPath, 'utf-8')).toContain("injectAt: 'body'");
+			expect(readFileSync(mainPath, 'utf-8')).toContain('tasks.destroyAll()');
+			expect(existsSync(path.join(projectRoot, 'injections', 'manifest.ts'))).toBe(false);
 			expect(readFileSync(appPath, 'utf-8')).toContain('count is {count}');
 			expect(readFileSync(stylePath, 'utf-8')).toContain('.logo-react');
 		});
@@ -82,9 +98,10 @@ describe('generateReactTemplate', () => {
 			expect(existsSync(path.join(projectRoot, 'tsconfig.json'))).toBe(false);
 			expect(existsSync(path.join(projectRoot, 'tsconfig.app.json'))).toBe(false);
 			expect(existsSync(path.join(projectRoot, 'assets', 'react.svg'))).toBe(true);
-			expect(existsSync(path.join(projectRoot, 'injections', 'hello-world', 'app.jsx'))).toBe(
-				true
-			);
+			expect(existsSync(path.join(projectRoot, 'src', 'main.js'))).toBe(true);
+			expect(
+				existsSync(path.join(projectRoot, 'src', 'injections', 'hello-world', 'App.jsx'))
+			).toBe(true);
 			expect(existsSync(path.join(projectRoot, '.gitignore'))).toBe(true);
 		});
 	});

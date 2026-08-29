@@ -23,7 +23,7 @@ pnpm changeset
 ## 项目结构
 
 - `packages/core`：框架无关的运行时核心。
-- `packages/cli`：CLI、配置解析、扫描、代码生成和 Vite 插件。
+- `packages/cli`：CLI、配置解析、Vite 和 userscript 集成。
 - `packages/react`：React adapter。
 - `packages/vue`：Vue adapter 和 Vue plugin。
 - `packages/create-makoo`：项目脚手架。
@@ -171,8 +171,8 @@ pnpm changeset
 - 只改内部 CI 或工具配置。
 - 不影响发布包行为的重构。
 
-CI 会检查发布相关包改动是否带有 `.changeset/*.md` 文件。`Version Packages`
-PR 由 Changesets 自动生成，不需要手动添加 Changeset。
+如果发布相关包改动没有带 `.changeset/*.md` 文件，CI 会发出警告，但不会因此失败。
+`Version Packages` PR 由 Changesets 自动生成，不需要手动添加 Changeset。
 
 ## 版本和发布
 
@@ -198,4 +198,3 @@ pnpm docs:build
 同时需要亲自查看页面效果，确认内容、导航、排版和链接符合预期。
 
 文档部署由 GitHub Pages workflow 处理。
-

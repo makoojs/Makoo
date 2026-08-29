@@ -21,7 +21,7 @@ function mockProjectPrompts(projectName: string, directoryAction?: 'cancel' | 'r
 		.mockResolvedValueOnce(projectName)
 		.mockResolvedValueOnce('0.0.1')
 		.mockResolvedValueOnce('npm/makoo')
-		.mockResolvedValueOnce('https://example.com/*');
+		.mockResolvedValueOnce('https://www.google.com/');
 	const select = vi.fn();
 
 	if (directoryAction) {

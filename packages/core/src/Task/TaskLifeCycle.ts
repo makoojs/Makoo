@@ -1,3 +1,6 @@
+import { ErrorCode } from '../error/ErrorCode';
+import { formatMakooError } from '../error/formatMakooError';
+import { TaskError } from '../error/TaskError';
 import { buildAliveObservePayload } from '../payload/buildAliveObservePayload';
 import { buildTaskObservePayload } from '../payload/buildTaskObservePayload';
 import { createDomObserveEmitFactory } from '../payload/createDomObserveEmitFactory';
@@ -10,7 +13,14 @@ import { getTaskInjectAt, isArtifactTask } from './util';
 export function enableAlive(runtime: MakooRuntimeState, taskId: string): void {
 	const context = runtime.taskContext.get(taskId);
 	if (!context) {
-		runtime.logger.error(`Task "${taskId}" not found`);
+		const error = new TaskError(
+			'Task not found',
+			undefined,
+			ErrorCode.TASK_NOT_FOUND
+		).withContext({
+			taskId
+		});
+		runtime.logger.error(formatMakooError(error));
 		return;
 	}
 
@@ -161,7 +171,14 @@ export function disableAlive(runtime: MakooRuntimeState, taskId: string): void {
 	const context = runtime.taskContext.get(taskId);
 
 	if (!context) {
-		runtime.logger.error(`Task "${taskId}" not found`);
+		const error = new TaskError(
+			'Task not found',
+			undefined,
+			ErrorCode.TASK_NOT_FOUND
+		).withContext({
+			taskId
+		});
+		runtime.logger.error(formatMakooError(error));
 		return;
 	}
 
@@ -206,7 +223,14 @@ export function disableAlive(runtime: MakooRuntimeState, taskId: string): void {
 export function destroy(runtime: MakooRuntimeState, taskId: string): void {
 	const context: Task | undefined = runtime.taskContext.get(taskId);
 	if (!context) {
-		runtime.logger.error(`Task ${taskId} not found`);
+		const error = new TaskError(
+			'Task not found',
+			undefined,
+			ErrorCode.TASK_NOT_FOUND
+		).withContext({
+			taskId
+		});
+		runtime.logger.error(formatMakooError(error));
 		return;
 	}
 
@@ -249,7 +273,14 @@ export function destroyAll(runtime: MakooRuntimeState): void {
 export function reset(runtime: MakooRuntimeState, taskId: string): void {
 	const context: Task | undefined = runtime.taskContext.get(taskId);
 	if (!context) {
-		runtime.logger.error(`Task ${taskId} not found`);
+		const error = new TaskError(
+			'Task not found',
+			undefined,
+			ErrorCode.TASK_NOT_FOUND
+		).withContext({
+			taskId
+		});
+		runtime.logger.error(formatMakooError(error));
 		return;
 	}
 
