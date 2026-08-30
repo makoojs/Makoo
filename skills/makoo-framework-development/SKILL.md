@@ -5,155 +5,93 @@ description: Use when developing the Makoo framework/monorepo itself, especially
 
 # Makoo Framework Development
 
-Follow this skill when developing Makoo itself: the framework monorepo, its packages, adapters, CLI, scaffolding templates, tests, docs, or shared configuration. Preserve the repo's current library-first architecture, naming, and testing style instead of introducing generic app-framework patterns.
+Use this skill for Makoo's framework monorepo, packages, adapters, CLI, scaffolding, tests, docs, and shared configuration. Preserve its library-first architecture and existing domain boundaries. For an ordinary userscript project that consumes Makoo, use the Makoo injection workflow skill instead.
 
-Do not use this skill for ordinary downstream projects that only use Makoo to build userscripts. For task composition and injection module work in a Makoo-powered project, use the Makoo injection workflow skill instead.
+Makoo is currently a pre-1.0, same-repository, lockstep-maintained project. Judge architecture, compatibility, and recovery costs at that scale rather than assuming the needs of a mature cross-team platform.
 
-## Start Here
+## Start With The Owning Boundary
 
-Identify the target package before editing:
+Identify the target package, then read its nearest implementation, sibling files, tests, and public exports before editing. Keep responsibility in the package that already owns it.
 
-- `packages/core`: framework-agnostic runtime core
-- `packages/cli`: config resolution, Vite and userscript integration, project commands
-- `packages/react`: React adapter only
-- `packages/vue`: Vue adapter and Vue plugin registration
-- `packages/create-makoo`: project scaffolding templates
+Read [references/project-map.md](references/project-map.md) when a change spans packages, adds files, changes public exports, or leaves ownership unclear.
 
-Keep code inside the package that already owns the responsibility.
+## Current-Need Gate
 
-If the task touches multiple areas or you need a fuller package map, read `references/project-map.md`.
+Design from Makoo's current requirements, consumers, and observed failure modes. Do not infer infrastructure merely from an architectural label.
 
-## Build, Test, And Dev Commands
+Before adding any field, file, service, protocol, discovery mechanism, compatibility layer, fallback, or abstraction, answer:
 
-Prefer this repo's package-manager scripts for install, build, test, lint, and docs work. Do not invoke tools by reaching into `node_modules` and calling package JS files directly. For adding or removing dependencies, use `pnpm` commands; do not hand-edit `package.json` or lockfiles to change deps.
+- What current behavior, constraint, or observed failure requires it?
+- Which current consumer reads, calls, or enforces it?
+- Why is explicit failure insufficient for this case?
 
-- `pnpm install`: install dependencies from the lockfile.
-- `pnpm build`: build all publishable packages into their `dist/` outputs.
-- `pnpm build:core` / `pnpm build:cli` / `pnpm build:react` / `pnpm build:vue` / `pnpm build:create-makoo`: build one package when the change is scoped.
-- `pnpm test`: run the Vitest suite (`packages/*/test/**/*.test.ts`).
-- `pnpm test:watch`: run Vitest in watch mode during local iteration.
-- `pnpm test:coverage`: run Vitest with coverage.
-- `pnpm lint`: run Biome format, lint, and import checks.
-- `pnpm lint:fix`: apply safe Biome autofixes.
-- `pnpm format`: write Biome formatting only.
-- `pnpm docs:dev` / `pnpm docs:build`: work on the docs website when docs are in scope.
-- Run a single test file or directory with `pnpm exec vitest run packages/cli/test/vite/makooDev.test.ts` (adjust the path). Prefer the smallest relevant target before a full `pnpm test`.
+If there is no current requirement and no current consumer, leave it out. A plausible future workflow is not a requirement. Terms such as "runtime session" do not by themselves justify service discovery, protocol versioning, authentication, reconnection, multi-instance coordination, or cross-version compatibility.
 
-Do not run `pnpm exec tsc -p packages/*/tsconfig.json` or similar package-level `tsc -p` commands as routine verification: those package tsconfigs emit `.d.ts` files into source directories. Prefer Vitest, targeted runtime checks, or the package's actual build pipeline instead.
+Prefer the simplest clear implementation that satisfies the present contract. Generalize only after real repetition appears and the boundary has stabilized. Do not introduce layers, generic frameworks, configuration, or extension points to make a design look complete.
 
-## Non-Negotiable Style Rules
+## Failure And Fallback Policy
 
-- Write TypeScript with ESM imports and exports.
-- Match the repository formatter: tabs for indentation, single quotes, semicolons, no trailing commas, and a soft line width around 100 characters. Biome owns formatting and lint.
-- Prefer named exports. Use barrel exports only in package entrypoints such as `src/index.ts`.
-- Keep filenames and directories descriptive and consistent with the existing package vocabulary. Use `PascalCase` for classes and class-like files, `camelCase` for functions and builders, and `types.ts` for tightly related type groups. Tests live under the package-local `test/` directory and follow the target name, such as `resolve.test.ts` or `makooDev.test.ts`.
-- Keep focused changes focused. Do not casually edit unrelated packages, generated outputs, scaffold templates, docs, or release metadata while handling a narrow task.
-- Add comments only when they explain intent, invariants, or subtle behavior. Do not narrate obvious code.
+Explicit failure is a valid design when automatic recovery is not part of the current contract. Validate required data close to its source and fail with a specific error; do not force values to "always exist" through defaults, `??`, optional chaining, recovery branches, or compatibility code that masks an abnormal state.
 
-## Documentation Rules
+Add fallback or recovery only when at least one of these currently requires it:
 
-- Write public README and documentation-site content as a description of the current framework: supported APIs, observable behavior, usage, constraints, and examples.
-- Keep implementation history and migration rationale in changesets, changelogs, ADRs, commit messages, or pull-request descriptions. Do not turn user documentation into a record of superseded technical decisions.
-- Describe current behavior positively and in terms users already know. For example, write "hooks and callbacks may be declared inline or imported from browser-compatible files" rather than explaining an old serialization mechanism.
-- Prefer public field and API names over invented umbrella terms. Do not introduce labels such as "runtime functions" when the documentation can name `hooks`, `callback`, and `activitySignal` directly.
-- Keep internal config resolution and plugin wiring details in architecture or internal CLI documentation unless a user must understand them to use or debug a documented feature. In usage guides, explain the observable result and the required user action.
-- Use negative wording when it communicates a current user-facing requirement or boundary, such as an unsupported import or an unnecessary setup file. Do not use it merely to contrast the current architecture with an abandoned internal approach.
-- When the user edits one language of paired documentation, treat that edited version as the source for the requested synchronization. Preserve its meaning and structure, then update the other language without rewriting the user's source text beyond necessary correctness fixes.
-- Before finishing a documentation change, scan the affected public docs for stale migration language such as `now`, `no longer`, `formerly`, `instead of the old`, `不再`, `以前`, or comparisons with a removed mechanism. Review matches in context rather than replacing unrelated prose blindly.
+- a runtime constraint;
+- public API semantics;
+- an existing package-local behavior with the same purpose;
+- an explicit user requirement or observed workflow.
 
-## Structure Conventions
+Inspect the current package for an established handling pattern before adding a new one. Preserve explicit failure when no concrete requirement justifies recovery.
 
-- Place implementation near its domain. Examples already used in the repo:
-  - runtime orchestration in `Makoo/`, `runtime/`, `Task/`, `watcher/`, `payload/`
-  - adapter contracts in `adapter/` or package-local adapter files
-  - configuration defaults, validation, and resolution in `config/`
-- Add new subdirectories only when they create a real domain boundary, not for one-off indirection.
-- Keep entrypoints minimal. Re-export public API from `src/index.ts`; do not hide substantial logic there.
-- Keep package public APIs explicit. If a symbol is not meant to be public, avoid exporting it from the package entrypoint.
+When a design is challenged, reassess each part independently against current evidence. Remove unsupported completeness, but retain mechanisms that still have a concrete consumer and justification. Do not swing between keeping everything and deleting everything merely to agree.
 
-## Naming And API Design
+## Leave No Scope-Creep Residue
 
-- Use domain terms that already exist in the repo: `inject`, `listen`, `register`, `resolve`, `normalize`, `build`, `observe`, `watch`, `adapter`, `task`, `config`.
-- Name booleans and state transitions clearly, such as `enabled`, `alive`, `pending`, `active`, `idle`, `isSuccess`.
-- Prefer `ResolvedX`, `XConfig`, `XResult`, `XError`, and `XOptions` naming for structured types.
-- Keep defaults centralized in `defaults.ts`-style files when the values are shared or semantically important.
-- Infer values when the package already follows that pattern, but fail with a specific error when ambiguity would be unsafe.
+When unsolicited scope, an unnecessary mechanism, or a rejected design is removed, return the work to the ordinary requested state. The removed mistake must not become a new concept that survives in names, comments, docs, tests, changelogs, commit messages, or pull-request titles and descriptions.
 
-## Errors, Validation, And Logging
+- Name the result for what it is, not for what it excludes. Do not create "without X," "legacy-free," or similar variants for something that was never part of the accepted requirement.
+- Do not add comments, documentation, or tests explaining the absence of rejected work unless that absence is an actual public contract or a non-obvious invariant future maintainers must preserve.
+- Describe the delivered behavior and relevant constraints directly. Do not turn cleanup of unsolicited work into feature history or release narrative.
 
-- Model library and CLI failures with specific error classes instead of ad hoc `Error` strings.
-- When extending the repo's error style, include a stable error code and structured issue details when available.
-- Preserve the existing `[makoo]` tone in surfaced errors and console messages.
-- Validate config and user input close to the boundary. Normalized internal code should operate on resolved, typed data.
-- Prefer returning normalized objects from resolver functions instead of mutating input.
+## Repository Invariants
 
-## Avoid Fallbacks And Over-Engineering
+- Keep `packages/core` framework-agnostic. Framework-specific behavior belongs in its adapter package.
+- Place implementation near its domain and add a directory only for a real domain boundary, not one-off indirection.
+- Keep package entrypoints minimal. Export public API intentionally from package entrypoints; keep internal symbols private.
+- Extend the repository's existing package and domain patterns instead of introducing generic application layers such as controller/service/repository or SPA-specific architecture.
+- Preserve config, runtime, adapter, and CLI concerns as separate responsibilities when the package already separates them.
+- Do not broaden a package's public API unless the requested behavior requires it.
 
-Keep engineering restrained. Engineering should reduce complexity, unify constraints, and improve maintainability. It should not invent abstraction layers, generic frameworks, complex configuration, or unused extension points just to look architecturally complete. Prefer the simplest clear implementation that solves the current, concrete need. Abstract or generalize only after real repetition appears and the boundary has stabilized.
+## Implementation Conventions
 
-Also avoid protective over-fallback: do not paper over missing values with ternaries, defaults, `??`, optional chaining, or recovery branches that force variables to "always exist." When data is required by the contract or domain, missing data is already an abnormal state. Validate close to the source and fail explicitly instead of masking the problem so it spreads downstream as a harder-to-debug failure.
+- Write TypeScript with ESM imports and exports. Prefer named exports and use barrel exports only at package entrypoints.
+- Let Biome define formatting and import order. Match nearby code for file layout and naming.
+- Reuse Makoo's existing domain vocabulary, such as `inject`, `listen`, `register`, `resolve`, `normalize`, `observe`, `watch`, `adapter`, `task`, and `config`.
+- Use explicit names for booleans, state transitions, structured types, and recursive traversals. Avoid context-free names such as `process`, `handle`, or `walk` when the domain can be named.
+- Keep shared or semantically important defaults centralized. Infer values only where the package already does so; fail specifically when ambiguity is unsafe.
+- Use Makoo-specific error types and preserve the `[makoo]` tone. Include stable error codes and structured issue details when extending an error pattern that already supports them.
+- Validate input at the boundary and return normalized values instead of mutating caller input.
+- Add comments only for intent, invariants, or subtle behavior.
 
-Fallback policy:
+Keep simple, continuous control flow intact. Do not extract one-use helpers that merely forward arguments or wrap a few expressions. Extract when a function names a real domain concept, is reused, isolates a testable algorithm, or materially removes duplication or nesting.
 
-- Do not add preventive fallback branches, fallback values, or compatibility code by default.
-- Add fallback logic only when runtime constraints, public API semantics, or an existing local package pattern clearly require it.
-- Before adding fallback logic, inspect the current package for an existing implementation or handling pattern with the same purpose.
-- Only add new fallback logic when no suitable package-local precedent exists.
-- If the surrounding code prefers explicit failure over silent recovery, preserve explicit failure.
+Declare recursive traversal at module scope with an explicit, domain-specific name. Pass context and accumulators through parameters rather than hiding data flow in an enclosing closure.
 
-## Function Splitting And Recursion
+## Scope And Verification
 
-Keep simple, continuous control flow intact. Do not mechanically split a main function into private helpers just to shorten it. Helpers that are called once, only wrap a few expressions or forward arguments, and have no independent domain meaning should stay inline. Do not fill a file with tiny helpers that force readers to jump around. "Single responsibility" does not mean "one or two lines per function." Extract a function only when it is reused, names a real domain concept, contains a complex algorithm worth isolating for tests, or materially removes duplication or nested branching.
+- Keep narrow changes narrow. Do not casually modify unrelated packages, generated outputs, scaffold templates, docs, dependencies, or release metadata.
+- Use the current `package.json` scripts through `pnpm`; change dependencies with `pnpm` rather than hand-editing manifests or lockfiles.
+- Run the smallest relevant Vitest target first. Update tests for changed observable behavior and normalization results without expanding unrelated coverage.
+- Test public behavior and package contracts rather than private implementation trivia unless the repository already follows that pattern.
+- Expand to broader build, test, or lint checks only when the change's scope or risk justifies them.
+- Do not routinely run package-level `tsc -p` commands: Makoo's package tsconfigs can emit `.d.ts` files into source directories. Use the package's actual build pipeline or targeted runtime checks instead.
+- Run formatting or autofixes only when the edited files need them.
 
-Never declare a recursive function inside another function. Lift recursive traversal to a module-level named function or a dedicated module, and pass context and accumulators explicitly through parameters instead of hiding data flow in outer closures. Recursive function names must say what is traversed and why, such as `collectWatcherTargets` or `traverseAdapterTree`. Do not use context-free names like `walk`, `process`, `handle`, or `recurse`.
+## Documentation Work
 
-## Testing Rules
+When editing public README or documentation-site content, read [references/documentation.md](references/documentation.md). Keep internal architecture rationale out of user-facing guidance unless users need it to use or debug the feature.
 
-- Add or update Vitest coverage for behavior changes.
-- Place tests in the package-local `test/` directory and keep filenames aligned with the target unit or feature.
-- Match current test style: `describe` and `it`, straightforward fixture setup, explicit expectations, and `vi.spyOn` for interaction testing.
-- Test observable behavior and normalization results, not private implementation trivia, unless the repo already exposes internals for that pattern.
-- For config and resolver work, assert concrete output shape and edge cases.
+## Changesets And Release Work
 
-## CLI Config Rules
+Changesets are a separate, explicitly authorized release action. Never create, edit, or delete a changeset unless the user directly asks for changeset work. Do not infer permission from an implementation request, bug fix, breaking API change, documentation update, commit request, or the fact that a published package is affected.
 
-- Keep `entry`, app metadata, and monkey options semantically separated in resolved config.
-- Resolve the configured application module relative to the project root and pass it to `vite-plugin-monkey`.
-
-## Release And Changesets
-
-- Treat changesets as a separate, explicitly authorized release action. Never create, edit, or
-  delete a changeset unless the user directly asks for changeset work. Do not infer permission
-  from an implementation request, bug fix, breaking API change, documentation update, request to
-  commit, or the fact that a published package is affected. When a change appears to need a
-  changeset but the user did not request one, complete the requested work without generating it.
-- Makoo uses Changesets for published package versioning and changelogs.
-- Published packages maintain package-level changelogs under `packages/*/CHANGELOG.md`.
-- The root `CHANGELOG.md` is a legacy project-level archive, not the current release changelog source.
-- Do not manually edit package versions except in Changesets-generated version PRs.
-- The release workflow is `.github/workflows/changesets-release.yml`: it creates a `Version Packages` PR first, then publishes after that PR merges.
-- Publish from Actions with npm trusted publishing (OIDC). Keep `id-token: write` on the release job, do not pass `NPM_TOKEN` or `NODE_AUTH_TOKEN` into publish steps, and do not use `npm whoami` as an auth check. Configure a GitHub Actions trusted publisher on each published package at npmjs.com, using workflow filename `changesets-release.yml`.
-- If Actions cannot create the version PR, check repository or organization workflow permissions for pull request creation before changing release code.
-
-## Change Workflow
-
-When implementing a change, follow this sequence:
-
-1. Read the nearest existing module and its sibling files before editing.
-2. Extend the current pattern instead of introducing a new architectural style.
-3. Update exports if the change affects package public API.
-4. Run the smallest relevant tests first, then broader validation if needed.
-5. Run formatting or lint fixes only if your changes need them.
-
-## Avoid These Mismatches
-
-- Do not introduce default exports into areas that already use named exports.
-- Do not add framework-specific logic to `packages/core`.
-- Do not move validation, defaults, and resolution concerns into one giant function when the package already separates them.
-- Do not replace domain-specific errors with generic throws.
-- Do not introduce React app, Next.js, or SPA-style patterns that do not fit a library and CLI monorepo.
-- Do not broaden package public surface area unless the task requires it.
-
-## References
-
-- Read `references/project-map.md` for package responsibilities, file-layout patterns, and a practical edit checklist.
+Read [references/release.md](references/release.md) only when the user asks about versioning, changelogs, release automation, publishing, or a release failure.
