@@ -3,11 +3,11 @@ import { defineConfig } from 'vite';
 import dts from 'vite-plugin-dts';
 
 export default defineConfig({
-	root: __dirname,
+	root: import.meta.dirname,
 	build: {
 		outDir: 'dist',
 		lib: {
-			entry: resolve(__dirname, 'src/index.ts'),
+			entry: resolve(import.meta.dirname, 'src/index.ts'),
 			formats: ['es', 'cjs'],
 			fileName: 'index'
 		},
@@ -21,7 +21,7 @@ export default defineConfig({
 			include: ['src/**/*.ts'],
 			rollupTypes: false,
 			outDir: 'dist',
-			tsconfigPath: resolve(__dirname, 'tsconfig.json')
+			tsconfigPath: resolve(import.meta.dirname, 'tsconfig.json')
 		})
 	]
 });
