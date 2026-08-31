@@ -83,7 +83,11 @@ export type CliConfig = {
 	monkey: MonkeyConfig;
 };
 
-export type ResolvedConfig = {
+export type MakooConfig = CliConfig & {
+	root?: string;
+};
+
+export type ResolvedMakooConfig = {
 	root: string;
 	entry: string;
 	app: AppConfig;

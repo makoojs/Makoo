@@ -1,5 +1,6 @@
 import { isAbsolute, normalize, resolve as resolvePath } from 'node:path';
 import process from 'node:process';
+import type { MonkeyOption } from 'vite-plugin-monkey';
 import {
 	DEFAULT_FILE_NAME_SUFFIX,
 	DEFAULT_MONKEY_BUILD_CONFIG,
@@ -11,7 +12,8 @@ import type {
 	CliConfig,
 	MonkeyBuildConfig,
 	MonkeyConfig,
-	ResolvedConfig,
+	MonkeyUserscriptOption,
+	ResolvedMakooConfig,
 	ResolvedMonkeyBuildConfig,
 	ResolvedMonkeyConfig,
 	ResolvedMonkeyServerConfig
@@ -23,6 +25,16 @@ const resolveFileSystemPath = (root: string, value: string): string =>
 
 const resolveProjectRoot = (root?: string): string =>
 	normalize(root ? resolvePath(root) : process.cwd());
+
+const normalizeMonkeyLocaleValue = <T>(value: T): T | Record<string, string> =>
+	typeof value === 'string' ? { '': value } : value;
+
+const normalizeMonkeyUserscript = (userscript: MonkeyUserscriptOption): MonkeyUserscriptOption =>
+	({
+		...userscript,
+		name: normalizeMonkeyLocaleValue(userscript.name),
+		description: normalizeMonkeyLocaleValue(userscript.description)
+	}) as MonkeyUserscriptOption;
 
 const resolveMetaFileName = (
 	fileName: string,
@@ -66,18 +78,8 @@ export const resolveMonkeyBuildConfig = (
 	};
 };
 
-export const resolveMonkeyConfig = (
-	app: AppConfig,
-	config: MonkeyConfig
-): ResolvedMonkeyConfig => {
-	const {
-		userscript,
-		align,
-		styleImport,
-		server: _server,
-		build: _build,
-		...rest
-	} = config;
+export const resolveMonkeyConfig = (app: AppConfig, config: MonkeyConfig): ResolvedMonkeyConfig => {
+	const { userscript, align, styleImport, server: _server, build: _build, ...rest } = config;
 
 	return {
 		...rest,
@@ -94,7 +96,7 @@ export const resolveMonkeyConfig = (
 	};
 };
 
-export const resolveConfig = (config: CliConfig, root?: string): ResolvedConfig => {
+export const resolveConfig = (config: CliConfig, root?: string): ResolvedMakooConfig => {
 	validateCliConfig(config);
 
 	const projectRoot = resolveProjectRoot(root);
@@ -107,3 +109,11 @@ export const resolveConfig = (config: CliConfig, root?: string): ResolvedConfig 
 		monkey: resolveMonkeyConfig(app, config.monkey)
 	};
 };
+
+export const resolveMonkeyPluginOptions = (config: ResolvedMakooConfig): MonkeyOption => ({
+	...config.monkey,
+	entry: config.entry,
+	userscript: normalizeMonkeyUserscript(config.monkey.userscript),
+	server: { ...config.monkey.server },
+	build: { ...config.monkey.build }
+});
