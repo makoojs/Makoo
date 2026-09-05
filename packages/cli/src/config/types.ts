@@ -36,7 +36,7 @@ export type MonkeyBuildConfig = {
 };
 
 export type MonkeyConfig = {
-	userscript?: MonkeyUserScript;
+	userscript?: Omit<MonkeyUserScript, 'name' | 'version' | 'description'>;
 	align?: number | false;
 	generate?: (options: MonkeyGenerateContext) => Thenable<string>;
 	styleImport?: boolean;

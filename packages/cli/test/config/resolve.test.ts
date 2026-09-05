@@ -60,4 +60,33 @@ describe('resolveConfig', () => {
 		expect(options).not.toHaveProperty('clientAlias');
 		expect(options.server).toMatchObject({ open: false, mountGmApi: false });
 	});
+
+	it('keeps app identity on the userscript even if monkey repeats those fields', () => {
+		const config = resolveConfig(
+			{
+				entry: './src/main.ts',
+				app: {
+					name: 'demo-script',
+					version: '1.2.3',
+					description: 'demo description'
+				},
+				monkey: {
+					userscript: {
+						name: 'other-name',
+						version: '9.9.9',
+						description: 'other description',
+						match: ['https://example.com/*']
+					} as never
+				}
+			},
+			root
+		);
+
+		expect(config.monkey.userscript).toMatchObject({
+			name: 'demo-script',
+			version: '1.2.3',
+			description: 'demo description',
+			match: ['https://example.com/*']
+		});
+	});
 });

@@ -84,10 +84,10 @@ export const resolveMonkeyConfig = (app: AppConfig, config: MonkeyConfig): Resol
 	return {
 		...rest,
 		userscript: {
+			...userscript,
 			name: app.name,
 			version: app.version,
-			description: app.description,
-			...userscript
+			description: app.description
 		},
 		align: align ?? DEFAULT_MONKEY_CONFIG.align,
 		styleImport: styleImport ?? DEFAULT_MONKEY_CONFIG.styleImport,
