@@ -42,7 +42,6 @@ Makoo becomes useful when lifecycle, module boundaries, and long-term maintenanc
 - [Project Structure](#project-structure)
 - [Configuration Overview](#configuration-overview)
 - [Runtime Composition](#runtime-composition)
-- [HMR Behavior](#hmr-behavior)
 - [Recipes](#recipes)
 - [Packages](#packages)
 - [Special Thanks](#special-thanks)
@@ -145,7 +144,7 @@ const makoo = createMakoo({
 	}
 });
 
-const tasks = makoo.start([
+makoo.start([
 	inject({ id: 'header', injectAt: '#header', artifact: Header }),
 	inject({
 		id: 'badge',
@@ -154,10 +153,6 @@ const tasks = makoo.start([
 		options: { alive: true, timeout: 10_000 }
 	})
 ]);
-
-if (import.meta.hot) {
-	import.meta.hot.dispose(() => tasks.destroyAll());
-}
 ```
 
 Common injection fields:
@@ -194,10 +189,6 @@ const escapeClose = listen({
 ```
 
 Listeners support `capture` and `activitySignal`. `capture` defaults to `false`; set it to `true` to listen during the DOM capture phase. `listenAt` must be a CSS selector; `document` and `window` are not supported listener targets.
-
-## HMR Behavior
-
-When using HMR, call `destroyAll()` on the `StartedTasks` returned by `start()` inside `import.meta.hot.dispose`, so replaced modules do not leave old tasks active.
 
 ## Recipes
 

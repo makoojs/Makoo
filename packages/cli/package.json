@@ -39,6 +39,8 @@
   },
   "dependencies": {
     "cac": "^7.0.0",
+    "cli-table3": "^0.6.5",
+    "log-update": "^7.2.0",
     "vite-plugin-monkey": "^8.1.0",
     "zod": "^4.4.3"
   },

@@ -81,7 +81,7 @@ describe('generateReactTemplate', () => {
 			expect(readFileSync(appPath, 'utf-8')).toContain('../../../assets/react.svg');
 			expect(readFileSync(mainPath, 'utf-8')).toContain('createReactAdapter()');
 			expect(readFileSync(mainPath, 'utf-8')).toContain("injectAt: 'body'");
-			expect(readFileSync(mainPath, 'utf-8')).toContain('tasks.destroyAll()');
+			expect(readFileSync(mainPath, 'utf-8')).not.toContain('import.meta.hot');
 			expect(existsSync(path.join(projectRoot, 'injections', 'manifest.ts'))).toBe(false);
 			expect(readFileSync(appPath, 'utf-8')).toContain('count is {count}');
 			expect(readFileSync(stylePath, 'utf-8')).toContain('.logo-react');
