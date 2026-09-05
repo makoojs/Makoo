@@ -1,9 +1,17 @@
-import type { Plugin } from 'vite';
+import type { InlineConfig, Plugin } from 'vite';
+import { DevSession } from '../session/DevSession';
+import type { RuntimeEvent, RuntimeOpen } from '../session/types';
 
 const VIRTUAL_CORE_ID = '\0virtual:makoo-dev';
 const CORE_PACKAGE = '@makoojs/core';
 
-// The method of wrapping and passing multiple methods allows each runtime to have its own entry point, avoiding event sharing.
+export const bindDevSession = Symbol('makooDev.bindSession');
+
+export type InlineConfigWithSession = InlineConfig & {
+	[bindDevSession]?: (session: DevSession) => void;
+};
+
+// Explicit delegation keeps event forwarding isolated for each runtime without replacing the user observer.
 function buildVirtualModuleSource(resolvedCoreId: string): string {
 	const coreId = JSON.stringify(resolvedCoreId);
 
@@ -64,10 +72,10 @@ function __makooSend(event, payload) {
 	}
 }
 
-function __makooCreateSessionObserver(observer, runtime) {
+function __makooCreateSessionObserver(observer, runtimeId) {
 	const sendEvent = (event) => {
 		__makooSend('makoo:runtime:event', {
-			runtime,
+			runtimeId,
 			event: __makooSerializeObserveEvent(event)
 		});
 	};
@@ -102,25 +110,26 @@ function __makooCreateSessionObserver(observer, runtime) {
 			observer.emit(event);
 		},
 		emitOnTask(taskId, event) {
-			const normalized = event.taskId === taskId ? event : { ...event, taskId };
+			let normalized = event;
+			if (event.taskId !== taskId) normalized = { ...event, taskId };
 			sendEvent(normalized);
 			observer.emitOnTask(taskId, event);
 		}
 	};
 }
 
-let __makooNextRuntime = 1;
+let __makooNextRuntimeId = 1;
 
 export function createMakoo(options = {}) {
-	const runtime = __makooNextRuntime++;
+	const runtimeId = __makooNextRuntimeId++;
 	const baseObserver = options.observer ?? __makooCreateObserverHub(options.logger);
-	const observer = __makooCreateSessionObserver(baseObserver, runtime);
+	const observer = __makooCreateSessionObserver(baseObserver, runtimeId);
 	const makoo = __makooCreateMakoo({
 		...options,
 		observer
 	});
 
-	__makooSend('makoo:runtime:open', { runtime });
+	__makooSend('makoo:runtime:open', { runtimeId });
 	return makoo;
 }
 `;
@@ -128,11 +137,13 @@ export function createMakoo(options = {}) {
 
 export function makooDev(): Plugin {
 	let resolvedCoreId: string | null = null;
+	const session = new DevSession();
 
 	return {
 		name: 'makoo:dev',
 		apply: 'serve',
 		enforce: 'pre',
+		api: { session },
 		async resolveId(source, importer, options) {
 			if (source !== CORE_PACKAGE) {
 				return null;
@@ -157,6 +168,20 @@ export function makooDev(): Plugin {
 				return null;
 			}
 			return buildVirtualModuleSource(resolvedCoreId);
+		},
+		configureServer(server) {
+			const bind = (server.config.inlineConfig as InlineConfigWithSession)[bindDevSession];
+			bind?.(session);
+
+			server.hot.on('makoo:runtime:open', (payload, client) => {
+				session.open(client, payload as RuntimeOpen);
+			});
+			server.hot.on('makoo:runtime:event', (payload, client) => {
+				session.record(client, payload as RuntimeEvent);
+			});
+			server.hot.on('vite:client:disconnect', (_payload, client) => {
+				session.disconnect(client);
+			});
 		}
 	};
 }

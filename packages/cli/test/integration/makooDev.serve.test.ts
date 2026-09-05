@@ -1,18 +1,18 @@
 import path from 'node:path';
 import { createServer, createServerModuleRunner } from 'vite';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { makooDev } from '../../src/vite/makooDev';
 import { cleanupTempProjects, trackProject } from '../utils/tempProject';
 
 const repoRoot = path.resolve(__dirname, '../../../..');
 const coreEntry = path.join(repoRoot, 'packages/core/src/index.ts');
 
-type RuntimeOpenMessage = {
-	runtime: number;
+type SessionOpenMessage = {
+	runtimeId: number;
 };
 
-type RuntimeEventMessage = {
-	runtime: number;
+type MakooEventMessage = {
+	runtimeId: number;
 	event: {
 		name: string;
 		error?: {
@@ -26,7 +26,10 @@ type RuntimeEventMessage = {
 	};
 };
 
-afterEach(cleanupTempProjects);
+afterEach(async () => {
+	vi.restoreAllMocks();
+	await cleanupTempProjects();
+});
 
 describe('makooDev serve integration', () => {
 	it('executes the virtual Core and sends runtime events without replacing the user observer', async () => {
@@ -119,13 +122,13 @@ describe('makooDev serve integration', () => {
 			]
 		});
 		const runner = createServerModuleRunner(server.environments.ssr);
-		const opens: RuntimeOpenMessage[] = [];
-		const events: RuntimeEventMessage[] = [];
+		const opens: SessionOpenMessage[] = [];
+		const events: MakooEventMessage[] = [];
 		server.environments.ssr.hot.on('makoo:runtime:open', (data) => {
-			opens.push(data as RuntimeOpenMessage);
+			opens.push(data as SessionOpenMessage);
 		});
 		server.environments.ssr.hot.on('makoo:runtime:event', (data) => {
-			events.push(data as RuntimeEventMessage);
+			events.push(data as MakooEventMessage);
 		});
 
 		try {
@@ -136,7 +139,7 @@ describe('makooDev serve integration', () => {
 			}>('/src/main.ts');
 			const observed = entry.run();
 
-			expect(opens).toEqual([{ runtime: 1 }]);
+			expect(opens).toEqual([{ runtimeId: 1 }]);
 			expect(events.map(({ event }) => event.name)).toEqual(observed);
 
 			const mountFailure = events.find(({ event }) => event.name === 'artifact:mountFail');
@@ -155,16 +158,16 @@ describe('makooDev serve integration', () => {
 
 			const beforeStoppedRun = events.length;
 			expect(entry.runStoppedPropagation()).toEqual({ scoped: 1, any: 0 });
-			expect(opens).toEqual([{ runtime: 1 }, { runtime: 2 }]);
+			expect(opens).toEqual([{ runtimeId: 1 }, { runtimeId: 2 }]);
 			expect(events.slice(beforeStoppedRun)).toEqual([
 				{
-					runtime: 2,
+					runtimeId: 2,
 					event: expect.objectContaining({ name: 'start:requested' })
 				}
 			]);
 
 			entry.failCreate();
-			expect(opens).toEqual([{ runtime: 1 }, { runtime: 2 }]);
+			expect(opens).toEqual([{ runtimeId: 1 }, { runtimeId: 2 }]);
 		} finally {
 			await runner.close();
 			await server.close();

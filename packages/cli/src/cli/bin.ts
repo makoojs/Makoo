@@ -2,7 +2,7 @@
 import { MakooError } from '@makoojs/core';
 import cac from 'cac';
 import { buildCommand } from './commands/build';
-import { devCommand } from './commands/dev';
+import { devCommand } from './commands/dev/dev';
 import { previewCommand } from './commands/preview';
 import { loadCliVersion } from './version';
 
