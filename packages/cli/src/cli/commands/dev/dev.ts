@@ -1,4 +1,4 @@
-import { createServer, type Logger, type ViteDevServer } from 'vite';
+import { createServer, type InlineConfig, type Logger, type ViteDevServer } from 'vite';
 import type { DevSession } from '../../../session/DevSession';
 import { bindDevSession, type InlineConfigWithSession } from '../../../vite/makooDev';
 import { renderTasksTable } from '../../tasks/renderTasks';
@@ -27,8 +27,8 @@ function getDevSession(server: ViteDevServer): DevSession | undefined {
 	const plugin = server.config.plugins.find((plugin) => plugin.name === 'makoo:dev');
 	return plugin?.api?.session;
 }
-export async function devCommand(): Promise<void> {
-	const server = await createServer();
+export async function devCommand(config?: InlineConfig): Promise<void> {
+	const server = await createServer(config);
 	const viteLogger = server.config.logger;
 	const initialSession = getDevSession(server);
 	if (!initialSession) {

@@ -11,21 +11,21 @@ import {
 
 function packageJsonTemplate(data: InitData): string {
 	const devDeps: Record<string, string> = {
-		esbuild: '^0.27.0',
+		esbuild: '^0.28.2',
 		vite: '^8.2.2',
-		'@vitejs/plugin-react': '^5.2.0'
+		'@vitejs/plugin-react': '^6.1.1'
 	};
 
 	if (data.variant === 'ts') {
-		devDeps.typescript = '~5.9.3';
-		devDeps['@types/node'] = '^25.9.1';
-		devDeps['@types/react'] = '^19.2.15';
-		devDeps['@types/react-dom'] = '^19.2.3';
+		devDeps.typescript = '^7.0.2';
+		devDeps['@types/node'] = '^26.4.1';
+		devDeps['@types/react'] = '^19.2.18';
+		devDeps['@types/react-dom'] = '^19.2.7';
 	}
 
 	const deps = {
-		react: '^19.2.0',
-		'react-dom': '^19.2.0'
+		react: '^19.2.8',
+		'react-dom': '^19.2.8'
 	};
 	const makooDependencies = resolveMakooDependencies(data.framework, data.dependencyMode);
 
@@ -36,7 +36,7 @@ function packageJsonTemplate(data: InitData): string {
 		scripts: {
 			dev: 'makoo dev',
 			build: data.variant === 'ts' ? 'tsc -b && makoo build' : 'makoo build',
-			...(data.variant === 'ts' ? { typecheck: 'tsc -b' } : {})
+			preview: 'makoo preview'
 		},
 		dependencies: {
 			...deps,

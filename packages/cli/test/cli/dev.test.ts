@@ -1,7 +1,7 @@
 import type { Logger, ViteDevServer } from 'vite';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { DevSession } from '../../src/session/DevSession';
 import { devCommand } from '../../src/cli/commands/dev/dev';
+import { DevSession } from '../../src/session/DevSession';
 import { bindDevSession, type InlineConfigWithSession } from '../../src/vite/makooDev';
 
 vi.mock('vite', () => ({
@@ -54,7 +54,9 @@ describe('devCommand', () => {
 		vi.mocked(createServer).mockResolvedValue(server);
 		vi.spyOn(process, 'once').mockImplementation(() => process);
 
-		await devCommand();
+		const config = { server: { port: 5174 }, mode: 'staging' };
+		await devCommand(config);
+		expect(createServer).toHaveBeenCalledWith(config);
 
 		expect(server.listen).toHaveBeenCalledOnce();
 		expect(server.config.inlineConfig.customLogger).toBe(logger);
@@ -96,7 +98,9 @@ describe('devCommand', () => {
 
 		await devCommand();
 
-		expect((server.config.inlineConfig as InlineConfigWithSession)[bindDevSession]).toBeUndefined();
+		expect(
+			(server.config.inlineConfig as InlineConfigWithSession)[bindDevSession]
+		).toBeUndefined();
 		expect(bindCLIShortcuts).toHaveBeenCalledWith({
 			print: true
 		});
