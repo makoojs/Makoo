@@ -21,7 +21,7 @@ describe('previewCommand', () => {
 
 		await previewCommand();
 
-		expect(preview).toHaveBeenCalledWith();
+		expect(preview).toHaveBeenCalledWith(undefined);
 		expect(printUrls).toHaveBeenCalledOnce();
 		expect(bindCLIShortcuts).toHaveBeenCalledWith({ print: true });
 	});
