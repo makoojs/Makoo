@@ -1,6 +1,8 @@
 import path from 'node:path';
-import { createServer, createServerModuleRunner } from 'vite';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createServer, createServerModuleRunner, type ViteDevServer } from 'vite';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { DevTerminal } from '../../src/cli/commands/dev/DevTerminal';
+import { devCommand } from '../../src/cli/commands/dev/dev';
 import { makooDev } from '../../src/vite/makooDev';
 import { cleanupTempProjects, trackProject } from '../utils/tempProject';
 
@@ -26,13 +28,18 @@ type MakooEventMessage = {
 	};
 };
 
-afterEach(async () => {
-	vi.restoreAllMocks();
-	await cleanupTempProjects();
-});
+let server: Awaited<ReturnType<typeof createServer>>;
+let runner: ReturnType<typeof createServerModuleRunner>;
+let entry: {
+	run(): string[];
+	runStoppedPropagation(): { scoped: number; any: number };
+	failCreate(): void;
+};
+let opens: SessionOpenMessage[];
+let events: MakooEventMessage[];
 
 describe('makooDev serve integration', () => {
-	it('executes the virtual Core and sends runtime events without replacing the user observer', async () => {
+	beforeEach(async () => {
 		const root = await trackProject({
 			'src/main.ts': `
 				import { createMakoo, createObserverHub, inject } from '@makoojs/core';
@@ -103,7 +110,7 @@ describe('makooDev serve integration', () => {
 			`
 		});
 
-		const server = await createServer({
+		server = await createServer({
 			root,
 			configFile: false,
 			logLevel: 'silent',
@@ -121,56 +128,97 @@ describe('makooDev serve integration', () => {
 				}
 			]
 		});
-		const runner = createServerModuleRunner(server.environments.ssr);
-		const opens: SessionOpenMessage[] = [];
-		const events: MakooEventMessage[] = [];
-		server.environments.ssr.hot.on('makoo:runtime:open', (data) => {
-			opens.push(data as SessionOpenMessage);
-		});
-		server.environments.ssr.hot.on('makoo:runtime:event', (data) => {
-			events.push(data as MakooEventMessage);
-		});
+		runner = createServerModuleRunner(server.environments.ssr);
 
+		opens = [];
+		events = [];
+		server.environments.ssr.hot.on('makoo:runtime:open', (data) =>
+			opens.push(data as SessionOpenMessage)
+		);
+		server.environments.ssr.hot.on('makoo:runtime:event', (data) =>
+			events.push(data as MakooEventMessage)
+		);
+		entry = await runner.import('/src/main.ts');
+	});
+
+	afterEach(async () => {
+		await runner?.close();
+		await server?.close();
+		vi.restoreAllMocks();
+		await cleanupTempProjects();
+	});
+
+	it('forwards observed events and serializes Makoo errors', () => {
+		const observed = entry.run();
+		expect(opens).toEqual([{ runtimeId: 1 }]);
+		expect(observed).toContain('artifact:mountFail');
+		expect(events.map(({ event }) => event.name)).toEqual(observed);
+		const failure = events.find(({ event }) => event.name === 'artifact:mountFail');
+		expect(failure?.event.error).toMatchObject({
+			name: 'AdapterError',
+			code: 'MAKOO_ADAPTER_MOUNT_FAIL',
+			summary: 'Failed to mount artifact at "#makoo-dev-target"',
+			context: {
+				taskId: 'broken-task',
+				artifact: 'BrokenArtifact',
+				injectAt: '#makoo-dev-target',
+				adapter: 'failing-adapter'
+			}
+		});
+	});
+
+	it('reports events even when the user observer stops propagation', () => {
+		expect(entry.runStoppedPropagation()).toEqual({ scoped: 1, any: 0 });
+		expect(opens).toEqual([{ runtimeId: 1 }]);
+		expect(events).toEqual([
+			{ runtimeId: 1, event: expect.objectContaining({ name: 'start:requested' }) }
+		]);
+	});
+
+	it('does not announce a runtime when creation fails', () => {
+		entry.failCreate();
+		expect(opens).toEqual([]);
+		expect(events).toEqual([]);
+	});
+});
+
+describe('devCommand serve integration', () => {
+	it('serves the supplied project root and keeps serving after a restart', async () => {
+		const root = await trackProject({ 'index.html': '<h1>real dev project</h1>' });
+		const start = vi.spyOn(DevTerminal.prototype, 'start');
+		let liveServer: ViteDevServer | undefined;
+		vi.stubEnv('CI', 'true');
 		try {
-			const entry = await runner.import<{
-				run(): string[];
-				runStoppedPropagation(): { scoped: number; any: number };
-				failCreate(): void;
-			}>('/src/main.ts');
-			const observed = entry.run();
-
-			expect(opens).toEqual([{ runtimeId: 1 }]);
-			expect(events.map(({ event }) => event.name)).toEqual(observed);
-
-			const mountFailure = events.find(({ event }) => event.name === 'artifact:mountFail');
-			expect(mountFailure?.event.error).toMatchObject({
-				name: 'AdapterError',
-				code: 'MAKOO_ADAPTER_MOUNT_FAIL',
-				summary: 'Failed to mount artifact at "#makoo-dev-target"',
-				issues: [],
-				context: {
-					taskId: 'broken-task',
-					artifact: 'BrokenArtifact',
-					injectAt: '#makoo-dev-target',
-					adapter: 'failing-adapter'
-				}
+			await devCommand({
+				root,
+				configFile: false,
+				logLevel: 'silent',
+				server: { host: '127.0.0.1', port: 0, open: false },
+				plugins: [
+					makooDev(),
+					{
+						name: 'capture-dev-server',
+						configureServer(server) {
+							liveServer = server;
+						}
+					}
+				]
 			});
-
-			const beforeStoppedRun = events.length;
-			expect(entry.runStoppedPropagation()).toEqual({ scoped: 1, any: 0 });
-			expect(opens).toEqual([{ runtimeId: 1 }, { runtimeId: 2 }]);
-			expect(events.slice(beforeStoppedRun)).toEqual([
-				{
-					runtimeId: 2,
-					event: expect.objectContaining({ name: 'start:requested' })
-				}
-			]);
-
-			entry.failCreate();
-			expect(opens).toEqual([{ runtimeId: 1 }, { runtimeId: 2 }]);
+			if (!liveServer) throw new Error('devCommand did not create a server');
+			const url = liveServer.resolvedUrls?.local[0];
+			if (!url) throw new Error('devCommand did not listen');
+			expect(await (await fetch(url)).text()).toContain('real dev project');
+			await liveServer.restart();
+			const restartedUrl = liveServer.resolvedUrls?.local[0];
+			if (!restartedUrl) throw new Error('devCommand did not resume listening');
+			expect(await (await fetch(restartedUrl)).text()).toContain('real dev project');
 		} finally {
-			await runner.close();
-			await server.close();
+			const terminal = start.mock.contexts[0];
+			if (terminal instanceof DevTerminal) terminal.close();
+			await liveServer?.close();
+			vi.restoreAllMocks();
+			vi.unstubAllEnvs();
+			await cleanupTempProjects();
 		}
 	});
 });

@@ -1,13 +1,5 @@
 import type { NormalizedHotChannelClient } from 'vite';
-import type {
-	RuntimeEvent,
-	RuntimeLog,
-	RuntimeOpen,
-	RuntimeSnapshot,
-	TaskSnapshot
-} from './types';
-
-const MAX_LOGS = 1000;
+import type { RuntimeEvent, RuntimeOpen, RuntimeSnapshot, TaskSnapshot } from './types';
 
 type RuntimeState = {
 	tasks: Map<string, TaskSnapshot>;
@@ -21,7 +13,6 @@ type ClientState = {
 export class DevSession {
 	private readonly clients = new Map<NormalizedHotChannelClient, ClientState>();
 	private nextClientId = 1;
-	private logs: RuntimeLog[] = [];
 	private onChange: (() => void) | null = null;
 
 	public subscribe(onChange: () => void): () => void {
@@ -45,10 +36,7 @@ export class DevSession {
 		this.onChange?.();
 	}
 
-	public record(
-		client: NormalizedHotChannelClient,
-		payload: RuntimeEvent
-	): RuntimeLog | undefined {
+	public record(client: NormalizedHotChannelClient, payload: RuntimeEvent): void {
 		const clientState = this.clients.get(client);
 		if (!clientState) return;
 
@@ -56,13 +44,6 @@ export class DevSession {
 		if (!runtimeState) return;
 
 		const { event } = payload;
-		const log = {
-			clientId: clientState.clientId,
-			runtimeId: payload.runtimeId,
-			event
-		};
-		this.logs.push(log);
-		if (this.logs.length > MAX_LOGS) this.logs.shift();
 
 		switch (event.name) {
 			case 'task:afterDestroy':
@@ -78,6 +59,7 @@ export class DevSession {
 					});
 				}
 				break;
+			// update task snapshot
 			default: {
 				if (!event.taskId) break;
 				const task = runtimeState.tasks.get(event.taskId);
@@ -87,9 +69,8 @@ export class DevSession {
 				break;
 			}
 		}
-
+		// refresh the terminal when have a new update
 		this.onChange?.();
-		return log;
 	}
 
 	public disconnect(client: NormalizedHotChannelClient): void {
@@ -97,7 +78,6 @@ export class DevSession {
 		if (!clientState) return;
 
 		this.clients.delete(client);
-		this.logs = this.logs.filter((log) => log.clientId !== clientState.clientId);
 		this.onChange?.();
 	}
 
@@ -113,9 +93,5 @@ export class DevSession {
 				tasks: [...state.tasks.values()]
 			}))
 		);
-	}
-
-	public getLogs(): RuntimeLog[] {
-		return this.logs;
 	}
 }

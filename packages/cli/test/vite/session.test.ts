@@ -1,4 +1,3 @@
-import type { ObserveEvent } from '@makoojs/core';
 import type { NormalizedHotChannelClient } from 'vite';
 import { describe, expect, it, vi } from 'vitest';
 import { DevSession } from '../../src/session/DevSession';
@@ -7,11 +6,55 @@ function createClient(): NormalizedHotChannelClient {
 	return {} as NormalizedHotChannelClient;
 }
 
-function event(input: ObserveEvent): ObserveEvent {
-	return input;
-}
-
 describe('DevSession', () => {
+	it('isolates identical task IDs across runtimes and browser clients', () => {
+		const session = new DevSession();
+		const first = createClient();
+		const second = createClient();
+		for (const [client, runtimeId] of [
+			[first, 1],
+			[first, 2],
+			[second, 1]
+		] as const) {
+			session.open(client, { runtimeId });
+			session.record(client, {
+				runtimeId,
+				event: {
+					name: 'register:success',
+					ts: 1,
+					taskId: 'shared',
+					kind: 'listener',
+					status: 'idle',
+					injectAt: 'window'
+				}
+			});
+		}
+		session.record(first, {
+			runtimeId: 2,
+			event: { name: 'task:statusChange', ts: 2, taskId: 'shared', status: 'active' }
+		});
+		expect(session.getTasks().map(({ tasks }) => tasks[0].status)).toEqual([
+			'idle',
+			'active',
+			'idle'
+		]);
+		session.disconnect(first);
+		expect(session.getTasks()).toMatchObject([
+			{ clientId: 2, runtimeId: 1, tasks: [{ taskId: 'shared', status: 'idle' }] }
+		]);
+	});
+
+	it('does not let an old unsubscribe detach the current subscriber', () => {
+		const session = new DevSession();
+		const oldListener = vi.fn();
+		const stopOld = session.subscribe(oldListener);
+		const listener = vi.fn();
+		session.subscribe(listener);
+		stopOld();
+		session.open(createClient(), { runtimeId: 1 });
+		expect(listener).toHaveBeenCalledOnce();
+		expect(oldListener).not.toHaveBeenCalled();
+	});
 	it('reduces registered task events into the current runtime snapshot', () => {
 		const session = new DevSession();
 		const client = createClient();
@@ -19,7 +62,7 @@ describe('DevSession', () => {
 
 		session.record(client, {
 			runtimeId: 1,
-			event: event({
+			event: {
 				name: 'register:success',
 				ts: 1,
 				taskId: 'task-1',
@@ -27,11 +70,11 @@ describe('DevSession', () => {
 				status: 'idle',
 				injectAt: '#app',
 				meta: { artifactName: 'Demo' }
-			})
+			}
 		});
 		session.record(client, {
 			runtimeId: 1,
-			event: event({
+			event: {
 				name: 'task:statusChange',
 				ts: 2,
 				taskId: 'task-1',
@@ -40,7 +83,7 @@ describe('DevSession', () => {
 				preStatus: 'idle',
 				injectAt: '#app',
 				meta: { reason: 'target-found' }
-			})
+			}
 		});
 
 		expect(session.getTasks()).toEqual([
@@ -57,11 +100,6 @@ describe('DevSession', () => {
 				]
 			}
 		]);
-		expect(session.getLogs().map((log) => log.event.name)).toEqual([
-			'register:success',
-			'task:statusChange'
-		]);
-		expect(session.getLogs()[0]?.event.meta).toEqual({ artifactName: 'Demo' });
 	});
 
 	it('removes destroyed tasks and drops state when the page disconnects', () => {
@@ -70,7 +108,7 @@ describe('DevSession', () => {
 		session.open(client, { runtimeId: 1 });
 		session.record(client, {
 			runtimeId: 1,
-			event: event({
+			event: {
 				name: 'register:success',
 				ts: 1,
 				taskId: 'task-1',
@@ -78,28 +116,26 @@ describe('DevSession', () => {
 				status: 'idle',
 				injectAt: 'window',
 				meta: {}
-			})
+			}
 		});
 		session.record(client, {
 			runtimeId: 1,
-			event: event({
+			event: {
 				name: 'task:afterDestroy',
 				ts: 2,
 				taskId: 'task-1',
 				kind: 'listener',
 				preStatus: 'idle',
 				injectAt: 'window'
-			})
+			}
 		});
 
 		expect(session.getTasks()[0]?.tasks).toEqual([]);
-		expect(session.getLogs()).toHaveLength(2);
 
 		session.disconnect(client);
 
 		expect(session.isEmpty()).toBe(true);
 		expect(session.getTasks()).toEqual([]);
-		expect(session.getLogs()).toEqual([]);
 	});
 
 	it('keeps client labels stable when another page disconnects', () => {
@@ -110,53 +146,7 @@ describe('DevSession', () => {
 		session.open(secondClient, { runtimeId: 1 });
 		session.disconnect(firstClient);
 
-		session.record(secondClient, {
-			runtimeId: 1,
-			event: event({ name: 'start:requested', ts: 1 })
-		});
-
 		expect(session.getTasks()[0]?.clientId).toBe(2);
-		expect(session.getLogs()[0]?.clientId).toBe(2);
-	});
-
-	it('records only events from an opened runtime', () => {
-		const session = new DevSession();
-		const client = createClient();
-
-		expect(
-			session.record(client, {
-				runtimeId: 1,
-				event: event({ name: 'start:requested', ts: 1 })
-			})
-		).toBeUndefined();
-		session.open(client, { runtimeId: 1 });
-		expect(
-			session.record(client, {
-				runtimeId: 1,
-				event: event({ name: 'start:requested', ts: 2 })
-			})
-		).toEqual({
-			clientId: 1,
-			runtimeId: 1,
-			event: { name: 'start:requested', ts: 2 }
-		});
-	});
-
-	it('keeps only the latest 1000 log events', () => {
-		const session = new DevSession();
-		const client = createClient();
-		session.open(client, { runtimeId: 1 });
-
-		for (let ts = 1; ts <= 1001; ts += 1) {
-			session.record(client, {
-				runtimeId: 1,
-				event: event({ name: 'start:requested', ts })
-			});
-		}
-
-		expect(session.getLogs()).toHaveLength(1000);
-		expect(session.getLogs()[0]?.event.ts).toBe(2);
-		expect(session.getLogs()[999]?.event.ts).toBe(1001);
 	});
 
 	it('notifies a subscriber when session state changes', () => {
@@ -167,15 +157,20 @@ describe('DevSession', () => {
 
 		session.record(client, {
 			runtimeId: 1,
-			event: event({ name: 'start:requested', ts: 1 })
+			event: { name: 'start:requested', ts: 1 }
 		});
 		expect(onChange).not.toHaveBeenCalled();
 
 		session.open(client, { runtimeId: 1 });
 		expect(onChange).toHaveBeenCalledTimes(1);
 		session.record(client, {
+			runtimeId: 99,
+			event: { name: 'start:requested', ts: 2 }
+		});
+		expect(onChange).toHaveBeenCalledTimes(1);
+		session.record(client, {
 			runtimeId: 1,
-			event: event({ name: 'start:requested', ts: 2 })
+			event: { name: 'start:requested', ts: 2 }
 		});
 		expect(onChange).toHaveBeenCalledTimes(2);
 

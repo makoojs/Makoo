@@ -1,9 +1,13 @@
+import { execFile } from 'node:child_process';
+import path from 'node:path';
+import { promisify } from 'node:util';
 import type { CAC } from 'cac';
 import { mergeConfig } from 'vite';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildCommand } from '../../src/cli/commands/build';
 import { devCommand } from '../../src/cli/commands/dev/dev';
 import { previewCommand } from '../../src/cli/commands/preview';
+import { cleanupTempProjects, trackProject } from '../utils/tempProject';
 
 const state = vi.hoisted(() => ({ args: [] as string[], cli: undefined as CAC | undefined }));
 
@@ -79,13 +83,19 @@ describe('Vite CLI options', () => {
 		});
 	});
 
-	it('keeps omitted options from overriding the project config', async () => {
-		await run('dev');
-		const config = vi.mocked(devCommand).mock.calls[0][0];
+	it.each([
+		['dev', devCommand],
+		['build', buildCommand],
+		['preview', previewCommand]
+	] as const)('keeps omitted %s options from overriding the project config', async (command, handler) => {
+		await run(command);
+		const config = vi.mocked(handler).mock.calls[0][0];
 		expect(
 			mergeConfig(
 				{
 					mode: 'custom',
+					build: { outDir: 'release', minify: false, watch: { exclude: 'ignored' } },
+					preview: { port: 7000, open: '/existing' },
 					clearScreen: false,
 					server: { host: 'localhost', port: 6000, open: '/existing', strictPort: true }
 				},
@@ -93,6 +103,8 @@ describe('Vite CLI options', () => {
 			)
 		).toMatchObject({
 			mode: 'custom',
+			build: { outDir: 'release', minify: false, watch: { exclude: 'ignored' } },
+			preview: { port: 7000, open: '/existing' },
 			clearScreen: false,
 			server: { host: 'localhost', port: 6000, open: '/existing', strictPort: true }
 		});
@@ -197,5 +209,45 @@ describe('Vite CLI options', () => {
 				server: expect.objectContaining({ port: 5001 })
 			})
 		);
+	});
+});
+
+describe('CLI process', () => {
+	it('exits unsuccessfully with a useful error for unsupported options', async () => {
+		const execFileAsync = promisify(execFile);
+		const repoRoot = path.resolve(__dirname, '../../../..');
+		const root = await trackProject({});
+		const outDir = path.join(root, 'cli');
+		try {
+			await execFileAsync(
+				process.execPath,
+				[
+					path.join(repoRoot, 'node_modules/tsup/dist/cli-default.js'),
+					'packages/cli/src/cli/bin.ts',
+					'--no-config',
+					'--format',
+					'esm',
+					'--no-splitting',
+					'--external',
+					'vite',
+					'--out-dir',
+					outDir,
+					'--silent'
+				],
+				{ cwd: repoRoot, timeout: 15_000 }
+			);
+			await expect(
+				execFileAsync(
+					process.execPath,
+					[path.join(outDir, 'bin.js'), 'preview', '--force'],
+					{
+						cwd: repoRoot,
+						timeout: 5_000
+					}
+				)
+			).rejects.toMatchObject({ code: 1, stderr: expect.stringContaining('Unknown option') });
+		} finally {
+			await cleanupTempProjects();
+		}
 	});
 });

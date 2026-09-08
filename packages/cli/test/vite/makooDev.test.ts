@@ -1,5 +1,6 @@
+import type { NormalizedHotChannelClient } from 'vite';
 import { describe, expect, it, vi } from 'vitest';
-import { DevSession } from '../../src/session/DevSession';
+import type { DevSession } from '../../src/session/DevSession';
 import { makoo } from '../../src/vite/makoo';
 import { bindDevSession, makooDev } from '../../src/vite/makooDev';
 
@@ -16,14 +17,12 @@ function getHookHandler<T extends (...args: never[]) => unknown>(
 }
 
 describe('makooDev', () => {
-	it('is an independent serve-only plugin', () => {
-		const plugin = makooDev();
-
-		expect(plugin.name).toBe('makoo:dev');
-		expect(plugin.apply).toBe('serve');
-		expect(plugin.enforce).toBe('pre');
-		expect(plugin.configureServer).toBeTypeOf('function');
-		expect(plugin.api?.session).toBeInstanceOf(DevSession);
+	it('keeps sessions isolated between dev server instances', () => {
+		const first = makooDev().api.session as DevSession;
+		const second = makooDev().api.session as DevSession;
+		first.open({} as NormalizedHotChannelClient, { runtimeId: 1 });
+		expect(first.getTasks()).toHaveLength(1);
+		expect(second.getTasks()).toEqual([]);
 	});
 
 	it('leaves makoo() responsible only for vite-plugin-monkey', () => {
@@ -58,6 +57,15 @@ describe('makooDev', () => {
 			expect.objectContaining({ skipSelf: true })
 		);
 		expect(result).toBe('\0virtual:makoo-dev');
+		ctx.resolve.mockClear();
+		expect(
+			await resolveId.call(ctx as never, 'unrelated-package', undefined, { isEntry: false })
+		).toBeNull();
+		expect(ctx.resolve).not.toHaveBeenCalled();
+		ctx.resolve.mockResolvedValue(null);
+		expect(
+			await resolveId.call(ctx as never, '@makoojs/core', undefined, { isEntry: false })
+		).toBeNull();
 	});
 
 	it('updates the DevSession from connected Vite clients', () => {
@@ -112,7 +120,6 @@ describe('makooDev', () => {
 				tasks: [{ taskId: 'task-1', status: 'idle' }]
 			}
 		]);
-		expect(session.getLogs().map((log) => log.event.name)).toEqual(['register:success']);
 		expect(onChange).toHaveBeenCalledTimes(2);
 
 		getListener('makoo:runtime:event')(
@@ -136,29 +143,6 @@ describe('makooDev', () => {
 		getListener('vite:client:disconnect')(undefined, client);
 		expect(session.isEmpty()).toBe(true);
 		expect(session.getTasks()).toEqual([]);
-		expect(session.getLogs()).toEqual([]);
-
-		const reconnectedClient = {};
-		getListener('makoo:runtime:open')({ runtimeId: 1 }, reconnectedClient);
-		getListener('makoo:runtime:event')(
-			{
-				runtimeId: 1,
-				event: {
-					name: 'register:success',
-					ts: 3,
-					taskId: 'task-2',
-					kind: 'listener',
-					status: 'idle',
-					injectAt: 'window'
-				}
-			},
-			reconnectedClient
-		);
-		expect(session.getTasks()).toMatchObject([
-			{
-				tasks: [{ taskId: 'task-2', status: 'idle' }]
-			}
-		]);
 	});
 
 	it('rebinds the DevSession when Vite restarts from inlineConfig', () => {

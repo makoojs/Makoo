@@ -24,9 +24,3 @@ export type RuntimeSnapshot = {
 	runtimeId: number;
 	tasks: TaskSnapshot[];
 };
-
-export type RuntimeLog = {
-	clientId: number;
-	runtimeId: number;
-	event: ObserveEvent;
-};

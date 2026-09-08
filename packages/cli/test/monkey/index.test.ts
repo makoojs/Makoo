@@ -1,39 +1,48 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('vite-plugin-monkey/dist/client', () => {
-	const fn = vi.fn();
-
 	return {
-		GM: { getValue: fn },
-		GM_addElement: fn,
-		GM_addStyle: fn,
-		GM_addValueChangeListener: fn,
-		GM_deleteValue: fn,
-		GM_deleteValues: fn,
-		GM_download: fn,
-		GM_getResourceText: fn,
-		GM_getResourceURL: fn,
-		GM_getTab: fn,
-		GM_getTabs: fn,
-		GM_getValue: fn,
-		GM_getValues: fn,
+		GM: { getValue: vi.fn() },
+		GM_addElement: vi.fn(),
+		GM_addStyle: vi.fn(),
+		GM_addValueChangeListener: vi.fn(),
+		GM_deleteValue: vi.fn(),
+		GM_deleteValues: vi.fn(),
+		GM_download: vi.fn(),
+		GM_getResourceText: vi.fn(),
+		GM_getResourceURL: vi.fn(),
+		GM_getTab: vi.fn(),
+		GM_getTabs: vi.fn(),
+		GM_getValue: vi.fn(),
+		GM_getValues: vi.fn(),
 		GM_info: { script: { name: 'test-script' } },
-		GM_listValues: fn,
-		GM_log: fn,
-		GM_notification: fn,
-		GM_openInTab: fn,
-		GM_registerMenuCommand: fn,
-		GM_removeValueChangeListener: fn,
-		GM_saveTab: fn,
-		GM_setClipboard: fn,
-		GM_setValue: fn,
-		GM_setValues: fn,
-		GM_unregisterMenuCommand: fn,
-		GM_xmlhttpRequest: fn,
+		GM_listValues: vi.fn(),
+		GM_log: vi.fn(),
+		GM_notification: vi.fn(),
+		GM_openInTab: vi.fn(),
+		GM_registerMenuCommand: vi.fn(),
+		GM_removeValueChangeListener: vi.fn(),
+		GM_saveTab: vi.fn(),
+		GM_setClipboard: vi.fn(),
+		GM_setValue: vi.fn(),
+		GM_setValues: vi.fn(),
+		GM_unregisterMenuCommand: vi.fn(),
+		GM_xmlhttpRequest: vi.fn(),
 		monkeyWindow: {},
 		unsafeWindow: {}
 	};
 });
+
+import {
+	GM_getResourceText,
+	GM_getResourceURL,
+	GM_getValue,
+	GM_setClipboard,
+	GM_setValue,
+	GM_xmlhttpRequest
+} from 'vite-plugin-monkey/dist/client';
+
+beforeEach(() => vi.clearAllMocks());
 
 import {
 	GMapi,
@@ -61,9 +70,50 @@ describe('monkey api exports', () => {
 		expect(GMapi.resource).toBe(gmResource);
 	});
 
-	it('adds method helpers without hiding the raw request API', () => {
-		expect(gmRequest.send).toBeTypeOf('function');
-		expect(gmRequest.get).toBeTypeOf('function');
-		expect(gmRequest.post).toBeTypeOf('function');
+	it('maps storage and resource helpers to the correct raw API', () => {
+		expect(gmStorage.get).toBe(GM_getValue);
+		expect(gmStorage.set).toBe(GM_setValue);
+		expect(gmResource.text).toBe(GM_getResourceText);
+		expect(gmResource.url).toBe(GM_getResourceURL);
+		expect(gmRequest.send).toBe(GM_xmlhttpRequest);
+	});
+
+	it.each([
+		'get',
+		'post'
+	] as const)('%s forwards request options and returns the abort handle', (method) => {
+		const abort = { abort: vi.fn() };
+		vi.mocked(GM_xmlhttpRequest).mockReturnValue(abort);
+		const onload = vi.fn();
+		const options = {
+			headers: { Authorization: 'test-token' },
+			data: 'payload',
+			timeout: 500,
+			onload
+		};
+		const result = gmRequest[method]('https://example.com/api', options);
+		expect(GM_xmlhttpRequest).toHaveBeenCalledExactlyOnceWith({
+			...options,
+			url: 'https://example.com/api',
+			method: method.toUpperCase()
+		});
+		expect(result).toBe(abort);
+		expect(options).not.toHaveProperty('url');
+	});
+
+	it('supports a request without options', () => {
+		gmRequest.get('https://example.com/');
+		expect(GM_xmlhttpRequest).toHaveBeenCalledExactlyOnceWith({
+			url: 'https://example.com/',
+			method: 'GET'
+		});
+	});
+
+	it('defaults clipboard content type and forwards custom type and callback', () => {
+		gmClipboard.set('hello');
+		expect(GM_setClipboard).toHaveBeenLastCalledWith('hello', 'text/plain', undefined);
+		const done = vi.fn();
+		gmClipboard.set('<b>hello</b>', 'text/html', done);
+		expect(GM_setClipboard).toHaveBeenLastCalledWith('<b>hello</b>', 'text/html', done);
 	});
 });

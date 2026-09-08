@@ -8,6 +8,27 @@ function removeColor(value: string): string {
 }
 
 describe('renderTasksTable', () => {
+	it('shows each task state and totals across a runtime', () => {
+		const plain = removeColor(
+			renderTasksTable([
+				{
+					clientId: 1,
+					runtimeId: 1,
+					tasks: (['active', 'pending', 'idle'] as const).map((status) => ({
+						taskId: `task-${status}`,
+						kind: 'listener',
+						status,
+						injectAt: 'window'
+					}))
+				}
+			])
+		);
+		for (const status of ['active', 'pending', 'idle']) {
+			expect(plain).toContain(`● ${status}`);
+			expect(plain).toContain(`task-${status}`);
+		}
+		expect(plain).toContain('3 tasks · 1 active · 1 pending · 1 idle');
+	});
 	it('waits for the Runtime Session to reconnect', () => {
 		expect(removeColor(renderTasksTable([]))).toBe(
 			'Makoo Tasks\n\n● Runtime Session disconnected.\n\nWaiting for reconnection.'
