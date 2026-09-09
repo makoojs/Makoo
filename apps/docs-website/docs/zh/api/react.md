@@ -10,31 +10,35 @@
 
 创建用于挂载 React 组件的 Makoo adapter。
 
-### Type
+### 类型 {#type}
 
 ```ts
 function createReactAdapter(): ReactMountAdapter;
 ```
 
-### Returns
+### 返回值 {#returns}
 
 返回 `ReactMountAdapter`。
 
-### Details
+### 说明 {#details}
 
 adapter 使用 `createRoot()` 在任务的 `mountPoint` 中渲染组件，并把 `makoo` 作为组件 props 传入。任务卸载时调用 React root 的 `unmount()`。
 
 挂载或卸载失败时抛出 `ReactAdapterError`。
 
-### Example
+### 示例 {#example}
 
 ```tsx
+import { createMakoo, inject } from '@makoojs/core';
+import { createReactAdapter } from '@makoojs/react';
+import Panel from './Panel.tsx';
+
 const makoo = createMakoo({
 	adapters: [createReactAdapter()]
 });
 
 makoo.start([
-	inject({ injectAt: '#app', artifact: Badge })
+	inject({ injectAt: '#app', artifact: Panel })
 ]);
 ```
 
@@ -42,7 +46,7 @@ makoo.start([
 
 React adapter 挂载或卸载失败时使用的错误类，继承自 `AdapterError`。
 
-### Type
+### 类型 {#type-1}
 
 ```ts
 class ReactAdapterError extends AdapterError {
@@ -94,3 +98,5 @@ type ReactMountAdapter = ResolvableMountAdapter<
 	undefined
 >;
 ```
+
+组件示例及 `makoo` prop 的接收方式见[组件注入](../docs/injection.md)。Context 的完整方法见 [MakooContext](./adapters.md#makoocontext)。

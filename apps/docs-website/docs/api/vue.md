@@ -30,6 +30,10 @@ Mounting or unmounting failures throw `VueAdapterError`.
 ### Example
 
 ```ts
+import { createMakoo, inject } from '@makoojs/core';
+import { createVueAdapter } from '@makoojs/vue';
+import Panel from './Panel.vue';
+
 const makoo = createMakoo({
 	adapters: [createVueAdapter()]
 });
@@ -41,7 +45,7 @@ makoo.start([
 
 ## `VuePlugin`
 
-Stores plugins that `createVueAdapter()` installs on each Vue app it creates.
+Register Vue plugins before calling `start()`. Each Vue app mounted afterward installs those plugins.
 
 ### Type
 
@@ -66,8 +70,10 @@ const VuePlugin: {
 ### Example
 
 ```ts
-VuePlugin.use(router);
-VuePlugin.usePlugins(pinia, i18n);
+import { createPinia } from 'pinia';
+import { VuePlugin } from '@makoojs/vue';
+
+VuePlugin.use(createPinia());
 ```
 
 ## `VueAdapterError`
@@ -128,3 +134,5 @@ type VueMountHandle = App<Element>;
 ```ts
 type VueMountInstance = ComponentPublicInstance;
 ```
+
+See [Component Injection](../docs/injection.md) for a component example and the `makoo` prop. See [MakooContext](./adapters.md#makoocontext) for the full method reference.

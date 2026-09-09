@@ -1,236 +1,87 @@
-# CLI API Reference
+# CLI Commands
 
-## API Index
+`@makoojs/cli` provides the `makoo` command. Use project scripts or `pnpm exec makoo`. See [Local Development](../docs/development.md) and [Build and Preview](../docs/build.md) for workflows.
 
-### `@makoojs/cli`
-
-- [`makoo()`](#makoo): creates the Makoo and userscript Vite plugins
-- [`cdn`](#cdn): creates CDN configuration for external dependencies
-- [Configuration types](#configuration-types): `MakooOptions`, `CliConfig`, and monkey configuration
-
-### `@makoojs/cli/monkey`
-
-- [GM APIs](#gm-apis): userscript API wrappers
-- [GM types](#gm-types)
-
-### Command line
-
-- [CLI commands](#cli-commands)
-
-## `makoo()`
-
-Creates Vite plugins from Makoo configuration.
-
-### Type
-
-```ts
-function makoo(options: MakooOptions): Plugin[];
+```sh
+makoo dev [root]
+makoo build [root]
+makoo preview [root]
 ```
 
-### Parameters
+`[root]` is the optional Vite project directory and defaults to the working directory. See [Configuration](../docs/configuration.md) for relative entry resolution in the Makoo plugin.
 
-`options` uses `MakooOptions`.
+Omitted options do not override project configuration. Explicit options take precedence. Use `--no-...` to disable boolean flags; repeated options use the last value.
 
-### Returns
+## Common options
 
-Returns `Plugin[]`.
-
-### Example
-
-```ts
-import { defineConfig } from 'vite';
-import { makoo } from '@makoojs/cli';
-import vue from '@vitejs/plugin-vue';
-
-export default defineConfig({
-	plugins: [
-		vue(),
-		makoo({
-			entry: './src/main.ts',
-			app: {
-				name: 'my-script',
-				version: '0.0.1'
-			},
-			monkey: {
-				userscript: {
-					match: ['https://example.com/*']
-				}
-			}
-		})
-	]
-});
-```
-
-## `cdn`
-
-CDN configuration factories re-exported from `vite-plugin-monkey`.
-
-### Type
-
-```ts
-type CdnFactory = (
-	exportVarName?: string,
-	pathname?: string
-) => [string, ModuleToUrlFc];
-
-const cdn: {
-	jsdelivr: CdnFactory;
-	jsdelivrFastly: CdnFactory;
-	unpkg: CdnFactory;
-	cdnjs: CdnFactory;
-	zhimg: CdnFactory;
-	elemecdn: CdnFactory;
-	bdstatic: CdnFactory;
-	npmmirror: CdnFactory;
-	bootcdn: CdnFactory;
-	staticfile: CdnFactory;
-};
-```
-
-`bootcdn` and `staticfile` are marked as deprecated by `vite-plugin-monkey`.
-
-## Configuration types
-
-### `MakooOptions`
-
-```ts
-type MakooOptions = CliConfig & {
-	root?: string;
-};
-```
-
-### `CliConfig`
-
-```ts
-type CliConfig = {
-	entry: string;
-	app: AppConfig;
-	monkey: MonkeyConfig;
-};
-```
-
-### `AppConfig`
-
-```ts
-type AppConfig = {
-	name: string;
-	version: string;
-	description?: string;
-};
-```
-
-### `MonkeyConfig`
-
-```ts
-type MonkeyConfig = {
-	userscript?: MonkeyUserScript;
-	align?: number | false;
-	generate?: (options: {
-		userscript: string;
-		mode: 'serve' | 'build' | 'meta';
-	}) => string | Promise<string>;
-	styleImport?: boolean;
-	server?: MonkeyServerConfig;
-	build?: MonkeyBuildConfig;
-};
-```
-
-### `MonkeyServerConfig`
-
-```ts
-type MonkeyServerConfig = {
-	open?: boolean;
-	prefix?: string | ((name: string) => string) | false;
-};
-```
-
-### `MonkeyBuildConfig`
-
-```ts
-type MonkeyBuildConfig = {
-	fileName?: string;
-	metaFileName?: string | boolean | ((fileName: string) => string);
-	externalGlobals?: ExternalGlobals;
-	autoGrant?: boolean;
-	externalResource?: ExternalResource;
-	systemjs?: 'inline' | ((
-		version: string,
-		packageName: string,
-		importName?: string,
-		resolveName?: string
-	) => string);
-	cssSideEffects?: string | ((css: string) => void);
-};
-```
-
-## GM APIs
-
-The following values are exported from `@makoojs/cli/monkey`.
-
-| Export | Methods or value |
+| Option | Purpose |
 | --- | --- |
-| `GMapi` | Contains `raw`, `info`, `log`, `storage`, `style`, `request`, `menu`, `clipboard`, `notification`, `tab`, `download`, and `resource` |
-| `gm` | Original `GM` object |
-| `gmInfo` | `GM_info` |
-| `gmLog` | `GM_log` |
-| `monkeyWindow` | Userscript window |
-| `unsafeWindow` | Page window |
-| `gmClipboard` | `set(data, type?, callback?)` |
-| `gmDownload` | `start` |
-| `gmMenu` | `register`, `unregister` |
-| `gmNotification` | `show` |
-| `gmRequest` | `send`, `get`, `post` |
-| `gmResource` | `text`, `url` |
-| `gmStorage` | `get`, `getMany`, `set`, `setMany`, `remove`, `removeMany`, `keys`, `watch`, `unwatch` |
-| `gmStyle` | `add`, `element` |
-| `gmTab` | `open`, `get`, `getAll`, `save` |
+| `-c, --config <file>` | Select a Vite configuration file |
+| `-m, --mode <mode>` | Set the mode |
+| `--base <path>` | Set the public base path |
+| `-l, --logLevel <level>` | info / warn / error / silent |
+| `--clearScreen / --no-clearScreen` | Allow or disable Vite screen clearing |
+| `--configLoader <loader>` | Configuration loader; support depends on the installed Vite version |
+| `-h, --help` | Show help |
+| `-v, --version` | Show version |
 
-### `gmRequest.get()` / `gmRequest.post()`
+## `makoo dev`
 
-```ts
-gmRequest.get<R extends GmResponseType = 'text', C = unknown>(
-	url: string,
-	options?: GmRequestOptions<R, C>
-): GmAbortHandle;
+Starts the dev server. Networking options map to Vite’s `server` configuration.
 
-gmRequest.post<R extends GmResponseType = 'text', C = unknown>(
-	url: string,
-	options?: GmRequestOptions<R, C>
-): GmAbortHandle;
-```
-
-`get()` and `post()` set the request method to `GET` and `POST`, respectively.
-
-## GM types
-
-```ts
-type GmRequestOptions<R extends GmResponseType = 'text', C = unknown> = Omit<
-	GmXmlhttpRequestOption<R, C>,
-	'url' | 'method'
->;
-```
-
-`@makoojs/cli/monkey` also re-exports these types from `vite-plugin-monkey`:
-
-- `GmAbortHandle`
-- `GmAddElementAttributes`
-- `GmDownloadOptions`
-- `GmInfoType`
-- `GmMenuCommandOptions`
-- `GmNotificationOptions`
-- `GmOpenInTabOptions`
-- `GmResponseEvent`
-- `GmResponseType`
-- `GmTabControl`
-- `GmType`
-- `GmValueListenerId`
-- `GmXmlhttpRequestOption`
-- `MonkeyWindow`
-
-## CLI commands
-
-| Command | Description |
+| Option | Purpose |
 | --- | --- |
-| `makoo dev` | Starts the Vite development server |
-| `makoo build` | Runs a Vite build |
-| `makoo preview` | Starts the Vite preview server for the built userscript |
+| `--host [host]` | Listen on a host; omit the value to listen on all addresses |
+| `--port <port>` | Set the port |
+| `--open [path] / --no-open` | Open a browser path on startup, or disable opening |
+| `--strictPort / --no-strictPort` | Control whether an occupied port causes exit |
+| `--cors / --no-cors` | Control CORS |
+| `--force` | Ignore the dependency optimizer cache |
+
+```sh
+pnpm exec makoo dev --port 5174 --no-open
+```
+
+## `makoo build`
+
+Runs a Vite build. These options map to `build`.
+
+| Option | Purpose |
+| --- | --- |
+| `--target <target>` | Build syntax target |
+| `--outDir <dir>` | Output directory |
+| `--assetsDir <dir>` | Asset directory |
+| `--assetsInlineLimit <number>` | Asset inline threshold in bytes |
+| `--sourcemap [output]` | true / false / inline / hidden; no value means true |
+| `--minify [minifier] / --no-minify` | Configure minification; supported minifiers depend on Vite |
+| `--manifest [name]` | Emit a build manifest, optionally with a filename |
+| `--emptyOutDir / --no-emptyOutDir` | Control clearing of the output directory |
+| `-w, --watch` | Watch source and rebuild |
+
+```sh
+pnpm exec makoo build --mode staging --outDir release --sourcemap --no-minify
+```
+
+## `makoo preview`
+
+Serves existing output without running a build.
+
+| Option | Purpose |
+| --- | --- |
+| `--host [host]` | Listen on a host; omit the value to listen on all addresses |
+| `--port <port>` | Set the port |
+| `--open [path] / --no-open` | Open a browser path on startup, or disable opening |
+| `--strictPort / --no-strictPort` | Control whether an occupied port causes exit |
+| `--outDir <dir>` | Build directory to preview |
+
+Networking options map to `preview`; `--outDir` maps to `build.outDir`.
+
+```sh
+pnpm exec makoo preview --outDir release --port 4174
+```
+
+## Related APIs
+
+- <span id="makoo">[Vite plugins](./vite.md#makoo)</span>: `makoo()` and `makooDev()`; <span id="cdn">[CDN configuration](./vite.md#cdn)</span>.
+- <span id="configuration-types">Configuration types</span>: <span id="makoooptions">[MakooOptions](./vite.md#makoooptions)</span>, <span id="cliconfig">[CliConfig](./vite.md#cliconfig)</span>, <span id="appconfig">[AppConfig](./vite.md#appconfig)</span>, <span id="monkeyconfig">[MonkeyConfig](./vite.md#monkeyconfig)</span>, <span id="monkeyserverconfig">[MonkeyServerConfig](./vite.md#monkeyserverconfig)</span>, <span id="monkeybuildconfig">[MonkeyBuildConfig](./vite.md#monkeybuildconfig)</span>.
+- <span id="gm-apis">[Userscript APIs](./monkey.md)</span> and <span id="gm-types">[GM types](./monkey.md#gm-types)</span>.

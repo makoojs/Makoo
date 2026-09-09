@@ -1,236 +1,87 @@
-# CLI API
+# CLI 命令
 
-## API 索引
+`@makoojs/cli` 提供 `makoo` 命令。项目内通过 scripts 或 `pnpm exec makoo` 调用。使用流程见[本地开发](../docs/development.md)和[构建与预览](../docs/build.md)。
 
-### `@makoojs/cli`
-
-- [`makoo()`](#makoo)：创建 Makoo 与 userscript Vite plugins
-- [`cdn`](#cdn)：生成外部依赖的 CDN 配置
-- [配置类型](#配置类型)：`MakooOptions`、`CliConfig` 和 monkey 配置
-
-### `@makoojs/cli/monkey`
-
-- [GM API](#gm-api)：userscript API 封装
-- [GM 类型](#gm-类型)
-
-### 命令行
-
-- [CLI 命令](#cli-命令)
-
-## `makoo()`
-
-根据 Makoo 配置创建 Vite plugins。
-
-### Type
-
-```ts
-function makoo(options: MakooOptions): Plugin[];
+```sh
+makoo dev [root]
+makoo build [root]
+makoo preview [root]
 ```
 
-### Parameters
+`[root]` 是可选的 Vite 项目目录，省略时使用当前工作目录。Makoo 插件自身的相对入口解析见[项目配置](../docs/configuration.md)。
 
-`options` 使用 `MakooOptions`。
+未传入的选项不会覆盖项目配置；明确传入的选项优先。布尔选项要关闭时使用 `--no-...`，同一选项重复传入时取最后一个值。
 
-### Returns
+## 通用参数
 
-返回一个 `Plugin[]`。
-
-### Example
-
-```ts
-import { defineConfig } from 'vite';
-import { makoo } from '@makoojs/cli';
-import vue from '@vitejs/plugin-vue';
-
-export default defineConfig({
-	plugins: [
-		vue(),
-		makoo({
-			entry: './src/main.ts',
-			app: {
-				name: 'my-script',
-				version: '0.0.1'
-			},
-			monkey: {
-				userscript: {
-					match: ['https://example.com/*']
-				}
-			}
-		})
-	]
-});
-```
-
-## `cdn`
-
-从 `vite-plugin-monkey` 重新导出的 CDN 配置生成器。
-
-### Type
-
-```ts
-type CdnFactory = (
-	exportVarName?: string,
-	pathname?: string
-) => [string, ModuleToUrlFc];
-
-const cdn: {
-	jsdelivr: CdnFactory;
-	jsdelivrFastly: CdnFactory;
-	unpkg: CdnFactory;
-	cdnjs: CdnFactory;
-	zhimg: CdnFactory;
-	elemecdn: CdnFactory;
-	bdstatic: CdnFactory;
-	npmmirror: CdnFactory;
-	bootcdn: CdnFactory;
-	staticfile: CdnFactory;
-};
-```
-
-`bootcdn` 和 `staticfile` 由 `vite-plugin-monkey` 标记为 deprecated。
-
-## 配置类型
-
-### `MakooOptions`
-
-```ts
-type MakooOptions = CliConfig & {
-	root?: string;
-};
-```
-
-### `CliConfig`
-
-```ts
-type CliConfig = {
-	entry: string;
-	app: AppConfig;
-	monkey: MonkeyConfig;
-};
-```
-
-### `AppConfig`
-
-```ts
-type AppConfig = {
-	name: string;
-	version: string;
-	description?: string;
-};
-```
-
-### `MonkeyConfig`
-
-```ts
-type MonkeyConfig = {
-	userscript?: MonkeyUserScript;
-	align?: number | false;
-	generate?: (options: {
-		userscript: string;
-		mode: 'serve' | 'build' | 'meta';
-	}) => string | Promise<string>;
-	styleImport?: boolean;
-	server?: MonkeyServerConfig;
-	build?: MonkeyBuildConfig;
-};
-```
-
-### `MonkeyServerConfig`
-
-```ts
-type MonkeyServerConfig = {
-	open?: boolean;
-	prefix?: string | ((name: string) => string) | false;
-};
-```
-
-### `MonkeyBuildConfig`
-
-```ts
-type MonkeyBuildConfig = {
-	fileName?: string;
-	metaFileName?: string | boolean | ((fileName: string) => string);
-	externalGlobals?: ExternalGlobals;
-	autoGrant?: boolean;
-	externalResource?: ExternalResource;
-	systemjs?: 'inline' | ((
-		version: string,
-		packageName: string,
-		importName?: string,
-		resolveName?: string
-	) => string);
-	cssSideEffects?: string | ((css: string) => void);
-};
-```
-
-## GM API
-
-以下值从 `@makoojs/cli/monkey` 导出。
-
-| 导出 | 方法或值 |
+| 参数 | 作用 |
 | --- | --- |
-| `GMapi` | 包含 `raw`、`info`、`log`、`storage`、`style`、`request`、`menu`、`clipboard`、`notification`、`tab`、`download` 和 `resource` |
-| `gm` | 原始 `GM` 对象 |
-| `gmInfo` | `GM_info` |
-| `gmLog` | `GM_log` |
-| `monkeyWindow` | userscript window |
-| `unsafeWindow` | 页面 window |
-| `gmClipboard` | `set(data, type?, callback?)` |
-| `gmDownload` | `start` |
-| `gmMenu` | `register`、`unregister` |
-| `gmNotification` | `show` |
-| `gmRequest` | `send`、`get`、`post` |
-| `gmResource` | `text`、`url` |
-| `gmStorage` | `get`、`getMany`、`set`、`setMany`、`remove`、`removeMany`、`keys`、`watch`、`unwatch` |
-| `gmStyle` | `add`、`element` |
-| `gmTab` | `open`、`get`、`getAll`、`save` |
+| `-c, --config <file>` | 指定 Vite 配置文件 |
+| `-m, --mode <mode>` | 设置 mode |
+| `--base <path>` | 设置公共基础路径 |
+| `-l, --logLevel <level>` | info / warn / error / silent |
+| `--clearScreen / --no-clearScreen` | 允许或禁止 Vite 清屏 |
+| `--configLoader <loader>` | 配置加载方式；由安装的 Vite 版本支持范围决定 |
+| `-h, --help` | 查看帮助 |
+| `-v, --version` | 查看版本 |
 
-### `gmRequest.get()` / `gmRequest.post()`
+## `makoo dev`
 
-```ts
-gmRequest.get<R extends GmResponseType = 'text', C = unknown>(
-	url: string,
-	options?: GmRequestOptions<R, C>
-): GmAbortHandle;
+启动开发服务器。以下网络选项写入 Vite 的 `server` 配置。
 
-gmRequest.post<R extends GmResponseType = 'text', C = unknown>(
-	url: string,
-	options?: GmRequestOptions<R, C>
-): GmAbortHandle;
-```
-
-`get()` 和 `post()` 分别固定请求方法为 `GET` 和 `POST`。
-
-## GM 类型
-
-```ts
-type GmRequestOptions<R extends GmResponseType = 'text', C = unknown> = Omit<
-	GmXmlhttpRequestOption<R, C>,
-	'url' | 'method'
->;
-```
-
-`@makoojs/cli/monkey` 还重新导出以下 `vite-plugin-monkey` 类型：
-
-- `GmAbortHandle`
-- `GmAddElementAttributes`
-- `GmDownloadOptions`
-- `GmInfoType`
-- `GmMenuCommandOptions`
-- `GmNotificationOptions`
-- `GmOpenInTabOptions`
-- `GmResponseEvent`
-- `GmResponseType`
-- `GmTabControl`
-- `GmType`
-- `GmValueListenerId`
-- `GmXmlhttpRequestOption`
-- `MonkeyWindow`
-
-## CLI 命令
-
-| 命令 | 说明 |
+| 参数 | 作用 |
 | --- | --- |
-| `makoo dev` | 启动 Vite 开发服务器 |
-| `makoo build` | 执行 Vite 构建 |
-| `makoo preview` | 为构建后的 userscript 启动 Vite preview server |
+| `--host [host]` | 监听指定地址；不带值时监听所有地址 |
+| `--port <port>` | 设置端口 |
+| `--open [path] / --no-open` | 启动时打开浏览器路径，或禁用打开 |
+| `--strictPort / --no-strictPort` | 端口被占用时是否直接退出 |
+| `--cors / --no-cors` | 控制 CORS |
+| `--force` | 忽略依赖预打包缓存 |
+
+```sh
+pnpm exec makoo dev --port 5174 --no-open
+```
+
+## `makoo build`
+
+执行 Vite 构建。以下选项写入 `build` 配置。
+
+| 参数 | 作用 |
+| --- | --- |
+| `--target <target>` | 构建语法目标 |
+| `--outDir <dir>` | 产物目录 |
+| `--assetsDir <dir>` | 资源目录 |
+| `--assetsInlineLimit <number>` | 资源内联阈值，单位字节 |
+| `--sourcemap [output]` | true / false / inline / hidden；不带值等同 true |
+| `--minify [minifier] / --no-minify` | 配置压缩；具体压缩器由 Vite 支持范围决定 |
+| `--manifest [name]` | 生成构建清单，可指定文件名 |
+| `--emptyOutDir / --no-emptyOutDir` | 控制构建时清空产物目录 |
+| `-w, --watch` | 监听源码并重新构建 |
+
+```sh
+pnpm exec makoo build --mode staging --outDir release --sourcemap --no-minify
+```
+
+## `makoo preview`
+
+为已有产物启动预览服务，不执行构建。
+
+| 参数 | 作用 |
+| --- | --- |
+| `--host [host]` | 监听指定地址；不带值时监听所有地址 |
+| `--port <port>` | 设置端口 |
+| `--open [path] / --no-open` | 启动时打开浏览器路径，或禁用打开 |
+| `--strictPort / --no-strictPort` | 端口被占用时是否直接退出 |
+| `--outDir <dir>` | 要预览的构建目录 |
+
+网络选项写入 `preview`，`--outDir` 写入 `build.outDir`。
+
+```sh
+pnpm exec makoo preview --outDir release --port 4174
+```
+
+## 相关 API
+
+- <span id="makoo">[Vite 插件](./vite.md#makoo)</span>：`makoo()` 与 `makooDev()`；<span id="cdn">[CDN 配置](./vite.md#cdn)</span>。
+- <span id="配置类型">配置类型</span>：<span id="makoooptions">[MakooOptions](./vite.md#makoooptions)</span>、<span id="cliconfig">[CliConfig](./vite.md#cliconfig)</span>、<span id="appconfig">[AppConfig](./vite.md#appconfig)</span>、<span id="monkeyconfig">[MonkeyConfig](./vite.md#monkeyconfig)</span>、<span id="monkeyserverconfig">[MonkeyServerConfig](./vite.md#monkeyserverconfig)</span>、<span id="monkeybuildconfig">[MonkeyBuildConfig](./vite.md#monkeybuildconfig)</span>。
+- <span id="gm-api">[Userscript API](./monkey.md)</span> 与 <span id="gm-类型">[GM 类型](./monkey.md#gm-类型)</span>。

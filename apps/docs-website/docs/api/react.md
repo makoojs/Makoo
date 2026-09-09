@@ -29,12 +29,16 @@ Mounting or unmounting failures throw `ReactAdapterError`.
 ### Example
 
 ```tsx
+import { createMakoo, inject } from '@makoojs/core';
+import { createReactAdapter } from '@makoojs/react';
+import Panel from './Panel.tsx';
+
 const makoo = createMakoo({
 	adapters: [createReactAdapter()]
 });
 
 makoo.start([
-	inject({ injectAt: '#app', artifact: Badge })
+	inject({ injectAt: '#app', artifact: Panel })
 ]);
 ```
 
@@ -94,3 +98,5 @@ type ReactMountAdapter = ResolvableMountAdapter<
 	undefined
 >;
 ```
+
+See [Component Injection](../docs/injection.md) for a component example and the `makoo` prop. See [MakooContext](./adapters.md#makoocontext) for the full method reference.
