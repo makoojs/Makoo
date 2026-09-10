@@ -81,7 +81,7 @@ function link(path: string) { return withBase(`${props.locale === 'zh' ? '/zh' :
 			<header class="intro-heading"><h2 id="intro-title">{{ content.intro }}<br /><span>{{ content.introAccent }}</span></h2><p>{{ content.introLead }}</p></header>
 			<div class="feature-collection">
 				<article v-for="(feature, index) in content.features" :key="feature[0]" class="intro-feature">
-					<div class="feature-symbol" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path :d="icons[index]" /></svg></div>
+					<div class="feature-symbol" aria-hidden="true"><span class="feature-index">0{{ index + 1 }}</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path :d="icons[index]" /></svg></div>
 					<h3>{{ feature[0] }}</h3><p>{{ feature[1] }}</p>
 				</article>
 			</div>
