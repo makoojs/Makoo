@@ -3,6 +3,10 @@ import type { Theme } from 'vitepress';
 import { h } from 'vue';
 import MakooBreadcrumb from './components/MakooBreadcrumb.vue';
 import MakooHero from './components/MakooHero.vue';
+import '@fontsource-variable/inter';
+import '@fontsource/geist-mono/400.css';
+import '@fontsource/geist-mono/500.css';
+import '@fontsource/geist-mono/600.css';
 import './style.css';
 
 export default {

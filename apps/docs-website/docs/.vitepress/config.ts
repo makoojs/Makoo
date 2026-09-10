@@ -130,6 +130,8 @@ export default defineConfig({
 	lang: 'en-US',
 	base: process.env.VITEPRESS_BASE ?? '/',
 	cleanUrls: true,
+	appearance: false,
+	markdown: { theme: 'github-dark' },
 	locales: {
 		root: {
 			label: 'English',
@@ -166,6 +168,7 @@ export default defineConfig({
 		}
 	},
 	head: [
+		['script', {}, `document.documentElement.classList.add('dark')`],
 		['link', { rel: 'icon', href: '/makoo-icon.png', type: 'image/png' }]
 	],
 	themeConfig: {
