@@ -7,7 +7,7 @@ const activeFeature = ref(0);
 const framework = ref<'Vue' | 'React'>('Vue');
 const messages = {
 	zh: {
-		intro: '让用户脚本，', introAccent: '拥有应用的表达力。',
+		intro: '从一个小功能，', introAccent: '写成顺手的工具。',
 		introLead: '从一个小小的页面增强，到有组件、有交互的完整工具。Makoo 为你的想法提供清楚的结构。',
 		features: [
 			['组件化开发', '用熟悉的 Vue 和 React，把界面带进你正在使用的网页。'],
@@ -17,21 +17,21 @@ const messages = {
 			['TypeScript 支持', '从任务声明到组件上下文，让类型贯穿开发过程。'],
 			['完整开发工具链', '项目创建、开发调试、构建预览，衔接在一起。']
 		],
-		spotlight: '专注你的功能。', spotlightAccent: '其余的，交给 Makoo。',
+		spotlight: '写组件，', spotlightAccent: '也照顾页面的变化。',
 		products: [
-			{ name: 'Runtime', tag: '为动态网页而生', title: '网页在变化。\n你的组件，依然在场。', description: '等待目标、挂载组件、处理宿主替换。让页面里的每项任务都有自己的生命周期。', points: ['异步 DOM 等待', '组件存活与恢复', '统一销毁与清理'], link: '/docs/lifecycle', action: '认识 Runtime', visual: ['等待', '挂载', '恢复'] },
+			{ name: 'Runtime', tag: '为动态网页而生', title: '页面会变，\n组件也需要照应。', description: '等待目标、挂载组件、处理宿主替换。让页面里的每项任务都有自己的生命周期。', points: ['异步 DOM 等待', '组件存活与恢复', '统一销毁与清理'], link: '/docs/lifecycle', action: '认识 Runtime', visual: ['等待', '挂载', '恢复'] },
 			{ name: 'Devtools', tag: '让开发状态看得见', title: '少一些猜测。\n多一些掌握。', description: '在终端里查看连接、任务与开发日志。保持熟悉的 Vite 开发体验，更清楚脚本正在做什么。', points: ['Runtime 连接', '任务状态查看', '开发日志'], link: '/docs/development', action: '探索开发工具', visual: ['连接', '任务', '日志'] },
 			{ name: 'Toolchain', tag: '从想法到脚本', title: '顺畅地开始。\n从容地交付。', description: '选好框架，创建项目。在 Vite 与 Monkey 的支持下，把页面功能构建成可安装的 userscript。', points: ['Vue / React 模板', 'Vite 开发服务', '构建与预览'], link: '/docs/build', action: '了解工具链', visual: ['创建', '开发', '构建'] }
 		],
 		frameworkLabel: '使用你熟悉的技术', frameworkTitle: '你的框架。\n更大的用武之地。', frameworkLead: '组件继续用 Vue 或 React 编写。Makoo 通过 Adapter 连接框架与网页，让现有的组件经验继续发挥作用。', frameworkLink: '了解框架适配',
-		cliLabel: 'Makoo CLI · 开发终端', cliTitle: '开发的节奏。\n掌握在你的指尖。', cliLead: '安装开发脚本、查看日志、重启服务。启用 makooDev()，在终端按下一个键，让常用操作跟上你的思路。', cliLink: '认识开发终端', cliKeys: ['安装脚本', '查看日志', '重启服务'],
-		tasksLabel: 'Runtime · 任务查看', tasksTitle: '页面里的任务。\n终端里，一目了然。', tasksLead: '哪个任务已经激活，哪个还在等待？在终端查看状态、类型和目标，在多个 Runtime 之间切换。页面里的运行情况，有迹可循。', tasksLink: '了解任务查看', tasksCaption: '任务状态，随页面更新',
-		codeLabel: '简洁，从入口开始', codeTitle: '一个声明。\n让想法进入页面。', codeLead: '把写好的组件交给 Makoo，剩下的从这里开始。', codeLink: '开始构建',
-		endLabel: '开源 · MIT License', endTitle: '下一个页面工具，\n由你创造。', endLead: '给常用的网页，添一点自己的想法。', start: '开始使用', github: '在 GitHub 上探索',
+		cliLabel: 'Makoo CLI · 开发终端', cliTitle: '常用的开发操作，\n按一下就好。', cliLead: '安装开发脚本、查看日志、重启服务。启用 makooDev()，在终端按下一个键，让常用操作跟上你的思路。', cliLink: '认识开发终端', cliKeys: ['安装脚本', '查看日志', '重启服务'],
+		tasksLabel: 'Runtime · 任务查看', tasksTitle: '回到终端，\n看看任务怎么样了。', tasksLead: '哪个任务已经激活，哪个还在等待？在终端查看状态、类型和目标，在多个 Runtime 之间切换。页面里的运行情况，有迹可循。', tasksLink: '了解任务查看', tasksCaption: '任务状态，随页面更新',
+		codeLabel: '简洁，从入口开始', codeTitle: '写好组件，\n再选个位置。', codeLead: '把写好的组件交给 Makoo，剩下的从这里开始。', codeLink: '开始构建',
+		endLabel: '开源 · MIT License', endTitle: '从你想改的\n那个小地方开始。', endLead: '给常用的网页，添一点自己的想法。', start: '开始使用', github: '在 GitHub 上探索',
 		resources: [['组件注入', '/docs/injection'], ['事件监听', '/docs/listeners'], ['完整案例', '/docs/recipes'], ['API 参考', '/api/core']]
 	},
 	en: {
-		intro: 'Userscripts, with', introAccent: 'the possibilities of an app.',
+		intro: 'Start with a small feature.', introAccent: 'Make it a handy tool.',
 		introLead: 'From a small page enhancement to a complete tool with components and interactions. Give your ideas a clear structure with Makoo.',
 		features: [
 			['Component-driven', 'Bring familiar Vue and React components to the pages you already use.'],
@@ -41,17 +41,17 @@ const messages = {
 			['Built with TypeScript', 'Carry types from task declarations through to component context.'],
 			['A connected toolchain', 'Project creation, development, builds, and previews that work together.']
 		],
-		spotlight: 'Focus on your feature.', spotlightAccent: 'Makoo handles the rest.',
+		spotlight: 'Write components.', spotlightAccent: 'Account for changing pages.',
 		products: [
-			{ name: 'Runtime', tag: 'Made for dynamic pages', title: 'The page changes.\nYour component stays.', description: 'Wait for targets, mount components, and handle host replacements. Give every task on the page a lifecycle of its own.', points: ['Asynchronous DOM waiting', 'Component recovery', 'Coordinated cleanup'], link: '/docs/lifecycle', action: 'Meet the Runtime', visual: ['Wait', 'Mount', 'Recover'] },
+			{ name: 'Runtime', tag: 'Made for dynamic pages', title: 'Pages change.\nComponents need care, too.', description: 'Wait for targets, mount components, and handle host replacements. Give every task on the page a lifecycle of its own.', points: ['Asynchronous DOM waiting', 'Component recovery', 'Coordinated cleanup'], link: '/docs/lifecycle', action: 'Meet the Runtime', visual: ['Wait', 'Mount', 'Recover'] },
 			{ name: 'Devtools', tag: 'A clearer view of development', title: 'Less guessing.\nMore understanding.', description: 'Inspect connections, tasks, and development logs in your terminal. Keep the Vite workflow you know, with a clearer view of your script.', points: ['Runtime connections', 'Task inspection', 'Development logs'], link: '/docs/development', action: 'Explore devtools', visual: ['Connect', 'Tasks', 'Logs'] },
 			{ name: 'Toolchain', tag: 'From an idea to a userscript', title: 'Start with ease.\nShip with confidence.', description: 'Pick a framework and create a project. Build your page features into an installable userscript with Vite and Monkey.', points: ['Vue / React templates', 'Vite development server', 'Build and preview'], link: '/docs/build', action: 'Explore the toolchain', visual: ['Create', 'Develop', 'Build'] }
 		],
 		frameworkLabel: 'Built for the tools you know', frameworkTitle: 'Your framework.\nMore places to use it.', frameworkLead: 'Keep writing components in Vue or React. Makoo connects frameworks to pages through Adapters, putting your existing skills to work.', frameworkLink: 'Explore Adapters',
-		cliLabel: 'Makoo CLI · Development terminal', cliTitle: 'Keep your flow.\nJust press a key.', cliLead: 'Install your development script, read logs, and restart the server. Enable makooDev() to keep everyday actions a keystroke away.', cliLink: 'Meet the dev terminal', cliKeys: ['Install script', 'View logs', 'Restart server'],
-		tasksLabel: 'Runtime · Task inspection', tasksTitle: 'Tasks on the page.\nClarity in the terminal.', tasksLead: 'What is active? What is still waiting? Inspect task status, kind, and target in your terminal, and switch between connected Runtimes to see what is happening.', tasksLink: 'Explore task inspection', tasksCaption: 'Task states, updated with the page',
-		codeLabel: 'Simple from the start', codeTitle: 'One declaration.\nA new possibility.', codeLead: 'Bring your component. Let Makoo take it from here.', codeLink: 'Start building',
-		endLabel: 'Open source · MIT License', endTitle: 'Your next page tool\nstarts with you.', endLead: 'Bring a little of your own thinking to the pages you use.', start: 'Get started', github: 'Explore on GitHub',
+		cliLabel: 'Makoo CLI · Development terminal', cliTitle: 'Everyday dev actions.\nA keypress away.', cliLead: 'Install your development script, read logs, and restart the server. Enable makooDev() to keep everyday actions a keystroke away.', cliLink: 'Meet the dev terminal', cliKeys: ['Install script', 'View logs', 'Restart server'],
+		tasksLabel: 'Runtime · Task inspection', tasksTitle: 'Back in the terminal.\nSee how your tasks are doing.', tasksLead: 'What is active? What is still waiting? Inspect task status, kind, and target in your terminal, and switch between connected Runtimes to see what is happening.', tasksLink: 'Explore task inspection', tasksCaption: 'Task states, updated with the page',
+		codeLabel: 'Simple from the start', codeTitle: 'Write a component.\nPick a place for it.', codeLead: 'Bring your component. Let Makoo take it from here.', codeLink: 'Start building',
+		endLabel: 'Open source · MIT License', endTitle: 'Start with one small thing\nyou want to change.', endLead: 'Bring a little of your own thinking to the pages you use.', start: 'Get started', github: 'Explore on GitHub',
 		resources: [['Component injection', '/docs/injection'], ['Event listeners', '/docs/listeners'], ['Complete example', '/docs/recipes'], ['API reference', '/api/core']]
 	}
 } as const;
