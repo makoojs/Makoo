@@ -146,3 +146,37 @@
 	.closing-section { padding: 64px 0 40px; }
 	.intro-resources { gap: 12px 24px; margin-top: 48px; }
 }
+
+.cli-section { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 80px; padding: 104px 0; border-top: 1px solid var(--makoo-border); }
+.cli-copy > p:not(.intro-label) { max-width: 460px; margin-top: 24px; }
+.cli-keyboard { position: relative; padding: 36px 12px; color: var(--makoo-accent-bright); }
+.cli-command { margin-bottom: 44px; text-align: center; color: var(--makoo-muted); font: 400 18px/1.5 var(--font-mono); }
+.cli-command > span { margin-right: 12px; color: var(--makoo-accent-bright); }
+.cli-keys { position: relative; z-index: 1; display: flex; justify-content: center; gap: 28px; }
+.cli-key { display: flex; flex: 1; flex-direction: column; align-items: center; gap: 24px; }
+.cli-key > span { display: grid; place-items: center; width: 100px; height: 100px; border: 1px solid var(--makoo-border-strong); border-radius: 20px; background: var(--makoo-bg); font: 400 40px/1 var(--font-mono); }
+.cli-key small { color: var(--makoo-muted); font-size: 13px; text-align: center; }
+.cli-key:nth-child(1) > span { transform: rotate(-8deg); }
+.cli-key:nth-child(3) > span { transform: rotate(8deg); }
+.cli-keyboard-line { position: absolute; top: 58%; left: 0; right: 0; height: 1px; background: var(--makoo-border); }
+.cli-tasks-section { border-top: 0; padding-top: 56px; }
+.cli-task-art { color: var(--makoo-accent-bright); }
+.cli-task-art svg { display: block; width: 100%; }
+.cli-task-states { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: -24px; text-align: center; font: 400 14px/1.5 var(--font-mono); }
+.cli-task-states span:nth-child(2) { color: var(--makoo-muted); }
+.cli-task-states span:nth-child(3) { color: var(--makoo-faint); }
+.makoo-home-shell .cli-task-art > p { margin-top: 36px; font-size: 13px; text-align: center; }
+@media (max-width: 959px) {
+	.cli-section { gap: 32px; }
+	.cli-keys { gap: 16px; }
+	.cli-key > span { width: 80px; height: 80px; border-radius: 16px; }
+	.cli-key small { font-size: 12px; }
+	.cli-task-states { margin-top: -12px; }
+}
+@media (max-width: 639px) {
+	.cli-section { grid-template-columns: 1fr; gap: 32px; padding: 64px 0; }
+	.cli-keyboard { padding: 16px 0; }
+	.cli-command { margin-bottom: 32px; }
+	.cli-tasks-section { padding-top: 16px; }
+	.cli-task-art { order: 2; padding: 8px 0 16px; }
+}

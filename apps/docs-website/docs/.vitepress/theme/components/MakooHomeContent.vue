@@ -24,6 +24,8 @@ const messages = {
 			{ name: 'Toolchain', tag: '从想法到脚本', title: '顺畅地开始。\n从容地交付。', description: '选好框架，创建项目。在 Vite 与 Monkey 的支持下，把页面功能构建成可安装的 userscript。', points: ['Vue / React 模板', 'Vite 开发服务', '构建与预览'], link: '/docs/build', action: '了解工具链', visual: ['创建', '开发', '构建'] }
 		],
 		frameworkLabel: '使用你熟悉的技术', frameworkTitle: '你的框架。\n更大的用武之地。', frameworkLead: '组件继续用 Vue 或 React 编写。Makoo 通过 Adapter 连接框架与网页，让现有的组件经验继续发挥作用。', frameworkLink: '了解框架适配',
+		cliLabel: 'Makoo CLI · 开发终端', cliTitle: '开发的节奏。\n掌握在你的指尖。', cliLead: '安装开发脚本、查看日志、重启服务。启用 makooDev()，在终端按下一个键，让常用操作跟上你的思路。', cliLink: '认识开发终端', cliKeys: ['安装脚本', '查看日志', '重启服务'],
+		tasksLabel: 'Runtime · 任务查看', tasksTitle: '页面里的任务。\n终端里，一目了然。', tasksLead: '哪个任务已经激活，哪个还在等待？在终端查看状态、类型和目标，在多个 Runtime 之间切换。页面里的运行情况，有迹可循。', tasksLink: '了解任务查看', tasksCaption: '任务状态，随页面更新',
 		codeLabel: '简洁，从入口开始', codeTitle: '一个声明。\n让想法进入页面。', codeLead: '把写好的组件交给 Makoo，剩下的从这里开始。', codeLink: '开始构建',
 		endLabel: '开源 · MIT License', endTitle: '下一个页面工具，\n由你创造。', endLead: '给常用的网页，添一点自己的想法。', start: '开始使用', github: '在 GitHub 上探索',
 		resources: [['组件注入', '/docs/injection'], ['事件监听', '/docs/listeners'], ['完整案例', '/docs/recipes'], ['API 参考', '/api/core']]
@@ -46,6 +48,8 @@ const messages = {
 			{ name: 'Toolchain', tag: 'From an idea to a userscript', title: 'Start with ease.\nShip with confidence.', description: 'Pick a framework and create a project. Build your page features into an installable userscript with Vite and Monkey.', points: ['Vue / React templates', 'Vite development server', 'Build and preview'], link: '/docs/build', action: 'Explore the toolchain', visual: ['Create', 'Develop', 'Build'] }
 		],
 		frameworkLabel: 'Built for the tools you know', frameworkTitle: 'Your framework.\nMore places to use it.', frameworkLead: 'Keep writing components in Vue or React. Makoo connects frameworks to pages through Adapters, putting your existing skills to work.', frameworkLink: 'Explore Adapters',
+		cliLabel: 'Makoo CLI · Development terminal', cliTitle: 'Keep your flow.\nJust press a key.', cliLead: 'Install your development script, read logs, and restart the server. Enable makooDev() to keep everyday actions a keystroke away.', cliLink: 'Meet the dev terminal', cliKeys: ['Install script', 'View logs', 'Restart server'],
+		tasksLabel: 'Runtime · Task inspection', tasksTitle: 'Tasks on the page.\nClarity in the terminal.', tasksLead: 'What is active? What is still waiting? Inspect task status, kind, and target in your terminal, and switch between connected Runtimes to see what is happening.', tasksLink: 'Explore task inspection', tasksCaption: 'Task states, updated with the page',
 		codeLabel: 'Simple from the start', codeTitle: 'One declaration.\nA new possibility.', codeLead: 'Bring your component. Let Makoo take it from here.', codeLink: 'Start building',
 		endLabel: 'Open source · MIT License', endTitle: 'Your next page tool\nstarts with you.', endLead: 'Bring a little of your own thinking to the pages you use.', start: 'Get started', github: 'Explore on GitHub',
 		resources: [['Component injection', '/docs/injection'], ['Event listeners', '/docs/listeners'], ['Complete example', '/docs/recipes'], ['API reference', '/api/core']]
@@ -100,6 +104,34 @@ function link(path: string) { return withBase(`${props.locale === 'zh' ? '/zh' :
 		<section class="framework-section" aria-labelledby="framework-title">
 			<div class="framework-art" aria-hidden="true"><div class="framework-bridge"></div><div class="framework-emblem vue-emblem"><svg viewBox="0 0 100 90" fill="none"><path d="M5 8h20l25 43L75 8h20L50 86 5 8Z" fill="currentColor" opacity=".9"/><path d="M25 8h15l10 17L60 8h15L50 51 25 8Z" fill="currentColor" opacity=".4"/></svg><span>Vue</span></div><div class="framework-emblem react-emblem"><svg viewBox="0 0 100 90" fill="none" stroke="currentColor" stroke-width="3"><ellipse cx="50" cy="45" rx="44" ry="17"/><ellipse cx="50" cy="45" rx="44" ry="17" transform="rotate(60 50 45)"/><ellipse cx="50" cy="45" rx="44" ry="17" transform="rotate(120 50 45)"/><circle cx="50" cy="45" r="6" fill="currentColor" stroke="none"/></svg><span>React</span></div></div>
 			<div class="framework-copy"><p class="intro-label">{{ content.frameworkLabel }}</p><h2 id="framework-title">{{ content.frameworkTitle }}</h2><p>{{ content.frameworkLead }}</p><a class="intro-link" :href="link('/api/adapters')">{{ content.frameworkLink }} <span aria-hidden="true">↗</span></a></div>
+		</section>
+
+		<section class="cli-section" aria-labelledby="cli-title">
+			<div class="cli-copy">
+				<p class="intro-label">{{ content.cliLabel }}</p>
+				<h2 id="cli-title">{{ content.cliTitle }}</h2>
+				<p>{{ content.cliLead }}</p>
+				<a class="intro-link" :href="link('/docs/development')">{{ content.cliLink }} <span aria-hidden="true">↗</span></a>
+			</div>
+			<div class="cli-keyboard" aria-hidden="true">
+				<div class="cli-command"><span>$</span> makoo dev</div>
+				<div class="cli-keys"><div v-for="(key, index) in ['i', 'l', 'r']" :key="key" class="cli-key"><span>{{ key }}</span><small>{{ content.cliKeys[index] }}</small></div></div>
+				<div class="cli-keyboard-line"></div>
+			</div>
+		</section>
+
+		<section class="cli-section cli-tasks-section" aria-labelledby="tasks-title">
+			<div class="cli-task-art" aria-hidden="true">
+				<svg viewBox="0 0 480 240" fill="none"><path d="M240 28v54M80 146v-34h320v34M240 82v64" stroke="currentColor" stroke-width="1.5" opacity=".25"/><circle cx="240" cy="28" r="7" fill="currentColor"/><circle cx="80" cy="170" r="24" stroke="currentColor" stroke-width="1.5"/><path d="m70 170 7 7 13-14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="240" cy="170" r="24" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 6" opacity=".65"/><circle cx="240" cy="170" r="5" fill="currentColor" opacity=".65"/><circle cx="400" cy="170" r="24" stroke="currentColor" stroke-width="1.5" opacity=".3"/><path d="M394 170h12" stroke="currentColor" stroke-width="2" opacity=".5"/></svg>
+				<div class="cli-task-states"><span>active</span><span>pending</span><span>idle</span></div>
+				<p>{{ content.tasksCaption }}</p>
+			</div>
+			<div class="cli-copy">
+				<p class="intro-label">{{ content.tasksLabel }}</p>
+				<h2 id="tasks-title">{{ content.tasksTitle }}</h2>
+				<p>{{ content.tasksLead }}</p>
+				<a class="intro-link" :href="link('/docs/development')">{{ content.tasksLink }} <span aria-hidden="true">↗</span></a>
+			</div>
 		</section>
 
 		<section class="syntax-section" aria-labelledby="syntax-title"><div class="syntax-copy"><p class="intro-label">{{ content.codeLabel }}</p><h2 id="syntax-title">{{ content.codeTitle }}</h2><p>{{ content.codeLead }}</p><a class="intro-link" :href="link('/docs/getting-started')">{{ content.codeLink }} <span aria-hidden="true">↗</span></a></div><div class="syntax-example"><div class="syntax-toolbar"><span>src/main.ts</span><div role="group" aria-label="Framework"><button v-for="name in (['Vue', 'React'] as const)" :key="name" type="button" :aria-pressed="framework === name" @click="framework = name">{{ name }}</button></div></div><pre><code><span v-for="(line, index) in source.split('\n')" :key="index" class="syntax-line" :class="{ 'syntax-import': line.startsWith('import') }"><span class="syntax-number" aria-hidden="true">{{ index + 1 }}</span><span class="syntax-text">{{ line }}{{ '\n' }}</span></span></code></pre></div></section>
