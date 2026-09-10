@@ -110,6 +110,7 @@
 .syntax-number { display: inline-block; width: 26px; color: var(--makoo-faint); user-select: none; }
 .closing-section { padding: 96px 0 64px; border-top: 1px solid var(--makoo-border); text-align: center; }
 .makoo-home-shell .closing-section h2 { font-size: clamp(38px, 5vw, 64px); }
+.closing-punctuation { display: inline-block; width: 0; text-align: left; }
 .closing-section > p:not(.intro-label) { margin-top: 24px; font-size: 16px; }
 .closing-actions { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 28px; margin-top: 32px; }
 .makoo-home-shell .closing-actions .intro-link { margin-top: 0; }
