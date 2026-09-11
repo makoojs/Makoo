@@ -24,7 +24,7 @@
 	--font-display: 'Inter Variable', 'PingFang SC', 'Microsoft YaHei', sans-serif;
 	--font-body: 'Inter Variable', 'PingFang SC', 'Microsoft YaHei', sans-serif;
 	--font-mono: 'Geist Mono', 'SFMono-Regular', Consolas, monospace;
-	--vp-nav-height: 64px;
+	--vp-nav-height: 72px;
 	--vp-sidebar-width: 260px;
 	--vp-c-bg: var(--makoo-bg);
 	--vp-c-bg-alt: var(--makoo-surface);
@@ -60,13 +60,13 @@ body { font-family: var(--font-body); font-size: 15px; line-height: 1.75; }
 .VPNav .VPNavBar { background: color-mix(in oklch, var(--makoo-bg) 80%, transparent); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-bottom: 1px solid var(--makoo-border); }
 .VPNav .VPNavBar .content-body, .VPNav .VPNavBar .title { background: transparent; }
 .VPNav .VPNavBar .divider { display: none; }
-.VPNavBarTitle .title { font: 600 16px/1 var(--font-display); border-bottom: 0; }
-.VPNavBarTitle .logo { width: 28px; height: 28px; border-radius: 7px; }
+.VPNavBarTitle .title { font: 600 21px/1 var(--font-display); border-bottom: 0; }
+.VPNavBarTitle .logo { width: 32px; height: 32px; margin-right: 10px; border-radius: 7px; }
 .VPNavBar .VPNavBarMenuLink { color: var(--makoo-muted); font-size: 14px; font-weight: 500; }
 .VPNavBar .VPNavBarMenuLink:hover { color: var(--makoo-fg); }
 .VPNavBar .VPNavBarMenuLink.active { color: var(--makoo-fg); box-shadow: inset 0 -2px var(--makoo-accent); }
 .VPNavBar .VPSocialLink, .VPNavBarTranslations .button { min-width: 40px; min-height: 40px; }
-.VPNavBarSearch .DocSearch-Button { min-height: 40px; border: 1px solid var(--makoo-border); border-radius: 8px; background: var(--makoo-surface); color: var(--makoo-muted); }
+.VPNavBarSearch .DocSearch-Button { min-height: 44px; border: 1px solid var(--makoo-border-strong); border-radius: 999px; background: var(--makoo-surface); color: var(--makoo-muted); }
 .VPNavBarSearch .DocSearch-Button:hover { border-color: var(--makoo-border-strong); background: var(--makoo-surface); color: var(--makoo-fg); }
 .VPLocalSearchBox .shell { border: 1px solid var(--makoo-border); background: var(--makoo-surface); box-shadow: none; }
 .VPLocalSearchBox .result { border-radius: 8px; }
@@ -75,11 +75,36 @@ body { font-family: var(--font-body); font-size: 15px; line-height: 1.75; }
 .VPLocalNav .menu, .VPLocalNav .outline-link { min-height: 40px; color: var(--makoo-muted); }
 .VPNavScreen { background: var(--makoo-bg); }
 
+.VPNav .VPNavBar::before { content: ''; position: absolute; inset: 0 0 auto; height: 2px; background: linear-gradient(90deg, var(--makoo-accent), var(--makoo-accent-bright) 50%, var(--makoo-accent)); }
+.nav-docs-label { display: inline-flex; align-items: center; gap: 12px; margin-left: 12px; color: var(--makoo-fg); font-size: 18px; font-weight: 500; }
+.nav-brand-divider { color: var(--makoo-faint); font-weight: 400; }
+@media (min-width: 768px) {
+	.VPNav .VPNavBar .wrapper, .VPNav .VPNavBar.has-sidebar .wrapper { padding: 0 32px; }
+	.VPNav .VPNavBar .container { position: relative; max-width: none; }
+	.VPNav .VPNavBar .container > .title { position: static; padding: 0; width: auto; }
+	.VPNav .VPNavBar .container > .content { position: static; padding: 0; }
+	.VPNav .VPNavBar .content-body, .VPNav .VPNavBar:not(.home.top) .content-body { position: static; }
+	.VPNavBarSearch .DocSearch-Button { justify-content: space-between; height: 44px; padding: 0 12px 0 16px; }
+	.VPNavBarSearch .DocSearch-Button-Placeholder { font-size: 15px; font-weight: 400; }
+	.VPNavBarSearch .DocSearch-Search-Icon { width: 18px; height: 18px; margin-right: 10px; }
+	.VPNavBarSearch .DocSearch-Button-Keys { gap: 4px; }
+	.VPNavBarSearch .DocSearch-Button .DocSearch-Button-Key { margin: 0; padding: 0 6px; min-width: 24px; height: 26px; line-height: 24px; border: 1px solid var(--makoo-border-strong); border-radius: 7px; background: var(--makoo-bg); text-align: center; }
+	.VPNavBar .VPNavBarMenu { gap: 2px; }
+	.VPNavBar .VPNavBarMenuLink { padding: 0 12px; }
+}
 @media (min-width: 960px) {
-	.VPNavBar .container { max-width: 1440px; }
-	.VPNavBarMenu { gap: 2px; }
-	.VPNavBarMenuLink { padding: 0 12px; }
-	.VPNavBarSearch { margin-left: auto; }
+	.VPNav .VPNavBar .VPNavBarSearch { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: clamp(280px, 34vw, 560px); margin: 0; padding: 0; }
+	.VPNavBarSearch #local-search { width: 100%; }
+}
+@media (min-width: 768px) and (max-width: 959px) {
+	.VPNav .VPNavBar .VPNavBarSearch { flex-grow: 1; padding: 0 20px; }
+	.VPNavBarSearch #local-search { width: 100%; }
+	.VPNavBarSearch .DocSearch-Button-Keys { display: none; }
+}
+@media (max-width: 767px) {
+	.VPNavBarTitle .title { font-size: 18px; }
+	.nav-docs-label { gap: 8px; margin-left: 8px; font-size: 16px; }
+	.VPNavBarSearch .DocSearch-Button { width: 40px; height: 40px; min-height: 40px; border-color: transparent; background: transparent; }
 }
 @media (prefers-reduced-motion: reduce) {
 	*, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0s !important; }

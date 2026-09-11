@@ -12,7 +12,11 @@ import './style.css';
 export default {
 	extends: DefaultTheme,
 	Layout: () => h(DefaultTheme.Layout, null, {
-		'doc-before': () => h(MakooBreadcrumb)
+		'doc-before': () => h(MakooBreadcrumb),
+		'nav-bar-title-after': () => h('span', { class: 'nav-docs-label' }, [
+			h('span', { class: 'nav-brand-divider', 'aria-hidden': 'true' }, '/'),
+			'docs'
+		])
 	}),
 	enhanceApp({ app }) {
 		app.component('MakooHero', MakooHero);
