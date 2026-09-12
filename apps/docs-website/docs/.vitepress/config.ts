@@ -5,6 +5,7 @@ type VitePressConfig = Parameters<typeof defineConfig>[0];
 type VitePlugin = NonNullable<NonNullable<VitePressConfig['vite']>['plugins']>[number];
 
 const tailwindPlugin = tailwindcss() as unknown as VitePlugin;
+const base = process.env.VITEPRESS_BASE ?? '/';
 
 const enGuideSidebar = [
 	{
@@ -128,7 +129,7 @@ export default defineConfig({
 	title: 'Makoo',
 	description: 'A userscript development framework for component-driven injection apps.',
 	lang: 'en-US',
-	base: process.env.VITEPRESS_BASE ?? '/',
+	base,
 	cleanUrls: true,
 	appearance: false,
 	markdown: { theme: 'github-dark' },
@@ -169,10 +170,12 @@ export default defineConfig({
 	},
 	head: [
 		['script', {}, `document.documentElement.classList.add('dark')`],
-		['link', { rel: 'icon', href: '/makoo-icon.png', type: 'image/png' }]
+		['link', { rel: 'icon', href: `${base}favicon.ico`, sizes: '16x16 32x32 48x48' }],
+		['link', { rel: 'icon', href: `${base}makoo-icon.svg`, type: 'image/svg+xml' }],
+		['link', { rel: 'apple-touch-icon', href: `${base}apple-touch-icon.png` }]
 	],
 	themeConfig: {
-		logo: '/makoo-icon.png',
+		logo: { src: '/makoo-icon.svg', alt: 'Makoo' },
 		siteTitle: 'Makoo',
 		search: {
 			provider: 'local'

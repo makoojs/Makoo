@@ -1,7 +1,7 @@
 .makoo-breadcrumb { color: var(--makoo-faint); font-size: 12px; }
 .makoo-breadcrumb span:last-child { color: var(--makoo-fg); }
 .Layout .VPSidebar { border-right: 1px solid var(--makoo-border); background: var(--makoo-bg); }
-.VPSidebar .curtain { background: var(--makoo-bg); }
+.VPSidebar .curtain { display: none; }
 .VPSidebar .group + .group { border-top: 0; }
 .VPSidebar .VPSidebarItem.level-0 { padding-bottom: 20px; }
 .VPSidebarItem.level-0 > .item { margin-bottom: 8px; }
@@ -45,7 +45,7 @@
 .VPDoc .vp-doc li + li { margin-top: 8px; }
 .VPDoc .vp-doc hr { border: 0; border-top: 1px solid var(--makoo-border); }
 .VPDoc .vp-doc strong { font-weight: 600; }
-.VPDoc .vp-doc :not(pre) > code { padding: .12em .36em; border-radius: 5px; background: var(--makoo-accent-soft); color: var(--makoo-accent-bright); font: 400 .87em/1.5 var(--font-mono); }
+.VPDoc .vp-doc :not(pre) > code { padding: .12em .36em; border-radius: 5px; background: var(--makoo-raised); color: var(--makoo-fg); font: 400 .87em/1.5 var(--font-mono); }
 .VPDoc .vp-doc :is(h1, h2, h3, h4) > code { padding: 0; background: transparent; font-weight: 600; }
 .VPDoc .vp-doc div[class*='language-'] { margin: 22px 0; border: 1px solid var(--makoo-border); border-radius: 10px; background: var(--makoo-surface); }
 .VPDoc .vp-doc div[class*='language-'] pre { background: transparent; }

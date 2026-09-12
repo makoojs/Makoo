@@ -7,51 +7,51 @@ const activeFeature = ref(0);
 const framework = ref<'Vue' | 'React'>('Vue');
 const messages = {
 	zh: {
-		intro: '从一个小功能，', introAccent: '写成顺手的工具。',
-		introLead: '从一个小小的页面增强，到有组件、有交互的完整工具。Makoo 为你的想法提供清楚的结构。',
+		intro: '组件化开发', introAccent: '结构化管理',
+		introLead: '为复杂用户脚本提供组件注入与运行时管理能力',
 		features: [
-			['组件化开发', '用熟悉的 Vue 和 React，把界面带进你正在使用的网页。'],
-			['声明式注入', '组件、目标、运行策略，在一个声明里各就其位。'],
-			['感知页面变化', '等待异步内容，在宿主节点替换后恢复组件。'],
-			['统一事件管理', '让页面交互也成为可以启停、可以清理的任务。'],
-			['TypeScript 支持', '从任务声明到组件上下文，让类型贯穿开发过程。'],
-			['完整开发工具链', '项目创建、开发调试、构建预览，衔接在一起。']
+			['组件化开发', '使用 Vue 或 React 为网页构建交互界面'],
+			['声明式注入', '通过声明配置组件与目标节点及运行策略'],
+			['页面变化处理', '等待异步节点并在宿主替换后重新挂载组件'],
+			['统一事件管理', '通过任务统一管理事件监听的启停与清理'],
+			['TypeScript 支持', '为任务声明与组件上下文提供类型支持'],
+			['完整开发工具链', '支持项目创建与开发调试及构建预览']
 		],
-		spotlight: '写组件，', spotlightAccent: '也照顾页面的变化。',
+		spotlight: '组件注入', spotlightAccent: '适配动态网页',
 		products: [
-			{ name: 'Runtime', tag: '为动态网页而生', title: '页面会变，\n组件也需要照应。', description: '等待目标、挂载组件、处理宿主替换。让页面里的每项任务都有自己的生命周期。', points: ['异步 DOM 等待', '组件存活与恢复', '统一销毁与清理'], link: '/docs/lifecycle', action: '认识 Runtime', visual: ['等待', '挂载', '恢复'] },
-			{ name: 'Devtools', tag: '让开发状态看得见', title: '少一些猜测。\n多一些掌握。', description: '在终端里查看连接、任务与开发日志。保持熟悉的 Vite 开发体验，更清楚脚本正在做什么。', points: ['Runtime 连接', '任务状态查看', '开发日志'], link: '/docs/development', action: '探索开发工具', visual: ['连接', '任务', '日志'] },
-			{ name: 'Toolchain', tag: '从想法到脚本', title: '顺畅地开始。\n从容地交付。', description: '选好框架，创建项目。在 Vite 与 Monkey 的支持下，把页面功能构建成可安装的 userscript。', points: ['Vue / React 模板', 'Vite 开发服务', '构建与预览'], link: '/docs/build', action: '了解工具链', visual: ['创建', '开发', '构建'] }
+			{ name: 'Runtime', tag: '运行时管理', title: '目标节点等待\n组件挂载与恢复', description: '管理组件注入与任务生命周期并处理宿主节点替换', points: ['异步 DOM 等待', '组件挂载与恢复', '统一销毁与清理'], link: '/docs/lifecycle', action: '了解 Runtime', visual: ['等待', '挂载', '恢复'] },
+			{ name: 'Devtools', tag: '开发状态查看', title: 'Runtime 连接\n任务状态与日志', description: '在 Vite 开发流程中通过终端查看脚本运行状态', points: ['Runtime 连接', '任务状态查看', '开发日志'], link: '/docs/development', action: '查看开发工具', visual: ['连接', '任务', '日志'] },
+			{ name: 'Toolchain', tag: '用户脚本工具链', title: '创建与开发\n构建与预览', description: '基于 Vite 与 Monkey 构建可安装的 userscript', points: ['Vue 与 React 模板', 'Vite 开发服务', '构建与预览'], link: '/docs/build', action: '了解工具链', visual: ['创建', '开发', '构建'] }
 		],
-		frameworkLabel: '使用你熟悉的技术', frameworkTitle: '你的框架。\n更大的用武之地。', frameworkLead: '组件继续用 Vue 或 React 编写。Makoo 通过 Adapter 连接框架与网页，让现有的组件经验继续发挥作用。', frameworkLink: '了解框架适配',
-		cliLabel: 'Makoo CLI · 开发终端', cliTitle: '常用的开发操作，\n按一下就好。', cliLead: '安装开发脚本、查看日志、重启服务。启用 makooDev()，在终端按下一个键，让常用操作跟上你的思路。', cliLink: '认识开发终端', cliKeys: ['安装脚本', '查看日志', '重启服务'],
-		tasksLabel: 'Runtime · 任务查看', tasksTitle: '回到终端，\n看看任务怎么样了。', tasksLead: '哪个任务已经激活，哪个还在等待？在终端查看状态、类型和目标，在多个 Runtime 之间切换。页面里的运行情况，有迹可循。', tasksLink: '了解任务查看', tasksCaption: '任务状态，随页面更新',
-		codeLabel: '简洁，从入口开始', codeTitle: '写好组件，\n再选个位置。', codeLead: '把写好的组件交给 Makoo，剩下的从这里开始。', codeLink: '开始构建',
-		endLabel: '开源 · MIT License', endTitle: '从你想改的\n那个小地方开始。', endLead: '给常用的网页，添一点自己的想法。', start: '开始使用', github: '在 GitHub 上探索',
+		frameworkLabel: '框架适配', frameworkTitle: '使用 Vue 或 React\n构建网页组件', frameworkLead: '通过 Adapter 挂载组件并统一管理组件生命周期', frameworkLink: '了解框架适配',
+		cliLabel: 'Makoo CLI 开发终端', cliTitle: '终端快捷操作', cliLead: '通过快捷键安装开发脚本与查看日志及重启服务', cliLink: '查看开发终端', cliKeys: ['安装脚本', '查看日志', '重启服务'],
+		tasksLabel: 'Runtime 任务查看', tasksTitle: '查看任务运行状态', tasksLead: '在终端查看任务类型与目标节点并切换已连接的 Runtime', tasksLink: '了解任务查看', tasksCaption: '任务状态随页面更新',
+		codeLabel: '组件注入示例', codeTitle: '声明组件与目标节点', codeLead: '通过 inject 声明注入任务并由 Runtime 执行', codeLink: '开始构建',
+		endLabel: '开源 MIT License', endTitle: '开始构建用户脚本', endLead: '使用 Makoo 开发组件化网页功能', start: '开始使用', github: '查看 GitHub',
 		resources: [['组件注入', '/docs/injection'], ['事件监听', '/docs/listeners'], ['完整案例', '/docs/recipes'], ['API 参考', '/api/core']]
 	},
 	en: {
-		intro: 'Start with a small feature.', introAccent: 'Make it a handy tool.',
-		introLead: 'From a small page enhancement to a complete tool with components and interactions. Give your ideas a clear structure with Makoo.',
+		intro: 'Component-driven development', introAccent: 'Structured management',
+		introLead: 'Component injection and runtime management for complex userscripts',
 		features: [
-			['Component-driven', 'Bring familiar Vue and React components to the pages you already use.'],
-			['Declarative by design', 'A component, a target, and a strategy. Everything in its place.'],
-			['Aware of changing pages', 'Wait for asynchronous content and recover when host nodes are replaced.'],
-			['Events with a lifecycle', 'Turn page interactions into tasks you can start, stop, and clean up.'],
-			['Built with TypeScript', 'Carry types from task declarations through to component context.'],
-			['A connected toolchain', 'Project creation, development, builds, and previews that work together.']
+			['Component-driven', 'Build page interfaces with Vue or React'],
+			['Declarative injection', 'Declare the component target node and run strategy'],
+			['Page change handling', 'Wait for async nodes and remount after host replacement'],
+			['Unified event management', 'Start stop and clean up listeners as tasks'],
+			['TypeScript support', 'Types for task declarations and component context'],
+			['Complete toolchain', 'Project creation development debugging and preview']
 		],
-		spotlight: 'Write components.', spotlightAccent: 'Account for changing pages.',
+		spotlight: 'Component injection', spotlightAccent: 'For dynamic pages',
 		products: [
-			{ name: 'Runtime', tag: 'Made for dynamic pages', title: 'Pages change.\nComponents need care, too.', description: 'Wait for targets, mount components, and handle host replacements. Give every task on the page a lifecycle of its own.', points: ['Asynchronous DOM waiting', 'Component recovery', 'Coordinated cleanup'], link: '/docs/lifecycle', action: 'Meet the Runtime', visual: ['Wait', 'Mount', 'Recover'] },
-			{ name: 'Devtools', tag: 'A clearer view of development', title: 'Less guessing.\nMore understanding.', description: 'Inspect connections, tasks, and development logs in your terminal. Keep the Vite workflow you know, with a clearer view of your script.', points: ['Runtime connections', 'Task inspection', 'Development logs'], link: '/docs/development', action: 'Explore devtools', visual: ['Connect', 'Tasks', 'Logs'] },
-			{ name: 'Toolchain', tag: 'From an idea to a userscript', title: 'Start with ease.\nShip with confidence.', description: 'Pick a framework and create a project. Build your page features into an installable userscript with Vite and Monkey.', points: ['Vue / React templates', 'Vite development server', 'Build and preview'], link: '/docs/build', action: 'Explore the toolchain', visual: ['Create', 'Develop', 'Build'] }
+			{ name: 'Runtime', tag: 'Runtime management', title: 'Wait for target nodes\nMount and restore components', description: 'Manage injection and task lifecycle and handle host node replacement', points: ['Asynchronous DOM waiting', 'Component mount and restore', 'Unified destroy and cleanup'], link: '/docs/lifecycle', action: 'Learn about Runtime', visual: ['Wait', 'Mount', 'Restore'] },
+			{ name: 'Devtools', tag: 'Development inspection', title: 'Runtime connections\nTask status and logs', description: 'Inspect script status in the terminal during the Vite development flow', points: ['Runtime connections', 'Task inspection', 'Development logs'], link: '/docs/development', action: 'View devtools', visual: ['Connect', 'Tasks', 'Logs'] },
+			{ name: 'Toolchain', tag: 'Userscript toolchain', title: 'Create and develop\nBuild and preview', description: 'Build installable userscripts with Vite and Monkey', points: ['Vue and React templates', 'Vite development server', 'Build and preview'], link: '/docs/build', action: 'Learn about the toolchain', visual: ['Create', 'Develop', 'Build'] }
 		],
-		frameworkLabel: 'Built for the tools you know', frameworkTitle: 'Your framework.\nMore places to use it.', frameworkLead: 'Keep writing components in Vue or React. Makoo connects frameworks to pages through Adapters, putting your existing skills to work.', frameworkLink: 'Explore Adapters',
-		cliLabel: 'Makoo CLI · Development terminal', cliTitle: 'Everyday dev actions.\nA keypress away.', cliLead: 'Install your development script, read logs, and restart the server. Enable makooDev() to keep everyday actions a keystroke away.', cliLink: 'Meet the dev terminal', cliKeys: ['Install script', 'View logs', 'Restart server'],
-		tasksLabel: 'Runtime · Task inspection', tasksTitle: 'Back in the terminal.\nSee how your tasks are doing.', tasksLead: 'What is active? What is still waiting? Inspect task status, kind, and target in your terminal, and switch between connected Runtimes to see what is happening.', tasksLink: 'Explore task inspection', tasksCaption: 'Task states, updated with the page',
-		codeLabel: 'Simple from the start', codeTitle: 'Write a component.\nPick a place for it.', codeLead: 'Bring your component. Let Makoo take it from here.', codeLink: 'Start building',
-		endLabel: 'Open source · MIT License', endTitle: 'Start with one small thing\nyou want to change.', endLead: 'Bring a little of your own thinking to the pages you use.', start: 'Get started', github: 'Explore on GitHub',
+		frameworkLabel: 'Framework adapters', frameworkTitle: 'Build page components\nwith Vue or React', frameworkLead: 'Mount components through Adapters and manage their lifecycle', frameworkLink: 'Learn about adapters',
+		cliLabel: 'Makoo CLI development terminal', cliTitle: 'Terminal shortcuts', cliLead: 'Install the development script view logs and restart the server with shortcuts', cliLink: 'View the development terminal', cliKeys: ['Install script', 'View logs', 'Restart server'],
+		tasksLabel: 'Runtime task inspection', tasksTitle: 'Inspect running tasks', tasksLead: 'View task type and target node in the terminal and switch between connected Runtimes', tasksLink: 'Learn about task inspection', tasksCaption: 'Task status updates with the page',
+		codeLabel: 'Injection example', codeTitle: 'Declare a component and target', codeLead: 'Declare an inject task and let the Runtime run it', codeLink: 'Start building',
+		endLabel: 'Open source MIT License', endTitle: 'Start building userscripts', endLead: 'Build component-driven page features with Makoo', start: 'Get started', github: 'View GitHub',
 		resources: [['Component injection', '/docs/injection'], ['Event listeners', '/docs/listeners'], ['Complete example', '/docs/recipes'], ['API reference', '/api/core']]
 	}
 } as const;
@@ -136,6 +136,6 @@ function link(path: string) { return withBase(`${props.locale === 'zh' ? '/zh' :
 
 		<section class="syntax-section" aria-labelledby="syntax-title"><div class="syntax-copy"><p class="intro-label">{{ content.codeLabel }}</p><h2 id="syntax-title">{{ content.codeTitle }}</h2><p>{{ content.codeLead }}</p><a class="intro-link" :href="link('/docs/getting-started')">{{ content.codeLink }} <span aria-hidden="true">↗</span></a></div><div class="syntax-example"><div class="syntax-toolbar"><span>src/main.ts</span><div role="group" aria-label="Framework"><button v-for="name in (['Vue', 'React'] as const)" :key="name" type="button" :aria-pressed="framework === name" @click="framework = name">{{ name }}</button></div></div><pre><code><span v-for="(line, index) in source.split('\n')" :key="index" class="syntax-line" :class="{ 'syntax-import': line.startsWith('import') }"><span class="syntax-number" aria-hidden="true">{{ index + 1 }}</span><span class="syntax-text">{{ line }}{{ '\n' }}</span></span></code></pre></div></section>
 
-		<section class="closing-section" aria-labelledby="closing-title"><p class="intro-label">{{ content.endLabel }}</p><h2 id="closing-title"><template v-if="locale === 'zh'">{{ content.endTitle.slice(0, -1) }}<span class="closing-punctuation">{{ content.endTitle.slice(-1) }}</span></template><template v-else>{{ content.endTitle }}</template></h2><p>{{ content.endLead }}</p><div class="closing-actions"><a class="primary-link" :href="link('/docs/getting-started')">{{ content.start }} <span aria-hidden="true">↗</span></a><a class="intro-link" href="https://github.com/makoojs/Makoo">{{ content.github }} <span aria-hidden="true">↗</span></a></div><nav class="intro-resources" :aria-label="content.start"><a v-for="item in content.resources" :key="item[0]" :href="link(item[1])">{{ item[0] }} <span aria-hidden="true">↗</span></a></nav></section>
+		<section class="closing-section" aria-labelledby="closing-title"><p class="intro-label">{{ content.endLabel }}</p><h2 id="closing-title">{{ content.endTitle }}</h2><p>{{ content.endLead }}</p><div class="closing-actions"><a class="primary-link" :href="link('/docs/getting-started')">{{ content.start }} <span aria-hidden="true">↗</span></a><a class="intro-link" href="https://github.com/makoojs/Makoo">{{ content.github }} <span aria-hidden="true">↗</span></a></div><nav class="intro-resources" :aria-label="content.start"><a v-for="item in content.resources" :key="item[0]" :href="link(item[1])">{{ item[0] }} <span aria-hidden="true">↗</span></a></nav></section>
 	</div>
 </template>

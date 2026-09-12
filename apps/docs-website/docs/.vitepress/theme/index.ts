@@ -3,6 +3,7 @@ import type { Theme } from 'vitepress';
 import { h } from 'vue';
 import MakooBreadcrumb from './components/MakooBreadcrumb.vue';
 import MakooHero from './components/MakooHero.vue';
+import MakooNavSectionLabel from './components/MakooNavSectionLabel.vue';
 import '@fontsource-variable/inter';
 import '@fontsource/geist-mono/400.css';
 import '@fontsource/geist-mono/500.css';
@@ -13,10 +14,7 @@ export default {
 	extends: DefaultTheme,
 	Layout: () => h(DefaultTheme.Layout, null, {
 		'doc-before': () => h(MakooBreadcrumb),
-		'nav-bar-title-after': () => h('span', { class: 'nav-docs-label' }, [
-			h('span', { class: 'nav-brand-divider', 'aria-hidden': 'true' }, '/'),
-			'docs'
-		])
+		'nav-bar-title-after': () => h(MakooNavSectionLabel)
 	}),
 	enhanceApp({ app }) {
 		app.component('MakooHero', MakooHero);
