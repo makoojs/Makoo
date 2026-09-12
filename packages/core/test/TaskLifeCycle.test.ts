@@ -527,7 +527,7 @@ describe('TaskLifeCycle', () => {
 		expect(resetSpy).toHaveBeenCalledWith('life-task');
 	});
 
-	it('should disable alive tasks then call destroyAll', () => {
+	it('should destroy every task and disable alive tasks', () => {
 		const stopAlive = vi.fn();
 		taskContext.set(
 			'alive-destroy-all',
@@ -551,12 +551,28 @@ describe('TaskLifeCycle', () => {
 			})
 		);
 
-		const destroyAllSpy = vi.spyOn(taskContext, 'destroyAll');
-
 		lifecycle.destroyAll(runtime);
 
 		expect(stopAlive).toHaveBeenCalledOnce();
-		expect(destroyAllSpy).toHaveBeenCalledOnce();
+		expect(taskContext.has('alive-destroy-all')).toBe(false);
+		expect(taskContext.has('idle-destroy-all')).toBe(false);
+	});
+
+	it('should emit destroy events for every task in destroyAll', () => {
+		const observer = createObserverHub();
+		const events: ObserveEvent[] = [];
+		observer.onAny((event) => events.push(event));
+		const runtimeWithObserver = createRuntime(observer);
+		taskContext.set('first-task', createListenerTask({ taskId: 'first-task' }));
+		taskContext.set('second-task', createListenerTask({ taskId: 'second-task' }));
+
+		lifecycle.destroyAll(runtimeWithObserver);
+
+		expect(
+			events
+				.filter((event) => event.name === 'task:afterDestroy')
+				.map((event) => event.taskId)
+		).toEqual(['first-task', 'second-task']);
 	});
 
 	it('should disable alive tasks then call resetAll', () => {

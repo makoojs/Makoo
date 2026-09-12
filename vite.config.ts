@@ -6,10 +6,10 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   resolve: {
     alias: {
-      '@makoojs/core': resolve(__dirname, 'packages/core/src/index.ts'),
-      '@makoojs/vue': resolve(__dirname, 'packages/vue/src/index.ts'),
-      '@makoojs/react': resolve(__dirname, 'packages/react/src/index.ts'),
-      '@makoojs/cli': resolve(__dirname, 'packages/cli/src/index.ts'),
+      '@makoojs/core': resolve(import.meta.dirname, 'packages/core/src/index.ts'),
+      '@makoojs/vue': resolve(import.meta.dirname, 'packages/vue/src/index.ts'),
+      '@makoojs/react': resolve(import.meta.dirname, 'packages/react/src/index.ts'),
+      '@makoojs/cli': resolve(import.meta.dirname, 'packages/cli/src/index.ts'),
     },
   },
   test: {

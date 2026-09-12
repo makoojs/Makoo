@@ -4,6 +4,8 @@ export const ansi = {
 	cyan: '\x1B[36m',
 	deepPink: '\x1B[38;5;162m',
 	green: '\x1B[32m',
+	red: '\x1B[31m',
+	yellow: '\x1B[33m',
 	dim: '\x1B[2m'
 } as const;
 

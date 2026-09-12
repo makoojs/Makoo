@@ -36,7 +36,7 @@ export type MonkeyBuildConfig = {
 };
 
 export type MonkeyConfig = {
-	userscript?: MonkeyUserScript;
+	userscript?: Omit<MonkeyUserScript, 'name' | 'version' | 'description'>;
 	align?: number | false;
 	generate?: (options: MonkeyGenerateContext) => Thenable<string>;
 	styleImport?: boolean;
@@ -83,7 +83,11 @@ export type CliConfig = {
 	monkey: MonkeyConfig;
 };
 
-export type ResolvedConfig = {
+export type MakooConfig = CliConfig & {
+	root?: string;
+};
+
+export type ResolvedMakooConfig = {
 	root: string;
 	entry: string;
 	app: AppConfig;

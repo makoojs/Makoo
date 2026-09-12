@@ -66,9 +66,18 @@ describe('generateVueTemplate', () => {
 			expect(readFileSync(gitignorePath, 'utf-8')).toContain('!.vscode/extensions.json');
 			const packageJson = readPackageJson(packageJsonPath);
 
-			expect(packageJson.scripts.typecheck).toBe('vue-tsc -b');
-			expect(packageJson.devDependencies.esbuild).toBe('^0.27.0');
-			expect(packageJson.devDependencies['@types/node']).toBe('^25.9.1');
+			expect(packageJson.scripts).toEqual({
+				dev: 'makoo dev',
+				build: 'vue-tsc -b && makoo build',
+				preview: 'makoo preview'
+			});
+			expect(packageJson.devDependencies.esbuild).toBe('^0.28.2');
+			expect(packageJson.devDependencies.vite).toBe('^8.2.2');
+			expect(packageJson.devDependencies.typescript).toBe('^6.0.3');
+			expect(packageJson.devDependencies['@types/node']).toBe('^26.4.1');
+			expect(packageJson.devDependencies['vue-tsc']).toBe('^3.3.11');
+			expect(packageJson.devDependencies['@vitejs/plugin-vue']).toBe('^6.0.8');
+			expect(packageJson.dependencies.vue).toBe('^3.5.42');
 			expect(packageJson.dependencies['@makoojs/core']).toBe(recommendedMakooVersions.core);
 			expect(packageJson.dependencies['@makoojs/vue']).toBe(recommendedMakooVersions.vue);
 			expect(packageJson.devDependencies['@makoojs/cli']).toBe(recommendedMakooVersions.cli);
@@ -85,7 +94,7 @@ describe('generateVueTemplate', () => {
 			);
 			expect(readFileSync(mainPath, 'utf-8')).toContain('createVueAdapter()');
 			expect(readFileSync(mainPath, 'utf-8')).toContain("injectAt: 'body'");
-			expect(readFileSync(mainPath, 'utf-8')).toContain('tasks.destroyAll()');
+			expect(readFileSync(mainPath, 'utf-8')).not.toContain('import.meta.hot');
 			expect(existsSync(path.join(projectRoot, 'injections', 'manifest.ts'))).toBe(false);
 			expect(readFileSync(appPath, 'utf-8')).toContain('<h1>Makoo</h1>');
 		});
@@ -98,6 +107,7 @@ describe('generateVueTemplate', () => {
 			generateVueTemplate(createInitData('js'));
 
 			const projectRoot = path.join(root, 'demo-app');
+			const packageJson = readPackageJson(path.join(projectRoot, 'package.json'));
 			expect(existsSync(path.join(projectRoot, 'tsconfig.json'))).toBe(false);
 			expect(existsSync(path.join(projectRoot, 'tsconfig.app.json'))).toBe(false);
 			expect(existsSync(path.join(projectRoot, 'tsconfig.node.json'))).toBe(false);
@@ -108,6 +118,11 @@ describe('generateVueTemplate', () => {
 			expect(existsSync(path.join(projectRoot, 'assets', 'makoo-icon.png'))).toBe(
 				true
 			);
+			expect(packageJson.scripts).toEqual({
+				dev: 'makoo dev',
+				build: 'makoo build',
+				preview: 'makoo preview'
+			});
 		});
 	});
 

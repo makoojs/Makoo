@@ -1,138 +1,75 @@
 # Configuration
 
-Makoo is configured through the `makoo()` Vite plugin. This file selects the application
-module, defines project metadata, and passes userscript options to `vite-plugin-monkey`.
+Configure the dev server and userscript in `vite.config.ts`; configure tasks and components in browser application code. This example uses Vue. React projects use the corresponding `react()` plugin.
+
+`vite.config.ts`
 
 ```ts
 import { defineConfig } from 'vite';
-import { makoo } from '@makoojs/cli';
 import vue from '@vitejs/plugin-vue';
+import { makoo, makooDev } from '@makoojs/cli';
 
 export default defineConfig({
-	plugins: [
-		vue(),
-		makoo({
-			entry: './src/main.ts',
-			app: {
-				name: 'my-script',
-				version: '0.0.1',
-				description: 'Enhance example.com with injected UI'
-			},
-			monkey: {
-				userscript: {
-					match: ['https://example.com/*']
-				}
-			}
-		})
-	]
+  server: { port: 5173 },
+  build: { outDir: 'dist' },
+  plugins: [
+    vue(),
+    makoo({
+      entry: './src/main.ts',
+      app: {
+        name: 'my-script',
+        version: '0.0.1',
+        description: 'Tools for example.com'
+      },
+      monkey: {
+        userscript: {
+          namespace: 'npm/makoo',
+          match: ['https://example.com/*']
+        }
+      }
+    }),
+    makooDev()
+  ]
 });
 ```
 
-Use `vite.config.ts` for settings that affect the whole project. Declare `injectAt`,
-components, listeners, and lifecycle behavior in application code.
+## Application metadata
 
-## Option Groups
+`app` is required. `name` and `version` provide the userscript name and version; `description` is optional.
 
-| Group | Purpose |
+Use `monkey.userscript` for other metadata, such as namespace, matching URLs, permissions, and resources.
+
+## Page matching and task targets
+
+`monkey.userscript.match` determines where the script manager loads the script. For example, `https://example.com/*` matches pages on that site. `injectAt` and `listenAt` are CSS selectors in application code that find elements inside the page.
+
+After changing metadata, confirm that the installed script is updated in your manager. See [Local Development](./development.md).
+
+## Entry and project root
+
+`entry` selects the application entry and accepts an absolute path. Relative paths resolve from the `root` passed to `makoo()`, or the process working directory when omitted.
+
+Vite has its own `root`. When starting a project from another directory, align Makoo entry resolution with the Vite project root. For a configuration file at the project root, obtain that directory with `fileURLToPath(new URL('.', import.meta.url))` and pass it to both Vite and `makoo()`.
+
+The browser entry and its imported modules may use DOM and GM APIs. Do not execute them in configuration loaded by Node.
+
+## Development and build options
+
+| Setting | Location |
 | --- | --- |
-| `entry` | Application module loaded by Vite and the userscript build |
-| `app` | Makoo app metadata and default userscript name/version |
-| `monkey` | `vite-plugin-monkey` userscript, server, and build options |
+| Dev port, host, strictPort | Vite `server` |
+| Output directory, minification, source maps | Vite `build` |
+| Preview port and host | Vite `preview` |
+| Script filename, metadata file, external dependencies | `makoo()` → `monkey.build` |
+| Development installation entry and script-name prefix | `makoo()` → `monkey.server` |
+| Runtime task inspection | Add `makooDev()` separately |
 
-## `app`
+Use CLI options for temporary changes, such as `pnpm exec makoo dev --port 5174`. Omitted options retain project configuration. See [CLI Commands](../api/cli.md).
 
-`app` is required.
+## External dependencies and permissions
 
-```ts
-import { defineConfig } from 'vite';
-import { makoo } from '@makoojs/cli';
-import vue from '@vitejs/plugin-vue';
+`monkey.build.externalGlobals` configures external dependencies; `cdn` helps generate their URLs.
 
-export default defineConfig({
-	plugins: [
-		vue(),
-		makoo({
-			entry: './src/main.ts',
-			app: {
-				name: 'my-script',
-				version: '0.0.1',
-				description: 'Optional script description'
-			},
-			monkey: {}
-		})
-	]
-});
-```
+`autoGrant` defaults to `true`. The build infers the permissions required by GM APIs and writes them to the `.user.js` metadata. See [Userscript APIs](../api/monkey.md).
 
-| Field | Description |
-| --- | --- |
-| `name` | Required app name. Also becomes the default userscript `name` |
-| `version` | Required version. Also becomes the default userscript `version` |
-| `description` | Optional description. Also becomes the default userscript `description` |
-
-Values in `monkey.userscript` can still override the generated userscript metadata when you
-need more control.
-
-## `monkey`
-
-Most `monkey` options are passed to `vite-plugin-monkey`.
-
-```ts
-import { defineConfig } from 'vite';
-import { makoo } from '@makoojs/cli';
-import vue from '@vitejs/plugin-vue';
-
-export default defineConfig({
-	plugins: [
-		vue(),
-		makoo({
-			entry: './src/main.ts',
-			app: {
-				name: 'my-script',
-				version: '0.0.1'
-			},
-			monkey: {
-				userscript: {
-					namespace: 'npm/makoo',
-					match: ['https://example.com/*'],
-					grant: ['GM_getValue', 'GM_setValue']
-				},
-				server: {
-					open: true,
-					prefix: 'server:'
-				},
-				build: {
-					fileName: 'my-script.user.js',
-					metaFileName: true,
-					autoGrant: true
-				}
-			}
-		})
-	]
-});
-```
-
-## Defaults
-
-Defaults:
-
-| Option | Default |
-| --- | --- |
-| `monkey.align` | `2` |
-| `monkey.styleImport` | `true` |
-| `monkey.server.prefix` | `'server:'` |
-| `monkey.build.fileName` | `${app.name}.user.js` |
-| `monkey.build.metaFileName` | `false` |
-| `monkey.build.autoGrant` | `true` |
-
-## Configuration Boundary
-
-Keep this split in mind:
-
-| File | Owns |
-| --- | --- |
-| `vite.config.ts` | Application module, project metadata, userscript build/dev options |
-| Application code | Runtime setup, adapters, tasks, targets, and lifecycle options |
-| Feature modules | Component code and styles |
-
-This boundary keeps Makoo projects understandable as they grow.
+See the [Vite Plugin Reference](../api/vite.md) for all fields, defaults, and public types.

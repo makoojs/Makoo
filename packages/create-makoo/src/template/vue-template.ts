@@ -11,24 +11,25 @@ import {
 
 function packageJsonTemplate(data: InitData): string {
 	const devDeps: Record<string, string> = {
-		esbuild: '^0.27.0',
+		esbuild: '^0.28.2',
 		vite: '^8.2.2'
 	};
 
 	if (data.variant === 'ts') {
-		devDeps.typescript = '~5.9.3';
-		devDeps['@types/node'] = '^25.9.1';
+		// vue-tsc still needs the compiler API that TypeScript 7 does not expose.
+		devDeps.typescript = '^6.0.3';
+		devDeps['@types/node'] = '^26.4.1';
 	}
 	if (data.framework === 'Vue' && data.variant === 'ts') {
-		devDeps['vue-tsc'] = '^3.1.5';
+		devDeps['vue-tsc'] = '^3.3.11';
 	}
 	if (data.framework === 'Vue') {
-		devDeps['@vitejs/plugin-vue'] = '^6.0.7';
+		devDeps['@vitejs/plugin-vue'] = '^6.0.8';
 	}
 
 	const deps: Record<string, string> = {};
 	if (data.framework === 'Vue') {
-		deps.vue = '^3.5.0';
+		deps.vue = '^3.5.42';
 	}
 	const makooDependencies = resolveMakooDependencies(data.framework, data.dependencyMode);
 
@@ -39,7 +40,7 @@ function packageJsonTemplate(data: InitData): string {
 		scripts: {
 			dev: 'makoo dev',
 			build: data.variant === 'ts' ? 'vue-tsc -b && makoo build' : 'makoo build',
-			...(data.variant === 'ts' ? { typecheck: 'vue-tsc -b' } : {})
+			preview: 'makoo preview'
 		},
 		dependencies: {
 			...deps,
@@ -104,17 +105,13 @@ function mainTemplate(): string {
 import { createVueAdapter } from '@makoojs/vue';
 import App from './injections/hello-world/App.vue';
 
-const tasks = createMakoo({ adapters: [createVueAdapter()] }).start([
+createMakoo({ adapters: [createVueAdapter()] }).start([
   inject({
     id: 'hello-world',
     injectAt: 'body',
     artifact: App,
   }),
 ]);
-
-if (import.meta.hot) {
-  import.meta.hot.dispose(() => tasks.destroyAll());
-}
 `;
 }
 

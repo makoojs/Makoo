@@ -5,10 +5,13 @@ Use this file when the requested change spans packages, adds new files, or needs
 ## Package Responsibilities
 
 - `packages/core`
-  - Own runtime primitives, injection lifecycle, adapters contracts, observer payloads, watcher behavior, task orchestration, logger, and shared error types.
+  - Own runtime primitives, injection lifecycle, adapter contracts, observer payloads, watcher behavior, task orchestration, logging, and shared error types.
   - Keep this package framework-agnostic.
+  - Existing runtime domains include `Makoo/`, `runtime/`, `Task/`, `watcher/`, `payload/`, and `adapter/`.
 - `packages/cli`
-	- Own config parsing and normalization, validation, project commands, and the Vite plugin surface.
+  - Own config parsing and normalization, validation, project commands, and the Vite plugin surface.
+  - Keep `entry`, application metadata, and monkey options semantically separated in resolved config.
+  - Resolve the configured application module relative to the project root before passing it to `vite-plugin-monkey`.
 - `packages/react`
   - Own React-specific mount and unmount behavior plus React-facing errors and type guards.
 - `packages/vue`
@@ -31,27 +34,9 @@ Use this file when the requested change spans packages, adds new files, or needs
 - `error.ts` or `XError.ts`
   - Encode domain-specific failures with stable messages and codes.
 
-## Style Signals To Preserve
-
-- Prefer explicit imports over wildcard patterns.
-- Prefer early returns for guard cases.
-- Keep state machines and lifecycle transitions explicit instead of hiding them in compact expressions.
-- Build structured payload objects close to the emit site when event semantics matter.
-
-## Testing Patterns
+## Package-Level Test Focus
 
 - Resolver tests assert merged defaults, path normalization, and override precedence.
 - Runtime tests create realistic DOM or adapter fixtures and verify lifecycle transitions.
 - Adapter tests focus on mount and unmount success and wrapped failure behavior.
 - CLI tests verify config transformation, command behavior, and Vite plugin options.
-
-## Edit Checklist
-
-Before finalizing a change, check:
-
-1. Did the code land in the package that already owns that responsibility?
-2. Did new names match existing domain vocabulary?
-3. Did public exports remain intentional and minimal?
-4. Did error handling stay typed and Makoo-specific?
-5. Did tests cover the changed behavior at the right package level?
-6. Would `biome` formatting keep the file aligned with repo style?

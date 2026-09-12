@@ -1,5 +1,5 @@
-import { build } from 'vite';
+import { build, type InlineConfig } from 'vite';
 
-export async function buildCommand(): Promise<void> {
-	await build();
+export async function buildCommand(config?: InlineConfig): Promise<void> {
+	await build(config);
 }

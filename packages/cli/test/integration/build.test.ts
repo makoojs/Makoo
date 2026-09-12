@@ -1,49 +1,91 @@
-import { readdir, readFile } from 'node:fs/promises';
+// @vitest-environment node
+
+import { execFile } from 'node:child_process';
+import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { build } from 'vite';
-import { afterEach, describe, expect, it } from 'vitest';
-import { makoo } from '../../src/vite/makoo';
-import { cleanupTempProjects, trackProject, withCwd } from '../utils/tempProject';
+import { pathToFileURL } from 'node:url';
+import { promisify } from 'node:util';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { cleanupTempProjects, trackProject } from '../utils/tempProject';
 
-afterEach(cleanupTempProjects);
+const execFileAsync = promisify(execFile);
+const repoRoot = path.resolve(__dirname, '../../../..');
+let cliPath: string;
 
-describe('makoo build integration', () => {
-	it('builds the user-authored browser entry directly', async () => {
+beforeAll(async () => {
+	const root = await trackProject({});
+	const outDir = path.join(root, 'cli');
+	await execFileAsync(
+		process.execPath,
+		[
+			path.join(repoRoot, 'node_modules/tsup/dist/cli-default.js'),
+			'packages/cli/src/cli/bin.ts',
+			'--no-config',
+			'--format',
+			'esm',
+			'--no-splitting',
+			'--external',
+			'vite',
+			'--out-dir',
+			outDir,
+			'--silent'
+		],
+		{ cwd: repoRoot, timeout: 15_000 }
+	);
+	cliPath = path.join(outDir, 'bin.js');
+});
+afterAll(cleanupTempProjects);
+
+describe('CLI build integration', () => {
+	it('builds the supplied root and config, applies CLI overrides, and excludes dev instrumentation', async () => {
+		const makoo = pathToFileURL(path.join(repoRoot, 'packages/cli/src/vite/makoo.ts')).href;
+		const makooDev = pathToFileURL(
+			path.join(repoRoot, 'packages/cli/src/vite/makooDev.ts')
+		).href;
+		const coreEntry = path.join(repoRoot, 'packages/core/src/index.ts');
 		const root = await trackProject({
 			'src/main.ts': `
-				(globalThis as { __makooManualEntry?: string }).__makooManualEntry = 'manual-main';
+				import { createMakoo } from '@makoojs/core';
+				createMakoo();
+				globalThis.__cliBuild = 'manual-main-' + import.meta.env.MODE;
+			`,
+			'vite.custom.ts': `
+				import { makoo } from ${JSON.stringify(makoo)};
+				import { makooDev } from ${JSON.stringify(makooDev)};
+				export default {
+					resolve: { alias: { '@makoojs/core': ${JSON.stringify(coreEntry)} } },
+					plugins: [makooDev(), ...makoo({
+						root: import.meta.dirname,
+						entry: 'src/main.ts',
+						app: { name: 'build-script', version: '0.0.7' },
+						monkey: { userscript: { match: ['https://example.com/*'] } }
+					})],
+					build: { outDir: 'ignored-dist' }
+				};
 			`
 		});
-
-		await withCwd(root, async () => {
-			await build({
+		await execFileAsync(
+			process.execPath,
+			[
+				cliPath,
+				'build',
 				root,
-				configFile: false,
-				logLevel: 'silent',
-				plugins: makoo({
-					root,
-					entry: './src/main.ts',
-					app: {
-						name: 'build-script',
-						version: '0.0.7',
-						description: 'build integration test'
-					},
-					monkey: {
-						userscript: {
-							namespace: 'https://makoo.test',
-							match: ['https://example.com/*']
-						},
-						build: { fileName: 'build-script.user.js', metaFileName: false }
-					}
-				}),
-				build: { outDir: 'dist', emptyOutDir: true, minify: false }
-			});
-		});
-
-		expect(await readdir(path.join(root, 'dist'))).toContain('build-script.user.js');
-		const userscript = await readFile(path.join(root, 'dist/build-script.user.js'), 'utf8');
-		expect(userscript).toMatch(/\/\/ @name\s+build-script/);
-		expect(userscript).toContain('manual-main');
-		expect(userscript).not.toContain('virtual:makoo/entry');
+				'--config',
+				path.join(root, 'vite.custom.ts'),
+				'--mode',
+				'staging',
+				'--outDir',
+				'release',
+				'--no-minify',
+				'--logLevel',
+				'silent'
+			],
+			{ cwd: repoRoot, timeout: 15_000 }
+		);
+		const script = await readFile(path.join(root, 'release/build-script.user.js'), 'utf8');
+		expect(script).toMatch(/\/\/ @name\s+build-script/);
+		expect(script).toMatch(/\/\/ @version\s+0\.0\.7/);
+		expect(script).toContain('manual-main-staging');
+		expect(script).not.toMatch(/makoo:runtime:open|makoo:runtime:event|virtual:makoo-dev/);
 	});
 });

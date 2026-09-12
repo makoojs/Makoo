@@ -1,81 +1,37 @@
-# 介绍
+# Makoo 文档
 
-Makoo 是一个 userscript 开发框架，用于为 Tampermonkey、Violentmonkey、ScriptCat
-等浏览器脚本管理器构建可维护的 Vue 和 React 注入应用。
+Makoo 用于在现有网页中运行 Vue、React 组件和事件监听任务。它等待目标元素出现、挂载组件，并管理任务清理；Vite 与 `vite-plugin-monkey` 提供开发服务和 userscript 构建。
 
-它适合已经接近小型前端应用的 userscript：需要挂载组件、编排多个功能任务，或者在不同页面上按规则启用不同注入点。Makoo 负责这些任务的运行、挂载和清理。
+## 从这里开始
 
-## 为什么需要 Makoo
+第一次使用，请从[快速开始](./getting-started.md)创建项目、安装开发脚本，并在匹配页面看到组件。已有 Vite 项目可以直接阅读[手动接入](./installation.md)。
 
-传统 userscript 很容易开始，但项目变大后很难保持整洁。宿主页面可能延迟渲染、替换大段
-DOM、不完整刷新页面，或者直接移除你已经挂载过组件的节点。同时，现代脚本项目又往往希望拥有组件化 UI、类型化配置、本地开发体验、热更新，以及能被脚本管理器顺利安装的构建产物。
+你需要了解 JavaScript、CSS 选择器，以及所选框架的组件写法。开发前请准备一个浏览器脚本管理器，例如 Tampermonkey 或 ScriptCat。
 
-Makoo 关注的是组件代码和脚本管理器之间的中间层：
+## 按目标阅读
 
-- 等待目标 DOM 节点出现后再挂载
-- 使用 `inject()` 和 `listen()` 编排注入任务
-- 通过适配器挂载 Vue 和 React 组件
-- 观察宿主目标节点的移除，并在同一选择器重新出现后重新注入
-
-构建产物、userscript 元信息、安装行为和脚本管理器集成由 `vite-plugin-monkey`
-处理。Makoo 提供组件注入所需的运行时编排和 adapter 集成。
+| 你想做什么 | 阅读 |
+| --- | --- |
+| 创建并运行第一个脚本 | [快速开始](./getting-started.md) |
+| 理解 Runtime、任务和 Adapter | [核心概念](./concepts.md) |
+| 在目标元素上挂载组件 | [组件注入](./injection.md) |
+| 监听页面事件并控制开关 | [事件监听](./listeners.md) |
+| 处理节点替换、重置与销毁 | [生命周期与清理](./lifecycle.md) |
+| 查看开发任务、日志和快捷键 | [本地开发](./development.md) |
+| 生成可安装的 userscript | [构建与预览](./build.md) |
+| 排查脚本未运行或组件未出现 | [常见问题](./troubleshooting.md) |
+| 查询参数、返回值和类型 | [API 参考](../api/core.md) |
 
 ## 什么时候适合使用
 
-当 userscript 开始包含多个组件、任务或生命周期行为时，可以使用 Makoo 统一编排。
+当一个 userscript 有多个注入点、组件或事件监听，需要等待异步 DOM、处理宿主节点替换并释放资源时，Makoo 可以统一管理这些任务。只需在页面加载时改一次元素的小脚本，原生 DOM API 通常已经足够。
 
-典型场景包括：
+## 包的分工
 
-- 同一个页面上有多个注入点
-- 需要把 Vue 或 React 组件挂载到现有网站里
-- 不同页面根据 URL 规则启用不同模块
-- 宿主目标节点被移除并重新创建后需要重新注入
-
-如果只是一个非常小的脚本，只在页面加载后改一次元素，直接写原生 userscript 可能已经足够。
-Makoo 的价值会在生命周期、模块边界和长期维护开始变重要时体现出来。
-
-## 心智模型
-
-一个 Makoo 应用由几个小概念组成：
-
-| 概念 | 作用 |
+| 包 | 用在什么地方 |
 | --- | --- |
-| Task 声明 | 定义有哪些任务、挂载到哪里、什么时候运行 |
-| 注入模块 | 一个独立的注入功能或挂载单元 |
-| Makoo runtime | 声明任务、等待目标、挂载模块，并管理重新注入 |
-| Adapter | 把 Makoo 的运行时连接到 Vue 或 React 的挂载方式 |
-| Vite 插件 | 把 Makoo 配置接入 Vite 与 `vite-plugin-monkey` |
-
-`monkey.userscript.match` 决定脚本管理器在哪些页面加载 userscript；应用代码通过
-`createMakoo()`、`inject()` 和 `listen()` 编排要启动的任务，Makoo runtime 等待目标 DOM 并完成挂载。相关代码可以按项目习惯组织。
-
-## Makoo 提供什么
-
-- 使用 `inject()` 和 `listen()` 显式编排运行时
-- 用于组件挂载的运行时调度器
-- 宿主目标节点移除监听和 alive 重新注入
-- Vue 和 React 适配器
-- 面向开发和构建流程的 Vite 插件集成
-
-## 阅读路线
-
-如果你是第一次使用 Makoo，推荐按这个顺序阅读：
-
-1. [快速开始](./getting-started.md)：创建项目并定义第一个注入任务。
-2. [核心概念](./concepts.md)：理解 runtime、task、模块和 adapter。
-3. [配置](./configuration.md)：了解 Makoo、Vite 和 `vite-plugin-monkey` 如何协作。
-4. [HMR](./hmr.md)：了解开发更新与清理。
-5. [使用示例](./recipes.md)：直接套用常见模式。
-
-## 快速开始预览
-
-```bash
-pnpm dlx @makoojs/create-makoo
-```
-
-然后安装依赖并启动开发服务器：
-
-```bash
-pnpm install
-pnpm dev
-```
+| `@makoojs/core` | 浏览器入口：创建 Runtime、声明和管理任务 |
+| `@makoojs/vue` / `@makoojs/react` | 浏览器入口：注册所选框架的 Adapter |
+| `@makoojs/cli` | Vite 配置和 `dev`、`build`、`preview` 命令 |
+| `@makoojs/cli/monkey` | 浏览器代码：调用脚本管理器的 GM API |
+| `@makoojs/create-makoo` | 创建项目 |

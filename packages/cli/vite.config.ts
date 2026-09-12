@@ -3,13 +3,13 @@ import { defineConfig } from 'vite';
 import dts from 'vite-plugin-dts';
 
 export default defineConfig({
-	root: __dirname,
+	root: import.meta.dirname,
 	build: {
 		outDir: 'dist',
 		lib: {
 			entry: {
-				index: resolve(__dirname, 'src/index.ts'),
-				'monkey/index': resolve(__dirname, 'src/monkey/index.ts')
+				index: resolve(import.meta.dirname, 'src/index.ts'),
+				'monkey/index': resolve(import.meta.dirname, 'src/monkey/index.ts')
 			},
 			formats: ['es', 'cjs'],
 			fileName: (format, entryName) => `${entryName}.${format === 'es' ? 'js' : 'cjs'}`
@@ -33,7 +33,7 @@ export default defineConfig({
 			include: ['src/**/*.ts'],
 			rollupTypes: false,
 			outDir: 'dist',
-			tsconfigPath: resolve(__dirname, 'tsconfig.json')
+			tsconfigPath: resolve(import.meta.dirname, 'tsconfig.json')
 		})
 	]
 });

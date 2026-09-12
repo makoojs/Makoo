@@ -1,199 +1,70 @@
 # Getting Started
 
-This guide walks through creating a Makoo project, starting the dev server, and editing the
-first injection module. By the end, you will have a userscript project that mounts a Vue or
-React component into a matching page.
+Create a project, install its development script in your browser, and see the first component on a target page.
 
-## Create A Project
+## 1. Prepare your environment
 
-Run the scaffold command:
+- Node.js 20.19+ (20.x) or 22.12+, and pnpm.
+- Install and enable a browser script manager such as Tampermonkey or ScriptCat.
+- Choose a page for testing. This example uses `https://example.com/`.
 
-```bash
+For an existing Vite project, see [Manual Installation](./installation.md).
+
+## 2. Create a project
+
+```sh
 pnpm dlx @makoojs/create-makoo
 ```
 
-The scaffold will ask for the project name, userscript metadata, match URL, language
-variant, and framework. The match URL becomes the userscript `@match` rule, so use the page
-where you want to test the first injection.
+The prompts ask for a project name, script name, version, namespace, matching URLs, language, and framework. Use `makoo-project` as the project name, `https://example.com/*` as the match rule, and TypeScript with Vue or React.
 
-For example:
+Enter the generated directory. If you skipped dependency installation during creation, run `pnpm install` first:
 
-```txt
-Project name: makoo-project
-Userscript name: makoo-project
-Version: 0.0.1
-Namespace: npm/makoo
-Match URL(s): https://example.com/*
-Variant: TypeScript
-Framework: Vue
+```sh
+cd makoo-project
+pnpm install
+pnpm dev
 ```
 
-## Project Structure
+## 3. Install the development script
 
-A new Vue project usually looks like this:
+Open the local URL printed in the terminal and confirm installation in your script manager. Then visit `https://example.com/`. The template’s Hello World component should appear on the page.
 
-```txt
-.
-├─ assets
-│  ├─ makoo-icon.png
-│  └─ vue.svg
-├─ .gitignore
-├─ env.d.ts
-├─ package.json
-├─ tsconfig.json
-├─ tsconfig.app.json
-├─ tsconfig.node.json
-├─ vite.config.ts
-└─ src
-   ├─ main.ts
-   └─ injections
-      └─ hello-world
-         └─ App.vue
+The installation entry and the target page serve different purposes: one installs the script; the other runs your component. Keep `pnpm dev` running during development.
+
+If the component does not appear, check that the current URL matches `monkey.userscript.match` in `vite.config.ts`, then inspect the browser console. See [Troubleshooting](./troubleshooting.md) for the full checklist.
+
+## 4. Find the application entry
+
+The main template files are:
+
+```text
+vite.config.ts                 # Userscript metadata and build configuration
+src/main.ts                    # Create the Runtime and start tasks
+src/injections/hello-world/    # Vue or React component and styles
+assets/                        # Example assets
 ```
 
-A React project uses the same shape, with `App.tsx` and a module stylesheet:
+Edit the text in `src/injections/hello-world/App.vue` or `App.tsx`, then return to the target page to see the change.
 
-```txt
-.
-├─ assets
-│  ├─ makoo-icon.png
-│  └─ react.svg
-├─ .gitignore
-├─ env.d.ts
-├─ package.json
-├─ tsconfig.json
-├─ tsconfig.app.json
-├─ tsconfig.node.json
-├─ vite.config.ts
-└─ src
-   ├─ main.ts
-   └─ injections
-      └─ hello-world
-         ├─ App.tsx
-         └─ style.css
-```
+## 5. Understand the first task
 
-The generated template uses `createMakoo()` and `inject()` to declare tasks and start the runtime.
-The example keeps its feature code under `src/injections/`.
-
-## Configure The Userscript
-
-The generated `vite.config.ts` contains the Makoo plugin:
-
-```ts
-import { defineConfig } from 'vite';
-import { cdn, makoo } from '@makoojs/cli';
-import vue from '@vitejs/plugin-vue';
-
-export default defineConfig({
-	plugins: [
-		vue(),
-		makoo({
-			entry: './src/main.ts',
-			app: {
-				name: 'makoo-project',
-				version: '0.0.1'
-			},
-			monkey: {
-				userscript: {
-					icon: 'https://vitejs.dev/logo.svg',
-					namespace: 'npm/makoo',
-					match: ['https://example.com/*']
-				},
-				build: {
-					externalGlobals: {
-						vue: cdn.jsdelivr('Vue', 'dist/vue.global.min.js')
-					}
-				}
-			}
-		})
-	]
-});
-```
-
-The `app` field provides Makoo-level project metadata. Makoo applies defaults and normalizes
-the supported `monkey` options before passing them to `vite-plugin-monkey`, which generates
-metadata such as `@name`, `@namespace`, and `@match`.
-
-During development, choose a `match` pattern that includes the page you are testing. If the
-userscript manager does not run the script on that page, Makoo cannot register any
-injection modules there.
-
-## Define The First Injection
-
-The generated application code registers a single `hello-world` task:
+The Vue template uses this combination:
 
 ```ts
 import { createMakoo, inject } from '@makoojs/core';
 import { createVueAdapter } from '@makoojs/vue';
 import App from './injections/hello-world/App.vue';
 
-const tasks = createMakoo({ adapters: [createVueAdapter()] }).start([
-	inject({ id: 'hello-world', injectAt: 'body', artifact: App })
-]);
-
-if (import.meta.hot) {
-	import.meta.hot.dispose(() => tasks.destroyAll());
-}
-```
-
-This task declaration contains the following information:
-
-| Field | Meaning |
-| --- | --- |
-| `id` | Task id; the example value is `hello-world` |
-| `injectAt` | CSS selector for the target node |
-| `artifact` | Imported component |
-
-When the target node appears, Makoo creates a mount point inside it and the adapter mounts the
-component into that mount point. In the scaffolded project, `injectAt: 'body'` makes the demo
-easy to see on almost any matching page.
-
-## Change The Target
-
-To mount into a more specific part of a page, change `injectAt`:
-
-```ts
-inject({ id: 'toolbar', injectAt: '#toolbar', artifact: Toolbar });
-```
-
-In this example, the matching component lives here:
-
-```txt
-src/injections
-└─ toolbar
-   └─ App.vue
-```
-
-For React, import `createReactAdapter()` and the React component:
-
-```ts
-import { createMakoo, inject } from '@makoojs/core';
-import { createReactAdapter } from '@makoojs/react';
-import Toolbar from './injections/toolbar/App.tsx';
-
-createMakoo({ adapters: [createReactAdapter()] }).start([
-	inject({ id: 'toolbar', injectAt: '#toolbar', artifact: Toolbar })
+createMakoo({ adapters: [createVueAdapter()] }).start([
+  inject({ id: 'hello-world', injectAt: 'body', artifact: App })
 ]);
 ```
 
-## Test In The Browser
+`inject()` declares a task; `start()` registers and runs it. `injectAt: 'body'` selects the host element and `artifact` is the component to mount. React projects use `createReactAdapter()` and `App.tsx`; see [Component Injection](./injection.md) for both examples.
 
-Start the dev server:
+## Next steps
 
-```bash
-pnpm dev
-```
-
-Open the dev userscript URL printed by the command, install it in your userscript manager,
-and then open a page that matches your `monkey.userscript.match` rule. The generated
-`hello-world` component should appear on the page.
-
-Changing the userscript `match` rule may require reinstalling or refreshing the development
-userscript in your script manager.
-
-## Next Steps
-
-Continue with [Core Concepts](./concepts.md) to understand how the runtime, tasks, modules,
-and adapters fit together. The Core API documents task options such as `alive`, `timeout`,
-`scope`, listeners, and lifecycle hooks.
+- [Core Concepts](./concepts.md): distinguish configuration, declarations, Runtime, and components.
+- [Local Development](./development.md): add `makooDev()` and use task inspection and terminal actions.
+- [Build and Preview](./build.md): produce and inspect a release userscript.

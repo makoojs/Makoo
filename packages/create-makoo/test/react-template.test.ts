@@ -22,6 +22,7 @@ function createInitData(variant: 'ts' | 'js', dependencyMode: 'npm' | 'local' = 
 }
 
 function readPackageJson(pathname: string): {
+	scripts: Record<string, string>;
 	dependencies: Record<string, string>;
 	devDependencies: Record<string, string>;
 } {
@@ -61,9 +62,20 @@ describe('generateReactTemplate', () => {
 
 			const packageJson = readPackageJson(packageJsonPath);
 
-			expect(packageJson.devDependencies['@vitejs/plugin-react']).toBeDefined();
-			expect(packageJson.devDependencies.esbuild).toBe('^0.27.0');
-			expect(packageJson.devDependencies['@types/react']).toBe('^19.2.15');
+			expect(packageJson.scripts).toEqual({
+				dev: 'makoo dev',
+				build: 'tsc -b && makoo build',
+				preview: 'makoo preview'
+			});
+			expect(packageJson.devDependencies.esbuild).toBe('^0.28.2');
+			expect(packageJson.devDependencies.vite).toBe('^8.2.2');
+			expect(packageJson.devDependencies['@vitejs/plugin-react']).toBe('^6.1.1');
+			expect(packageJson.devDependencies.typescript).toBe('^7.0.2');
+			expect(packageJson.devDependencies['@types/node']).toBe('^26.4.1');
+			expect(packageJson.devDependencies['@types/react']).toBe('^19.2.18');
+			expect(packageJson.devDependencies['@types/react-dom']).toBe('^19.2.7');
+			expect(packageJson.dependencies.react).toBe('^19.2.8');
+			expect(packageJson.dependencies['react-dom']).toBe('^19.2.8');
 			expect(packageJson.dependencies['@makoojs/core']).toBe(recommendedMakooVersions.core);
 			expect(packageJson.dependencies['@makoojs/react']).toBe(recommendedMakooVersions.react);
 			expect(packageJson.devDependencies['@makoojs/cli']).toBe(recommendedMakooVersions.cli);
@@ -81,7 +93,7 @@ describe('generateReactTemplate', () => {
 			expect(readFileSync(appPath, 'utf-8')).toContain('../../../assets/react.svg');
 			expect(readFileSync(mainPath, 'utf-8')).toContain('createReactAdapter()');
 			expect(readFileSync(mainPath, 'utf-8')).toContain("injectAt: 'body'");
-			expect(readFileSync(mainPath, 'utf-8')).toContain('tasks.destroyAll()');
+			expect(readFileSync(mainPath, 'utf-8')).not.toContain('import.meta.hot');
 			expect(existsSync(path.join(projectRoot, 'injections', 'manifest.ts'))).toBe(false);
 			expect(readFileSync(appPath, 'utf-8')).toContain('count is {count}');
 			expect(readFileSync(stylePath, 'utf-8')).toContain('.logo-react');
@@ -95,6 +107,7 @@ describe('generateReactTemplate', () => {
 			generateReactTemplate(createInitData('js'));
 
 			const projectRoot = path.join(root, 'demo-react-app');
+			const packageJson = readPackageJson(path.join(projectRoot, 'package.json'));
 			expect(existsSync(path.join(projectRoot, 'tsconfig.json'))).toBe(false);
 			expect(existsSync(path.join(projectRoot, 'tsconfig.app.json'))).toBe(false);
 			expect(existsSync(path.join(projectRoot, 'assets', 'react.svg'))).toBe(true);
@@ -103,6 +116,11 @@ describe('generateReactTemplate', () => {
 				existsSync(path.join(projectRoot, 'src', 'injections', 'hello-world', 'App.jsx'))
 			).toBe(true);
 			expect(existsSync(path.join(projectRoot, '.gitignore'))).toBe(true);
+			expect(packageJson.scripts).toEqual({
+				dev: 'makoo dev',
+				build: 'makoo build',
+				preview: 'makoo preview'
+			});
 		});
 	});
 

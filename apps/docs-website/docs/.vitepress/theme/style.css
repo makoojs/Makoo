@@ -3,155 +3,133 @@
 @import './home.css';
 
 :root {
-	/* Signal Cyan — neutral paper + electric cyan signal (from Makoo logo) */
-	--makoo-bg: oklch(97.4% 0.006 250);
-	--makoo-surface: oklch(100% 0 0);
-	--makoo-surface-subtle: oklch(96% 0.01 250);
-	--makoo-surface-hover: oklch(93.2% 0.014 245);
-	--makoo-fg: oklch(22% 0.045 265);
-	--makoo-muted: oklch(45% 0.028 255);
-	--makoo-border: oklch(88% 0.012 250);
-	--makoo-border-strong: oklch(72% 0.045 230);
-	--makoo-accent: oklch(54% 0.14 200);
-	--makoo-accent-ink: oklch(42% 0.12 205);
-	--makoo-accent-on-dark: oklch(84% 0.13 195);
-	--makoo-accent-soft: oklch(94.2% 0.042 200);
-	--makoo-accent-glow: oklch(72% 0.12 200 / 0.16);
-	--makoo-spark: oklch(62% 0.2 350);
-	--makoo-spark-soft: oklch(94% 0.04 350);
-	--makoo-success: oklch(48% 0.12 155);
-	--makoo-success-soft: oklch(94% 0.035 155);
-	--makoo-danger: oklch(50% 0.16 25);
-	--makoo-danger-soft: oklch(95% 0.035 25);
-	--makoo-dark: oklch(20% 0.045 265);
-	--makoo-dark-surface: oklch(25% 0.04 262);
-	--makoo-dark-raised: oklch(30% 0.036 258);
-	--makoo-dark-fg: oklch(96.5% 0.01 210);
-	--makoo-dark-muted: oklch(74% 0.035 230);
-	--makoo-dark-border: oklch(100% 0 0 / 0.1);
-	--makoo-dark-border-strong: oklch(100% 0 0 / 0.18);
-	--makoo-shadow-soft: oklch(25% 0.04 265 / 0.08);
-	--makoo-shadow-medium: oklch(20% 0.05 265 / 0.16);
-	--makoo-shadow-strong: oklch(12% 0.05 265 / 0.32);
-	--font-display: 'Avenir Next', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-	--font-body: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-	--font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+	color-scheme: dark;
+	--makoo-bg: #141414;
+	--makoo-surface: #1C1C1C;
+	--makoo-raised: #252525;
+	--makoo-fg: #EEEEEE;
+	--makoo-muted: #A3A3A3;
+	--makoo-faint: #8A8A8A;
+	--makoo-border: oklch(100% 0 0 / 0.08);
+	--makoo-border-strong: oklch(100% 0 0 / 0.16);
+	--makoo-accent: #EF542F;
+	--makoo-accent-bright: #FF8A65;
+	--makoo-accent-soft: rgb(239 84 47 / 0.12);
+	--makoo-success: oklch(74% 0.14 160);
+	--makoo-success-soft: oklch(74% 0.14 160 / 0.14);
+	--makoo-danger: oklch(72% 0.16 25);
+	--makoo-danger-soft: oklch(72% 0.16 25 / 0.14);
+	--makoo-focus: var(--makoo-accent-bright);
+	--font-display: 'Inter Variable', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+	--font-body: 'Inter Variable', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+	--font-mono: 'Geist Mono', 'SFMono-Regular', Consolas, monospace;
+	--makoo-nav-inset-x: 16px;
+	--makoo-nav-inset-y: 12px;
+	--makoo-nav-bar-height: 56px;
+	--vp-nav-height: calc(var(--makoo-nav-inset-y) + var(--makoo-nav-bar-height));
+	--vp-sidebar-width: 260px;
 	--vp-c-bg: var(--makoo-bg);
 	--vp-c-bg-alt: var(--makoo-surface);
-	--vp-c-bg-elv: var(--makoo-surface);
-	--vp-c-bg-soft: var(--makoo-surface-subtle);
+	--vp-c-bg-elv: var(--makoo-raised);
+	--vp-c-bg-soft: var(--makoo-surface);
 	--vp-c-text-1: var(--makoo-fg);
 	--vp-c-text-2: var(--makoo-muted);
-	--vp-c-text-3: color-mix(in oklch, var(--makoo-muted) 72%, transparent);
+	--vp-c-text-3: var(--makoo-faint);
 	--vp-c-divider: var(--makoo-border);
 	--vp-c-border: var(--makoo-border-strong);
 	--vp-c-gutter: var(--makoo-border);
-	--vp-c-brand-1: var(--makoo-accent);
+	--vp-c-brand-1: var(--makoo-accent-bright);
 	--vp-c-brand-2: var(--makoo-accent);
-	--vp-c-brand-3: var(--makoo-fg);
+	--vp-c-brand-3: var(--makoo-accent);
 	--vp-c-brand-soft: var(--makoo-accent-soft);
-	--vp-code-color: var(--makoo-accent-ink);
-	--vp-code-bg: var(--makoo-accent-soft);
-	--vp-code-block-bg: var(--makoo-dark);
-	--vp-code-copy-code-bg: var(--makoo-dark-raised);
+	--vp-code-color: var(--makoo-fg);
+	--vp-code-bg: var(--makoo-raised);
+	--vp-code-block-bg: var(--makoo-surface);
+	--vp-code-copy-code-bg: var(--makoo-raised);
+	--vp-code-copy-code-hover-bg: var(--makoo-raised);
 	--vp-font-family-base: var(--font-body);
 	--vp-font-family-mono: var(--font-mono);
-	--vp-nav-height: 70px;
-	--vp-sidebar-width: 250px;
+	--vp-local-search-bg: var(--makoo-surface);
+	--vp-local-search-result-bg: var(--makoo-bg);
+	--vp-local-search-result-border: var(--makoo-border);
+	--vp-local-search-result-selected-border: var(--makoo-accent);
 }
 
-.dark {
-	--makoo-bg: oklch(15.5% 0.035 265);
-	--makoo-surface: oklch(19.5% 0.038 262);
-	--makoo-surface-subtle: oklch(23% 0.04 260);
-	--makoo-surface-hover: oklch(27.5% 0.042 258);
-	--makoo-fg: oklch(96.5% 0.01 210);
-	--makoo-muted: oklch(74% 0.035 230);
-	--makoo-border: oklch(100% 0 0 / 0.1);
-	--makoo-border-strong: oklch(100% 0 0 / 0.2);
-	--makoo-accent: oklch(80% 0.13 195);
-	--makoo-accent-ink: oklch(85% 0.11 195);
-	--makoo-accent-soft: oklch(80% 0.13 195 / 0.14);
-	--makoo-accent-glow: oklch(80% 0.13 195 / 0.18);
-	--makoo-spark: oklch(72% 0.16 350);
-	--makoo-spark-soft: oklch(72% 0.16 350 / 0.14);
-	--makoo-success: oklch(74% 0.11 155);
-	--makoo-success-soft: oklch(74% 0.11 155 / 0.14);
-	--makoo-danger: oklch(74% 0.12 25);
-	--makoo-danger-soft: oklch(74% 0.12 25 / 0.14);
-	--makoo-dark: oklch(11.5% 0.03 265);
-	--makoo-dark-surface: oklch(16.5% 0.032 262);
-	--makoo-dark-raised: oklch(22% 0.034 258);
-	--makoo-dark-border-strong: oklch(100% 0 0 / 0.16);
-	--makoo-shadow-soft: oklch(0% 0 0 / 0.28);
-	--makoo-shadow-medium: oklch(0% 0 0 / 0.42);
-	--makoo-shadow-strong: oklch(0% 0 0 / 0.55);
-	--vp-c-bg: var(--makoo-bg);
-	--vp-c-bg-alt: var(--makoo-surface);
-	--vp-c-bg-elv: var(--makoo-surface);
-	--vp-c-bg-soft: var(--makoo-surface-subtle);
-	--vp-c-text-1: var(--makoo-fg);
-	--vp-c-text-2: var(--makoo-muted);
-	--vp-c-divider: var(--makoo-border);
-	--vp-c-border: var(--makoo-border-strong);
+html, body { background: var(--makoo-bg); color: var(--makoo-fg); }
+body { font-family: var(--font-body); font-size: 15px; line-height: 1.75; }
+::selection { background: var(--makoo-accent-soft); color: var(--makoo-fg); }
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible { outline: 2px solid var(--makoo-focus); outline-offset: 2px; }
+.VPNav .VPNavBar {
+	width: calc(100% - var(--makoo-nav-inset-x) * 2);
+	height: var(--makoo-nav-bar-height);
+	margin: var(--makoo-nav-inset-y) auto var(--makoo-nav-inset-y);
+	border: 1px solid var(--makoo-border-strong);
+	border-radius: 999px;
+	background: color-mix(in oklch, var(--makoo-surface) 78%, transparent);
+	box-shadow: 0 8px 28px oklch(0% 0 0 / .28), 0 10px 20px rgb(239 84 47 / 0.18);
+	backdrop-filter: blur(18px);
+	-webkit-backdrop-filter: blur(18px);
 }
-
-html { scroll-padding-top: calc(var(--vp-nav-height) + 24px); }
-body { overflow-x: hidden; background: var(--vp-c-bg); color: var(--vp-c-text-1); font-family: var(--font-body); -webkit-font-smoothing: antialiased; }
-:where(a, button, input, select, textarea, [role='button']):focus-visible { outline: 3px solid var(--makoo-accent); outline-offset: 3px; }
-:where(a, button, input, select, textarea) { transition: background-color 150ms cubic-bezier(0.2, 0, 0, 1), border-color 150ms cubic-bezier(0.2, 0, 0, 1), color 150ms cubic-bezier(0.2, 0, 0, 1), box-shadow 150ms cubic-bezier(0.2, 0, 0, 1); }
-
-.VPNavBar { height: var(--vp-nav-height); border-bottom: 1px solid color-mix(in oklch, var(--makoo-border) 84%, transparent); background: color-mix(in oklch, var(--makoo-bg) 92%, transparent); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
-.VPNavBar.has-sidebar .content-body { background: transparent; }
-.VPNavBarTitle .title { min-height: 44px; font-family: var(--font-display); font-size: 18px; font-weight: 600; letter-spacing: 0.01em; }
-.VPNavBarTitle .logo { width: 34px; height: 34px; margin-right: 10px; border-radius: 9px; }
-.VPNavBarMenuLink, .VPNavBarMenuGroup .button { color: var(--makoo-muted); font-size: 14px; font-weight: 550; letter-spacing: 0.02em; }
-.VPNavBarMenuLink:hover, .VPNavBarMenuLink.active, .VPNavBarMenuGroup .button:hover { color: var(--makoo-fg); }
-.VPNavBarMenuLink.active { box-shadow: inset 0 -2px var(--makoo-accent); }
-.VPNavBarMenuLink, .VPNavBarMenuGroup .button, .VPNavBarTranslations, .VPSocialLink { min-width: 44px; min-height: 44px; }
-.VPNavBarAppearance,
-.VPNavBarTranslations,
-.VPNavBarSocialLinks { display: flex; align-items: center; justify-content: center; height: var(--vp-nav-height); }
-.VPNavBarAppearance { margin-right: 8px; }
-.VPNavBarAppearance .VPSwitchAppearance {
-	box-sizing: border-box;
-	width: 40px !important;
-	height: 22px !important;
-	min-width: 40px !important;
-	min-height: 22px !important;
-	padding: 0 !important;
-	border-radius: 11px !important;
-	flex-shrink: 0;
-	overflow: hidden;
-}
-.VPNavBarAppearance .VPSwitchAppearance:focus-visible {
-	outline: 2px solid var(--makoo-accent);
-	outline-offset: 3px;
-}
-.VPNavBarAppearance .VPSwitchAppearance .check {
-	top: 1px;
-	left: 1px;
-	width: 18px;
-	height: 18px;
-	border-radius: 50%;
-}
-.VPNavBarMenuLink.vp-external-link-icon::after { display: none; }
-.VPNavBarSearch .DocSearch-Button, .VPNavBarSearch .VPLocalSearchBox button { min-height: 40px; border: 1px solid var(--makoo-border); border-radius: 8px; background: var(--makoo-surface); color: var(--makoo-muted); }
-.VPNavBarSearch .DocSearch-Button:hover, .VPNavBarSearch .VPLocalSearchBox button:hover { border-color: var(--makoo-border-strong); background: var(--makoo-surface-hover); color: var(--makoo-fg); }
-.VPLocalSearchBox .shell { border-color: var(--makoo-border); background: var(--makoo-surface); }
+.VPNav .VPNavBar.screen-open,
+.VPNav .VPNavBar:not(.home),
+.VPNav .VPNavBar.home.top { background: color-mix(in oklch, var(--makoo-surface) 78%, transparent); border-bottom-color: var(--makoo-border-strong); }
+.VPNav .VPNavBar .wrapper { height: var(--makoo-nav-bar-height); padding: 0 10px 0 18px; }
+.VPNav .VPNavBar .container,
+.VPNav .VPNavBar .content-body,
+.VPNav .VPNavBar .container > .title,
+.VPNavBarTitle .title { height: var(--makoo-nav-bar-height); }
+.VPNav .VPNavBar .content-body, .VPNav .VPNavBar .title, .VPNav .VPNavBar:not(.home.top) .content-body { background: transparent; }
+.VPNav .VPNavBar .divider { display: none; }
+.VPNavBarTitle .title { font: 600 21px/1 var(--font-display); border-bottom: 0; }
+.VPNavBarTitle.has-sidebar .title { border-bottom-color: transparent; }
+.VPNavBarTitle .logo { width: 32px; height: 32px; margin-right: 10px; border-radius: 4px; }
+.VPNavBar .VPNavBarMenuLink { color: var(--makoo-muted); font-size: 14px; font-weight: 500; }
+.VPNavBar .VPNavBarMenuLink:hover { color: var(--makoo-fg); }
+.VPNavBar .VPNavBarMenuLink.active { color: var(--makoo-fg); box-shadow: inset 0 -2px var(--makoo-accent); }
+.VPNavBar .VPSocialLink, .VPNavBarTranslations .button { min-width: 40px; min-height: 40px; }
+.VPNavBarSearch .DocSearch-Button { min-height: 32px; border: 1px solid var(--makoo-border-strong); border-radius: 999px; background: var(--makoo-surface); color: var(--makoo-muted); }
+.VPNavBarSearch .DocSearch-Button:hover { border-color: var(--makoo-border-strong); background: var(--makoo-surface); color: var(--makoo-fg); }
+.VPLocalSearchBox .shell { border: 1px solid var(--makoo-border); background: var(--makoo-surface); box-shadow: none; }
 .VPLocalSearchBox .result { border-radius: 8px; }
-.VPLocalSearchBox .result.selected { background: var(--makoo-surface-hover); }
-.VPLocalNav { background: color-mix(in oklch, var(--makoo-bg) 92%, transparent); border-bottom: 1px solid var(--makoo-border); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
-.VPLocalNav .menu, .VPLocalNav .outline-link { color: var(--makoo-fg); }
-
-@media (min-width: 960px) {
-	.VPNavBar .container { max-width: 1360px; }
-	.VPNavBarMenu { gap: 2px; }
-	.VPNavBarMenuLink { padding: 0 12px; }
-	.VPNavBarSearch { margin-left: auto; }
-	.VPNavBarSearch .DocSearch-Button, .VPNavBarSearch .VPLocalSearchBox { width: min(100%, 240px); }
+.VPLocalSearchBox .result.selected { background: var(--makoo-accent-soft); }
+.VPLocalNav { background: var(--makoo-bg); border-bottom: 1px solid var(--makoo-border); }
+.VPLocalNav .menu, .VPLocalNav .outline-link { min-height: 40px; color: var(--makoo-muted); }
+.VPNavScreen { background: var(--makoo-bg); }
+.Layout header.VPNav { position: relative; }
+.nav-docs-label { display: inline-flex; align-items: center; gap: 12px; margin-left: 12px; color: var(--makoo-fg); font-size: 18px; font-weight: 500; }
+.nav-brand-divider { color: var(--makoo-faint); font-weight: 400; }
+@media (min-width: 768px) {
+	:root { --makoo-nav-inset-x: 32px; --makoo-nav-inset-y: 16px; --makoo-nav-bar-height: 58px; }
+	.VPNav .VPNavBar .wrapper, .VPNav .VPNavBar.has-sidebar .wrapper { padding: 0 16px 0 22px; }
+	.VPNav .VPNavBar .container { position: relative; max-width: none; }
+	.VPNav .VPNavBar .container > .title { position: static; padding: 0; width: auto; }
+	.VPNav .VPNavBar .container > .content { position: static; padding: 0; }
+	.VPNav .VPNavBar .content-body, .VPNav .VPNavBar:not(.home.top) .content-body { position: static; }
+	.VPNavBarSearch .DocSearch-Button { justify-content: space-between; height: 32px; min-height: 32px; padding: 0 10px 0 12px; }
+	.VPNavBarSearch .DocSearch-Button-Placeholder { font-size: 13px; font-weight: 400; }
+	.VPNavBarSearch .DocSearch-Search-Icon { width: 16px; height: 16px; margin-right: 8px; }
+	.VPNavBarSearch .DocSearch-Button-Keys { gap: 4px; }
+	.VPNavBarSearch .DocSearch-Button .DocSearch-Button-Key { margin: 0; padding: 0 5px; min-width: 20px; height: 20px; line-height: 18px; border: 1px solid var(--makoo-border-strong); border-radius: 5px; background: var(--makoo-bg); text-align: center; }
+	.VPNavBar .VPNavBarMenu { gap: 2px; }
+	.VPNavBar .VPNavBarMenuLink { padding: 0 12px; }
 }
-
+@media (min-width: 960px) {
+	.Layout header.VPNav { position: relative; }
+	#VPContent { padding-top: 0; }
+	.Layout .VPLocalNav { top: 0; }
+	.VPNav .VPNavBar .VPNavBarSearch { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 350px; margin: 0; padding: 0; }
+	.VPNavBarSearch #local-search { width: 100%; }
+}
+@media (min-width: 768px) and (max-width: 959px) {
+	.VPNav .VPNavBar .VPNavBarSearch { flex-grow: 1; padding: 0 20px; }
+	.VPNavBarSearch #local-search { width: 100%; }
+	.VPNavBarSearch .DocSearch-Button-Keys { display: none; }
+}
+@media (max-width: 767px) {
+	.VPNavBarTitle .title { font-size: 18px; }
+	.nav-docs-label { gap: 8px; margin-left: 8px; font-size: 16px; }
+	.VPNavBarSearch .DocSearch-Button { width: 40px; height: 40px; min-height: 40px; border-color: transparent; background: transparent; }
+}
 @media (prefers-reduced-motion: reduce) {
-	*, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+	*, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0s !important; }
 }

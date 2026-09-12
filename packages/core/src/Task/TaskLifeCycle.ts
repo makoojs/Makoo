@@ -261,13 +261,10 @@ export function destroy(runtime: MakooRuntimeState, taskId: string): void {
 }
 
 export function destroyAll(runtime: MakooRuntimeState): void {
-	for (const id of runtime.taskContext.keys()) {
-		const context: Task | undefined = runtime.taskContext.get(id);
-		if (context && isArtifactTask(context) && context.alive) {
-			disableAlive(runtime, id);
-		}
+	// TODO perpare to remove public context api of destroyAll
+	for (const id of [...runtime.taskContext.keys()]) {
+		destroy(runtime, id);
 	}
-	runtime.taskContext.destroyAll();
 }
 
 export function reset(runtime: MakooRuntimeState, taskId: string): void {
