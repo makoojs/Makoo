@@ -113,6 +113,7 @@ body { font-family: var(--font-body); font-size: 15px; line-height: 1.75; }
 	.VPNavBar .VPNavBarMenu { gap: 2px; }
 	.VPNavBar .VPNavBarMenuLink { padding: 0 12px; }
 	.VPNav .VPNavBar .VPNavBarTranslations { display: flex !important; align-items: center; }
+	.VPNav .VPNavBar .VPNavBarSocialLinks { display: flex !important; align-items: center; }
 	.VPNav .VPNavBar .VPNavBarExtra { display: none !important; }
 }
 .VPNavBarTranslations .VPMenu {

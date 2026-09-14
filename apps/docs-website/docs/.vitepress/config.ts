@@ -151,8 +151,7 @@ export default defineConfig({
 				},
 				langMenuLabel: 'Change language',
 				returnToTopLabel: 'Return to top',
-				sidebarMenuLabel: 'Menu',
-				darkModeSwitchLabel: 'Theme'
+				sidebarMenuLabel: 'Menu'
 			}
 		},
 		zh: {
@@ -173,7 +172,6 @@ export default defineConfig({
 				langMenuLabel: '切换语言',
 				returnToTopLabel: '返回顶部',
 				sidebarMenuLabel: '菜单',
-				darkModeSwitchLabel: '主题',
 				outline: {
 					label: '本页目录'
 				},
