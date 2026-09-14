@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useRoute } from 'vitepress';
+import { useData, useRoute } from 'vitepress';
+import { isApiSitePath, isChineseLocale, isGuideSitePath, normalizeSitePath } from '../locale';
 
+const { lang, localeIndex, site } = useData();
 const route = useRoute();
+const isChinese = computed(() => isChineseLocale(localeIndex.value, lang.value));
 const section = computed(() => {
-	const parts = route.path.split('/').filter(Boolean);
-	const key = parts[0] === 'zh' ? parts[1] : parts[0];
-	if (key === 'docs') return 'Docs';
-	if (key === 'api') return 'API';
+	const path = normalizeSitePath(route.path, site.value.base);
+	if (isGuideSitePath(path)) return isChinese.value ? '文档' : 'Docs';
+	if (isApiSitePath(path)) return 'API';
 	return null;
 });
 </script>

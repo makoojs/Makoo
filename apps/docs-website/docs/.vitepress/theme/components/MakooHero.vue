@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue';
 import MakooHomeContent from './MakooHomeContent.vue';
-import { useRoute, withBase } from 'vitepress';
+import { useData, withBase } from 'vitepress';
+import { isChineseLocale } from '../locale';
 
 type Locale = 'en' | 'zh';
 type CopyState = 'idle' | 'loading' | 'success' | 'error';
 
-const route = useRoute();
-const locale = computed<Locale>(() => (route.path.startsWith('/zh/') ? 'zh' : 'en'));
+const { lang, localeIndex } = useData();
+const locale = computed<Locale>(() => (isChineseLocale(localeIndex.value, lang.value) ? 'zh' : 'en'));
 const command = 'pnpm dlx @makoojs/create-makoo';
 const copyState = ref<CopyState>('idle');
 let copyResetTimer: number | undefined;

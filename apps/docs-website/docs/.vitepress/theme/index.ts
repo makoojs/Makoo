@@ -4,6 +4,7 @@ import { h } from 'vue';
 import MakooBreadcrumb from './components/MakooBreadcrumb.vue';
 import MakooHero from './components/MakooHero.vue';
 import MakooNavSectionLabel from './components/MakooNavSectionLabel.vue';
+import { normalizeSitePath } from './locale';
 import '@fontsource-variable/inter';
 import '@fontsource/geist-mono/400.css';
 import '@fontsource/geist-mono/500.css';
@@ -16,18 +17,21 @@ export default {
 		'doc-before': () => h(MakooBreadcrumb),
 		'nav-bar-title-after': () => h(MakooNavSectionLabel)
 	}),
-	enhanceApp({ app }) {
+	enhanceApp({ app, siteData }) {
 		app.component('MakooHero', MakooHero);
 		if (typeof window === 'undefined') return;
-		const hasRedirected = window.sessionStorage.getItem('makoo-locale-redirected') === 'true';
-		const isRootPath = window.location.pathname === '/';
-		const usesChinese = window.navigator.languages?.some((lang) =>
-			lang.toLowerCase().startsWith('zh')
-		) ?? window.navigator.language.toLowerCase().startsWith('zh');
 
-		if (!hasRedirected && isRootPath && usesChinese) {
+		const base = siteData.value.base || '/';
+		const sitePath = normalizeSitePath(window.location.pathname, base);
+		const hasRedirected = window.sessionStorage.getItem('makoo-locale-redirected') === 'true';
+		const usesChinese =
+			window.navigator.languages?.some((lang) => lang.toLowerCase().startsWith('zh')) ??
+			window.navigator.language.toLowerCase().startsWith('zh');
+
+		if (!hasRedirected && sitePath === '/' && usesChinese) {
 			window.sessionStorage.setItem('makoo-locale-redirected', 'true');
-			window.location.replace('/zh/');
+			const baseHref = `${base.replace(/\/+$/, '')}/`;
+			window.location.replace(`${baseHref}zh/`);
 		}
 	}
 } satisfies Theme;

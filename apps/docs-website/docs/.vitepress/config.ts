@@ -137,6 +137,7 @@ export default defineConfig({
 		root: {
 			label: 'English',
 			lang: 'en-US',
+			link: '/',
 			title: 'Makoo',
 			description: 'A userscript development framework for component-driven injection apps.',
 			themeConfig: {
@@ -147,7 +148,10 @@ export default defineConfig({
 				sidebar: {
 					'/docs/': enGuideSidebar,
 					'/api/': enApiSidebar
-				}
+				},
+				langMenuLabel: 'Change language',
+				returnToTopLabel: 'Return to top',
+				sidebarMenuLabel: 'Menu'
 			}
 		},
 		zh: {
@@ -164,6 +168,16 @@ export default defineConfig({
 				sidebar: {
 					'/zh/docs/': zhGuideSidebar,
 					'/zh/api/': zhApiSidebar
+				},
+				langMenuLabel: '切换语言',
+				returnToTopLabel: '返回顶部',
+				sidebarMenuLabel: '菜单',
+				outline: {
+					label: '本页目录'
+				},
+				docFooter: {
+					prev: '上一篇',
+					next: '下一篇'
 				}
 			}
 		}
@@ -178,7 +192,28 @@ export default defineConfig({
 		logo: { src: '/makoo-icon.svg', alt: 'Makoo' },
 		siteTitle: 'Makoo',
 		search: {
-			provider: 'local'
+			provider: 'local',
+			options: {
+				locales: {
+					zh: {
+						translations: {
+							button: {
+								buttonText: '搜索文档',
+								buttonAriaLabel: '搜索文档'
+							},
+							modal: {
+								noResultsText: '无法找到相关结果',
+								resetButtonTitle: '清除查询条件',
+								footer: {
+									selectText: '选择',
+									navigateText: '切换',
+									closeText: '关闭'
+								}
+							}
+						}
+					}
+				}
+			}
 		},
 		socialLinks: [{ icon: 'github', link: 'https://github.com/makoojs/Makoo' }]
 	},
