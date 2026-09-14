@@ -112,6 +112,15 @@ body { font-family: var(--font-body); font-size: 15px; line-height: 1.75; }
 	.VPNavBarSearch .DocSearch-Button .DocSearch-Button-Key { margin: 0; padding: 0 5px; min-width: 20px; height: 20px; line-height: 18px; border: 1px solid var(--makoo-border-strong); border-radius: 5px; background: var(--makoo-bg); text-align: center; }
 	.VPNavBar .VPNavBarMenu { gap: 2px; }
 	.VPNavBar .VPNavBarMenuLink { padding: 0 12px; }
+	.VPNav .VPNavBar .VPNavBarTranslations { display: flex !important; align-items: center; }
+	.VPNav .VPNavBar .VPNavBarExtra { display: none !important; }
+}
+.VPNavBarTranslations .VPMenu {
+	background: var(--makoo-surface);
+	border: 1px solid var(--makoo-border-strong);
+	border-radius: 12px;
+	box-shadow: 0 12px 32px oklch(0% 0 0 / 0.4);
+	z-index: 100;
 }
 @media (min-width: 960px) {
 	.Layout header.VPNav { position: relative; }

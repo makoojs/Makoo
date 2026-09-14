@@ -2,9 +2,13 @@
 import { computed } from 'vue';
 import { useData, useRoute } from 'vitepress';
 
-const { page } = useData();
+const { page, lang, localeIndex } = useData();
 const route = useRoute();
-const isChinese = computed(() => route.path.startsWith('/zh/'));
+const isChinese = computed(() => {
+	if (localeIndex.value === 'zh' || lang.value?.toLowerCase().startsWith('zh')) return true;
+	const p = route.path;
+	return p.startsWith('/zh/') || p === '/zh' || p.includes('/zh/');
+});
 const section = computed(() => route.path.includes('/api/') ? 'API' : (isChinese.value ? '文档' : 'Docs'));
 </script>
 

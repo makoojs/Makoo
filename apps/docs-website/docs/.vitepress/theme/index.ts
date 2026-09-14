@@ -16,18 +16,37 @@ export default {
 		'doc-before': () => h(MakooBreadcrumb),
 		'nav-bar-title-after': () => h(MakooNavSectionLabel)
 	}),
-	enhanceApp({ app }) {
+	enhanceApp({ app, router }) {
 		app.component('MakooHero', MakooHero);
 		if (typeof window === 'undefined') return;
+
+		if (router) {
+			const prevHook = router.onAfterRouteChanged;
+			router.onAfterRouteChanged = (to: string) => {
+				prevHook?.(to);
+				if (to.startsWith('/zh/') || to === '/zh') {
+					window.localStorage.setItem('makoo-preferred-lang', 'zh');
+				} else if (to.startsWith('/docs/') || to.startsWith('/api/') || to === '/') {
+					window.localStorage.setItem('makoo-preferred-lang', 'en');
+				}
+			};
+		}
+
+		const base = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '') + '/';
+		const currentPath = window.location.pathname;
+		const isRootPath = currentPath === base || currentPath === base.slice(0, -1) || currentPath === '/' || currentPath === '';
 		const hasRedirected = window.sessionStorage.getItem('makoo-locale-redirected') === 'true';
-		const isRootPath = window.location.pathname === '/';
-		const usesChinese = window.navigator.languages?.some((lang) =>
+		const preferredLang = window.localStorage.getItem('makoo-preferred-lang');
+
+		if (preferredLang === 'en') return;
+
+		const usesChinese = preferredLang === 'zh' || (window.navigator.languages?.some((lang) =>
 			lang.toLowerCase().startsWith('zh')
-		) ?? window.navigator.language.toLowerCase().startsWith('zh');
+		) ?? window.navigator.language.toLowerCase().startsWith('zh'));
 
 		if (!hasRedirected && isRootPath && usesChinese) {
 			window.sessionStorage.setItem('makoo-locale-redirected', 'true');
-			window.location.replace('/zh/');
+			window.location.replace(`${base}zh/`);
 		}
 	}
 } satisfies Theme;
