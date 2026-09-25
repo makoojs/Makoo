@@ -1,94 +1,74 @@
 import { describe, expect, it, vi } from 'vitest';
 import { inject, listen } from '../src';
-import { createActivityStore } from '../src/signal/observeActivitySignal';
-import { createVueComponent } from './factory/TaskFactor';
 
 describe('Makoo declarations', () => {
-	it('should create component injection declarations without touching the DOM', () => {
-		const component = createVueComponent('DeclaredComp');
-		const callback = vi.fn();
-		const listener = listen({
-			listenAt: '#button',
-			type: 'click',
-			callback
-		});
-
+	it('should create an injection declaration without touching the DOM', () => {
+		const component = { name: 'Panel' };
+		const props = { title: 'Hello' };
+		vi.stubGlobal('document', undefined);
 		const declaration = inject({
+			name: 'panel',
 			injectAt: '#app',
-			artifact: component,
-			options: {
-				alive: true,
-				scope: 'global',
-				timeout: 1200,
-				on: listener
-			}
+			adapter: 'vue',
+			component,
+			props,
+			timeout: 1200
 		});
+		vi.unstubAllGlobals();
 
 		expect(document.body.innerHTML).toBe('');
+		expect(Object.isFrozen(props)).toBe(false);
 		expect(declaration).toEqual({
-			kind: 'component',
+			kind: 'injection',
+			name: 'panel',
 			injectAt: '#app',
-			artifact: component,
-			options: {
-				alive: true,
-				scope: 'global',
-				timeout: 1200,
-				on: listener
-			}
+			adapter: 'vue',
+			component,
+			props,
+			timeout: 1200
 		});
 	});
 
-	it('should preserve an explicit component task id', () => {
-		const component = createVueComponent('DeclaredObjectComp');
+	it('should keep the declared component and props references', () => {
+		const component = { name: 'Panel' };
+		const props = { title: 'Hello' };
 		const declaration = inject({
-			id: 'declared-object',
-			injectAt: '#object-app',
-			artifact: component,
-			options: {
-				alive: true,
-				scope: 'global'
-			}
+			name: 'panel',
+			injectAt: '#app',
+			adapter: 'vue',
+			component,
+			props
 		});
 
-		expect(declaration).toEqual({
-			kind: 'component',
-			id: 'declared-object',
-			injectAt: '#object-app',
-			artifact: component,
-			options: {
-				alive: true,
-				scope: 'global'
-			}
-		});
+		expect(declaration.component).toBe(component);
+		expect(declaration.props).toBe(props);
 	});
 
-	it('should create listener declarations that can be used standalone or inside inject options', () => {
-		const signal = createActivityStore(true);
-		const activitySignal = () => signal;
+	it('should create a named host listener declaration', () => {
 		const callback = vi.fn();
 
 		const declaration = listen({
+			name: 'escape',
 			listenAt: '#escape',
 			type: 'keydown',
 			callback,
-			capture: true,
-			activitySignal
+			capture: true
 		});
 
 		expect(declaration).toEqual({
 			kind: 'listener',
+			name: 'escape',
 			listenAt: '#escape',
-			event: 'keydown',
 			type: 'keydown',
 			callback,
-			capture: true,
-			activitySignal
+			capture: true
 		});
 	});
 
 	it('should preserve an explicit false capture option', () => {
 		const callback = vi.fn();
 		const declaration = listen({
+			name: 'escape',
 			listenAt: '#escape',
 			type: 'keydown',
 			callback,
@@ -101,27 +81,22 @@ describe('Makoo declarations', () => {
 		});
 	});
 
-	it('should preserve an explicit listener task id', () => {
-		const signal = createActivityStore(true);
-		const activitySignal = () => signal;
+	it('should preserve an explicit listener name', () => {
 		const callback = vi.fn();
 
 		const declaration = listen({
-			id: 'escape-close',
+			name: 'escape-close',
 			listenAt: '#escape',
 			type: 'keydown',
-			callback,
-			activitySignal
+			callback
 		});
 
 		expect(declaration).toEqual({
 			kind: 'listener',
-			id: 'escape-close',
+			name: 'escape-close',
 			listenAt: '#escape',
-			event: 'keydown',
 			type: 'keydown',
-			callback,
-			activitySignal
+			callback
 		});
 	});
 });

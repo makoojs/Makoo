@@ -1,14 +1,6 @@
-export type {
-	AdapterMountInput,
-	AdapterMountResult,
-	AdapterResolver,
-	AdapterUnmountInput,
-	AdapterUnmountReason,
-	MakooContext,
-	MountAdapter,
-	ResolvableMountAdapter
-} from './adapter/types';
-export { AdapterError } from './error/AdapterError';
+export type { AdapterMountParams, ComponentAdapter } from './adapter/types';
+export { createMakoo } from './core/createMakoo';
+export type { FeatureControl, MakooFeatureDeclaration, MakooRuntime } from './core/types';
 export type { ErrorCodeValue } from './error/ErrorCode';
 export { ErrorCode } from './error/ErrorCode';
 export type {
@@ -17,42 +9,20 @@ export type {
 	MakooIssue
 } from './error/MakooError';
 export { MakooError } from './error/MakooError';
-export { SignalError } from './error/SignalError';
-export { TaskError } from './error/TaskError';
-export { createObserverHub } from './hooks/ObserverHub';
+export { inject } from './injection/declaration';
 export type {
-	LifecycleHookMap,
-	ObserveEvent,
-	ObserveEventName,
-	ObserveHook,
-	ObserverHub
-} from './hooks/types';
-export { OBSERVE_EVENT_NAMES } from './hooks/types';
-export { Logger } from './logger/Logger';
-export type { ILogger, LoggerLevel } from './logger/types';
-export { createMakoo, inject, listen } from './Makoo/createMakoo';
-export type {
-	ActionEvent,
-	ArtifactOptions,
-	CreateMakooOptions,
-	InjectionConfig,
-	MakooDefaults,
+	InjectionControl,
+	InjectionSnapshot,
+	InjectionStatus,
 	MakooInjectionDeclaration,
-	MakooInjectionInput,
-	MakooListenerDeclaration,
-	MakooListenerInput,
-	MakooRuntime,
-	MakooTaskDeclaration,
-	StartedComponentTask,
-	StartedListenerTask,
-	StartedTask,
-	StartedTasks
-} from './Makoo/types';
-export { Action } from './Makoo/types';
-export { createActivityStore } from './signal/observeActivitySignal';
+	MakooInjectionInput
+} from './injection/types';
+export { listen } from './listener/declaration';
 export type {
-	ActivitySignalSource,
-	ActivitySignalSubscribable,
-	SignalUnsubscribe
-} from './signal/types';
-export { DOMWatcher } from './watcher/DomWatcher';
+	ListenerControl,
+	ListenerSnapshot,
+	ListenerStatus,
+	MakooListenerDeclaration,
+	MakooListenerInput
+} from './listener/types';
+export type { StateView } from './state/types';

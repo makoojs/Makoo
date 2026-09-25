@@ -13,6 +13,7 @@ export class MakooError extends Error {
 	readonly issues: MakooIssue[];
 	readonly summary: string;
 	readonly context: MakooErrorContext = {};
+	cleanupErrors: readonly MakooError[] = [];
 	override readonly cause?: Error;
 
 	constructor(
@@ -37,6 +38,11 @@ export class MakooError extends Error {
 
 	withContext(context: MakooErrorContext): this {
 		Object.assign(this.context, context);
+		return this;
+	}
+
+	withCleanupErrors(errors: readonly MakooError[]): this {
+		this.cleanupErrors = [...errors];
 		return this;
 	}
 }
