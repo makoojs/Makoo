@@ -1,114 +1,139 @@
-import { z } from 'zod';
 import { createAdapterRegistry } from '../adapter/registry';
-import { createDOMObserver } from '../dom/observer';
+import type { ComponentAdapter } from '../adapter/types';
+import { createComponent } from '../component/component';
+import { validateComponent } from '../component/declaration';
+import type { MakooComponentDeclaration } from '../component/types';
+import { createDOMObserver, type DOMObserver } from '../dom/observer';
 import { ErrorCode } from '../error/ErrorCode';
 import { MakooError } from '../error/MakooError';
-import { validateInjection } from '../injection/declaration';
-import { createInjection } from '../injection/injection';
-import type { MakooInjectionDeclaration } from '../injection/types';
 import { validateListener } from '../listener/declaration';
 import { createListener } from '../listener/listener';
 import type { MakooListenerDeclaration } from '../listener/types';
-import type { FeatureControl, MakooRuntime } from './types';
+import type { InjectionControl, MakooInjectionDeclaration, MakooRuntime } from './types';
 
-const featureKindSchema = z.object(
-	{
-		kind: z.enum(['listener', 'injection'], { error: 'Expected listener or injection' })
-	},
-	{
-		error: (issue) => (issue.code === 'invalid_type' ? 'Invalid declaration' : undefined)
-	}
-);
+type MakooInstance = {
+	readonly injections: Map<string, InjectionControl>;
+	readonly adapters: ReturnType<typeof createAdapterRegistry>;
+	readonly dom: DOMObserver;
+};
 
-function issuesOf(error: z.ZodError) {
-	return error.issues.map((issue) => ({
-		path: issue.path.length ? issue.path.join('.') : '(root)',
-		message: issue.message
-	}));
+type PreparedDeclaration =
+	| { kind: 'listener'; config: MakooListenerDeclaration }
+	| { kind: 'component'; config: MakooComponentDeclaration; adapter: ComponentAdapter };
+
+export function createMakoo(): MakooRuntime {
+	const makooInstance: MakooInstance = {
+		injections: new Map(),
+		adapters: createAdapterRegistry(),
+		dom: createDOMObserver()
+	};
+	return {
+		useAdapter: (adapter) => makooInstance.adapters.use(adapter),
+		apply: (declarations) => applyDeclarations(makooInstance, declarations),
+		get: (name) => getInjection(makooInstance.injections, name)
+	};
 }
 
-function validateFeature(input: unknown): MakooListenerDeclaration | MakooInjectionDeclaration {
-	const kind = featureKindSchema.safeParse(input);
-	if (!kind.success) {
+function applyDeclarations(
+	makooInstance: MakooInstance,
+	declarations: readonly MakooInjectionDeclaration[]
+): void {
+	const { injections, adapters, dom } = makooInstance;
+	const preparedDeclarations = prepareDeclarations(declarations, injections, adapters);
+	const registeredControls = preparedDeclarations.map((declaration) =>
+		registerInjection(injections, dom, declaration)
+	);
+	for (const injectionControl of registeredControls) {
+		// An earlier mount may have removed or replaced a later injection in this batch.
+		if (injections.get(injectionControl.name) === injectionControl) injectionControl.start();
+	}
+}
+
+function prepareDeclarations(
+	declarations: readonly MakooInjectionDeclaration[],
+	injections: ReadonlyMap<string, InjectionControl>,
+	adapters: MakooInstance['adapters']
+): PreparedDeclaration[] {
+	if (!Array.isArray(declarations) || declarations.length === 0) {
 		throw new MakooError(
-			'Invalid declaration',
-			issuesOf(kind.error),
+			'Expected a non-empty array of declarations',
+			undefined,
 			ErrorCode.INVALID_DECLARATION
 		);
 	}
-	return kind.data.kind === 'listener' ? validateListener(input) : validateInjection(input);
+	const injectionConfigs = declarations.map(validateInjection);
+	const injectionNames = new Set(injections.keys());
+	for (const config of injectionConfigs) {
+		const name = config.name;
+		if (injectionNames.has(name)) {
+			throw new MakooError(
+				`Injection name "${name}" is already occupied`,
+				[{ path: 'name', message: name }],
+				ErrorCode.INJECTION_NAME_CONFLICT
+			);
+		}
+		injectionNames.add(name);
+	}
+	return injectionConfigs.map((config) =>
+		config.kind === 'listener'
+			? { kind: 'listener', config }
+			: { kind: 'component', config, adapter: adapters.require(config.adapter) }
+	);
 }
 
-export function createMakoo(): MakooRuntime {
-	const features = new Map<string, FeatureControl>();
-	const adapters = createAdapterRegistry();
-	const dom = createDOMObserver();
-	return {
-		useAdapter(adapter) {
-			adapters.use(adapter);
-		},
-		apply(declarations) {
-			if (!Array.isArray(declarations) || declarations.length === 0) {
-				throw new MakooError(
-					'Expected a non-empty array of declarations',
-					undefined,
-					ErrorCode.INVALID_DECLARATION
+function registerInjection(
+	injections: Map<string, InjectionControl>,
+	dom: DOMObserver,
+	declaration: PreparedDeclaration
+): InjectionControl {
+	const injectionControl: InjectionControl =
+		declaration.kind === 'listener'
+			? createListener(declaration.config, dom, () =>
+					unregisterInjection(injections, injectionControl)
+				)
+			: createComponent(declaration.config, declaration.adapter, dom, () =>
+					unregisterInjection(injections, injectionControl)
 				);
-			}
-			const configs = declarations.map(validateFeature);
-			const names = new Set(features.keys());
-			for (const config of configs) {
-				if (names.has(config.name)) {
-					throw new MakooError(
-						`Feature name "${config.name}" is already occupied`,
-						[{ path: 'name', message: config.name }],
-						ErrorCode.FEATURE_NAME_CONFLICT
-					);
-				}
-				names.add(config.name);
-			}
-			const prepared = configs.map((config) =>
-				config.kind === 'listener'
-					? { kind: 'listener' as const, config }
-					: {
-							kind: 'injection' as const,
-							config,
-							adapter: adapters.require(config.adapter)
-						}
-			);
-			const accepted = prepared.map((feature) => {
-				if (feature.kind === 'listener') {
-					const listener = createListener(feature.config, dom, () => {
-						if (features.get(feature.config.name) === listener) {
-							features.delete(feature.config.name);
-						}
-					});
-					features.set(feature.config.name, listener);
-					return listener;
-				}
-				const injection = createInjection(feature.config, feature.adapter, dom, () => {
-					if (features.get(feature.config.name) === injection) {
-						features.delete(feature.config.name);
-					}
-				});
-				features.set(feature.config.name, injection);
-				return injection;
-			});
-			for (const feature of accepted) {
-				// An earlier mount may have removed or replaced a later record.
-				if (features.get(feature.name) === feature) feature.start();
-			}
-		},
-		get(name) {
-			const feature = features.get(name);
-			if (!feature) {
-				throw new MakooError(
-					`Unknown feature "${name}"`,
-					undefined,
-					ErrorCode.FEATURE_NOT_FOUND
-				);
-			}
-			return feature;
+	injections.set(declaration.config.name, injectionControl);
+	return injectionControl;
+}
+
+function unregisterInjection(
+	injections: Map<string, InjectionControl>,
+	injectionControl: InjectionControl
+): void {
+	// A completed removal must never unregister a replacement with the same name.
+	const name = injectionControl.name;
+	if (injections.get(name) === injectionControl) injections.delete(name);
+}
+
+function getInjection(
+	injections: ReadonlyMap<string, InjectionControl>,
+	name: string
+): InjectionControl {
+	const injectionControl = injections.get(name);
+	if (!injectionControl) {
+		throw new MakooError(
+			`Unknown injection "${name}"`,
+			undefined,
+			ErrorCode.INJECTION_NOT_FOUND
+		);
+	}
+	return injectionControl;
+}
+
+function validateInjection(input: unknown): MakooInjectionDeclaration {
+	if (typeof input === 'object' && input !== null && 'kind' in input) {
+		switch (input.kind) {
+			case 'listener':
+				return validateListener(input);
+			case 'component':
+				return validateComponent(input);
 		}
-	};
+	}
+	throw new MakooError(
+		'Invalid declaration',
+		[{ path: 'kind', message: 'Expected listener or component' }],
+		ErrorCode.INVALID_DECLARATION
+	);
 }

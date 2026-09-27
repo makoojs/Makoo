@@ -19,7 +19,7 @@ describe('Makoo declarations', () => {
 		expect(document.body.innerHTML).toBe('');
 		expect(Object.isFrozen(props)).toBe(false);
 		expect(declaration).toEqual({
-			kind: 'injection',
+			kind: 'component',
 			name: 'panel',
 			injectAt: '#app',
 			adapter: 'vue',

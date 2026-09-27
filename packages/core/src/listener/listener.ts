@@ -2,30 +2,45 @@ import type { DOMObserver } from '../dom/observer';
 import { ErrorCode } from '../error/ErrorCode';
 import { MakooError } from '../error/MakooError';
 import { createState } from '../state/createState';
-import { createListenerExecution, type ListenerExecution } from './execution';
+import type { AttachListener } from './attach';
+import {
+	awaitListenerTarget,
+	cleanupExecution,
+	createListenerExecution,
+	type ListenerExecution
+} from './execution';
 import type { ListenerControl, ListenerSnapshot, MakooListenerDeclaration } from './types';
 
-/** All cleanup requests for one execution share this completion. */
 type CleanupCompletion = {
 	promise: Promise<void>;
 	resolve: () => void;
 	reject: (error: MakooError) => void;
 };
 
-type ExecutionSlot =
-	| { kind: 'empty' | 'removed' | 'cleanup-failed'; cleanupPromise: Promise<void> }
+export type ExecutionSlot =
+	| { kind: 'empty'; cleanupPromise: Promise<void> }
+	| {
+			kind: 'cleanup-failed';
+			cleanupPromise: Promise<void>;
+			cleanupErrors: readonly MakooError[];
+	  }
 	| {
 			kind: 'active' | 'closing';
 			execution: ListenerExecution;
 			cleanupCompletion: CleanupCompletion;
 	  };
 
-type ListenerFeature = {
+export type ListenerState = {
 	readonly config: MakooListenerDeclaration;
 	readonly state: ReturnType<typeof createState<ListenerSnapshot>>;
-	intent: 'running' | 'stopped' | 'removed';
-	executionSlot: ExecutionSlot;
 	lastError: MakooError | undefined;
+};
+
+export type Listener = ListenerState & {
+	readonly kind: 'listener';
+	intent: 'running' | 'stopped' | 'removed';
+	executionSlot: ExecutionSlot | { kind: 'removed'; cleanupPromise: Promise<void> };
+	readonly onRemoved: () => void;
 };
 
 export function createListener(
@@ -33,94 +48,69 @@ export function createListener(
 	dom: DOMObserver,
 	onRemoved: () => void
 ): ListenerControl {
-	const listenerFeature: ListenerFeature = {
+	const listener: Listener = {
+		kind: 'listener',
 		config,
 		state: createState<ListenerSnapshot>({ status: 'idle' }),
 		intent: 'stopped',
 		executionSlot: { kind: 'empty', cleanupPromise: Promise.resolve() },
-		lastError: undefined
+		lastError: undefined,
+		onRemoved
 	};
-	const control: ListenerControl = Object.freeze({
+	return Object.freeze({
 		name: config.name,
-		state: listenerFeature.state.view,
+		state: listener.state.view,
 		get lastError() {
-			return listenerFeature.lastError;
+			return listener.lastError;
 		},
-		start: () => startListener(listenerFeature, dom, control, onRemoved),
-		stop: () => stopListener(listenerFeature, dom, control, onRemoved),
-		remove: () => removeListener(listenerFeature, dom, control, onRemoved)
+		start: () => startListener(listener, dom),
+		stop: () => stopListener(listener, dom),
+		remove: () => removeListener(listener, dom)
 	});
-	return control;
 }
 
-function startListener(
-	listenerFeature: ListenerFeature,
-	dom: DOMObserver,
-	control: ListenerControl,
-	onRemoved: () => void
-): void {
-	const { config, executionSlot } = listenerFeature;
+export function startListener(listener: Listener | AttachListener, dom: DOMObserver): void {
+	const { config, executionSlot } = listener;
 	if (executionSlot.kind === 'cleanup-failed') {
 		throw new MakooError(
-			`Feature "${config.name}" cannot restart after cleanup failed`,
+			`Injection "${config.name}" cannot restart after cleanup failed`,
 			undefined,
-			ErrorCode.FEATURE_CLEANUP_FAILED
-		).withContext({ feature: config.name, phase: 'cleanup', reason: 'cleanup-failed' });
+			ErrorCode.INJECTION_CLEANUP_FAILED
+		).withContext({ injection: config.name, phase: 'cleanup', reason: 'cleanup-failed' });
 	}
-	if (listenerFeature.intent === 'removed') {
+	if (listener.intent === 'removed') {
 		throw new MakooError(
-			`Feature "${config.name}" was removed`,
+			`Injection "${config.name}" was removed`,
 			undefined,
-			ErrorCode.FEATURE_REMOVED
+			ErrorCode.INJECTION_REMOVED
 		);
 	}
-	listenerFeature.intent = 'running';
+	listener.intent = 'running';
 	if (executionSlot.kind !== 'empty') return;
-
-	listenerFeature.lastError = undefined;
-	startExecution(listenerFeature, dom, control, onRemoved);
+	listener.lastError = undefined;
+	startExecution(listener, dom);
 }
 
-function startExecution(
-	listenerFeature: ListenerFeature,
-	dom: DOMObserver,
-	control: ListenerControl,
-	onRemoved: () => void
-): void {
+function startExecution(listener: Listener | AttachListener, dom: DOMObserver): void {
 	let resolveCleanup!: () => void;
 	let rejectCleanup!: (error: MakooError) => void;
 	const cleanupPromise = new Promise<void>((resolve, reject) => {
 		resolveCleanup = resolve;
 		rejectCleanup = reject;
 	});
-	// Background failures can end an execution without a caller awaiting cleanup.
+	// A background failure may finish this execution without a caller awaiting cleanup.
 	void cleanupPromise.catch(() => {});
-	const execution = createListenerExecution(listenerFeature.config, dom, {
-		status(status) {
-			const currentSlot = listenerFeature.executionSlot;
-			if (currentSlot.kind === 'active' && currentSlot.execution === execution) {
-				listenerFeature.state.set({ status });
-			}
-		},
-		ended(endReason, executionError) {
-			const currentSlot = listenerFeature.executionSlot;
-			if (currentSlot.kind === 'active' && currentSlot.execution === execution) {
-				endExecution(listenerFeature, dom, control, onRemoved, endReason, executionError);
-			}
-		},
-		diagnostic(error) {
-			const currentSlot = listenerFeature.executionSlot;
-			if (
-				(currentSlot.kind === 'active' || currentSlot.kind === 'closing') &&
-				currentSlot.execution === execution
-			) {
-				listenerFeature.lastError = error;
-			}
-			// Late business failures are reported without overwriting another execution's diagnostic.
-			console.error(error);
+	const execution = createListenerExecution(listener.config, (error) => {
+		const currentSlot = listener.executionSlot;
+		if (
+			(currentSlot.kind === 'active' || currentSlot.kind === 'closing') &&
+			currentSlot.execution === execution
+		) {
+			listener.lastError = error;
 		}
+		console.error(error);
 	});
-	listenerFeature.executionSlot = {
+	listener.executionSlot = {
 		kind: 'active',
 		execution,
 		cleanupCompletion: {
@@ -129,60 +119,57 @@ function startExecution(
 			reject: rejectCleanup
 		}
 	};
-	execution.start();
+	awaitListenerTarget(execution, dom, {
+		status(status) {
+			const currentSlot = listener.executionSlot;
+			if (currentSlot.kind === 'active' && currentSlot.execution === execution)
+				listener.state.set({ status });
+		},
+		ended(reason, error) {
+			const currentSlot = listener.executionSlot;
+			if (currentSlot.kind === 'active' && currentSlot.execution === execution)
+				endExecution(listener, dom, reason, error);
+		}
+	});
 }
 
-function stopListener(
-	listenerFeature: ListenerFeature,
-	dom: DOMObserver,
-	control: ListenerControl,
-	onRemoved: () => void
-): Promise<void> {
-	const executionSlot = listenerFeature.executionSlot;
-	if (executionSlot.kind === 'cleanup-failed' || executionSlot.kind === 'removed') {
+function stopListener(listener: Listener, dom: DOMObserver): Promise<void> {
+	const executionSlot = listener.executionSlot;
+	if (executionSlot.kind === 'cleanup-failed' || executionSlot.kind === 'removed')
 		return executionSlot.cleanupPromise;
-	}
-	if (listenerFeature.intent !== 'removed') listenerFeature.intent = 'stopped';
+	if (listener.intent !== 'removed') listener.intent = 'stopped';
 	switch (executionSlot.kind) {
 		case 'empty':
-			listenerFeature.state.set({ status: 'idle' });
+			listener.state.set({ status: 'idle' });
 			return executionSlot.cleanupPromise;
 		case 'closing':
 			return executionSlot.cleanupCompletion.promise;
 		case 'active':
-			return endExecution(listenerFeature, dom, control, onRemoved, 'stopped');
+			return endExecution(listener, dom, 'stopped');
 	}
 }
 
-function removeListener(
-	listenerFeature: ListenerFeature,
-	dom: DOMObserver,
-	control: ListenerControl,
-	onRemoved: () => void
-): Promise<void> {
-	const executionSlot = listenerFeature.executionSlot;
-	if (executionSlot.kind === 'cleanup-failed' || executionSlot.kind === 'removed') {
+function removeListener(listener: Listener, dom: DOMObserver): Promise<void> {
+	const executionSlot = listener.executionSlot;
+	if (executionSlot.kind === 'cleanup-failed' || executionSlot.kind === 'removed')
 		return executionSlot.cleanupPromise;
-	}
-	listenerFeature.intent = 'removed';
-	const cleanupPromise = stopListener(listenerFeature, dom, control, onRemoved);
-	// Active executions unregister after cleanup; an empty feature can unregister now.
-	if (listenerFeature.executionSlot.kind === 'empty') {
-		listenerFeature.executionSlot = { kind: 'removed', cleanupPromise };
-		onRemoved();
+	listener.intent = 'removed';
+	const cleanupPromise = stopListener(listener, dom);
+	// Active executions unregister after cleanup; an empty listener can unregister now.
+	if (listener.executionSlot.kind === 'empty') {
+		listener.executionSlot = { kind: 'removed', cleanupPromise };
+		listener.onRemoved();
 	}
 	return cleanupPromise;
 }
 
-function endExecution(
-	listenerFeature: ListenerFeature,
+export function endExecution(
+	listener: Listener | AttachListener,
 	dom: DOMObserver,
-	control: ListenerControl,
-	onRemoved: () => void,
 	endReason: 'stopped' | 'detached' | 'failed',
 	executionError?: MakooError
 ): Promise<void> {
-	const executionSlot = listenerFeature.executionSlot;
+	const executionSlot = listener.executionSlot;
 	switch (executionSlot.kind) {
 		case 'empty':
 		case 'removed':
@@ -192,61 +179,56 @@ function endExecution(
 			return executionSlot.cleanupCompletion.promise;
 	}
 	const { execution, cleanupCompletion } = executionSlot;
-	listenerFeature.executionSlot = { ...executionSlot, kind: 'closing' };
-	const cleanupErrors = execution.finish();
+	listener.executionSlot = { ...executionSlot, kind: 'closing' };
+	cleanupExecution(execution);
+	const cleanupErrors = execution.cleanupErrors;
 	const firstCleanupError = cleanupErrors[0];
 	if (firstCleanupError) {
-		listenerFeature.lastError = (executionError ?? firstCleanupError).withCleanupErrors(
-			cleanupErrors
-		);
-		if (listenerFeature.intent !== 'removed') listenerFeature.intent = 'stopped';
-		listenerFeature.executionSlot = {
+		const error = (executionError ?? firstCleanupError).withCleanupErrors(cleanupErrors);
+		listener.lastError = error;
+		if (listener.intent !== 'removed') listener.intent = 'stopped';
+		listener.executionSlot = {
 			kind: 'cleanup-failed',
-			cleanupPromise: cleanupCompletion.promise
+			cleanupPromise: cleanupCompletion.promise,
+			cleanupErrors
 		};
 		cleanupCompletion.reject(firstCleanupError);
-		console.error(listenerFeature.lastError);
-		listenerFeature.state.set({ status: 'failed' });
+		console.error(error);
+		const completedSlot = listener.executionSlot;
+		listener.state.set({ status: 'failed' });
+		if (listener.kind === 'attach' && listener.executionSlot === completedSlot)
+			listener.onFailed(error);
 		return cleanupCompletion.promise;
 	}
 
-	// Settle the old execution before subscribers or a new binding can reenter the controls.
-	listenerFeature.executionSlot = { kind: 'empty', cleanupPromise: cleanupCompletion.promise };
+	// Commit the old result before subscribers or a new binding can reenter the controls.
+	listener.executionSlot = { kind: 'empty', cleanupPromise: cleanupCompletion.promise };
 	cleanupCompletion.resolve();
-	if (listenerFeature.intent === 'removed') {
-		listenerFeature.executionSlot = {
-			kind: 'removed',
-			cleanupPromise: cleanupCompletion.promise
-		};
-		listenerFeature.state.set({ status: 'idle' });
-		onRemoved();
-		return cleanupCompletion.promise;
-	}
-	if (endReason === 'stopped' && listenerFeature.intent === 'running') {
-		control.start();
+	if (listener.kind === 'listener' && listener.intent === 'removed') {
+		listener.executionSlot = { kind: 'removed', cleanupPromise: cleanupCompletion.promise };
+		listener.state.set({ status: 'idle' });
+		listener.onRemoved();
 		return cleanupCompletion.promise;
 	}
 	if (
-		endReason === 'detached' &&
-		listenerFeature.config.reinject &&
-		listenerFeature.intent === 'running'
+		listener.intent === 'running' &&
+		(endReason === 'stopped' || (endReason === 'detached' && listener.config.reinject))
 	) {
-		listenerFeature.state.set({ status: 'waiting' });
-		// A subscriber may stop, remove, or explicitly restart during this notification.
-		if (
-			listenerFeature.intent === 'running' &&
-			listenerFeature.executionSlot.kind === 'empty'
-		) {
-			startExecution(listenerFeature, dom, control, onRemoved);
+		if (endReason === 'detached') listener.state.set({ status: 'waiting' });
+		if (listener.intent === 'running' && listener.executionSlot.kind === 'empty') {
+			if (endReason === 'stopped') startListener(listener, dom);
+			else startExecution(listener, dom);
 		}
 		return cleanupCompletion.promise;
 	}
-
-	listenerFeature.intent = 'stopped';
+	listener.intent = 'stopped';
 	if (executionError) {
-		listenerFeature.lastError = executionError;
+		listener.lastError = executionError;
 		console.error(executionError);
 	}
-	listenerFeature.state.set({ status: endReason === 'stopped' ? 'idle' : 'failed' });
+	const completedSlot = listener.executionSlot;
+	listener.state.set({ status: endReason === 'stopped' ? 'idle' : 'failed' });
+	if (executionError && listener.kind === 'attach' && listener.executionSlot === completedSlot)
+		listener.onFailed(executionError);
 	return cleanupCompletion.promise;
 }

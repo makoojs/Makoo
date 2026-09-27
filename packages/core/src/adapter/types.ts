@@ -1,10 +1,10 @@
-import type { InjectionControl } from '../injection/types';
+import type { ComponentControl } from '../component/types';
 
 export interface AdapterMountParams<TComponent = unknown, TProps = unknown> {
 	component: TComponent;
+	control: ComponentControl;
 	props: TProps | undefined;
 	container: HTMLElement;
-	injection: InjectionControl;
 }
 
 export interface ComponentAdapter<TComponent = unknown, TProps = unknown, THandle = unknown> {

@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createMakoo, type FeatureControl, listen } from '../src';
+import { createMakoo, type InjectionControl, listen } from '../src';
 
 describe('host listener waiting and recovery', () => {
-	const handles: FeatureControl[] = [];
+	const handles: InjectionControl[] = [];
 	beforeEach(() => {
 		document.body.replaceChildren();
 		vi.useFakeTimers();
@@ -34,7 +34,7 @@ describe('host listener waiting and recovery', () => {
 		expect(handle.state.getSnapshot().status).toBe('failed');
 		expect(handle.lastError).toMatchObject({
 			code: 'MAKOO_DOM_WAIT_TIMEOUT',
-			context: { feature: 'play', phase: 'wait', reason: 'timeout' }
+			context: { injection: 'play', phase: 'wait', reason: 'timeout' }
 		});
 		expect(vi.getTimerCount()).toBe(0);
 		const button = document.createElement('button');

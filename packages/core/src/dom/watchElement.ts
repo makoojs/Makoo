@@ -4,11 +4,12 @@ export function watchElement(
 	observer: DOMObserver,
 	element: Element,
 	signal: AbortSignal,
-	onInvalid: () => void
+	onInvalid: () => void,
+	isValid: () => boolean = () => element.isConnected
 ): void {
 	if (signal.aborted) return;
 	const check = () => {
-		if (signal.aborted || element.isConnected) return;
+		if (signal.aborted || isValid()) return;
 		unsubscribe();
 		onInvalid();
 	};

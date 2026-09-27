@@ -124,7 +124,7 @@ describe('standalone host listeners', () => {
 		await Promise.resolve();
 		expect(handle.lastError).toMatchObject({
 			cause,
-			context: { feature: 'play', phase: 'event', reason: 'handler-failed' }
+			context: { injection: 'play', phase: 'event', reason: 'handler-failed' }
 		});
 		expect(reported).toHaveBeenCalledWith(handle.lastError);
 		expect(handle.state.getSnapshot()).toBe(snapshot);
@@ -158,7 +158,7 @@ describe('standalone host listeners', () => {
 		expect(core.get('broken').state.getSnapshot().status).toBe('failed');
 		expect(core.get('broken').lastError).toMatchObject({
 			cause,
-			context: { feature: 'broken', phase: 'bind' }
+			context: { injection: 'broken', phase: 'bind' }
 		});
 		second.click();
 		expect(callback).toHaveBeenCalledOnce();

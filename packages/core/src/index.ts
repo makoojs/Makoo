@@ -1,6 +1,14 @@
 export type { AdapterMountParams, ComponentAdapter } from './adapter/types';
+export { inject } from './component/declaration';
+export type {
+	ComponentControl,
+	ComponentSnapshot,
+	ComponentStatus,
+	MakooComponentDeclaration,
+	MakooComponentInput
+} from './component/types';
 export { createMakoo } from './core/createMakoo';
-export type { FeatureControl, MakooFeatureDeclaration, MakooRuntime } from './core/types';
+export type { InjectionControl, MakooInjectionDeclaration, MakooRuntime } from './core/types';
 export type { ErrorCodeValue } from './error/ErrorCode';
 export { ErrorCode } from './error/ErrorCode';
 export type {
@@ -9,14 +17,6 @@ export type {
 	MakooIssue
 } from './error/MakooError';
 export { MakooError } from './error/MakooError';
-export { inject } from './injection/declaration';
-export type {
-	InjectionControl,
-	InjectionSnapshot,
-	InjectionStatus,
-	MakooInjectionDeclaration,
-	MakooInjectionInput
-} from './injection/types';
 export { listen } from './listener/declaration';
 export type {
 	ListenerControl,

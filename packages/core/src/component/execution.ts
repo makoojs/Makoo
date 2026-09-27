@@ -1,16 +1,19 @@
 import type { ComponentAdapter } from '../adapter/types';
 import type { DOMObserver } from '../dom/observer';
 import { DEFAULT_DOM_TIMEOUT, waitForElement } from '../dom/waitForElement';
+import { watchElement } from '../dom/watchElement';
 import { ErrorCode } from '../error/ErrorCode';
 import { MakooError } from '../error/MakooError';
-import type { InjectionControl, MakooInjectionDeclaration } from './types';
+import { type AttachListener, stopAttachListeners } from '../listener/attach';
+import { startListener } from '../listener/listener';
+import type { ComponentControl, MakooComponentDeclaration } from './types';
 
-export type InjectionExecution = {
+export type ComponentExecution = {
 	readonly phase: 'pending' | 'mounting' | 'mounted' | 'ended';
 	readonly isCancelled: boolean;
 	start(): void;
 	cancel(): void;
-	finish(): MakooError[];
+	finish(): Promise<MakooError[]>;
 };
 
 type ExecutionCallbacks = {
@@ -18,27 +21,30 @@ type ExecutionCallbacks = {
 	ended(reason: 'stopped' | 'detached' | 'failed', error?: MakooError): void;
 };
 
-type InjectionExecutionState = {
-	readonly config: MakooInjectionDeclaration; // declaration for this execution round
-	readonly domWaitAbortController: AbortController; // cancels waitForElement for the mount target
-	phase: InjectionExecution['phase']; // pending → mounting → mounted → ended
-	isCancelled: boolean; // stop requested (e.g. during mounting) before finish runs
-	hasCleanupStarted: boolean; // finish() has begun; cleanup is idempotent after this
-	hasNotifiedEnd: boolean; // ended callback already fired; report at most once
-	componentContainer: HTMLElement | null; // host element created under the mount target
-	mountedComponent: { handle: unknown } | null; // adapter mount ownership (even if handle is falsy)
-	readonly cleanupErrors: MakooError[]; // errors collected while finishing / unmounting
+type ComponentExecutionState = {
+	readonly config: MakooComponentDeclaration;
+	readonly domWaitAbortController: AbortController;
+	phase: ComponentExecution['phase'];
+	isCancelled: boolean;
+	hasCleanupStarted: boolean;
+	hasNotifiedEnd: boolean;
+	componentContainer: HTMLElement | null;
+	mountedComponent: { handle: unknown } | null;
+	readonly cleanupErrors: MakooError[];
+	readonly attachListeners: ReadonlyMap<string, AttachListener>;
 };
 
-export function createInjectionExecution(
-	config: MakooInjectionDeclaration,
+export function createComponentExecution(
+	config: MakooComponentDeclaration,
 	adapter: ComponentAdapter,
 	dom: DOMObserver,
-	injection: InjectionControl,
+	componentControl: ComponentControl,
+	attachListeners: ReadonlyMap<string, AttachListener>,
 	callbacks: ExecutionCallbacks
-): InjectionExecution {
-	const execution: InjectionExecutionState = {
+): ComponentExecution {
+	const execution: ComponentExecutionState = {
 		config,
+		attachListeners,
 		domWaitAbortController: new AbortController(),
 		phase: 'pending',
 		isCancelled: false,
@@ -55,17 +61,17 @@ export function createInjectionExecution(
 		get isCancelled() {
 			return execution.isCancelled;
 		},
-		start: () => awaitMountTarget(execution, adapter, dom, injection, callbacks),
+		start: () => awaitMountTarget(execution, adapter, dom, componentControl, callbacks),
 		cancel: () => cancelExecution(execution),
-		finish: () => cleanupExecution(execution, adapter)
+		finish: () => cleanupExecution(execution, adapter, dom)
 	};
 }
 
 function awaitMountTarget(
-	execution: InjectionExecutionState,
+	execution: ComponentExecutionState,
 	adapter: ComponentAdapter,
 	dom: DOMObserver,
-	injection: InjectionControl,
+	componentControl: ComponentControl,
 	callbacks: ExecutionCallbacks
 ): void {
 	const { config, domWaitAbortController } = execution;
@@ -75,7 +81,8 @@ function awaitMountTarget(
 			config.injectAt,
 			domWaitAbortController.signal,
 			config.timeout ?? DEFAULT_DOM_TIMEOUT,
-			(mountTarget) => mountComponent(execution, adapter, injection, callbacks, mountTarget),
+			(mountTarget) =>
+				mountComponent(execution, adapter, dom, componentControl, callbacks, mountTarget),
 			() => {
 				notifyExecutionEnd(
 					execution,
@@ -85,7 +92,7 @@ function awaitMountTarget(
 						`Timed out waiting for mount target "${config.name}"`,
 						undefined,
 						ErrorCode.DOM_WAIT_TIMEOUT
-					).withContext({ feature: config.name, phase: 'wait', reason: 'timeout' })
+					).withContext({ injection: config.name, phase: 'wait', reason: 'timeout' })
 				);
 			},
 			(cause) => {
@@ -116,16 +123,20 @@ function awaitMountTarget(
 }
 
 function mountComponent(
-	execution: InjectionExecutionState,
+	execution: ComponentExecutionState,
 	adapter: ComponentAdapter,
-	injection: InjectionControl,
+	dom: DOMObserver,
+	componentControl: ComponentControl,
 	callbacks: ExecutionCallbacks,
 	mountTarget: Element
 ): void {
 	const { config, domWaitAbortController } = execution;
-	if (execution.hasCleanupStarted || execution.hasNotifiedEnd || domWaitAbortController.signal.aborted)
+	if (
+		execution.hasCleanupStarted ||
+		execution.hasNotifiedEnd ||
+		domWaitAbortController.signal.aborted
+	)
 		return;
-	// Determine if a node has been removed from the document.
 	if (!mountTarget.isConnected) {
 		notifyExecutionEnd(
 			execution,
@@ -136,6 +147,24 @@ function mountComponent(
 		return;
 	}
 
+	watchElement(
+		dom,
+		mountTarget,
+		domWaitAbortController.signal,
+		() =>
+			notifyExecutionEnd(
+				execution,
+				callbacks.ended,
+				'detached',
+				targetDetachedError(config.name)
+			),
+		() =>
+			mountTarget.isConnected &&
+			(!execution.componentContainer ||
+				(execution.componentContainer.isConnected &&
+					mountTarget.contains(execution.componentContainer)))
+	);
+	if (execution.hasCleanupStarted || domWaitAbortController.signal.aborted) return;
 	const componentContainer = document.createElement('div');
 	execution.componentContainer = componentContainer;
 	mountTarget.append(componentContainer);
@@ -144,14 +173,21 @@ function mountComponent(
 		return;
 	}
 
-	// Subscribers can stop this execution before the adapter is called.
 	execution.phase = 'mounting';
 	callbacks.status('waiting');
-	if (execution.isCancelled || execution.hasCleanupStarted || domWaitAbortController.signal.aborted) {
+	if (
+		execution.isCancelled ||
+		execution.hasCleanupStarted ||
+		domWaitAbortController.signal.aborted
+	) {
 		notifyExecutionEnd(execution, callbacks.ended, 'stopped');
 		return;
 	}
-	if (!mountTarget.isConnected || !componentContainer.isConnected) {
+	if (
+		!mountTarget.isConnected ||
+		!componentContainer.isConnected ||
+		!mountTarget.contains(componentContainer)
+	) {
 		notifyExecutionEnd(
 			execution,
 			callbacks.ended,
@@ -166,7 +202,7 @@ function mountComponent(
 			component: config.component,
 			props: config.props,
 			container: componentContainer,
-			injection
+			control: componentControl
 		});
 		execution.mountedComponent = { handle: mountHandle };
 		execution.phase = 'mounted';
@@ -181,12 +217,15 @@ function mountComponent(
 		return;
 	}
 
-	// A stop requested inside mount must wait until its handle has been recorded.
 	if (execution.isCancelled || domWaitAbortController.signal.aborted) {
 		notifyExecutionEnd(execution, callbacks.ended, 'stopped');
 		return;
 	}
-	if (!mountTarget.isConnected || !componentContainer.isConnected) {
+	if (
+		!mountTarget.isConnected ||
+		!componentContainer.isConnected ||
+		!mountTarget.contains(componentContainer)
+	) {
 		notifyExecutionEnd(
 			execution,
 			callbacks.ended,
@@ -195,24 +234,42 @@ function mountComponent(
 		);
 		return;
 	}
-	callbacks.status('mounted');
+	for (const attachListener of execution.attachListeners.values()) {
+		if (execution.hasCleanupStarted || execution.isCancelled) return;
+		startListener(attachListener, dom);
+		if (execution.hasCleanupStarted || execution.isCancelled) return;
+		if (
+			!mountTarget.isConnected ||
+			!componentContainer.isConnected ||
+			!mountTarget.contains(componentContainer)
+		) {
+			notifyExecutionEnd(
+				execution,
+				callbacks.ended,
+				'detached',
+				targetDetachedError(config.name)
+			);
+			return;
+		}
+	}
+	if (!execution.hasCleanupStarted && !execution.isCancelled) callbacks.status('mounted');
 }
 
-function cancelExecution(execution: InjectionExecutionState): void {
+function cancelExecution(execution: ComponentExecutionState): void {
 	execution.isCancelled = true;
 	execution.domWaitAbortController.abort();
 }
 
-function cleanupExecution(
-	execution: InjectionExecutionState,
-	adapter: ComponentAdapter
-): MakooError[] {
+async function cleanupExecution(
+	execution: ComponentExecutionState,
+	adapter: ComponentAdapter,
+	dom: DOMObserver
+): Promise<MakooError[]> {
 	const { config, cleanupErrors } = execution;
 	if (execution.hasCleanupStarted) return cleanupErrors;
 	execution.hasCleanupStarted = true;
 	execution.phase = 'ended';
 
-	// abort the dom finder
 	try {
 		execution.domWaitAbortController.abort();
 	} catch (cause) {
@@ -220,14 +277,24 @@ function cleanupExecution(
 			cleanupError(
 				config.name,
 				`Failed to cancel "${config.name}"`,
-				ErrorCode.FEATURE_CLEANUP_FAILED,
+				ErrorCode.INJECTION_CLEANUP_FAILED,
 				'cancel-failed',
 				cause
 			)
 		);
 	}
 
-	// Release ownership before calling external code, which may reenter the controls.
+	const attachListenerErrors = await stopAttachListeners(execution.attachListeners, dom);
+	collectAttachListenerErrors(execution, attachListenerErrors);
+	return unmountComponent(execution, adapter);
+}
+
+function unmountComponent(
+	execution: ComponentExecutionState,
+	adapter: ComponentAdapter
+): MakooError[] {
+	const { config, cleanupErrors } = execution;
+
 	const mountedComponent = execution.mountedComponent;
 	if (mountedComponent) {
 		execution.mountedComponent = null;
@@ -246,7 +313,6 @@ function cleanupExecution(
 		}
 	}
 
-	// Container removal is still attempted when unmount fails.
 	const componentContainer = execution.componentContainer;
 	if (componentContainer) {
 		execution.componentContainer = null;
@@ -257,7 +323,7 @@ function cleanupExecution(
 				cleanupError(
 					config.name,
 					`Failed to remove the container for "${config.name}"`,
-					ErrorCode.INJECTION_CONTAINER_REMOVE_FAIL,
+					ErrorCode.COMPONENT_CONTAINER_REMOVE_FAIL,
 					'container-remove-failed',
 					cause
 				)
@@ -266,9 +332,16 @@ function cleanupExecution(
 	}
 	return cleanupErrors;
 }
+function collectAttachListenerErrors(
+	execution: ComponentExecutionState,
+	errors: readonly MakooError[]
+): void {
+	for (const error of errors)
+		execution.cleanupErrors.push(error.withContext({ injection: execution.config.name }));
+}
 
 function notifyExecutionEnd(
-	execution: InjectionExecutionState,
+	execution: ComponentExecutionState,
 	onEnded: ExecutionCallbacks['ended'],
 	endReason: 'stopped' | 'detached' | 'failed',
 	executionError?: MakooError
@@ -278,32 +351,32 @@ function notifyExecutionEnd(
 	onEnded(endReason, executionError);
 }
 
-function targetDetachedError(featureName: string): MakooError {
+function targetDetachedError(injectionName: string): MakooError {
 	return new MakooError(
-		`Mount target "${featureName}" disconnected`,
+		`Mount target "${injectionName}" disconnected`,
 		undefined,
-		ErrorCode.INJECTION_TARGET_DETACHED
-	).withContext({ feature: featureName, phase: 'mount', reason: 'target-detached' });
+		ErrorCode.COMPONENT_TARGET_DETACHED
+	).withContext({ injection: injectionName, phase: 'mount', reason: 'target-detached' });
 }
 
-function mountError(featureName: string, phase: 'wait' | 'mount', cause: unknown): MakooError {
+function mountError(injectionName: string, phase: 'wait' | 'mount', cause: unknown): MakooError {
 	return new MakooError(
-		`Failed to mount "${featureName}"`,
+		`Failed to mount "${injectionName}"`,
 		undefined,
 		ErrorCode.ADAPTER_MOUNT_FAIL,
 		causeError(cause)
-	).withContext({ feature: featureName, phase, reason: 'mount-failed' });
+	).withContext({ injection: injectionName, phase, reason: 'mount-failed' });
 }
 
 function cleanupError(
-	featureName: string,
+	injectionName: string,
 	message: string,
 	code: string,
 	reason: string,
 	cause: unknown
 ): MakooError {
 	return new MakooError(message, undefined, code, causeError(cause)).withContext({
-		feature: featureName,
+		injection: injectionName,
 		phase: 'cleanup',
 		reason
 	});

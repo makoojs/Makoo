@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AdapterMountParams, ComponentAdapter } from '../src';
-import { createMakoo, type FeatureControl, inject, listen, MakooError } from '../src';
+import { createMakoo, type InjectionControl, inject, listen, MakooError } from '../src';
 
 describe('control races and cleanup failure', () => {
-	const handles: FeatureControl[] = [];
+	const handles: InjectionControl[] = [];
 	beforeEach(() => {
 		document.body.replaceChildren();
 		vi.useFakeTimers();
@@ -53,6 +53,9 @@ describe('control races and cleanup failure', () => {
 		core.apply([inject({ name: 'panel', injectAt: '#host', adapter: 'plain', component: {} })]);
 		const panel = core.get('panel');
 		handles.push(panel);
+		await vi.waitFor(() => expect(panel.state.getSnapshot().status).toBe('failed'), {
+			interval: 1
+		});
 		const diagnostic = panel.lastError;
 		expect(diagnostic?.cause).toBe(mountError);
 		expect(diagnostic?.cleanupErrors[0]).toBe(frameworkCleanup);
@@ -61,8 +64,10 @@ describe('control races and cleanup failure', () => {
 		expect(() => panel.start()).toThrow(/cannot restart after cleanup failed/);
 		expect(panel.lastError).toBe(diagnostic);
 		const completion = panel.stop();
-		expect(panel.remove()).toBe(completion);
-		await expect(completion).rejects.toBe(frameworkCleanup);
+		await Promise.all([
+			expect(completion).rejects.toBe(frameworkCleanup),
+			expect(panel.remove()).rejects.toBe(frameworkCleanup)
+		]);
 		expect(core.get('panel')).toBe(panel);
 		expect(() =>
 			core.apply([listen({ name: 'panel', listenAt: '#host', type: 'click', callback() {} })])
@@ -80,10 +85,10 @@ describe('control races and cleanup failure', () => {
 		let mounts = 0;
 		const core = createMakoo();
 		core.useAdapter(
-			adapter(({ injection }) => {
+			adapter(({ control }) => {
 				mounts += 1;
 				if (mounts === 1) {
-					stopped = injection.stop();
+					stopped = control.stop();
 					if (restartStatus === 'failed') throw new Error('mount failed after stop');
 				}
 				return mounts;
@@ -101,31 +106,27 @@ describe('control races and cleanup failure', () => {
 		hostElement();
 		await Promise.resolve();
 		expect(stopped).toBeDefined();
-		let settled = false;
-		void stopped?.then(() => {
-			settled = true;
-		});
-		await Promise.resolve();
-		expect(settled).toBe(true);
+		await stopped;
 		expect(mounts).toBe(2);
 		expect(panel.state.getSnapshot().status).toBe('mounted');
 		expect(panel.lastError).toBeUndefined();
 	});
 
-	it('keeps a stopped mount unfinished until mount returns, then cleans up that handle once', () => {
+	it('keeps a stopped mount unfinished until mount returns, then cleans up that handle once', async () => {
 		const host = hostElement();
 		const events: string[] = [];
 		let statusDuringMount = '';
 		let containerDuringMount = false;
+		const completions: Promise<void>[] = [];
 		const core = createMakoo();
 		core.useAdapter(
 			adapter(
-				({ container, injection }: AdapterMountParams) => {
+				({ container, control }: AdapterMountParams) => {
 					events.push('mount');
-					const first = injection.stop();
-					const second = injection.stop();
-					expect(first).toBe(second);
-					statusDuringMount = injection.state.getSnapshot().status;
+					const first = control.stop();
+					const second = control.stop();
+					completions.push(first, second);
+					statusDuringMount = control.state.getSnapshot().status;
 					containerDuringMount = container.isConnected;
 					events.push('mount-return');
 					return 'handle';
@@ -140,20 +141,21 @@ describe('control races and cleanup failure', () => {
 		handles.push(panel);
 		expect(statusDuringMount).not.toBe('idle');
 		expect(containerDuringMount).toBe(true);
+		await Promise.all(completions);
 		expect(events).toEqual(['mount', 'mount-return', 'unmount:handle']);
 		expect(host.querySelector('div')).toBeNull();
 		expect(panel.state.getSnapshot().status).toBe('idle');
 	});
 
 	it.each([
-		'injection',
+		'component',
 		'listener'
 	])('shares the completed %s stop with an idle subscriber before restart', async (kind) => {
 		hostElement();
 		const core = createMakoo();
 		core.useAdapter(adapter(() => 'handle'));
 		core.apply([
-			kind === 'injection'
+			kind === 'component'
 				? inject({ name: 'feature', injectAt: '#host', adapter: 'plain', component: {} })
 				: listen({ name: 'feature', listenAt: '#host', type: 'click', callback() {} })
 		]);
@@ -168,23 +170,25 @@ describe('control races and cleanup failure', () => {
 			}
 		});
 		const completion = feature.stop();
-		expect(repeated).toBe(completion);
 		await completion;
-		expect(feature.state.getSnapshot().status).toBe(kind === 'injection' ? 'mounted' : 'bound');
+		expect(repeated).toBeDefined();
+		await repeated;
+		expect(feature.state.getSnapshot().status).toBe(kind === 'component' ? 'mounted' : 'bound');
 	});
 
-	it('starts one later execution after stop then start, and stays stopped after stop then start then stop', () => {
+	it('starts one later execution after stop then start, and stays stopped after stop then start then stop', async () => {
 		const host = hostElement();
 		const mounts: string[] = [];
 		let mode: 'restart' | 'cancel' = 'restart';
+		let completion: Promise<void> | undefined;
 		const core = createMakoo();
 		core.useAdapter(
-			adapter(({ injection }) => {
+			adapter(({ control }) => {
 				mounts.push(mode);
 				if (mounts.length === 1) {
-					injection.stop();
-					injection.start();
-					if (mode === 'cancel') injection.stop();
+					completion = control.stop();
+					control.start();
+					if (mode === 'cancel') control.stop();
 				}
 				return mounts.length;
 			})
@@ -192,29 +196,33 @@ describe('control races and cleanup failure', () => {
 		core.apply([inject({ name: 'panel', injectAt: '#host', adapter: 'plain', component: {} })]);
 		const panel = core.get('panel');
 		handles.push(panel);
+		await completion;
 		expect(mounts).toEqual(['restart', 'restart']);
 		expect(panel.state.getSnapshot().status).toBe('mounted');
 		expect(host.querySelectorAll('div')).toHaveLength(1);
 		mode = 'cancel';
 		mounts.length = 0;
-		panel.stop();
+		await panel.stop();
 		panel.start();
+		await completion;
 		expect(mounts).toEqual(['cancel']);
 		expect(panel.state.getSnapshot().status).toBe('idle');
 	});
 
-	it('drops a queued start when remove wins during mount', () => {
+	it('drops a queued start when remove wins during mount', async () => {
 		hostElement();
 		const core = createMakoo();
-		const mount = vi.fn(({ injection }: AdapterMountParams) => {
-			injection.stop();
-			injection.start();
-			injection.remove();
+		let completion: Promise<void> | undefined;
+		const mount = vi.fn(({ control }: AdapterMountParams) => {
+			control.stop();
+			control.start();
+			completion = control.remove();
 			return 'handle';
 		});
 		core.useAdapter(adapter(mount));
 		core.apply([inject({ name: 'panel', injectAt: '#host', adapter: 'plain', component: {} })]);
 		expect(mount).toHaveBeenCalledOnce();
+		await completion;
 		expect(() => core.get('panel')).toThrow();
 	});
 
@@ -274,8 +282,12 @@ describe('control races and cleanup failure', () => {
 		const container = host.querySelector('div');
 		const first = panel.stop();
 		const second = panel.stop();
-		expect(second).toBe(first);
-		await expect(first).rejects.toMatchObject({ code: 'MAKOO_ADAPTER_UNMOUNT_FAIL' });
+		const [firstResult, secondResult] = await Promise.allSettled([first, second]);
+		expect(firstResult).toMatchObject({
+			status: 'rejected',
+			reason: { code: 'MAKOO_ADAPTER_UNMOUNT_FAIL' }
+		});
+		expect(secondResult).toEqual(firstResult);
 		expect(unmount).toHaveBeenCalledOnce();
 		expect(mount).toHaveBeenCalledOnce();
 		expect(container?.isConnected).toBe(false);
@@ -289,7 +301,7 @@ describe('control races and cleanup failure', () => {
 		expect(() => core.get('panel')).not.toThrow();
 	});
 
-	it('preserves the mount error when a later cleanup step fails', () => {
+	it('preserves the mount error when a later cleanup step fails', async () => {
 		const host = hostElement();
 		const unmount = vi.fn();
 		const core = createMakoo();
@@ -304,12 +316,15 @@ describe('control races and cleanup failure', () => {
 		core.apply([inject({ name: 'panel', injectAt: '#host', adapter: 'plain', component: {} })]);
 		const panel = core.get('panel');
 		handles.push(panel);
+		await vi.waitFor(() => expect(panel.state.getSnapshot().status).toBe('failed'), {
+			interval: 1
+		});
 		expect(unmount).not.toHaveBeenCalled();
 		expect(host.querySelector('div')?.isConnected).toBe(true);
 		expect(panel.lastError?.code).toBe('MAKOO_ADAPTER_MOUNT_FAIL');
 		expect(panel.lastError?.cause).toMatchObject({ message: 'mount failed' });
 		expect(panel.lastError?.cleanupErrors[0]).toMatchObject({
-			code: 'MAKOO_INJECTION_CONTAINER_REMOVE_FAIL'
+			code: 'MAKOO_COMPONENT_CONTAINER_REMOVE_FAIL'
 		});
 		expect(panel.lastError?.cleanupErrors[0]?.cause).toMatchObject({
 			message: 'remove failed'
@@ -321,7 +336,7 @@ describe('control races and cleanup failure', () => {
 		expect(panel.state.getSnapshot().status).toBe('failed');
 	});
 
-	it('allows an explicit restart after an ordinary mount failure whose cleanup succeeded', () => {
+	it('allows an explicit restart after an ordinary mount failure whose cleanup succeeded', async () => {
 		hostElement();
 		let fail = true;
 		const unmount = vi.fn();
@@ -335,7 +350,9 @@ describe('control races and cleanup failure', () => {
 		core.apply([inject({ name: 'panel', injectAt: '#host', adapter: 'plain', component: {} })]);
 		const panel = core.get('panel');
 		handles.push(panel);
-		expect(panel.state.getSnapshot().status).toBe('failed');
+		await vi.waitFor(() => expect(panel.state.getSnapshot().status).toBe('failed'), {
+			interval: 1
+		});
 		expect(panel.lastError?.code).toBe('MAKOO_ADAPTER_MOUNT_FAIL');
 		expect(panel.lastError?.cleanupErrors).toEqual([]);
 		expect(unmount).not.toHaveBeenCalled();
@@ -381,7 +398,7 @@ describe('control races and cleanup failure', () => {
 		const previousState = previous.state;
 		const seen: string[] = [];
 		previousState.subscribe(() => seen.push(previousState.getSnapshot().status));
-		previous.remove();
+		await previous.remove();
 		seen.length = 0;
 		expect(() => core.get('panel')).toThrow();
 		core.apply([inject({ name: 'panel', injectAt: '#host', adapter: 'plain', component: {} })]);
@@ -425,8 +442,7 @@ describe('control races and cleanup failure', () => {
 		});
 		const first = play.stop();
 		const second = play.stop();
-		expect(second).toBe(first);
-		await first;
+		await Promise.all([first, second]);
 		expect(play.state.getSnapshot().status).toBe('idle');
 		button.click();
 		expect(callback).not.toHaveBeenCalled();
@@ -474,8 +490,10 @@ describe('control races and cleanup failure', () => {
 		expect(() => play.start()).toThrow(/cannot restart after cleanup failed/);
 		expect(play.lastError).toBe(diagnostic);
 		const first = play.stop();
-		expect(play.remove()).toBe(first);
-		await expect(first).rejects.toMatchObject({ code: 'MAKOO_LISTENER_UNBIND_FAIL' });
+		await Promise.all([
+			expect(first).rejects.toMatchObject({ code: 'MAKOO_LISTENER_UNBIND_FAIL' }),
+			expect(play.remove()).rejects.toMatchObject({ code: 'MAKOO_LISTENER_UNBIND_FAIL' })
+		]);
 		expect(() => core.get('play')).not.toThrow();
 	});
 
@@ -489,7 +507,7 @@ describe('control races and cleanup failure', () => {
 		const previousState = previous.state;
 		const seen: string[] = [];
 		previousState.subscribe(() => seen.push(previousState.getSnapshot().status));
-		previous.remove();
+		await previous.remove();
 		seen.length = 0;
 		expect(() => core.get('play')).toThrow();
 		core.apply([listen({ name: 'play', listenAt: '.host', type: 'click', callback() {} })]);

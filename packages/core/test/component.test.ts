@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AdapterMountParams, ComponentAdapter } from '../src';
-import { createMakoo, type FeatureControl, inject, listen } from '../src';
+import { createMakoo, type InjectionControl, inject, listen } from '../src';
 
 describe('single component injection', () => {
-	const handles: FeatureControl[] = [];
+	const handles: InjectionControl[] = [];
 	beforeEach(() => {
 		document.body.replaceChildren();
 		vi.useFakeTimers();
@@ -56,9 +56,10 @@ describe('single component injection', () => {
 
 		expect(params?.component).toBe(component);
 		expect(params?.props).toBe(props);
-		expect(params?.injection).toBe(panel);
-		expect(Object.keys(params?.injection ?? {}).sort()).toEqual([
+		expect(params?.control).toBe(panel);
+		expect(Object.keys(params?.control ?? {}).sort()).toEqual([
 			'lastError',
+			'listenerState',
 			'name',
 			'remove',
 			'start',
@@ -149,11 +150,11 @@ describe('single component injection', () => {
 		document.body.append(document.createElement('div'));
 		await Promise.resolve();
 		expect(panel.state.getSnapshot().status).toBe('waiting');
-		vi.advanceTimersByTime(1);
+		await vi.advanceTimersByTimeAsync(1);
 		expect(panel.state.getSnapshot().status).toBe('failed');
 		expect(panel.lastError).toMatchObject({
 			code: 'MAKOO_DOM_WAIT_TIMEOUT',
-			context: { feature: 'panel', phase: 'wait', reason: 'timeout' }
+			context: { injection: 'panel', phase: 'wait', reason: 'timeout' }
 		});
 		const host = document.createElement('section');
 		host.id = 'host';
@@ -184,7 +185,7 @@ describe('single component injection', () => {
 		expect(vi.getTimerCount()).toBe(0);
 	});
 
-	it('does not mount a target that disconnects before use', () => {
+	it('does not mount a target that disconnects before use', async () => {
 		const host = document.createElement('section');
 		vi.spyOn(document, 'querySelector').mockReturnValueOnce(host);
 		vi.spyOn(host, 'isConnected', 'get').mockReturnValueOnce(true).mockReturnValue(false);
@@ -195,8 +196,10 @@ describe('single component injection', () => {
 		const panel = core.get('panel');
 		handles.push(panel);
 		expect(mount).not.toHaveBeenCalled();
-		expect(panel.state.getSnapshot().status).toBe('failed');
-		expect(panel.lastError?.code).toBe('MAKOO_INJECTION_TARGET_DETACHED');
+		await vi.waitFor(() => expect(panel.state.getSnapshot().status).toBe('failed'), {
+			interval: 1
+		});
+		expect(panel.lastError?.code).toBe('MAKOO_COMPONENT_TARGET_DETACHED');
 		expect(vi.getTimerCount()).toBe(0);
 	});
 
@@ -221,9 +224,12 @@ describe('single component injection', () => {
 		unsubscribe();
 		expect(mount).not.toHaveBeenCalled();
 		expect(unmount).not.toHaveBeenCalled();
+		await vi.waitFor(() => expect(panel.state.getSnapshot().status).toBe('failed'), {
+			interval: 1
+		});
 		expect(host.children).toHaveLength(0);
 		expect(panel.state.getSnapshot().status).toBe('failed');
-		expect(panel.lastError?.code).toBe('MAKOO_INJECTION_TARGET_DETACHED');
+		expect(panel.lastError?.code).toBe('MAKOO_COMPONENT_TARGET_DETACHED');
 		expect(vi.getTimerCount()).toBe(0);
 	});
 
@@ -237,7 +243,7 @@ describe('single component injection', () => {
 		const removedCallback = vi.fn();
 		const replacementCallback = vi.fn();
 		const thirdCallback = vi.fn();
-		let removed: FeatureControl | undefined;
+		let removed: InjectionControl | undefined;
 		const core = createMakoo();
 		core.useAdapter(
 			adapter(() => {
@@ -323,7 +329,7 @@ describe('single component injection', () => {
 		expect(second).not.toHaveBeenCalled();
 	});
 
-	it('shares the feature namespace and leaves a mount failure inside its own feature', () => {
+	it('shares the feature namespace and leaves a mount failure inside its own feature', async () => {
 		const button = document.createElement('button');
 		button.className = 'play';
 		const host = document.createElement('section');
@@ -343,7 +349,10 @@ describe('single component injection', () => {
 		handles.push(core.get('play'), core.get('panel'));
 		button.click();
 		expect(callback).toHaveBeenCalledOnce();
-		expect(core.get('panel').state.getSnapshot().status).toBe('failed');
+		await vi.waitFor(
+			() => expect(core.get('panel').state.getSnapshot().status).toBe('failed'),
+			{ interval: 1 }
+		);
 		expect(core.get('panel').lastError?.code).toBe('MAKOO_ADAPTER_MOUNT_FAIL');
 		expect(host.querySelector('div')).toBeNull();
 		expect(() =>

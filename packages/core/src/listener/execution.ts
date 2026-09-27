@@ -6,223 +6,181 @@ import { MakooError } from '../error/MakooError';
 import type { MakooListenerDeclaration } from './types';
 
 export type ListenerExecution = {
-	start(): void;
-	finish(): MakooError[];
+	readonly config: MakooListenerDeclaration;
+	phase: 'active' | 'cancelled' | 'cleaning' | 'settled';
+	readonly abortController: AbortController;
+	readonly eventListener: EventListener;
+	listenerTarget: Element | null;
+	readonly cleanupErrors: MakooError[];
 };
 
 type ExecutionCallbacks = {
 	status(status: 'waiting' | 'bound'): void;
 	ended(reason: 'detached' | 'failed', error: MakooError): void;
-	diagnostic(error: MakooError): void;
-};
-
-type ListenerExecutionState = {
-	readonly config: MakooListenerDeclaration;
-	/** One signal cancels discovery, target observation, and the native event binding. */
-	readonly abortController: AbortController;
-	readonly eventListener: EventListener;
-	listenerTarget: Element | null;
-	hasCleanupStarted: boolean;
-	hasNotifiedEnd: boolean;
-	readonly cleanupErrors: MakooError[];
 };
 
 export function createListenerExecution(
 	config: MakooListenerDeclaration,
-	dom: DOMObserver,
-	callbacks: ExecutionCallbacks
+	onDiagnostic: (error: MakooError) => void
 ): ListenerExecution {
-	const execution: ListenerExecutionState = {
+	const execution: ListenerExecution = {
 		config,
+		phase: 'active',
 		abortController: new AbortController(),
-		eventListener: (event) => invokeEventHandler(execution, callbacks.diagnostic, event),
+		eventListener: (event) => invokeEventHandler(execution, onDiagnostic, event),
 		listenerTarget: null,
-		hasCleanupStarted: false,
-		hasNotifiedEnd: false,
 		cleanupErrors: []
 	};
-	return {
-		start: () => awaitListenerTarget(execution, dom, callbacks),
-		finish: () => cleanupExecution(execution)
-	};
+	return execution;
 }
 
-function awaitListenerTarget(
-	execution: ListenerExecutionState,
+export function awaitListenerTarget(
+	execution: ListenerExecution,
 	dom: DOMObserver,
 	callbacks: ExecutionCallbacks
 ): void {
-	const { config, abortController } = execution;
+	const { config } = execution;
 	try {
 		waitForElement(
 			dom,
 			config.listenAt,
-			abortController.signal,
+			execution.abortController.signal,
 			config.timeout ?? DEFAULT_DOM_TIMEOUT,
-			(listenerTarget) => bindListener(execution, dom, callbacks, listenerTarget),
+			(target) => bindListener(execution, dom, callbacks, target),
 			() => {
-				notifyExecutionEnd(
-					execution,
-					callbacks.ended,
+				if (execution.phase !== 'active') return;
+				callbacks.ended(
 					'failed',
 					new MakooError(
 						`Timed out waiting for listener "${config.name}"`,
 						undefined,
 						ErrorCode.DOM_WAIT_TIMEOUT
-					).withContext({ feature: config.name, phase: 'wait', reason: 'timeout' })
+					).withContext({ injection: config.name, phase: 'wait', reason: 'timeout' })
 				);
 			},
 			(cause) => {
-				notifyExecutionEnd(
-					execution,
-					callbacks.ended,
-					'failed',
-					bindingError(config.name, cause)
-				);
+				if (execution.phase === 'active')
+					callbacks.ended('failed', bindingError(config.name, cause));
 			}
 		);
-		if (
-			!execution.listenerTarget &&
-			!execution.hasCleanupStarted &&
-			!abortController.signal.aborted
-		) {
-			callbacks.status('waiting');
-		}
+		if (execution.phase === 'active' && !execution.listenerTarget) callbacks.status('waiting');
 	} catch (cause) {
-		notifyExecutionEnd(execution, callbacks.ended, 'failed', bindingError(config.name, cause));
+		if (execution.phase === 'active')
+			callbacks.ended('failed', bindingError(config.name, cause));
 	}
 }
 
 function bindListener(
-	execution: ListenerExecutionState,
+	execution: ListenerExecution,
 	dom: DOMObserver,
 	callbacks: ExecutionCallbacks,
 	listenerTarget: Element
 ): void {
-	const { config, abortController, eventListener } = execution;
-	if (execution.hasCleanupStarted || abortController.signal.aborted) return;
+	if (execution.phase !== 'active') return;
+	const { config } = execution;
 	if (!listenerTarget.isConnected) {
-		notifyExecutionEnd(
-			execution,
-			callbacks.ended,
-			'detached',
-			targetDetachedError(config.name)
-		);
+		callbacks.ended('detached', targetDetachedError(config.name));
 		return;
 	}
-
 	// Retain the target before binding so partial setup can still be cleaned up.
 	execution.listenerTarget = listenerTarget;
 	try {
-		listenerTarget.addEventListener(config.type, eventListener, {
+		listenerTarget.addEventListener(config.type, execution.eventListener, {
 			capture: config.capture,
-			signal: abortController.signal
+			signal: execution.abortController.signal
 		});
-		watchElement(dom, listenerTarget, abortController.signal, () => {
-			notifyExecutionEnd(
-				execution,
-				callbacks.ended,
-				'detached',
-				targetDetachedError(config.name)
-			);
+		watchElement(dom, listenerTarget, execution.abortController.signal, () => {
+			if (execution.phase === 'active')
+				callbacks.ended('detached', targetDetachedError(config.name));
 		});
 	} catch (cause) {
-		notifyExecutionEnd(execution, callbacks.ended, 'failed', bindingError(config.name, cause));
+		if (execution.phase === 'active')
+			callbacks.ended('failed', bindingError(config.name, cause));
 		return;
 	}
-	if (!execution.hasCleanupStarted && !abortController.signal.aborted) callbacks.status('bound');
+	if (execution.phase === 'active') callbacks.status('bound');
 }
 
-function invokeEventHandler(
-	execution: ListenerExecutionState,
-	onDiagnostic: ExecutionCallbacks['diagnostic'],
-	event: Event
-): void {
-	const { config, listenerTarget } = execution;
-	if (execution.abortController.signal.aborted || !listenerTarget) return;
-	try {
-		const result = config.callback.call(listenerTarget, event);
-		if (result !== undefined) {
-			void Promise.resolve(result).catch((cause) => {
-				notifyHandlerError(config.name, onDiagnostic, cause);
-			});
-		}
-	} catch (cause) {
-		notifyHandlerError(config.name, onDiagnostic, cause);
-	}
-}
-
-function cleanupExecution(execution: ListenerExecutionState): MakooError[] {
-	const { config, cleanupErrors, eventListener, listenerTarget } = execution;
-	if (execution.hasCleanupStarted) return cleanupErrors;
-	execution.hasCleanupStarted = true;
+export function cleanupExecution(execution: ListenerExecution): void {
+	const { config, cleanupErrors, listenerTarget } = execution;
+	execution.phase = 'cleaning';
 	execution.listenerTarget = null;
-
-	// Invalidate queued callbacks and release observation before explicitly unbinding.
 	try {
 		execution.abortController.abort();
 	} catch (cause) {
 		cleanupErrors.push(unbindError(config.name, cause));
 	}
-	if (!listenerTarget) return cleanupErrors;
-	try {
-		listenerTarget.removeEventListener(config.type, eventListener, config.capture);
-	} catch (cause) {
-		cleanupErrors.push(unbindError(config.name, cause));
+	if (listenerTarget) {
+		try {
+			listenerTarget.removeEventListener(
+				config.type,
+				execution.eventListener,
+				config.capture
+			);
+		} catch (cause) {
+			cleanupErrors.push(unbindError(config.name, cause));
+		}
 	}
-	return cleanupErrors;
+	execution.phase = 'settled';
 }
 
-function notifyExecutionEnd(
-	execution: ListenerExecutionState,
-	onEnded: ExecutionCallbacks['ended'],
-	endReason: 'detached' | 'failed',
-	executionError: MakooError
+function invokeEventHandler(
+	execution: ListenerExecution,
+	onDiagnostic: (error: MakooError) => void,
+	event: Event
 ): void {
-	if (execution.hasNotifiedEnd || execution.hasCleanupStarted) return;
-	execution.hasNotifiedEnd = true;
-	onEnded(endReason, executionError);
+	const { config, listenerTarget } = execution;
+	if (execution.phase !== 'active' || !listenerTarget) return;
+	try {
+		const result = config.callback.call(listenerTarget, event);
+		if (result !== undefined)
+			void Promise.resolve(result).catch((cause) =>
+				reportHandlerError(config.name, onDiagnostic, cause)
+			);
+	} catch (cause) {
+		reportHandlerError(config.name, onDiagnostic, cause);
+	}
 }
 
-function notifyHandlerError(
-	featureName: string,
-	onDiagnostic: ExecutionCallbacks['diagnostic'],
+function reportHandlerError(
+	injectionName: string,
+	onDiagnostic: (error: MakooError) => void,
 	cause: unknown
 ): void {
 	onDiagnostic(
 		new MakooError(
-			`Event handler failed for "${featureName}"`,
+			`Event handler failed for "${injectionName}"`,
 			undefined,
 			ErrorCode.LISTENER_HANDLER_FAILED,
 			causeError(cause)
-		).withContext({ feature: featureName, phase: 'event', reason: 'handler-failed' })
+		).withContext({ injection: injectionName, phase: 'event', reason: 'handler-failed' })
 	);
 }
 
-function targetDetachedError(featureName: string): MakooError {
+function targetDetachedError(injectionName: string): MakooError {
 	return new MakooError(
-		`Listener target "${featureName}" disconnected`,
+		`Listener target "${injectionName}" disconnected`,
 		undefined,
 		ErrorCode.LISTENER_TARGET_DETACHED
-	).withContext({ feature: featureName, phase: 'watch', reason: 'target-detached' });
+	).withContext({ injection: injectionName, phase: 'watch', reason: 'target-detached' });
 }
 
-function bindingError(featureName: string, cause: unknown): MakooError {
+function bindingError(injectionName: string, cause: unknown): MakooError {
 	return new MakooError(
-		`Failed to bind listener "${featureName}"`,
+		`Failed to bind listener "${injectionName}"`,
 		undefined,
 		ErrorCode.LISTENER_BIND_FAILED,
 		causeError(cause)
-	).withContext({ feature: featureName, phase: 'bind', reason: 'binding-failed' });
+	).withContext({ injection: injectionName, phase: 'bind', reason: 'binding-failed' });
 }
 
-function unbindError(featureName: string, cause: unknown): MakooError {
+function unbindError(injectionName: string, cause: unknown): MakooError {
 	return new MakooError(
-		`Failed to unbind listener "${featureName}"`,
+		`Failed to unbind listener "${injectionName}"`,
 		undefined,
 		ErrorCode.LISTENER_UNBIND_FAIL,
 		causeError(cause)
-	).withContext({ feature: featureName, phase: 'cleanup', reason: 'unbind-failed' });
+	).withContext({ injection: injectionName, phase: 'cleanup', reason: 'unbind-failed' });
 }
 
 function causeError(cause: unknown): Error {
