@@ -1,4 +1,4 @@
-import type { ComponentAdapter } from '../adapter/types';
+import type { MountAdapter } from '../adapter/types';
 import type { DOMObserver } from '../dom/observer';
 import { ErrorCode } from '../error/ErrorCode';
 import { MakooError } from '../error/MakooError';
@@ -49,7 +49,7 @@ type Component = {
 
 export function createComponent(
 	config: MakooComponentDeclaration,
-	adapter: ComponentAdapter,
+	adapter: MountAdapter,
 	dom: DOMObserver,
 	onRemoved: () => void
 ): ComponentControl {
@@ -115,7 +115,7 @@ function failComponent(
 
 function startComponent(
 	component: Component,
-	adapter: ComponentAdapter,
+	adapter: MountAdapter,
 	dom: DOMObserver,
 	control: ComponentControl,
 	onRemoved: () => void

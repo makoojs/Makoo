@@ -1,41 +1,63 @@
-import { ErrorCode } from '@makoojs/core';
-import { createElement } from 'react';
-import { createRoot } from 'react-dom/client';
-import { ReactAdapterError } from './error';
-import type { ReactMountAdapter } from './types';
-import { isReactMountArtifact } from './util';
+import { ErrorCode, type MountAdapter } from '@makoojs/core';
+import { type ComponentType, createElement } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
+import { causeError, ReactAdapterError } from './error';
+import { MakooComponentContext } from './hooks';
+
+// biome-ignore lint/suspicious/noExplicitAny: accepts components with any props shape
+export type ReactMountComponent = ComponentType<any>;
+export type ReactMountProps = Record<string, unknown>;
+export type ReactMountRoot = Root;
+
+export type ReactMountAdapter = MountAdapter<ReactMountComponent, ReactMountProps, ReactMountRoot>;
 
 export function createReactAdapter(): ReactMountAdapter {
 	return {
 		name: 'react',
-		matches: isReactMountArtifact,
-		mount({ mountPoint, artifact, makoo }) {
+		mount({ component, props, control, container }) {
+			let root: Root | undefined;
 			try {
-				const root = createRoot(mountPoint);
-				root.render(createElement(artifact, { makoo }));
-				return {
-					handle: root
-				};
+				root = createRoot(container);
+				root.render(
+					createElement(
+						MakooComponentContext.Provider,
+						{ value: control },
+						createElement(component, props)
+					)
+				);
+				return root;
 			} catch (cause) {
-				throw new ReactAdapterError(
-					`Failed to mount React component at "${makoo.injectAt}"`,
+				const error = new ReactAdapterError(
+					'Failed to mount React component',
 					undefined,
 					ErrorCode.ADAPTER_MOUNT_FAIL,
-					cause instanceof Error ? cause : new Error(String(cause))
+					causeError(cause)
 				);
+				if (root) {
+					try {
+						root.unmount();
+					} catch (unmountCause) {
+						error.withCleanupErrors([unmountError(unmountCause)]);
+					}
+				}
+				throw error;
 			}
 		},
-		unmount({ handle }) {
+		unmount(root) {
 			try {
-				handle.unmount();
+				root.unmount();
 			} catch (cause) {
-				throw new ReactAdapterError(
-					'Failed to unmount React component',
-					undefined,
-					ErrorCode.ADAPTER_UNMOUNT_FAIL,
-					cause instanceof Error ? cause : new Error(String(cause))
-				);
+				throw unmountError(cause);
 			}
 		}
 	};
+}
+
+function unmountError(cause: unknown): ReactAdapterError {
+	return new ReactAdapterError(
+		'Failed to unmount React component',
+		undefined,
+		ErrorCode.ADAPTER_UNMOUNT_FAIL,
+		causeError(cause)
+	);
 }

@@ -1,5 +1,5 @@
 import { createAdapterRegistry } from '../adapter/registry';
-import type { ComponentAdapter } from '../adapter/types';
+import type { MountAdapter } from '../adapter/types';
 import { createComponent } from '../component/component';
 import { validateComponent } from '../component/declaration';
 import type { MakooComponentDeclaration } from '../component/types';
@@ -19,7 +19,7 @@ type MakooInstance = {
 
 type PreparedDeclaration =
 	| { kind: 'listener'; config: MakooListenerDeclaration }
-	| { kind: 'component'; config: MakooComponentDeclaration; adapter: ComponentAdapter };
+	| { kind: 'component'; config: MakooComponentDeclaration; adapter: MountAdapter };
 
 export function createMakoo(): MakooRuntime {
 	const makooInstance: MakooInstance = {

@@ -1,4 +1,4 @@
-import type { ComponentAdapter } from '../adapter/types';
+import type { MountAdapter } from '../adapter/types';
 import type { DOMObserver } from '../dom/observer';
 import { DEFAULT_DOM_TIMEOUT, waitForElement } from '../dom/waitForElement';
 import { watchElement } from '../dom/watchElement';
@@ -36,7 +36,7 @@ type ComponentExecutionState = {
 
 export function createComponentExecution(
 	config: MakooComponentDeclaration,
-	adapter: ComponentAdapter,
+	adapter: MountAdapter,
 	dom: DOMObserver,
 	componentControl: ComponentControl,
 	attachListeners: ReadonlyMap<string, AttachListener>,
@@ -69,7 +69,7 @@ export function createComponentExecution(
 
 function awaitMountTarget(
 	execution: ComponentExecutionState,
-	adapter: ComponentAdapter,
+	adapter: MountAdapter,
 	dom: DOMObserver,
 	componentControl: ComponentControl,
 	callbacks: ExecutionCallbacks
@@ -124,7 +124,7 @@ function awaitMountTarget(
 
 function mountComponent(
 	execution: ComponentExecutionState,
-	adapter: ComponentAdapter,
+	adapter: MountAdapter,
 	dom: DOMObserver,
 	componentControl: ComponentControl,
 	callbacks: ExecutionCallbacks,
@@ -202,6 +202,7 @@ function mountComponent(
 			component: config.component,
 			props: config.props,
 			container: componentContainer,
+			listenerNames: [...execution.attachListeners.keys()],
 			control: componentControl
 		});
 		execution.mountedComponent = { handle: mountHandle };
@@ -262,7 +263,7 @@ function cancelExecution(execution: ComponentExecutionState): void {
 
 async function cleanupExecution(
 	execution: ComponentExecutionState,
-	adapter: ComponentAdapter,
+	adapter: MountAdapter,
 	dom: DOMObserver
 ): Promise<MakooError[]> {
 	const { config, cleanupErrors } = execution;
@@ -289,10 +290,7 @@ async function cleanupExecution(
 	return unmountComponent(execution, adapter);
 }
 
-function unmountComponent(
-	execution: ComponentExecutionState,
-	adapter: ComponentAdapter
-): MakooError[] {
+function unmountComponent(execution: ComponentExecutionState, adapter: MountAdapter): MakooError[] {
 	const { config, cleanupErrors } = execution;
 
 	const mountedComponent = execution.mountedComponent;

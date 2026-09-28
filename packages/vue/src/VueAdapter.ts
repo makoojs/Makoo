@@ -1,49 +1,82 @@
-import { ErrorCode } from '@makoojs/core';
-import type { ComponentPublicInstance } from 'vue';
-import { createApp } from 'vue';
-import { VueAdapterError } from './error';
-import type { VueMountAdapter } from './types';
-import { isVueComponent } from './util';
+import { ErrorCode, type MakooError, type MountAdapter } from '@makoojs/core';
+import { type App, type Component, createApp } from 'vue';
+import { componentContextKey } from './composables';
+import { causeError, VueAdapterError } from './error';
 import { VuePlugin } from './VuePlugin';
 
+export type VueMountHandle = App<Element>;
+export type VueMountComponent = Component;
+/** Root props passed to the component as-is; reactive values keep Vue reactivity. */
+export type VueMountProps = Record<string, unknown>;
+
+export type VueMountAdapter = MountAdapter<VueMountComponent, VueMountProps, VueMountHandle>;
+
 export function createVueAdapter(): VueMountAdapter {
-	const adapter: VueMountAdapter = {
+	return {
 		name: 'vue',
-		matches: isVueComponent,
-		mount({ mountPoint, artifact, makoo }) {
+		mount({ component, props, control, container, listenerNames }) {
+			const subscriptions = new Set<() => void>();
+			let hasMountStarted = false;
 			try {
-				const app = createApp(artifact, { makoo });
-				const plugins = VuePlugin.getPlugins();
-				for (const plugin of plugins) {
+				const app = createApp(component, props ?? null);
+				app.provide(componentContextKey, { control, listenerNames, subscriptions });
+				for (const plugin of VuePlugin.getPlugins()) {
 					app.use(plugin);
 				}
-				const instance = app.mount(mountPoint) as ComponentPublicInstance;
-				return {
-					handle: app,
-					instance
-				};
+				hasMountStarted = true;
+				app.mount(container);
+				return app;
 			} catch (cause) {
+				const cleanupErrors = releaseSubscriptions(subscriptions);
+				if (hasMountStarted) {
+					// Vue cannot unmount a partially mounted tree through app.unmount().
+					cleanupErrors.push(
+						new VueAdapterError(
+							'Cannot confirm Vue component cleanup after mount failed; reload the page',
+							undefined,
+							ErrorCode.ADAPTER_UNMOUNT_FAIL,
+							causeError(cause)
+						)
+					);
+				}
 				throw new VueAdapterError(
-					`Failed to mount Vue component at "${makoo.injectAt}"`,
+					'Failed to mount Vue component',
 					undefined,
 					ErrorCode.ADAPTER_MOUNT_FAIL,
-					cause instanceof Error ? cause : new Error(String(cause))
-				);
+					causeError(cause)
+				).withCleanupErrors(cleanupErrors);
 			}
 		},
-		unmount({ handle }) {
+		unmount(app) {
 			try {
-				handle.unmount();
+				app.unmount();
 			} catch (cause) {
 				throw new VueAdapterError(
 					'Failed to unmount Vue component',
 					undefined,
 					ErrorCode.ADAPTER_UNMOUNT_FAIL,
-					cause instanceof Error ? cause : new Error(String(cause))
+					causeError(cause)
 				);
 			}
 		}
 	};
+}
 
-	return adapter;
+function releaseSubscriptions(subscriptions: Set<() => void>): MakooError[] {
+	const errors: MakooError[] = [];
+	for (const release of [...subscriptions]) {
+		try {
+			release();
+		} catch (cause) {
+			errors.push(
+				new VueAdapterError(
+					'Failed to release a Vue state subscription',
+					undefined,
+					ErrorCode.ADAPTER_UNMOUNT_FAIL,
+					causeError(cause)
+				)
+			);
+		}
+	}
+	return errors;
 }

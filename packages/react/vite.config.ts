@@ -18,6 +18,7 @@ export default defineConfig({
 	plugins: [
 		dts({
 			entryRoot: 'src',
+			aliasesExclude: ['@makoojs/core'],
 			include: ['src/**/*.ts'],
 			rollupTypes: false,
 			outDir: 'dist',

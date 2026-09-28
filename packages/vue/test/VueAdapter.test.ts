@@ -1,27 +1,48 @@
-import type { MakooContext } from '@makoojs/core';
+import {
+	type ComponentControl,
+	ErrorCode,
+	type ListenerSnapshot,
+	type MakooError,
+	type StateView
+} from '@makoojs/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h } from 'vue';
+import { type App, defineComponent, h } from 'vue';
+import { useMakooComponent } from '../src';
 import { VueAdapterError } from '../src/error';
 import { createVueAdapter } from '../src/VueAdapter';
 import { VuePlugin } from '../src/VuePlugin';
 
-function createMakooApi(): MakooContext {
+function createControl(view: StateView<ListenerSnapshot>): ComponentControl {
 	return {
-		taskId: 'vue-task',
-		injectAt: '#vue-adapter',
-		enableAlive: vi.fn(),
-		disableAlive: vi.fn(),
-		reset: vi.fn(),
-		destroy: vi.fn(),
-		on: vi.fn(() => vi.fn()),
-		onTask: vi.fn(() => vi.fn()),
-		off: vi.fn(),
-		offTask: vi.fn(),
-		getLogger: vi.fn(),
-		bindListenerSignal: vi.fn(() => false),
-		controlListener: vi.fn(() => false)
+		name: 'panel',
+		state: { getSnapshot: () => ({ status: 'mounted' }), subscribe: () => () => {} },
+		lastError: undefined,
+		listenerState: () => view,
+		start: vi.fn(),
+		stop: vi.fn(async () => {}),
+		remove: vi.fn(async () => {})
 	};
 }
+
+function createView(unsubscribe: () => void): StateView<ListenerSnapshot> {
+	return {
+		getSnapshot: () => ({ status: 'waiting' }),
+		subscribe: vi.fn(() => unsubscribe)
+	};
+}
+
+const FailingChild = defineComponent({
+	setup() {
+		throw new Error('child setup failed');
+	}
+});
+
+const SubscribingParent = defineComponent({
+	setup() {
+		const play = useMakooComponent().listenerState('play');
+		return () => h('div', [play.value.status, h(FailingChild)]);
+	}
+});
 
 describe('VueAdapter', () => {
 	afterEach(() => {
@@ -30,42 +51,11 @@ describe('VueAdapter', () => {
 		VuePlugin.clear();
 	});
 
-	it('should mount Vue component with makoo root prop', () => {
-		const mountPoint = document.createElement('div');
-		document.body.appendChild(mountPoint);
-		const makoo = createMakooApi();
-		let receivedMakoo: MakooContext | undefined;
-
-		const artifact = defineComponent({
-			name: 'VueMakooBadge',
-			props: {
-				makoo: {
-					type: Object,
-					required: true
-				}
-			},
-			setup(props) {
-				receivedMakoo = props.makoo as MakooContext;
-				return () => h('div', 'badge');
-			}
-		});
-
-		const result = createVueAdapter().mount({
-			host: mountPoint,
-			mountPoint,
-			artifact,
-			taskId: makoo.taskId,
-			injectAt: makoo.injectAt,
-			makoo
-		});
-
-		expect(result.handle).toBeDefined();
-		expect(receivedMakoo).toBe(makoo);
+	it('is registered under the explicit name "vue"', () => {
+		expect(createVueAdapter().name).toBe('vue');
 	});
 
-	it('uses injectAt in mount errors and preserves the original cause', () => {
-		const mountPoint = document.createElement('div');
-		const makoo = { ...createMakooApi(), injectAt: 'body' };
+	it('wraps mount failures and preserves the original cause', () => {
 		const cause = new TypeError('plugin install failed');
 		VuePlugin.usePlugins({
 			install() {
@@ -76,20 +66,99 @@ describe('VueAdapter', () => {
 		let thrown: unknown;
 		try {
 			createVueAdapter().mount({
-				host: mountPoint,
-				mountPoint,
-				artifact: defineComponent({ render: () => h('div') }),
-				taskId: makoo.taskId,
-				injectAt: makoo.injectAt,
-				makoo
+				component: defineComponent({ render: () => h('div') }),
+				listenerNames: [],
+				props: undefined,
+				container: document.createElement('div'),
+				control: createControl(createView(() => {}))
 			});
 		} catch (error) {
 			thrown = error;
 		}
 
 		expect(thrown).toBeInstanceOf(VueAdapterError);
-		expect((thrown as VueAdapterError).summary).toBe('Failed to mount Vue component at "body"');
-		expect((thrown as VueAdapterError).message).not.toContain('[object HTMLDivElement]');
-		expect((thrown as VueAdapterError).cause).toBe(cause);
+		expect(thrown).toMatchObject({
+			code: ErrorCode.ADAPTER_MOUNT_FAIL,
+			cause,
+			cleanupErrors: []
+		});
+	});
+
+	it('releases state subscriptions created before a mount fails', () => {
+		vi.spyOn(console, 'warn').mockImplementation(() => {});
+		const unsubscribe = vi.fn();
+		const view = createView(unsubscribe);
+
+		expect(() =>
+			createVueAdapter().mount({
+				component: SubscribingParent,
+				listenerNames: ['play'],
+				props: undefined,
+				container: document.createElement('div'),
+				control: createControl(view)
+			})
+		).toThrow(
+			expect.objectContaining({
+				code: ErrorCode.ADAPTER_MOUNT_FAIL,
+				cleanupErrors: [expect.objectContaining({ code: ErrorCode.ADAPTER_UNMOUNT_FAIL })]
+			})
+		);
+		expect(view.subscribe).toHaveBeenCalledOnce();
+		expect(unsubscribe).toHaveBeenCalledOnce();
+	});
+
+	it('reports subscription release failures after a failed mount', () => {
+		vi.spyOn(console, 'warn').mockImplementation(() => {});
+		const releaseCause = new Error('release failed');
+
+		let thrown: unknown;
+		try {
+			createVueAdapter().mount({
+				component: SubscribingParent,
+				listenerNames: ['play'],
+				props: undefined,
+				container: document.createElement('div'),
+				control: createControl(
+					createView(() => {
+						throw releaseCause;
+					})
+				)
+			});
+		} catch (error) {
+			thrown = error;
+		}
+
+		expect(thrown).toBeInstanceOf(VueAdapterError);
+		const { cleanupErrors } = thrown as MakooError;
+		expect(cleanupErrors).toHaveLength(2);
+		expect(cleanupErrors).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					code: ErrorCode.ADAPTER_UNMOUNT_FAIL,
+					cause: releaseCause
+				}),
+				expect.objectContaining({
+					code: ErrorCode.ADAPTER_UNMOUNT_FAIL,
+					cause: expect.objectContaining({ message: 'child setup failed' })
+				})
+			])
+		);
+	});
+
+	it('wraps unmount failures with the original cause', () => {
+		const cause = new Error('unmount failed');
+		const app = {
+			unmount() {
+				throw cause;
+			}
+		} as unknown as App;
+
+		expect(() => createVueAdapter().unmount(app)).toThrow(
+			expect.objectContaining({
+				name: 'VueAdapterError',
+				code: ErrorCode.ADAPTER_UNMOUNT_FAIL,
+				cause
+			})
+		);
 	});
 });

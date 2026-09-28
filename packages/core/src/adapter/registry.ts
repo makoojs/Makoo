@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { ErrorCode } from '../error/ErrorCode';
 import { MakooError } from '../error/MakooError';
-import type { ComponentAdapter } from './types';
+import type { MountAdapter } from './types';
 
 const adapterSchema = z.object(
 	{
@@ -23,9 +23,9 @@ const adapterSchema = z.object(
 );
 
 export function createAdapterRegistry() {
-	const adapters = new Map<string, ComponentAdapter>();
+	const adapters = new Map<string, MountAdapter>();
 	return {
-		use(adapter: ComponentAdapter) {
+		use(adapter: MountAdapter) {
 			const parsed = adapterSchema.safeParse(adapter);
 			if (!parsed.success) {
 				throw new MakooError(

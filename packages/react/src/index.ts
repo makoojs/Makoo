@@ -1,8 +1,10 @@
 export { ReactAdapterError } from './error';
-export { createReactAdapter } from './ReactAdapter';
+export type { ReactComponentControl } from './hooks';
+export { useComponentControl, useComponentState, useListenerState } from './hooks';
 export type {
 	ReactMountAdapter,
-	ReactMountArtifact,
+	ReactMountComponent,
 	ReactMountProps,
 	ReactMountRoot
-} from './types';
+} from './ReactAdapter';
+export { createReactAdapter } from './ReactAdapter';

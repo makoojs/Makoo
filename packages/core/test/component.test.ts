@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { AdapterMountParams, ComponentAdapter } from '../src';
+import type { AdapterMountParams, MountAdapter } from '../src';
 import { createMakoo, type InjectionControl, inject, listen } from '../src';
 
 describe('single component injection', () => {
@@ -18,9 +18,9 @@ describe('single component injection', () => {
 	});
 
 	function adapter(
-		mount: ComponentAdapter['mount'],
-		unmount: ComponentAdapter['unmount'] = () => {}
-	): ComponentAdapter {
+		mount: MountAdapter['mount'],
+		unmount: MountAdapter['unmount'] = () => {}
+	): MountAdapter {
 		return { name: 'plain', mount, unmount };
 	}
 

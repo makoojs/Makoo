@@ -1,4 +1,4 @@
-export type { AdapterMountParams, ComponentAdapter } from './adapter/types';
+export type { AdapterMountParams, MountAdapter } from './adapter/types';
 export { inject } from './component/declaration';
 export type {
 	ComponentControl,
