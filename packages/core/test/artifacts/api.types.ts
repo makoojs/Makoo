@@ -5,6 +5,9 @@ import { expect } from 'vitest';
 
 export async function checkArtifactTypes(artifact: UserscriptArtifact) {
 	expect(artifact).toHaveGrant('GM_getValue');
+	expect(artifact).toHaveClassicScriptSyntax();
+	// @ts-expect-error syntax matcher accepts no arguments
+	expect(artifact).toHaveClassicScriptSyntax('module');
 	expect(artifact).not.toHaveMetadata('missing');
 	await expect(Promise.resolve(artifact)).resolves.toHaveMetadataValues('match', ['a']);
 	// @ts-expect-error grant must be a string

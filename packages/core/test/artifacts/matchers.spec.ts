@@ -33,6 +33,18 @@ describe('userscript matchers', () => {
 		expect(() => expect({}).not.toHaveGrant('GM_getValue')).toThrow(TypeError);
 	});
 
+	it('checks classic script syntax without executing the artifact', () => {
+		const file = artifact('// @name syntax');
+		const valid = { ...file, source: `${file.source}\nthrow new Error("must not run");` };
+		expect(valid).toHaveClassicScriptSyntax();
+		expect(() => expect(valid).not.toHaveClassicScriptSyntax()).toThrow('expected not');
+		for (const code of ['export const x = 1;', 'import x from "missing";', 'const x = ;']) {
+			const broken = { ...file, source: `${file.source}\n${code}` };
+			expect(broken).not.toHaveClassicScriptSyntax();
+			expect(() => expect(broken).toHaveClassicScriptSyntax()).toThrow(file.path);
+		}
+	});
+
 	it('compares all fields independently of field order, preserving repeated value order', () => {
 		const first = artifact('// @name demo\n// @match a\n// @match b');
 		const second = artifact('// @match a\n// @match b\n// @name demo');

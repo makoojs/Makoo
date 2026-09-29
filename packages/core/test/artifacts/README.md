@@ -8,6 +8,7 @@
 ```sh
 pnpm build:core
 pnpm --filter @makoojs/test build
+pnpm -C packages/core/test/frameworks install --frozen-lockfile
 pnpm exec vitest run --config packages/core/test/artifacts/vitest.config.ts
 pnpm exec tsc --project packages/core/test/artifacts/tsconfig.types.json
 ```
@@ -27,7 +28,9 @@ require/resource 使用固定 fixture URL，仅检查配置输出；这些测试
 
 ## 剩余事项
 
-阶段 2 的产物部分已实现。Vue SFC、React TSX 与实际插件项目按当前范围约束暂缓；完整阶段 2 尚未验收。
+阶段 2 的 metadata 与框架构建案例已通过。Vue SFC + Pinia 3.0.4、React TSX + ReactDOM 通过真实 Makoo 构建链，构建图确认实际依赖参与编译；最终文件使用公共 matcher 检查 metadata、meta/user 一致性和经典脚本语法。所有框架 fixture 和测试仍位于 core/test 内，未改动其他包测试。
+
+框架案例目前使用源码 alias，不是 tarball 消费；构建通过不代表组件、Pinia 状态和点击行为已在浏览器验证。
 阶段 1 仍受 Chromium 本地 socket 权限限制，实际安装与交互未验收。
 包导出构建可检查，但实际 tarball 安装和浏览器完整消费留在后续阶段。
 
@@ -39,6 +42,10 @@ require/resource 使用固定 fixture URL，仅检查配置输出；这些测试
 
 ## 封装后验证（2026-09-10）
 
-3 个文件、11 个产物/解析/matcher 用例通过；新包生成 ESM/CJS 和类型声明。core 原有 13 文件、210 个测试仍全部通过。Vitest 集成入口采用 ESM，以匹配 Vitest 的加载要求。
+当时 3 个文件、11 个产物/解析/matcher 用例通过；新包生成 ESM/CJS 和类型声明。core 原有 13 文件、210 个测试仍全部通过。Vitest 集成入口采用 ESM，以匹配 Vitest 的加载要求。
 
 `api.types.ts` 仅由专用 `noEmit` 配置检查，不执行测试或生成文件；覆盖 matcher 补全、反向/异步断言、E2E 页面和构建配置的类型，以及错误参数拒绝。声明构建保留 `import 'vitest'`，保证消费 dist 时类型扩展仍有效。
+
+## 阶段 2 验证（2026-09-22）
+
+5 个文件、16 个测试通过，包括超时清理、相对资源、两种框架实际构建与语法故障检查。框架依赖在 `../frameworks` 独立安装并固定版本；不会增加 core 发布依赖。

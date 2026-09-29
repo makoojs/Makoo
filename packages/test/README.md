@@ -12,6 +12,7 @@ import { expect, test } from 'vitest';
 test('构建输出正确', async () => {
  const artifact = await readUserscript('./dist/demo.user.js');
  expect(artifact).toHaveMetadata('name', 'demo');
+ expect(artifact).toHaveClassicScriptSyntax();
  expect(artifact).toHaveMetadataValues('match', ['https://example.com/*']);
  expect(artifact).toHaveGrant('GM_getValue');
  expect(artifact).not.toHaveGrant('unsafeWindow');
@@ -25,6 +26,7 @@ test('构建输出正确', async () => {
 
 | matcher | 语义 |
 | --- | --- |
+| `toHaveClassicScriptSyntax()` | 用当前 Node/V8 编译器检查经典脚本语法，不执行代码；不保证目标浏览器版本兼容或运行成功 |
 | `toHaveMetadata(key)` | 字段存在，包括无值字段 |
 | `toHaveMetadata(key, value)` | 字段的多个值中包含指定值 |
 | `toHaveMetadataValues(key, values)` | 值数组完全相等，保留顺序和重复项；缺失字段不等于空数组 |
@@ -99,6 +101,7 @@ test('点击更新计数', async ({ userscriptPage: page }) => {
 pnpm install --frozen-lockfile
 pnpm build:core
 pnpm --filter @makoojs/test build
+pnpm -C packages/core/test/frameworks install --frozen-lockfile
 pnpm exec vitest run --config packages/core/test/artifacts/vitest.config.ts
 pnpm exec tsc --project packages/core/test/artifacts/tsconfig.types.json
 ```

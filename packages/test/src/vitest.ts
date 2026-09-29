@@ -1,8 +1,10 @@
 import 'vitest';
+import { Script } from 'node:vm';
 import { expect } from 'vitest';
 import type { UserscriptArtifact } from './readUserscript';
 
 interface UserscriptMatchers<R = unknown> {
+	toHaveClassicScriptSyntax(): R;
 	toHaveMetadata(key: string, value?: string): R;
 	toHaveMetadataValues(key: string, values: readonly string[]): R;
 	toHaveGrant(grant: string): R;
@@ -43,6 +45,22 @@ function location(value: UserscriptArtifact, key?: string) {
 }
 
 export const userscriptMatchers = {
+	toHaveClassicScriptSyntax(this: { isNot?: boolean }, received: unknown) {
+		const file = artifact(received);
+		let failure: string | undefined;
+		try {
+			// Compilation only: a syntax check must never execute the userscript.
+			new Script(file.source, { filename: file.path });
+		} catch (error) {
+			if (!(error instanceof SyntaxError)) throw error;
+			failure = error.message;
+		}
+		return {
+			pass: failure === undefined,
+			message: () =>
+				`${file.path}: expected${this.isNot ? ' not' : ''} valid classic script syntax; ${failure ?? 'syntax is valid'}`
+		};
+	},
 	toHaveMetadata(this: { isNot?: boolean }, received: unknown, key: string, value?: string) {
 		const file = artifact(received);
 		const actual = file.metadata.fields[key];
