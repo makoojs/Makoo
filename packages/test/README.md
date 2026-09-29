@@ -109,7 +109,7 @@ test('点击更新计数', async ({ userscriptPage: page }) => {
 
 可提前调用 `prepareManager(directory)` 准备专用扩展目录，再设置 `managerPath` 复用；该目录供管理器独占，准备过程会替换其内容。提供 `managerPath` 时校验 manifest 版本，调用者负责该目录来源。未提供时每次测试独立下载到临时目录，目前没有共享下载缓存。
 
-**E2E 状态：公共 fixture 和管理器适配已实现，但真实安装和交互尚未验收。**当前运行环境禁止 Unix socket，Chromium 在扩展加载前退出。封装不改变这一限制；需要在允许浏览器运行的本机或 CI 完成验证。
+已在 Ubuntu 24.04、Node 24、Playwright 1.63.0 对应 Chromium 与 Violentmonkey 2.49.0 MV3 上验证真实安装、点击更新、销毁重建、alive 重挂载、匹配排除和 GM 存储隔离，包含 Vue + Pinia、React 与 core tarball 消费。运行环境必须允许 Chromium 启动和进程通信；其他浏览器、管理器版本及操作系统尚无验收结论。运行证据与重复执行记录见 `packages/core/test/STAGES.md`。
 
 ## 入口与依赖
 
@@ -153,6 +153,7 @@ pnpm install --frozen-lockfile
 pnpm build:core
 pnpm --filter @makoojs/test build
 pnpm -C packages/core/test/frameworks install --frozen-lockfile
+pnpm store add fflate@0.8.2
 pnpm exec vitest run --config packages/core/test/artifacts/vitest.config.ts
 pnpm exec tsc --project packages/core/test/artifacts/tsconfig.types.json
 ```

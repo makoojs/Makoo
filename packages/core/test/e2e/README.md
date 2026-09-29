@@ -2,7 +2,7 @@
 
 本目录只保留 core 的构建配置、页面、脚本和业务断言。公共浏览器、HTTP 服务、管理器适配、安装、日志和清理由 `@makoojs/test/playwright` 提供。
 
-2026-09-29 的 [GitHub 验收运行](https://github.com/makoojs/Makoo/actions/runs/36532564267) 已在 Ubuntu 24.04 上完成首轮完整验收：8 项正常场景各执行两次，以及六组故障检查均通过验收规则。适用环境为下文的固定浏览器和管理器版本；独立 CI 重复运行仍在核对中。下方按日期记录的早期验证边界不代表本轮状态。
+2026-09-29 的两个独立 GitHub job 已在 Ubuntu 24.04 上完成完整验收：每轮 8 项正常场景各执行两次，以及六组故障检查均通过验收规则。固定版本、运行链接与核对记录见 `../CI-ACCEPTANCE.md`。下方按日期记录的早期验证边界不代表当前状态。
 
 仓库根目录执行：
 
@@ -33,9 +33,9 @@ pnpm -C packages/core/test/e2e test:acceptance
 
 任何组不满足要求时，命令返回非零并停止后续组，保留证据供排查。命令会清除外部遗留的两种故障环境变量，再为每组设置对应故障。重复运行产生独立目录，旧报告不参与本次判定。
 
-这个入口可在本机或 CI 的单独 job 中运行。`.github/workflows/userscript-acceptance.yml` 在 `feat/test-suite` 的相关改动推送后执行，也提供手动入口；它使用 Ubuntu 24.04、Node 24，先验证 core 产物，再准备 Chromium 和固定版本管理器，最后执行连续验收。报告、日志和 trace 作为 Actions artifact 保留 14 天，准备阶段的失败查看 job 日志。
+这个入口可在本机或 CI 的单独 job 中运行。`.github/workflows/userscript-acceptance.yml` 对面向 `main` 的相关 PR，以及 `main` / `feat/test-suite` 的相关 push 执行，也提供手动入口；它使用 Ubuntu 24.04、Node 24，先验证 core 产物，再准备 Chromium 和固定版本管理器，最后执行连续验收。报告、日志和 trace 作为 Actions artifact 保留 14 天，准备阶段的失败查看 job 日志。
 
-该 workflow 提供真实浏览器运行证据，目前未作为 PR 必跑门禁，也未改动默认测试命令。`userscript-acceptance-*` 附件保存完整 trace；`userscript-reports-*` 单独保存 JSON 报告与 runner 日志，便于下载核验。
+该 workflow 是独立 PR 检查，不改变默认测试命令或分支保护设置。`userscript-acceptance-*` 附件保存完整 trace；`userscript-reports-*` 单独保存 JSON 报告与 runner 日志，便于下载核验。
 
 产物测试中的独立测试包消费需要 `fflate@0.8.2` 的离线缓存。新环境先执行 `pnpm store add fflate@0.8.2`；workflow 已包含此步骤。包消费检查自身仍使用 `--offline`，不会在缺少缓存时自动改为联网安装。
 

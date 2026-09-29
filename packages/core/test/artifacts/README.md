@@ -9,6 +9,7 @@
 pnpm build:core
 pnpm --filter @makoojs/test build
 pnpm -C packages/core/test/frameworks install --frozen-lockfile
+pnpm store add fflate@0.8.2
 pnpm exec vitest run --config packages/core/test/artifacts/vitest.config.ts
 pnpm exec tsc --project packages/core/test/artifacts/tsconfig.types.json
 ```
@@ -31,8 +32,8 @@ require/resource 使用固定 fixture URL，仅检查配置输出；这些测试
 阶段 2 的 metadata 与框架构建案例已通过。Vue SFC + Pinia 3.0.4、React TSX + ReactDOM 通过真实 Makoo 构建链，构建图确认实际依赖参与编译；最终文件使用公共 matcher 检查 metadata、meta/user 一致性和经典脚本语法。所有框架 fixture 和测试仍位于 core/test 内，未改动其他包测试。
 
 框架案例目前使用源码 alias，不是 tarball 消费；构建通过不代表组件、Pinia 状态和点击行为已在浏览器验证。
-阶段 1 仍受 Chromium 本地 socket 权限限制，实际安装与交互未验收。
-`consumer.spec.ts` 已通过 core 实际 tarball 离线安装、ESM/CJS 导出加载、声明文件存在性和最终脚本构建验证；浏览器完整消费尚待验收。声明检查仅验证文件存在，不等同于独立项目完整类型检查。
+真实安装和交互已通过独立 GitHub runner 验收，见 `../STAGES.md`；本产物入口自身不启动浏览器。
+`consumer.spec.ts` 已通过 core 实际 tarball 离线安装、ESM/CJS 导出加载、声明文件存在性和最终脚本构建验证；对应浏览器完整消费由独立 E2E 验收。声明检查仅验证文件存在，不等同于独立项目完整类型检查。
 
 新包暂设 `private: true`，API 尚可调整；未生成 changeset 或进行发布。
 

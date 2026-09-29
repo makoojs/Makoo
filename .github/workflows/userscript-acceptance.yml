@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
+      - main
       - feat/test-suite
     paths:
       - .github/workflows/userscript-acceptance.yml
@@ -15,6 +16,21 @@ on:
       - package.json
       - pnpm-lock.yaml
       - pnpm-workspace.yaml
+      - tsconfig.json
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/userscript-acceptance.yml
+      - packages/core/**
+      - packages/test/**
+      - packages/cli/src/**
+      - packages/react/src/**
+      - packages/vue/src/**
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - tsconfig.json
 
 permissions:
   contents: read
