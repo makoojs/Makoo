@@ -41,7 +41,7 @@ it('consumes the test tarball in an independent userscript project', async () =>
 		await writeFile(resolve(root, 'package.json'), JSON.stringify(manifest));
 		await writeFile(resolve(root, '.npmrc'), 'auto-install-peers=false\n');
 		await cp(resolve(import.meta.dirname, '../standalone'), root, { recursive: true });
-		await run('pnpm', ['install', '--offline', '--ignore-scripts']);
+		await run('pnpm', ['install', '--offline', '--ignore-scripts', '--no-frozen-lockfile']);
 		await run(process.execPath, [
 			'--input-type=module',
 			'-e',
@@ -70,7 +70,8 @@ for (const dependency of ['vitest', '@playwright/test', '@makoojs/core']) {
 			'@types/node': `link:${resolve(toolchain, '@types/node')}`
 		};
 		await writeFile(resolve(root, 'package.json'), JSON.stringify(manifest));
-		await run('pnpm', ['install', '--offline', '--ignore-scripts']);
+		// This temporary consumer intentionally gains tools after the dependency isolation check.
+		await run('pnpm', ['install', '--offline', '--ignore-scripts', '--no-frozen-lockfile']);
 		const artifacts = await run('pnpm', ['exec', 'vitest', 'run']);
 		expect(artifacts.stdout).toContain('1 passed');
 		const browser = await run('pnpm', ['exec', 'playwright', 'test', '--list']);
