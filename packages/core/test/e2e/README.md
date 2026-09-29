@@ -2,6 +2,8 @@
 
 本目录只保留 core 的构建配置、页面、脚本和业务断言。公共浏览器、HTTP 服务、管理器适配、安装、日志和清理由 `@makoojs/test/playwright` 提供。
 
+2026-09-29 的 [GitHub 验收运行](https://github.com/makoojs/Makoo/actions/runs/36532564267) 已在 Ubuntu 24.04 上完成首轮完整验收：8 项正常场景各执行两次，以及六组故障检查均通过验收规则。适用环境为下文的固定浏览器和管理器版本；独立 CI 重复运行仍在核对中。下方按日期记录的早期验证边界不代表本轮状态。
+
 仓库根目录执行：
 
 ```sh
@@ -33,7 +35,7 @@ pnpm -C packages/core/test/e2e test:acceptance
 
 这个入口可在本机或 CI 的单独 job 中运行。`.github/workflows/userscript-acceptance.yml` 在 `feat/test-suite` 的相关改动推送后执行，也提供手动入口；它使用 Ubuntu 24.04、Node 24，先验证 core 产物，再准备 Chromium 和固定版本管理器，最后执行连续验收。报告、日志和 trace 作为 Actions artifact 保留 14 天，准备阶段的失败查看 job 日志。
 
-该 workflow 用于取得真实浏览器运行证据，目前未作为 PR 必跑门禁，也未改动默认测试命令。workflow 提交或成功触发不代表阶段 1/3 已通过，须检查全部正常组和故障组的实际结果。
+该 workflow 提供真实浏览器运行证据，目前未作为 PR 必跑门禁，也未改动默认测试命令。`userscript-acceptance-*` 附件保存完整 trace；`userscript-reports-*` 单独保存 JSON 报告与 runner 日志，便于下载核验。
 
 产物测试中的独立测试包消费需要 `fflate@0.8.2` 的离线缓存。新环境先执行 `pnpm store add fflate@0.8.2`；workflow 已包含此步骤。包消费检查自身仍使用 `--offline`，不会在缺少缓存时自动改为联网安装。
 
@@ -44,9 +46,9 @@ pnpm -C packages/core/test/e2e test:acceptance
 ## 验证边界
 
 - 真实用户脚本构建已通过。
-- 当前环境创建 Unix socket 返回 EPERM，Chromium 在扩展加载前退出；安装与业务行为未验证。
+- 当前本地环境创建 Unix socket 返回 EPERM；真实安装和业务行为的通过证据来自上述 GitHub runner。
 - 公共 API 能加载、发现案例，不等于浏览器执行通过。
-- UI 适配依赖 Chromium 的用户脚本开关和暴力猴确认页，仍需要真实运行验证。
+- UI 适配依赖 Chromium 的用户脚本开关和暴力猴确认页，首轮已在固定版本验证。
 - 不依赖管理器内部 E2E Harness，不通过脚本注入代替真实管理器。
 - 不接入默认 Vitest 入口，不修改其他包测试。
 

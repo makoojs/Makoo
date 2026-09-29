@@ -1,9 +1,10 @@
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
+import { setImmediate } from 'node:timers/promises';
 import { readUserscript } from '@makoojs/test';
 import '@makoojs/test/vitest';
-import { JSDOM } from 'jsdom';
+import { JSDOM, VirtualConsole } from 'jsdom';
 import { expect, it, vi } from 'vitest';
 import { buildBehaviorFixture } from '../e2e/buildBehaviorFixture';
 
@@ -54,7 +55,15 @@ it('executes the compiled alive artifact in jsdom and detects disabled remountin
 			const artifact = await readUserscript(
 				await buildBehaviorFixture('alive', baseURL, output, fault)
 			);
-			const dom = new JSDOM(html, { url: baseURL, runScripts: 'dangerously' });
+			const errors: Error[] = [];
+			const virtualConsole = new VirtualConsole();
+			virtualConsole.forwardTo(console);
+			virtualConsole.on('jsdomError', (error) => errors.push(error));
+			const dom = new JSDOM(html, {
+				url: baseURL,
+				runScripts: 'dangerously',
+				virtualConsole
+			});
 			try {
 				dom.window.eval(artifact.source);
 				const text = (selector: string) =>
@@ -90,7 +99,18 @@ it('executes the compiled alive artifact in jsdom and detects disabled remountin
 				click('#alive-button');
 				expect(text('#count')).toBe('3');
 			} finally {
-				dom.window.close();
+				try {
+					dom.window.dispatchEvent(new dom.window.Event('makoo-fixture-dispose'));
+					expect.soft(dom.window.document.querySelector('#unmounts')?.textContent).toBe(
+						dom.window.document.querySelector('#mounts')?.textContent
+					);
+				} finally {
+					dom.window.close();
+				}
+				await setImmediate();
+				expect.soft(errors, 'compiled alive fixture must close without jsdom errors').toEqual(
+					[]
+				);
 			}
 		}
 	} finally {

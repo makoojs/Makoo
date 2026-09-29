@@ -34,7 +34,7 @@ const adapter: ResolvableMountAdapter<Counter, Handle> = {
 	}
 };
 
-createMakoo({ adapters: [adapter] }).start([
+const tasks = createMakoo({ adapters: [adapter] }).start([
 	inject({
 		id: 'alive-counter',
 		injectAt: '#host',
@@ -42,3 +42,5 @@ createMakoo({ adapters: [adapter] }).start([
 		options: { alive: __ALIVE__, scope: 'global' }
 	})
 ]);
+
+window.addEventListener('makoo-fixture-dispose', () => tasks.destroyAll(), { once: true });

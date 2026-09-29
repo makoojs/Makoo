@@ -81,3 +81,14 @@ jobs:
           path: packages/core/test/e2e/acceptance-results/
           if-no-files-found: warn
           retention-days: 14
+
+      - name: Upload JSON reports and runner logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: userscript-reports-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            packages/core/test/e2e/acceptance-results/**/report.json
+            packages/core/test/e2e/acceptance-results/**/runner.log
+          if-no-files-found: warn
+          retention-days: 14
