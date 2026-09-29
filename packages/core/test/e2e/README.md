@@ -8,6 +8,7 @@
 pnpm install --frozen-lockfile
 pnpm build:core
 pnpm --filter @makoojs/test build
+pnpm -C packages/core/test/frameworks install --frozen-lockfile
 pnpm -C packages/core/test/e2e install --frozen-lockfile
 pnpm -C packages/core/test/e2e exec playwright install chromium
 pnpm -C packages/core/test/e2e run prepare:manager
@@ -45,3 +46,11 @@ MAKOO_E2E_FAULT=count pnpm -C packages/core/test/e2e test
 ## 封装后验证（2026-09-10）
 
 通过公开包入口发现 1 个 E2E 案例。缺失产物故障返回非零退出码，报告记录 `Last stage: artifact`，检查 `/tmp/makoo-userscript-*` 无残留。安装及交互仍未实测，不能据此标记阶段 1 完成。
+
+## 阶段 3 用例（2026-09-22）
+
+- `frameworks.spec.ts`：真实管理器安装 Vue SFC + Pinia、React TSX 产物，等待组件出现后连续点击并断言状态更新。
+- `consumer.spec.ts`：将本地构建的 core 打成 tarball，在临时项目离线安装后构建最终脚本，安装到管理器并验证点击。消费路径不使用 core 源码 alias；构建工具仍调用仓库 CLI 生产代码，不代表 CLI 发布包已验收。
+- `counter.spec.ts`：保留原有计数、销毁及重建行为验证。
+
+独立入口共发现 4 个 E2E 用例。重新检查环境仍无法创建 Unix socket，因此这些真实浏览器行为仍待执行，未接入 CI 必跑，也未将阶段 1/3 标记为完成。

@@ -32,7 +32,7 @@ require/resource 使用固定 fixture URL，仅检查配置输出；这些测试
 
 框架案例目前使用源码 alias，不是 tarball 消费；构建通过不代表组件、Pinia 状态和点击行为已在浏览器验证。
 阶段 1 仍受 Chromium 本地 socket 权限限制，实际安装与交互未验收。
-包导出构建可检查，但实际 tarball 安装和浏览器完整消费留在后续阶段。
+`consumer.spec.ts` 已通过 core 实际 tarball 离线安装、ESM/CJS 导出加载、声明文件存在性和最终脚本构建验证；浏览器完整消费尚待验收。声明检查仅验证文件存在，不等同于独立项目完整类型检查。
 
 新包暂设 `private: true`，API 尚可调整；未生成 changeset 或进行发布。
 
@@ -49,3 +49,5 @@ require/resource 使用固定 fixture URL，仅检查配置输出；这些测试
 ## 阶段 2 验证（2026-09-22）
 
 5 个文件、16 个测试通过，包括超时清理、相对资源、两种框架实际构建与语法故障检查。框架依赖在 `../frameworks` 独立安装并固定版本；不会增加 core 发布依赖。
+
+阶段 3 产物侧新增 tarball 案例后共 6 文件、17 个测试通过。该案例需要先执行 `pnpm build:core`，使用本机 npm 打包和离线安装，不发布包、不执行安装脚本。
