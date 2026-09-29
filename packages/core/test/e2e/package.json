@@ -1,0 +1,13 @@
+{
+  "name": "makoo-core-e2e-prototype",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "prepare:manager": "node prepareManager.ts",
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@makoojs/test": "file:../../../test"
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "name": "@makoojs/test",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Userscript artifact assertions and real-manager E2E fixtures",
+  "type": "module",
+  "license": "MIT",
+  "sideEffects": [
+    "./dist/vitest.js"
+  ],
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./metadata": {
+      "types": "./dist/metadata.d.ts",
+      "import": "./dist/metadata.js",
+      "require": "./dist/metadata.cjs"
+    },
+    "./vitest": {
+      "types": "./dist/vitest.d.ts",
+      "import": "./dist/vitest.js"
+    },
+    "./playwright": {
+      "types": "./dist/playwright.d.ts",
+      "import": "./dist/playwright.js",
+      "require": "./dist/playwright.cjs"
+    }
+  },
+  "scripts": {
+    "build": "vite build --config vite.config.ts"
+  },
+  "peerDependencies": {
+    "vitest": "^4.1.7",
+    "@playwright/test": "1.63.0"
+  },
+  "peerDependenciesMeta": {
+    "vitest": {
+      "optional": true
+    },
+    "@playwright/test": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "vitest": "4.1.7",
+    "@playwright/test": "1.63.0"
+  },
+  "dependencies": {
+    "fflate": "0.8.2"
+  }
+}

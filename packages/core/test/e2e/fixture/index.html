@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+	<head><meta charset="utf-8"><title>Core counter fixture</title></head>
+	<body>
+		<button id="increment">Increment</button>
+		<button id="dispose">Dispose</button>
+		<button id="restart">Restart</button>
+		<output id="count">0</output>
+		<output id="script-state">waiting</output>
+		<output id="observed-clicks">0</output>
+		<output id="page-state">loading</output>
+		<script>
+			let clicks = 0;
+			document.addEventListener('click', (event) => {
+				if (event.target.id === 'increment') {
+					document.querySelector('#observed-clicks').textContent = String(++clicks);
+				}
+			});
+			document.querySelector('#page-state').textContent = 'ready';
+		</script>
+	</body>
+</html>
