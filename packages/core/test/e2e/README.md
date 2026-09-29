@@ -17,6 +17,22 @@ pnpm -C packages/core/test/e2e test
 
 本目录通过 `file:../../../test` 消费新包，改动新包后先构建，再执行本目录 `install --force --frozen-lockfile` 刷新本地依赖副本。
 
+## 连续验收入口
+
+完成上述依赖、构建、浏览器和管理器准备后，在 Node 24 环境运行：
+
+```sh
+pnpm -C packages/core/test/e2e test:acceptance
+```
+
+该入口依次调用 Playwright：先让全部 8 项正常用例各执行两次，再运行缺失产物、错误 match、错误计数、禁用 alive、移除 exclude、跳过存储写入六组故障。它沿用 Playwright JSON reporter，不另造测试执行器或报告格式。
+
+每次运行在 `acceptance-results/run-*` 下保存各组 `report.json`、`runner.log`、Playwright 附件和 trace。正常组首次失败立即停止；必须恰好包含清单中的 8 个场景、单项目 repeatEach=2、每个场景两个完整通过结果，提前停止或跳过不能通过验收。修改场景名称或数量时须同步 `acceptanceReport.ts` 的清单。故障组须同时满足：退出码 1、正确的失败阶段、预期错误或特定 `acceptance:*` 断言标签、测试用例来源（行为故障）、无重试或预期失败标记，以及完成清理的附件。浏览器启动失败、匹配页正向检查失败都不能当成排除页故障检测成功。
+
+任何组不满足要求时，命令返回非零并停止后续组，保留证据供排查。命令会清除外部遗留的两种故障环境变量，再为每组设置对应故障。重复运行产生独立目录，旧报告不参与本次判定。
+
+这个入口可在本机或现有 CI 的单独 job 中运行。目前尚无真实浏览器全部通过的证据，因此没有改动默认测试命令或增加 PR 必跑门禁。当前浏览器权限问题仍需要在允许 Chromium 启动的环境解决。
+
 `counter.spec.ts` 使用公开的 `test.use` 配置 HTML 与构建回调。套件提供安装好的 `userscriptPage`；案例检查页面就绪、脚本启动、点击计数、销毁后停止响应和重新绑定不重复计数。页面中的独立观察器确认销毁后的点击确实已分发。
 
 固定环境：Playwright 1.63.0 / Chromium revision 1243（Chrome for Testing 153.0.8010.12），Violentmonkey 2.49.0 MV3。

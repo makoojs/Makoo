@@ -26,10 +26,12 @@ test('compiled userscript counts clicks and cleans up listeners', async ({
 }) => {
 	await page.goto('/counter');
 	await expect(page.locator('#page-state')).toHaveText('ready');
-	await expect(page.locator('#script-state')).toHaveText('running');
+	await expect(page.locator('#script-state'), 'acceptance:counter-started').toHaveText('running');
 	await expect(page.locator('#count')).toHaveText('0');
 	await page.getByRole('button', { name: 'Increment' }).click();
-	await expect(page.locator('#count')).toHaveText(fault === 'count' ? '999' : '1');
+	await expect(page.locator('#count'), 'acceptance:counter-increment').toHaveText(
+		fault === 'count' ? '999' : '1'
+	);
 	await page.getByRole('button', { name: 'Increment' }).click();
 	await expect(page.locator('#count')).toHaveText('2');
 	await page.getByRole('button', { name: 'Dispose' }).click();

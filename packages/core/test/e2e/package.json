@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "prepare:manager": "node prepareManager.ts",
-    "test": "playwright test"
+    "test": "playwright test",
+    "test:acceptance": "node acceptance.ts"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",

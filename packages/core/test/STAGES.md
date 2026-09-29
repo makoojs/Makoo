@@ -1,6 +1,6 @@
 # Userscript 测试体系进度
 
-更新时间：2026-09-22。测试、fixture 和实验均限定在 core/test；公共实现位于 packages/test。原有测试入口未改动。
+更新时间：2026-09-28。测试、fixture 和实验均限定在 core/test；公共实现位于 packages/test。原有测试入口未改动。
 
 | 阶段 | 状态 | 已提交范围 / 下一项 |
 | --- | --- | --- |
@@ -13,13 +13,14 @@
 ## 当前证据
 
 - 公共产物 API：`readUserscript` + Vitest 自定义 matcher，无需启动管理器。
-- core 独立产物入口：新增行为检查后为 8 个文件、22 个测试。
+- core 独立产物入口：行为检查后的 22 项全部通过；另有 5 项验收报告检查通过，共 9 个文件、27 项。
 - core 发布产物：真实 npm pack / 离线安装，验证 ESM/CJS 导出并构建最终 userscript；不使用 core 源码 alias。
 - 框架构建：真实 Vue、Pinia、React/ReactDOM 进入构建；这些 fixture 使用 Makoo 源码 alias，不与发布消费证据混淆。
 - Playwright 独立入口：8 个用例可发现，包含原 core-counter、Vue、React、core tarball、alive、匹配/排除及两项隔离存储检查。
 - 测试包 tarball 独立消费已通过；产物断言和 NodeNext/Bundler 类型检查使用公开入口，工具链复用范围见 `PHASE-4.md`。
 - 最终 alive 产物在 jsdom 中通过两次重挂载及旧监听清理检查，禁用 alive 会被恢复断言拒绝。该证据不代表真实管理器执行。
-- 2026-09-22 重查 Unix socket 仍返回 EPERM。没有真实浏览器通过或 CI 通过的证据。
+- 2026-09-28 重查 Unix socket 仍返回 EPERM；可重复验收命令实跑还发现 Chromium 可执行文件缺失，已正确返回失败并停止故障组。没有真实浏览器通过或 CI 通过的证据。
+- 新增独立 `test:acceptance` 命令，验证完整场景重复执行与六组故障，保留 Playwright JSON 报告；经过 GPT-6 Sol review、主 agent 核验修正及复审，详见 `REVIEW-2026-09-28.md`。
 
 ## 后续验收
 

@@ -1,3 +1,4 @@
 .cache/
 test-results/
 playwright-report/
+acceptance-results/

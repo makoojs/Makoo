@@ -32,7 +32,9 @@ test.describe('alive', () => {
 		await expect(page.locator('#count')).toHaveText('1');
 		for (let replacement = 1; replacement <= 2; replacement++) {
 			await page.locator('#replace').click();
-			await expect(page.locator('#mounts')).toHaveText(String(replacement + 1));
+			await expect(page.locator('#mounts'), 'acceptance:alive-restored').toHaveText(
+				String(replacement + 1)
+			);
 			await expect(page.locator('#unmounts')).toHaveText(String(replacement));
 			await expect(page.locator('#alive-button')).toHaveCount(1);
 			await page.locator('#probe').click();
@@ -65,7 +67,12 @@ test.describe('matching', () => {
 			await page.goto(path);
 			await expect(page.locator('#page-state')).toHaveText('ready');
 			await expect(page.locator('#observation-state')).toHaveText('complete');
-			await expect(page.locator('#script-runs')).toHaveText('0');
+			await expect(
+				page.locator('#script-runs'),
+				path === '/eligible/excluded'
+					? 'acceptance:excluded-page'
+					: 'acceptance:unmatched-page'
+			).toHaveText('0');
 		}
 		await page.goto('/eligible/included');
 		await expect(page.locator('#script-runs')).toHaveText('1');
@@ -89,7 +96,7 @@ test.describe('storage', () => {
 			await expect(page.locator('#count')).toHaveText('1');
 			await page.reload();
 			await expect(page.locator('#storage-state')).toHaveText('ready');
-			await expect(page.locator('#count')).toHaveText('1');
+			await expect(page.locator('#count'), 'acceptance:storage-restored').toHaveText('1');
 			await page.locator('#increment').click();
 			await expect(page.locator('#count')).toHaveText('2');
 		});
