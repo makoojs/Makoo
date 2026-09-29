@@ -76,6 +76,7 @@ for (const dependency of ['vitest', '@playwright/test', '@makoojs/core']) {
 		const browser = await run('pnpm', ['exec', 'playwright', 'test', '--list']);
 		expect(browser.stdout).toContain('updates the standalone counter');
 		await cp(resolve(import.meta.dirname, 'api.types.ts'), resolve(root, 'api.types.ts'));
+		await cp(resolve(import.meta.dirname, 'api.types.cts'), resolve(root, 'api.types.cts'));
 		for (const resolution of ['NodeNext', 'Bundler']) {
 			await writeFile(
 				resolve(root, 'tsconfig.json'),
@@ -88,7 +89,7 @@ for (const dependency of ['vitest', '@playwright/test', '@makoojs/core']) {
 						moduleResolution: resolution,
 						types: ['node']
 					},
-					include: ['*.ts']
+					include: resolution === 'NodeNext' ? ['*.ts', '*.cts'] : ['*.ts']
 				})
 			);
 			await run('pnpm', ['exec', 'tsc', '--project', 'tsconfig.json']);

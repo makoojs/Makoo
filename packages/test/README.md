@@ -122,7 +122,7 @@ test('点击更新计数', async ({ userscriptPage: page }) => {
 
 导入读取或解析入口不会加载浏览器、注册 matcher 或下载管理器。
 
-已验证 Node 24.19.0、TypeScript 5.9.3 下的 ESM 类型消费，覆盖 `moduleResolution: NodeNext` 和 `Bundler`，无需源码 alias 或 `skipLibCheck`。读取/解析入口同时验证了 CommonJS 运行时导出；CommonJS 类型消费尚未单独验收。`fflate` 是包的安装依赖，但只被管理器入口加载。
+已验证 Node 24、TypeScript 5.9.3 下的 ESM 类型消费，覆盖 `moduleResolution: NodeNext` 和 `Bundler`，无需源码 alias 或 `skipLibCheck`。独立 tarball 项目还检查了 `.cts` 文件通过 NodeNext 消费根入口、`/metadata` 和 `/playwright` 的类型，并验证错误参数会被拒绝。读取/解析入口同时验证了 CommonJS 运行时导出；`/vitest` 使用 ESM。上述类型结论限于已验证的 TypeScript 版本和解析模式。`fflate` 是包的安装依赖，但只被管理器入口加载。
 
 解析器读取文件开头的 metadata comment block，允许 BOM 与前置空白，支持 LF/CRLF/CR。重复字段保留为数组，未知字段和本地化名称保留。首尾空白去除，值内部空白保留。解析到结束标记即停止，不扫描后面的 JavaScript。
 
