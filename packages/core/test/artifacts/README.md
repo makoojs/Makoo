@@ -55,3 +55,7 @@ require/resource 使用固定 fixture URL，仅检查配置输出；这些测试
 ## 阶段 4 独立接入验证
 
 `standalone.spec.ts` 消费测试包本身的 tarball，在仓库外的临时项目验证可选 peer 边界、产物 matcher、E2E 用例发现，以及 NodeNext/Bundler 声明消费。测试包无源码 alias；runner 和 TypeScript 显式复用本机固定工具链，不代表全新机器安装验收。可复制的普通 userscript 示例和命令见 `../standalone/README.md`。
+
+## 阶段 3 行为产物补充
+
+`behaviors.spec.ts` 新增 4 项检查：构建 alive、匹配/排除和 GM 存储产物，使用专用 matcher 检查声明与语法；在 jsdom 中执行最终 alive 产物，验证连续两次恢复、重复挂载防护及旧按钮监听清理。禁用 alive 后恢复断言失败，移除 exclude 后 metadata 断言失败。此补充没有模拟 GM API，管理器语义仍由 E2E 验证。

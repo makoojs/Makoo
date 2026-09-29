@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+	<head><meta charset="utf-8"><title>Matching fixture</title></head>
+	<body>
+		<output id="script-runs">0</output>
+		<output id="page-state">loading</output>
+		<output id="observation-state">pending</output>
+		<script>
+			document.querySelector('#page-state').textContent = 'ready';
+			window.addEventListener('load', () => {
+				setTimeout(() => {
+					document.querySelector('#observation-state').textContent = 'complete';
+				}, 1000);
+			});
+		</script>
+	</body>
+</html>

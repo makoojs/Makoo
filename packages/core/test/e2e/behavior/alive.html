@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+	<head><meta charset="utf-8"><title>Alive fixture</title></head>
+	<body>
+		<div id="host"></div>
+		<button id="replace">Replace host</button>
+		<button id="probe">Click detached button</button>
+		<output id="count">0</output>
+		<output id="mounts">0</output>
+		<output id="unmounts">0</output>
+		<output id="probes">0</output>
+		<output id="page-state">loading</output>
+		<script>
+			let detached;
+			let probes = 0;
+			document.querySelector('#replace').onclick = () => {
+				detached = document.querySelector('#alive-button');
+				const host = document.createElement('div');
+				host.id = 'host';
+				document.querySelector('#host').replaceWith(host);
+			};
+			document.querySelector('#probe').onclick = () => {
+				if (!detached || detached.isConnected) throw new Error('No detached button');
+				detached.click();
+				document.querySelector('#probes').textContent = String(++probes);
+			};
+			document.querySelector('#page-state').textContent = 'ready';
+		</script>
+	</body>
+</html>

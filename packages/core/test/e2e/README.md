@@ -54,3 +54,30 @@ MAKOO_E2E_FAULT=count pnpm -C packages/core/test/e2e test
 - `counter.spec.ts`：保留原有计数、销毁及重建行为验证。
 
 独立入口共发现 4 个 E2E 用例。重新检查环境仍无法创建 Unix socket，因此这些真实浏览器行为仍待执行，未接入 CI 必跑，也未将阶段 1/3 标记为完成。
+
+## 阶段 3 行为补齐（2026-09-22）
+
+`behavior.spec.ts` 通过相同的公共 `test.use` / `userscriptPage` API 增加 4 项用例；准备、安装、隔离和清理由测试包负责。独立入口共可发现 8 项用例。
+
+| 场景 | 业务断言 |
+| --- | --- |
+| `alive` | 连续替换两次宿主节点，每次自动重挂载；按钮只有一个，挂载/卸载次数准确，点击一次只增加一次；保留的旧按钮被实际点击后不再改变计数 |
+| 匹配与排除 | 同一 profile 先验证匹配页执行，再访问 exclude 页与不匹配页，最后返回匹配页确认仍执行 |
+| GM 存储 × 2 | 两个隔离 profile 使用相同脚本名称、namespace 和存储 key，均从 0 开始；写入后刷新保留值，并可继续更新 |
+
+排除页和不匹配页先等待页面就绪，再等待页面在 `load` 后完成 1000ms 观察窗口，最后检查脚本执行计数仍为 0。该结果只能证明窗口内未执行；观察时长有明确边界，不将瞬时缺少元素当成不执行。正向控制页在前后都必须通过。
+
+GM 用例使用真实的 `GM.getValue` / `GM.setValue`。计数显示在异步写入完成后更新，刷新前等待该显示值，不用 localStorage 或模拟 GM API 代替管理器存储。脚本内的异步错误显示到 `#storage-state`，使就绪断言失败。
+
+在允许 Chromium 启动的环境运行：
+
+```sh
+pnpm -C packages/core/test/e2e exec playwright test behavior.spec.ts
+MAKOO_BEHAVIOR_FAULT=disable-alive pnpm -C packages/core/test/e2e exec playwright test behavior.spec.ts --grep alive
+MAKOO_BEHAVIOR_FAULT=remove-exclude pnpm -C packages/core/test/e2e exec playwright test behavior.spec.ts --grep matching
+MAKOO_BEHAVIOR_FAULT=skip-storage-write pnpm -C packages/core/test/e2e exec playwright test behavior.spec.ts --grep storage
+```
+
+正常命令应通过，三个故障命令应在对应行为断言失败。故障通过构建配置控制，不在安装后改写产物。故障 E2E 仍待真实执行，没有配置 `test.fail`、跳过或重试来把失败转为成功。
+
+`../artifacts/behaviors.spec.ts` 验证三种真实构建的 metadata 和经典脚本语法。补充的 jsdom 检查直接执行最终 `alive.user.js`，确认连续两次恢复及旧监听清理，并确认禁用 alive 后恢复断言失败。移除 exclude 的产物也会被专用 matcher 拒绝。这些结果不替代管理器安装、GM 存储与页面匹配语义验收。
