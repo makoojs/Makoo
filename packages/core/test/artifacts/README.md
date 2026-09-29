@@ -51,3 +51,7 @@ require/resource 使用固定 fixture URL，仅检查配置输出；这些测试
 5 个文件、16 个测试通过，包括超时清理、相对资源、两种框架实际构建与语法故障检查。框架依赖在 `../frameworks` 独立安装并固定版本；不会增加 core 发布依赖。
 
 阶段 3 产物侧新增 tarball 案例后共 6 文件、17 个测试通过。该案例需要先执行 `pnpm build:core`，使用本机 npm 打包和离线安装，不发布包、不执行安装脚本。
+
+## 阶段 4 独立接入验证
+
+`standalone.spec.ts` 消费测试包本身的 tarball，在仓库外的临时项目验证可选 peer 边界、产物 matcher、E2E 用例发现，以及 NodeNext/Bundler 声明消费。测试包无源码 alias；runner 和 TypeScript 显式复用本机固定工具链，不代表全新机器安装验收。可复制的普通 userscript 示例和命令见 `../standalone/README.md`。

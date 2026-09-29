@@ -3,18 +3,29 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
-import { type BrowserContext, test as base, chromium, type Page } from '@playwright/test';
-import { createArtifactServer } from './playwright/artifactServer';
-import { prepareManager } from './playwright/prepareManager';
-import { installUserscript, prepareViolentmonkey } from './playwright/violentmonkey';
-import { readUserscript } from './readUserscript';
+import {
+	type BrowserContext,
+	test as base,
+	chromium,
+	type Page,
+	type PlaywrightTestArgs,
+	type PlaywrightTestOptions,
+	type PlaywrightWorkerArgs,
+	type PlaywrightWorkerOptions,
+	type TestType
+} from '@playwright/test';
+import { createArtifactServer } from './playwright/artifactServer.js';
+import { prepareManager } from './playwright/prepareManager.js';
+import { installUserscript, prepareViolentmonkey } from './playwright/violentmonkey.js';
+import { readUserscript } from './readUserscript.js';
 
 export { expect } from '@playwright/test';
-export { prepareManager } from './playwright/prepareManager';
+export { prepareManager } from './playwright/prepareManager.js';
+export type UserscriptBuildContext = { baseURL: string; outputDir: string };
 export type UserscriptInput =
 	| string
 	| {
-			build: (input: { baseURL: string; outputDir: string }) => Promise<string>;
+			build: (input: UserscriptBuildContext) => Promise<string>;
 	  };
 export type UserscriptOptions = {
 	manager: 'violentmonkey';
@@ -23,6 +34,7 @@ export type UserscriptOptions = {
 	/** Local HTML routes. Omit when using an existing baseURL/webServer. */
 	testPages: Record<string, string>;
 };
+export type UserscriptFixtures = { userscriptPage: Page };
 
 type UserscriptResources = {
 	temporary: string;
@@ -34,11 +46,11 @@ type UserscriptResources = {
 	logs: string[];
 };
 
-export const test = base.extend<
-	UserscriptOptions & {
-		userscriptPage: Page;
-		_userscriptResources: UserscriptResources;
-	}
+const userscriptTest = base.extend<
+	UserscriptOptions &
+		UserscriptFixtures & {
+			_userscriptResources: UserscriptResources;
+		}
 >({
 	manager: ['violentmonkey', { option: true }],
 	managerPath: [undefined, { option: true }],
@@ -153,3 +165,8 @@ export const test = base.extend<
 		await use(await context.newPage());
 	}
 });
+
+export const test: TestType<
+	PlaywrightTestArgs & PlaywrightTestOptions & UserscriptOptions & UserscriptFixtures,
+	PlaywrightWorkerArgs & PlaywrightWorkerOptions
+> = userscriptTest;

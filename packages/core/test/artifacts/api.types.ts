@@ -24,6 +24,8 @@ test.use({
 });
 // @ts-expect-error unsupported manager
 test.use({ manager: 'unknown' });
+// @ts-expect-error internal resource fixture is not public configuration
+test.use({ _userscriptResources: {} });
 test('page types', async ({ userscriptPage }) => {
 	await userscriptPage.goto('/');
 	await browserExpect(userscriptPage.getByText('ready')).toBeVisible();

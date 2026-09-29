@@ -2,6 +2,26 @@
 
 Userscript 专用测试套件。当前为 workspace 内私有原型，尚未发布。
 
+接入时按需求选择入口：产物测试使用 `readUserscript` 和 `/vitest` matcher；浏览器测试使用 `/playwright` 的 `test`、`expect` 和 `userscriptPage`。也可以单独使用 `/metadata` 解析字符串。
+
+## 安装与最小项目
+
+先在仓库根目录执行 `pnpm --filter @makoojs/test build`，再用 `npm pack ./packages/test --ignore-scripts` 生成 tarball。将 tarball 放到自己的项目中，按需安装：
+
+```sh
+# 产物读取与字符串解析
+npm install --save-dev ./makoojs-test-0.0.0.tgz
+# 专用产物断言
+npm install --save-dev vitest@4.1.7
+# 真实管理器测试
+npm install --save-dev @playwright/test@1.63.0
+npx playwright install chromium
+```
+
+只读取产物时可以省略两个 runner。执行 Vitest 测试时使用 `vitest run`，执行 E2E 时使用 `playwright test`。两个 runner 应通过各自配置限定测试文件，避免相互收集。
+
+完整的独立项目示例位于 `packages/core/test/standalone`，包含普通 `.user.js`、产物 matcher 用例和页面交互用例，不需要安装 Makoo core 或 CLI。
+
 ## 产物断言
 
 ```ts
@@ -56,6 +76,17 @@ test('点击更新计数', async ({ userscriptPage: page }) => {
 
 套件负责隔离 profile、加载管理器、自动安装最终文件、创建页面、关闭浏览器、清理临时资源并保存日志和 trace。使用者定义页面行为。`userscriptPage` 是标准 Playwright Page，只有安装确认成功后才提供给用例；脚本实际执行结果由用例断言。
 
+| 配置 | 默认值与语义 |
+| --- | --- |
+| `userscript` | 必填；文件路径相对测试进程 cwd 解析，或传入 `{ build }` |
+| `manager` | `'violentmonkey'`；当前唯一实现的管理器 |
+| `managerPath` | 可选；准备好的固定版本扩展目录，省略时自动下载 |
+| `testPages` | 默认 `{}`；内置服务器提供的 HTML 路径与内容 |
+| `baseURL` | 可选；省略时页面使用内置服务器地址，提供时页面访问外部应用 |
+| `headless` | 继承 Playwright 配置，传给套件创建的 Chromium context |
+
+`UserscriptBuildContext`、`UserscriptInput`、`UserscriptOptions` 和 `UserscriptFixtures` 可从 `/playwright` 导入。内部资源 fixture 不属于公开配置。用例应使用 `userscriptPage`；Playwright 原生 `page` fixture 使用另一套 context，不包含套件安装的脚本。
+
 现有应用可以通过 Playwright `webServer` 启动，配合 `baseURL` 使用。简单静态页面也可交给套件准备；需要将随机端口写进构建配置时，提供可选的 build 配置：
 
 ```ts
@@ -91,9 +122,29 @@ test('点击更新计数', async ({ userscriptPage: page }) => {
 
 导入读取或解析入口不会加载浏览器、注册 matcher 或下载管理器。
 
+已验证 Node 24.19.0、TypeScript 5.9.3 下的 ESM 类型消费，覆盖 `moduleResolution: NodeNext` 和 `Bundler`，无需源码 alias 或 `skipLibCheck`。读取/解析入口同时验证了 CommonJS 运行时导出；CommonJS 类型消费尚未单独验收。`fflate` 是包的安装依赖，但只被管理器入口加载。
+
 解析器读取文件开头的 metadata comment block，允许 BOM 与前置空白，支持 LF/CRLF/CR。重复字段保留为数组，未知字段和本地化名称保留。首尾空白去除，值内部空白保留。解析到结束标记即停止，不扫描后面的 JavaScript。
 
 `MetadataParseError` 提供 `code`、从 1 开始的 `line` 和 UTF-16 `offset`。code 包括 `MISSING_METADATA`、`UNCLOSED_METADATA`、`INVALID_METADATA_LINE`。读取错误保留 Node 原始错误。
+
+## 失败排查
+
+E2E 报告附件中的 `run.log` 记录 `Last stage`。按最后阶段定位准备或行为失败：
+
+| 阶段 | 优先检查 |
+| --- | --- |
+| `server` | 本机是否允许监听 TCP 端口 |
+| `artifact` | 产物路径、metadata、build 回调是否返回；构建耗时是否超过测试 timeout |
+| `manager preparation` | GitHub 下载连接、压缩包校验、`managerPath` 中的版本和 MV3 manifest |
+| `browser` | Chromium 是否已安装，系统库与进程通信权限是否满足启动条件 |
+| `manager permissions` | 扩展是否加载、Chromium 用户脚本开关是否可以操作 |
+| `install` | 管理器确认页、产物相对资源请求与 trace |
+| `behavior` | 用例预期、页面地址、metadata 匹配规则与页面日志 |
+
+`userscript` 附件保留最终脚本；浏览器 trace 启动后保存 `trace` 附件。`environment.json` 在权限准备成功后记录浏览器、管理器版本与脚本 SHA-256；此前失败时没有该附件。`cleanup.json` 在服务关闭、临时目录删除后产生。可用 `playwright show-trace <trace.zip>` 查看交互过程。
+
+浏览器启动前失败的报告没有页面 trace，重复启动也不能解决环境权限限制。请在具备所需权限的本机或 CI 执行同一入口，再判断管理器安装与行为结果。
 
 ## 仓库内验证
 

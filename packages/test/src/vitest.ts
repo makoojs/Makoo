@@ -1,7 +1,7 @@
 import 'vitest';
 import { Script } from 'node:vm';
 import { expect } from 'vitest';
-import type { UserscriptArtifact } from './readUserscript';
+import type { UserscriptArtifact } from './readUserscript.js';
 
 interface UserscriptMatchers<R = unknown> {
 	toHaveClassicScriptSyntax(): R;
