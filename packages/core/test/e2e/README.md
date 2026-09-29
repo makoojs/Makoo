@@ -31,7 +31,11 @@ pnpm -C packages/core/test/e2e test:acceptance
 
 任何组不满足要求时，命令返回非零并停止后续组，保留证据供排查。命令会清除外部遗留的两种故障环境变量，再为每组设置对应故障。重复运行产生独立目录，旧报告不参与本次判定。
 
-这个入口可在本机或现有 CI 的单独 job 中运行。目前尚无真实浏览器全部通过的证据，因此没有改动默认测试命令或增加 PR 必跑门禁。当前浏览器权限问题仍需要在允许 Chromium 启动的环境解决。
+这个入口可在本机或 CI 的单独 job 中运行。`.github/workflows/userscript-acceptance.yml` 在 `feat/test-suite` 的相关改动推送后执行，也提供手动入口；它使用 Ubuntu 24.04、Node 24，先验证 core 产物，再准备 Chromium 和固定版本管理器，最后执行连续验收。报告、日志和 trace 作为 Actions artifact 保留 14 天，准备阶段的失败查看 job 日志。
+
+该 workflow 用于取得真实浏览器运行证据，目前未作为 PR 必跑门禁，也未改动默认测试命令。workflow 提交或成功触发不代表阶段 1/3 已通过，须检查全部正常组和故障组的实际结果。
+
+产物测试中的独立测试包消费需要 `fflate@0.8.2` 的离线缓存。新环境先执行 `pnpm store add fflate@0.8.2`；workflow 已包含此步骤。包消费检查自身仍使用 `--offline`，不会在缺少缓存时自动改为联网安装。
 
 `counter.spec.ts` 使用公开的 `test.use` 配置 HTML 与构建回调。套件提供安装好的 `userscriptPage`；案例检查页面就绪、脚本启动、点击计数、销毁后停止响应和重新绑定不重复计数。页面中的独立观察器确认销毁后的点击确实已分发。
 
