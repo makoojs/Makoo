@@ -20,6 +20,7 @@ export default defineConfig({
 		vue(),
 		dts({
 			entryRoot: 'src',
+			aliasesExclude: ['@makoojs/core'],
 			include: ['src/**/*.ts'],
 			rollupTypes: false,
 			outDir: 'dist',

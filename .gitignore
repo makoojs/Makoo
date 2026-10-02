@@ -28,9 +28,8 @@ dist-ssr
 *.sw?
 .pnpm-store
 .tmp
-/docs/
 
 # Local Matt Pocock workflow configuration, specs and tickets
-/AGENTS.md
-/CONTEXT.md
+/docs/agents/
+/.cursor/rules/matt-workflow.mdc
 /.scratch/
