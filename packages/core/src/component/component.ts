@@ -51,6 +51,7 @@ type Component = {
 	readonly config: MakooComponentDeclaration;
 	readonly dom: DOMObserver;
 	readonly onRemoved: () => void;
+	readonly isDisposed: () => boolean;
 	readonly mounter: ComponentMounter;
 	readonly state: ReturnType<typeof createState<ComponentStatus>>;
 	readonly attachListeners: Map<string, AttachListener>;
@@ -64,7 +65,8 @@ export function createComponent(
 	config: MakooComponentDeclaration,
 	adapter: MountAdapter,
 	dom: DOMObserver,
-	onRemoved: () => void
+	onRemoved: () => void,
+	isDisposed: () => boolean
 ): ComponentInjection {
 	let component: Component;
 	const listenerNames = Object.freeze((config.listeners ?? []).map((listener) => listener.name));
@@ -87,6 +89,7 @@ export function createComponent(
 		config,
 		dom,
 		onRemoved,
+		isDisposed,
 		mounter: {
 			mount(container) {
 				return adapter.mount({
@@ -141,6 +144,9 @@ function failComponent(component: Component, listenerName: string, error: MakooE
 
 function startComponent(component: Component): void {
 	const { config, executionSlot } = component;
+	if (component.isDisposed()) {
+		throw new MakooError('Core instance is disposed', undefined, ErrorCode.INSTANCE_DISPOSED);
+	}
 	if (executionSlot.kind === 'cleanup-failed') {
 		throw new MakooError(
 			`Injection "${config.name}" cannot restart after cleanup failed`,

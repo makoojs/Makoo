@@ -15,6 +15,8 @@ type MakooInstance = {
 	readonly injections: Map<string, Injection>;
 	readonly adapters: ReturnType<typeof createAdapterRegistry>;
 	readonly dom: DOMObserver;
+	disposed: boolean;
+	disposal: Promise<void> | undefined;
 };
 
 type PreparedDeclaration =
@@ -25,13 +27,22 @@ export function createMakoo(): MakooRuntime {
 	const makooInstance: MakooInstance = {
 		injections: new Map(),
 		adapters: createAdapterRegistry(),
-		dom: createDOMObserver()
+		dom: createDOMObserver(),
+		disposed: false,
+		disposal: undefined
 	};
 	return {
-		useAdapter: (adapter) => makooInstance.adapters.use(adapter),
-		apply: (declarations) => applyDeclarations(makooInstance, declarations),
+		useAdapter: (adapter) => {
+			assertOpen(makooInstance);
+			makooInstance.adapters.use(adapter);
+		},
+		apply: (declarations) => {
+			assertOpen(makooInstance);
+			applyDeclarations(makooInstance, declarations);
+		},
 		command: (name) => getInjection(makooInstance.injections, name).command,
-		status: (name) => getInjection(makooInstance.injections, name).status
+		status: (name) => getInjection(makooInstance.injections, name).status,
+		dispose: () => disposeInstance(makooInstance)
 	};
 }
 
@@ -42,7 +53,7 @@ function applyDeclarations(
 	const { injections, adapters, dom } = makooInstance;
 	const preparedDeclarations = prepareDeclarations(declarations, injections, adapters);
 	const newInjections = preparedDeclarations.map((declaration) =>
-		registerInjection(injections, dom, declaration)
+		registerInjection(injections, dom, declaration, () => makooInstance.disposed)
 	);
 	for (const injection of newInjections) {
 		// An earlier mount may have removed or replaced a later injection in this batch.
@@ -85,15 +96,23 @@ function prepareDeclarations(
 function registerInjection(
 	injections: Map<string, Injection>,
 	dom: DOMObserver,
-	declaration: PreparedDeclaration
+	declaration: PreparedDeclaration,
+	isDisposed: () => boolean
 ): Injection {
 	const injection: Injection =
 		declaration.kind === 'listener'
-			? createListener(declaration.config, dom, () =>
-					unregisterInjection(injections, injection)
+			? createListener(
+					declaration.config,
+					dom,
+					() => unregisterInjection(injections, injection),
+					isDisposed
 				)
-			: createComponent(declaration.config, declaration.adapter, dom, () =>
-					unregisterInjection(injections, injection)
+			: createComponent(
+					declaration.config,
+					declaration.adapter,
+					dom,
+					() => unregisterInjection(injections, injection),
+					isDisposed
 				);
 	injections.set(declaration.config.name, injection);
 	return injection;
@@ -103,6 +122,56 @@ function unregisterInjection(injections: Map<string, Injection>, injection: Inje
 	// A completed removal must never unregister a replacement with the same name.
 	const name = injection.command.name;
 	if (injections.get(name) === injection) injections.delete(name);
+}
+
+function assertOpen(makooInstance: MakooInstance): void {
+	if (!makooInstance.disposed) return;
+	throw new MakooError('Core instance is disposed', undefined, ErrorCode.INSTANCE_DISPOSED);
+}
+
+function disposeInstance(makooInstance: MakooInstance): Promise<void> {
+	if (makooInstance.disposal) return makooInstance.disposal;
+	makooInstance.disposed = true;
+	let resolveDisposal!: () => void;
+	let rejectDisposal!: (error: MakooError) => void;
+	const disposal = new Promise<void>((resolve, reject) => {
+		resolveDisposal = resolve;
+		rejectDisposal = reject;
+	});
+	makooInstance.disposal = disposal;
+	const removals = [...makooInstance.injections.values()].map((injection) =>
+		injection.command.remove().then(
+			() => undefined,
+			(error: unknown) => error
+		)
+	);
+	void Promise.all(removals).then((results) => {
+		const cleanupErrors = results.flatMap((result) => {
+			if (result === undefined) return [];
+			return [
+				result instanceof MakooError
+					? result
+					: new MakooError(
+							'Failed to dispose an injection',
+							undefined,
+							ErrorCode.INJECTION_CLEANUP_FAILED,
+							result instanceof Error ? result : undefined
+						)
+			];
+		});
+		if (cleanupErrors.length === 0) {
+			resolveDisposal();
+			return;
+		}
+		rejectDisposal(
+			new MakooError(
+				'Failed to dispose core',
+				undefined,
+				ErrorCode.INJECTION_CLEANUP_FAILED
+			).withCleanupErrors(cleanupErrors)
+		);
+	});
+	return disposal;
 }
 
 function getInjection(injections: ReadonlyMap<string, Injection>, name: string): Injection {

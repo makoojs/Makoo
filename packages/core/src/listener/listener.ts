@@ -47,12 +47,14 @@ export type Listener = ListenerState & {
 	intent: 'running' | 'stopped' | 'removed';
 	executionSlot: ExecutionSlot | { kind: 'removed'; cleanupPromise: Promise<void> };
 	readonly onRemoved: () => void;
+	readonly isDisposed: () => boolean;
 };
 
 export function createListener(
 	config: MakooListenerDeclaration,
 	dom: DOMObserver,
-	onRemoved: () => void
+	onRemoved: () => void,
+	isDisposed: () => boolean
 ): ListenerInjection {
 	const listener: Listener = {
 		kind: 'listener',
@@ -61,7 +63,8 @@ export function createListener(
 		intent: 'stopped',
 		executionSlot: { kind: 'empty', cleanupPromise: Promise.resolve() },
 		lastError: undefined,
-		onRemoved
+		onRemoved,
+		isDisposed
 	};
 	const command: ListenerCommand = Object.freeze({
 		name: config.name,
@@ -81,6 +84,9 @@ export function createListener(
 
 export function startListener(listener: Listener | AttachListener, dom: DOMObserver): void {
 	const { config, executionSlot } = listener;
+	if (listener.kind === 'listener' && listener.isDisposed()) {
+		throw new MakooError('Core instance is disposed', undefined, ErrorCode.INSTANCE_DISPOSED);
+	}
 	if (executionSlot.kind === 'cleanup-failed') {
 		throw new MakooError(
 			`Injection "${config.name}" cannot restart after cleanup failed`,
