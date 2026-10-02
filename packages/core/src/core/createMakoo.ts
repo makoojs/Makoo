@@ -9,10 +9,10 @@ import { MakooError } from '../error/MakooError';
 import { validateListener } from '../listener/declaration';
 import { createListener } from '../listener/listener';
 import type { MakooListenerDeclaration } from '../listener/types';
-import type { InjectionControl, MakooInjectionDeclaration, MakooRuntime } from './types';
+import type { Injection, MakooInjectionDeclaration, MakooRuntime } from './types';
 
 type MakooInstance = {
-	readonly injections: Map<string, InjectionControl>;
+	readonly injections: Map<string, Injection>;
 	readonly adapters: ReturnType<typeof createAdapterRegistry>;
 	readonly dom: DOMObserver;
 };
@@ -30,7 +30,8 @@ export function createMakoo(): MakooRuntime {
 	return {
 		useAdapter: (adapter) => makooInstance.adapters.use(adapter),
 		apply: (declarations) => applyDeclarations(makooInstance, declarations),
-		get: (name) => getInjection(makooInstance.injections, name)
+		command: (name) => getInjection(makooInstance.injections, name).command,
+		status: (name) => getInjection(makooInstance.injections, name).status
 	};
 }
 
@@ -40,18 +41,18 @@ function applyDeclarations(
 ): void {
 	const { injections, adapters, dom } = makooInstance;
 	const preparedDeclarations = prepareDeclarations(declarations, injections, adapters);
-	const registeredControls = preparedDeclarations.map((declaration) =>
+	const newInjections = preparedDeclarations.map((declaration) =>
 		registerInjection(injections, dom, declaration)
 	);
-	for (const injectionControl of registeredControls) {
+	for (const injection of newInjections) {
 		// An earlier mount may have removed or replaced a later injection in this batch.
-		if (injections.get(injectionControl.name) === injectionControl) injectionControl.start();
+		if (injections.get(injection.command.name) === injection) injection.command.start();
 	}
 }
 
 function prepareDeclarations(
 	declarations: readonly MakooInjectionDeclaration[],
-	injections: ReadonlyMap<string, InjectionControl>,
+	injections: ReadonlyMap<string, Injection>,
 	adapters: MakooInstance['adapters']
 ): PreparedDeclaration[] {
 	if (!Array.isArray(declarations) || declarations.length === 0) {
@@ -82,44 +83,38 @@ function prepareDeclarations(
 }
 
 function registerInjection(
-	injections: Map<string, InjectionControl>,
+	injections: Map<string, Injection>,
 	dom: DOMObserver,
 	declaration: PreparedDeclaration
-): InjectionControl {
-	const injectionControl: InjectionControl =
+): Injection {
+	const injection: Injection =
 		declaration.kind === 'listener'
 			? createListener(declaration.config, dom, () =>
-					unregisterInjection(injections, injectionControl)
+					unregisterInjection(injections, injection)
 				)
 			: createComponent(declaration.config, declaration.adapter, dom, () =>
-					unregisterInjection(injections, injectionControl)
+					unregisterInjection(injections, injection)
 				);
-	injections.set(declaration.config.name, injectionControl);
-	return injectionControl;
+	injections.set(declaration.config.name, injection);
+	return injection;
 }
 
-function unregisterInjection(
-	injections: Map<string, InjectionControl>,
-	injectionControl: InjectionControl
-): void {
+function unregisterInjection(injections: Map<string, Injection>, injection: Injection): void {
 	// A completed removal must never unregister a replacement with the same name.
-	const name = injectionControl.name;
-	if (injections.get(name) === injectionControl) injections.delete(name);
+	const name = injection.command.name;
+	if (injections.get(name) === injection) injections.delete(name);
 }
 
-function getInjection(
-	injections: ReadonlyMap<string, InjectionControl>,
-	name: string
-): InjectionControl {
-	const injectionControl = injections.get(name);
-	if (!injectionControl) {
+function getInjection(injections: ReadonlyMap<string, Injection>, name: string): Injection {
+	const injection = injections.get(name);
+	if (!injection) {
 		throw new MakooError(
 			`Unknown injection "${name}"`,
 			undefined,
 			ErrorCode.INJECTION_NOT_FOUND
 		);
 	}
-	return injectionControl;
+	return injection;
 }
 
 function validateInjection(input: unknown): MakooInjectionDeclaration {

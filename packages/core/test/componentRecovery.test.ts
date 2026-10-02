@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createMakoo, type InjectionControl, inject } from '../src';
+import { createMakoo, type InjectionCommand, inject } from '../src';
 
 describe('injection target recovery', () => {
-	const controls: InjectionControl[] = [];
+	const controls: InjectionCommand[] = [];
 	beforeEach(() => {
 		document.body.replaceChildren();
 		vi.useFakeTimers();
@@ -15,7 +15,7 @@ describe('injection target recovery', () => {
 		document.body.replaceChildren();
 	});
 
-function mountInjection(reinject = false, timeout?: number) {
+	function mountInjection(reinject = false, timeout?: number) {
 		const parent = document.createElement('section');
 		const host = document.createElement('div');
 		host.id = 'host';
@@ -35,14 +35,14 @@ function mountInjection(reinject = false, timeout?: number) {
 				timeout
 			})
 		]);
-		const panel = core.get('panel');
+		const panel = core.command('panel');
 		controls.push(panel);
 		const container = mount.mock.results[0].value as HTMLElement;
 		return { core, panel, host, parent, container, mount, unmount };
 	}
 
 	it('cleans the old mount before reinjecting into a replacement target', async () => {
-		const { panel, host, container, mount, unmount } = mountInjection(true);
+		const { core, panel, host, container, mount, unmount } = mountInjection(true);
 		const replacement = host.cloneNode() as HTMLElement;
 		unmount.mockImplementation(() => {
 			expect(mount).toHaveBeenCalledOnce();
@@ -53,13 +53,13 @@ function mountInjection(reinject = false, timeout?: number) {
 		expect(unmount).toHaveBeenCalledExactlyOnceWith(container);
 		expect(mount).toHaveBeenCalledTimes(2);
 		expect(mount.mock.results[1].value.parentElement).toBe(replacement);
-		expect(panel.state.getSnapshot().status).toBe('mounted');
+		expect(core.status('panel').getSnapshot()).toBe('mounted');
 		unmount.mockReset();
 	});
 
 	it('keeps the mount through same-delivery moves, selector changes, and content updates', async () => {
-		const { panel, host, parent, container, mount, unmount } = mountInjection(true);
-		const snapshot = panel.state.getSnapshot();
+		const { core, panel, host, parent, container, mount, unmount } = mountInjection(true);
+		const snapshot = core.status('panel').getSnapshot();
 		parent.remove();
 		document.body.append(parent);
 		container.remove();
@@ -70,25 +70,25 @@ function mountInjection(reinject = false, timeout?: number) {
 		await Promise.resolve();
 		expect(mount).toHaveBeenCalledOnce();
 		expect(unmount).not.toHaveBeenCalled();
-		expect(panel.state.getSnapshot()).toBe(snapshot);
+		expect(core.status('panel').getSnapshot()).toBe(snapshot);
 	});
 
 	it.each([
 		undefined,
 		50
 	])('gives recovery a fresh budget %s and does not retry timeout', async (timeout) => {
-		const { panel, host, mount } = mountInjection(true, timeout);
+		const { core, panel, host, mount } = mountInjection(true, timeout);
 		const budget = timeout ?? 15000;
 		vi.advanceTimersByTime(budget * 2);
 		host.remove();
 		await vi.advanceTimersByTimeAsync(0);
-		expect(panel.state.getSnapshot().status).toBe('waiting');
+		expect(core.status('panel').getSnapshot()).toBe('waiting');
 		vi.advanceTimersByTime(budget - 1);
 		document.body.append(document.createElement('div'));
 		await Promise.resolve();
-		expect(panel.state.getSnapshot().status).toBe('waiting');
+		expect(core.status('panel').getSnapshot()).toBe('waiting');
 		await vi.advanceTimersByTimeAsync(1);
-		expect(panel.lastError?.code).toBe('MAKOO_DOM_WAIT_TIMEOUT');
+		expect(core.status('panel').lastError?.code).toBe('MAKOO_DOM_WAIT_TIMEOUT');
 		document.body.append(host);
 		await Promise.resolve();
 		expect(mount).toHaveBeenCalledOnce();
@@ -101,30 +101,33 @@ function mountInjection(reinject = false, timeout?: number) {
 		'stop',
 		'remove'
 	] as const)('lets %s override recovery during its waiting notification', async (operation) => {
-		const { panel, host, mount } = mountInjection(true);
-		panel.state.subscribe(() => {
-			if (panel.state.getSnapshot().status === 'waiting') void panel[operation]();
+		const { core, panel, host, mount } = mountInjection(true);
+		const status = core.status('panel');
+		status.subscribe(() => {
+			if (status.getSnapshot() === 'waiting') void panel[operation]();
 		});
 		host.replaceWith(host.cloneNode());
-		await vi.waitFor(() => expect(panel.state.getSnapshot().status).toBe('idle'), {
+		await vi.waitFor(() => expect(status.getSnapshot()).toBe('idle'), {
 			interval: 1
 		});
 		expect(mount).toHaveBeenCalledOnce();
-		expect(panel.state.getSnapshot().status).toBe('idle');
+		expect(status.getSnapshot()).toBe('idle');
 		expect(vi.getTimerCount()).toBe(0);
 	});
 
 	it('blocks recovery after cleanup failure while still removing the container', async () => {
-		const { panel, host, container, mount, unmount } = mountInjection(true);
+		const { core, panel, host, container, mount, unmount } = mountInjection(true);
 		unmount.mockImplementation(() => {
 			throw new Error('unmount failed');
 		});
 		host.replaceWith(host.cloneNode());
-		await vi.waitFor(() => expect(panel.state.getSnapshot().status).toBe('failed'), {
+		await vi.waitFor(() => expect(core.status('panel').getSnapshot()).toBe('failed'), {
 			interval: 1
 		});
 		expect(container.isConnected).toBe(false);
-		expect(panel.lastError?.cleanupErrors[0]?.code).toBe('MAKOO_ADAPTER_UNMOUNT_FAIL');
+		expect(core.status('panel').lastError?.cleanupErrors[0]?.code).toBe(
+			'MAKOO_ADAPTER_UNMOUNT_FAIL'
+		);
 		expect(mount).toHaveBeenCalledOnce();
 		expect(() => panel.start()).toThrow(/cannot restart/);
 		await expect(panel.stop()).rejects.toMatchObject({ code: 'MAKOO_ADAPTER_UNMOUNT_FAIL' });
@@ -145,13 +148,13 @@ function mountInjection(reinject = false, timeout?: number) {
 			unmount
 		});
 		core.apply([inject({ name: 'panel', injectAt: '#host', adapter: 'plain', component: {} })]);
-		const panel = core.get('panel');
+		const panel = core.command('panel');
 		controls.push(panel);
-		await vi.waitFor(() => expect(panel.state.getSnapshot().status).toBe('failed'), {
+		await vi.waitFor(() => expect(core.status('panel').getSnapshot()).toBe('failed'), {
 			interval: 1
 		});
 		expect(unmount).toHaveBeenCalledOnce();
-		expect(panel.state.getSnapshot().status).toBe('failed');
+		expect(core.status('panel').getSnapshot()).toBe('failed');
 	});
 
 	it('starts validity observation before invoking the adapter and cleans it up on stop', async () => {
@@ -172,17 +175,17 @@ function mountInjection(reinject = false, timeout?: number) {
 		'container',
 		'outside'
 	] as const)('cleans up a disconnected %s without reinjection', async (removedPart) => {
-		const { panel, host, parent, container, mount, unmount } = mountInjection();
+		const { core, panel, host, parent, container, mount, unmount } = mountInjection();
 		if (removedPart === 'target') host.remove();
 		if (removedPart === 'ancestor') parent.remove();
 		if (removedPart === 'container') container.remove();
 		if (removedPart === 'outside') document.body.append(container);
-		await vi.waitFor(() => expect(panel.state.getSnapshot().status).toBe('failed'), {
+		await vi.waitFor(() => expect(core.status('panel').getSnapshot()).toBe('failed'), {
 			interval: 1
 		});
 		expect(unmount).toHaveBeenCalledExactlyOnceWith(container);
 		expect(container.isConnected).toBe(false);
-		expect(panel.state.getSnapshot().status).toBe('failed');
+		expect(core.status('panel').getSnapshot()).toBe('failed');
 		expect(mount).toHaveBeenCalledOnce();
 	});
 });

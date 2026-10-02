@@ -1,6 +1,10 @@
 export { ReactAdapterError } from './error';
-export type { ReactComponentControl } from './hooks';
-export { useComponentControl, useComponentState, useListenerState } from './hooks';
+export {
+	useComponentCommand,
+	useComponentStatus,
+	useComponentStatusHandle,
+	useListenerStatus
+} from './hooks';
 export type {
 	ReactMountAdapter,
 	ReactMountComponent,

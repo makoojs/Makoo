@@ -1,7 +1,8 @@
 import type {
-	ComponentControl,
-	ComponentSnapshot,
-	ListenerSnapshot,
+	ComponentCommand,
+	ComponentStatus,
+	ComponentStatusHandle,
+	ListenerStatus,
 	StateView
 } from '@makoojs/core';
 import { ErrorCode, MakooError } from '@makoojs/core';
@@ -17,17 +18,18 @@ import {
 } from 'vue';
 
 export type VueComponentContext = {
-	readonly control: ComponentControl;
-	readonly listenerNames: readonly string[];
+	readonly command: ComponentCommand;
+	readonly status: ComponentStatusHandle;
 	/** Releases of subscriptions still held by this app; drained if mount fails. */
 	readonly subscriptions: Set<() => void>;
 };
 
 export const componentContextKey: InjectionKey<VueComponentContext> = Symbol('makoo-component');
 
-export type VueMakooComponent = Omit<ComponentControl, 'state' | 'listenerState'> & {
-	readonly state: Readonly<Ref<Readonly<ComponentSnapshot>>>;
-	listenerState(name: string): Readonly<Ref<Readonly<ListenerSnapshot>>>;
+export type VueMakooComponent = ComponentCommand & {
+	readonly lastError: MakooError | undefined;
+	readonly status: Readonly<Ref<ComponentStatus>>;
+	listener(name: string): Readonly<Ref<ListenerStatus>>;
 };
 
 export function useMakooComponent(): VueMakooComponent {
@@ -42,28 +44,28 @@ export function useMakooComponent(): VueMakooComponent {
 			'useMakooComponent() must be called inside a component setup or effect scope'
 		);
 	}
-	const { control, listenerNames } = context;
-	const state = subscribeState(control.state, context.subscriptions);
+	const { command, status } = context;
+	const componentStatus = subscribeState(status, context.subscriptions);
 	const listeners = new Map(
-		listenerNames.map((name) => [
+		status.listenerNames.map((name) => [
 			name,
-			subscribeState(control.listenerState(name), context.subscriptions)
+			subscribeState(status.listener(name), context.subscriptions)
 		])
 	);
 	return {
-		name: control.name,
-		state,
+		name: command.name,
+		status: componentStatus,
 		get lastError() {
-			return control.lastError;
+			return status.lastError;
 		},
-		start: control.start,
-		stop: control.stop,
-		remove: control.remove,
-		listenerState(name) {
+		start: command.start,
+		stop: command.stop,
+		remove: command.remove,
+		listener(name) {
 			const listener = listeners.get(name);
 			if (!listener)
 				throw new MakooError(
-					`Unknown listener "${name}" in "${control.name}"`,
+					`Unknown listener "${name}" in "${command.name}"`,
 					undefined,
 					ErrorCode.INJECTION_NOT_FOUND
 				);

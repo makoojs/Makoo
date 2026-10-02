@@ -1,13 +1,28 @@
 import type { MountAdapter } from '../adapter/types';
-import type { ComponentControl, MakooComponentDeclaration } from '../component/types';
-import type { ListenerControl, MakooListenerDeclaration } from '../listener/types';
+import type {
+	ComponentCommand,
+	ComponentInjection,
+	ComponentStatusHandle,
+	MakooComponentDeclaration
+} from '../component/types';
+import type {
+	ListenerCommand,
+	ListenerInjection,
+	ListenerStatusHandle,
+	MakooListenerDeclaration
+} from '../listener/types';
 
 export type MakooInjectionDeclaration = MakooListenerDeclaration | MakooComponentDeclaration;
 
-export type InjectionControl = ComponentControl | ListenerControl;
+export type Injection = ComponentInjection | ListenerInjection;
+
+export type InjectionCommand = ComponentCommand | ListenerCommand;
+
+export type InjectionStatusHandle = ComponentStatusHandle | ListenerStatusHandle;
 
 export interface MakooRuntime {
 	useAdapter(adapter: MountAdapter): void;
 	apply(declarations: readonly MakooInjectionDeclaration[]): void;
-	get(name: string): InjectionControl;
+	command(name: string): InjectionCommand;
+	status(name: string): InjectionStatusHandle;
 }

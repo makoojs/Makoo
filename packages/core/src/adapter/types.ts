@@ -1,9 +1,9 @@
-import type { ComponentControl } from '../component/types';
+import type { ComponentCommand, ComponentStatusHandle } from '../component/types';
 
 export interface AdapterMountParams<TComponent = unknown, TProps = unknown> {
 	component: TComponent;
-	control: ComponentControl;
-	listenerNames: readonly string[];
+	command: ComponentCommand;
+	status: ComponentStatusHandle;
 	props: TProps | undefined;
 	container: HTMLElement;
 }

@@ -2,7 +2,7 @@ import type { DOMObserver } from '../dom/observer';
 import type { MakooError } from '../error/MakooError';
 import { createState } from '../state/createState';
 import { type ExecutionSlot, endExecution, type ListenerState } from './listener';
-import type { ListenerSnapshot, MakooListenerDeclaration } from './types';
+import type { ListenerStatus, MakooListenerDeclaration } from './types';
 
 export type AttachListener = ListenerState & {
 	readonly kind: 'attach';
@@ -18,7 +18,7 @@ export function createAttachListener(
 	return {
 		kind: 'attach',
 		config,
-		state: createState<ListenerSnapshot>({ status: 'idle' }),
+		state: createState<ListenerStatus>('idle'),
 		intent: 'stopped',
 		executionSlot: { kind: 'empty', cleanupPromise: Promise.resolve() },
 		lastError: undefined,
@@ -42,8 +42,8 @@ export async function stopAttachListeners(
 		switch (currentSlot.kind) {
 			case 'empty':
 				// Preserve a completed failure while stopping recovery between executions.
-				if (attachListener.state.view.getSnapshot().status !== 'failed')
-					attachListener.state.set({ status: 'idle' });
+				if (attachListener.state.view.getSnapshot() !== 'failed')
+					attachListener.state.set('idle');
 				continue;
 			case 'cleanup-failed':
 				for (const error of currentSlot.cleanupErrors)

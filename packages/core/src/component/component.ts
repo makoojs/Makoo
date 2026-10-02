@@ -3,11 +3,21 @@ import type { DOMObserver } from '../dom/observer';
 import { ErrorCode } from '../error/ErrorCode';
 import { MakooError } from '../error/MakooError';
 import { type AttachListener, createAttachListener } from '../listener/attach';
-import type { ListenerSnapshot } from '../listener/types';
+import type { ListenerStatus } from '../listener/types';
 import { createState } from '../state/createState';
 import type { StateView } from '../state/types';
-import { type ComponentExecution, createComponentExecution } from './execution';
-import type { ComponentControl, ComponentSnapshot, MakooComponentDeclaration } from './types';
+import {
+	type ComponentExecution,
+	type ComponentMounter,
+	createComponentExecution
+} from './execution';
+import type {
+	ComponentCommand,
+	ComponentInjection,
+	ComponentStatus,
+	ComponentStatusHandle,
+	MakooComponentDeclaration
+} from './types';
 
 /** Deferred cleanup signal for one execution: awaiters share this promise. */
 type CleanupCompletion = {
@@ -39,7 +49,10 @@ type ExecutionSlot =
 
 type Component = {
 	readonly config: MakooComponentDeclaration;
-	readonly state: ReturnType<typeof createState<ComponentSnapshot>>;
+	readonly dom: DOMObserver;
+	readonly onRemoved: () => void;
+	readonly mounter: ComponentMounter;
+	readonly state: ReturnType<typeof createState<ComponentStatus>>;
 	readonly attachListeners: Map<string, AttachListener>;
 	/** Desired lifecycle: running / stopped / permanently removed. */
 	intent: 'running' | 'stopped' | 'removed';
@@ -52,38 +65,60 @@ export function createComponent(
 	adapter: MountAdapter,
 	dom: DOMObserver,
 	onRemoved: () => void
-): ComponentControl {
-	const component: Component = {
+): ComponentInjection {
+	let component: Component;
+	const listenerNames = Object.freeze((config.listeners ?? []).map((listener) => listener.name));
+	const command: ComponentCommand = Object.freeze({
+		name: config.name,
+		start: () => startComponent(component),
+		stop: () => stopComponent(component),
+		remove: () => removeComponent(component)
+	});
+	const status: ComponentStatusHandle = Object.freeze({
+		getSnapshot: () => component.state.view.getSnapshot(),
+		subscribe: (notify: () => void) => component.state.view.subscribe(notify),
+		get lastError() {
+			return component.lastError;
+		},
+		listenerNames,
+		listener: (listenerName: string) => getAttachListenerStatus(component, listenerName)
+	});
+	component = {
 		config,
-		state: createState<ComponentSnapshot>({ status: 'idle' }),
+		dom,
+		onRemoved,
+		mounter: {
+			mount(container) {
+				return adapter.mount({
+					component: config.component,
+					props: config.props,
+					container,
+					command,
+					status
+				});
+			},
+			unmount(handle) {
+				adapter.unmount(handle);
+			}
+		},
+		state: createState<ComponentStatus>('idle'),
 		attachListeners: new Map(),
 		intent: 'stopped',
 		executionSlot: { kind: 'empty', cleanupPromise: Promise.resolve() },
 		lastError: undefined
 	};
-	const control: ComponentControl = Object.freeze({
-		name: config.name,
-		state: component.state.view,
-		get lastError() {
-			return component.lastError;
-		},
-		listenerState: (listenerName: string) => getAttachListenerState(component, listenerName),
-		start: () => startComponent(component, adapter, dom, control, onRemoved),
-		stop: () => stopComponent(component, control, onRemoved),
-		remove: () => removeComponent(component, control, onRemoved)
-	});
 	for (const attachListenerConfig of config.listeners ?? []) {
 		component.attachListeners.set(
 			attachListenerConfig.name,
 			createAttachListener({ ...attachListenerConfig, reinject: config.reinject }, (error) =>
-				failComponent(component, control, onRemoved, attachListenerConfig.name, error)
+				failComponent(component, attachListenerConfig.name, error)
 			)
 		);
 	}
-	return control;
+	return { kind: 'component', command, status };
 }
 
-function getAttachListenerState(component: Component, name: string): StateView<ListenerSnapshot> {
+function getAttachListenerStatus(component: Component, name: string): StateView<ListenerStatus> {
 	const attachListener = component.attachListeners.get(name);
 	if (!attachListener) {
 		throw new MakooError(
@@ -95,31 +130,16 @@ function getAttachListenerState(component: Component, name: string): StateView<L
 	return attachListener.state.view;
 }
 
-// TODO 这种类型的通知函数要减少或者优化
-function failComponent(
-	component: Component,
-	control: ComponentControl,
-	onRemoved: () => void,
-	listenerName: string,
-	error: MakooError
-): void {
+function failComponent(component: Component, listenerName: string, error: MakooError): void {
 	if (component.executionSlot.kind !== 'active') return;
 	void endExecution(
 		component,
-		control,
-		onRemoved,
 		'failed',
 		error.withContext({ injection: component.config.name, listener: listenerName })
 	).catch(() => {});
 }
 
-function startComponent(
-	component: Component,
-	adapter: MountAdapter,
-	dom: DOMObserver,
-	control: ComponentControl,
-	onRemoved: () => void
-): void {
+function startComponent(component: Component): void {
 	const { config, executionSlot } = component;
 	if (executionSlot.kind === 'cleanup-failed') {
 		throw new MakooError(
@@ -137,8 +157,11 @@ function startComponent(
 	}
 	component.intent = 'running';
 	if (executionSlot.kind !== 'empty') return;
-
 	component.lastError = undefined;
+	startExecution(component);
+}
+
+function startExecution(component: Component): void {
 	let resolveCleanup!: () => void;
 	let rejectCleanup!: (error: MakooError) => void;
 	const cleanupPromise = new Promise<void>((resolve, reject) => {
@@ -147,16 +170,15 @@ function startComponent(
 	});
 	void cleanupPromise.catch(() => {});
 	const execution = createComponentExecution(
-		config,
-		adapter,
-		dom,
-		control,
+		component.config,
+		component.dom,
+		component.mounter,
 		component.attachListeners,
 		{
-			status(status) {
+			status(nextStatus) {
 				const currentSlot = component.executionSlot;
 				if (currentSlot.kind === 'active' && currentSlot.execution === execution) {
-					component.state.set({ status });
+					component.state.set(nextStatus);
 				}
 			},
 			ended(endReason, executionError) {
@@ -165,13 +187,7 @@ function startComponent(
 					(currentSlot.kind === 'active' || currentSlot.kind === 'cancelling') &&
 					currentSlot.execution === execution
 				) {
-					void endExecution(
-						component,
-						control,
-						onRemoved,
-						endReason,
-						executionError
-					).catch(() => {});
+					void endExecution(component, endReason, executionError).catch(() => {});
 				}
 			}
 		}
@@ -188,11 +204,7 @@ function startComponent(
 	execution.start();
 }
 
-function stopComponent(
-	component: Component,
-	control: ComponentControl,
-	onRemoved: () => void
-): Promise<void> {
+function stopComponent(component: Component): Promise<void> {
 	const executionSlot = component.executionSlot;
 	if (executionSlot.kind === 'cleanup-failed' || executionSlot.kind === 'removed') {
 		return executionSlot.cleanupPromise;
@@ -200,7 +212,7 @@ function stopComponent(
 	if (component.intent !== 'removed') component.intent = 'stopped';
 	switch (executionSlot.kind) {
 		case 'empty':
-			component.state.set({ status: 'idle' });
+			component.state.set('idle');
 			return executionSlot.cleanupPromise;
 		case 'cancelling':
 		case 'closing':
@@ -211,32 +223,26 @@ function stopComponent(
 				executionSlot.execution.cancel();
 				return executionSlot.cleanupCompletion.promise;
 			}
-			return endExecution(component, control, onRemoved, 'stopped');
+			return endExecution(component, 'stopped');
 	}
 }
 
-function removeComponent(
-	component: Component,
-	control: ComponentControl,
-	onRemoved: () => void
-): Promise<void> {
+function removeComponent(component: Component): Promise<void> {
 	const executionSlot = component.executionSlot;
 	if (executionSlot.kind === 'cleanup-failed' || executionSlot.kind === 'removed') {
 		return executionSlot.cleanupPromise;
 	}
 	component.intent = 'removed';
-	const cleanupPromise = stopComponent(component, control, onRemoved);
+	const cleanupPromise = stopComponent(component);
 	if (component.executionSlot.kind === 'empty') {
 		component.executionSlot = { kind: 'removed', cleanupPromise };
-		onRemoved();
+		component.onRemoved();
 	}
 	return cleanupPromise;
 }
 
 async function endExecution(
 	component: Component,
-	componentControl: ComponentControl,
-	onRemoved: () => void,
 	endReason: 'stopped' | 'detached' | 'failed',
 	executionError?: MakooError
 ): Promise<void> {
@@ -264,7 +270,7 @@ async function endExecution(
 		};
 		cleanupCompletion.reject(firstCleanupError);
 		console.error(component.lastError);
-		component.state.set({ status: 'failed' });
+		component.state.set('failed');
 		throw firstCleanupError;
 	}
 
@@ -275,17 +281,18 @@ async function endExecution(
 			kind: 'removed',
 			cleanupPromise: cleanupCompletion.promise
 		};
-		component.state.set({ status: 'idle' });
-		onRemoved();
+		component.state.set('idle');
+		component.onRemoved();
 		return;
 	}
 	if (
 		component.intent === 'running' &&
 		(endReason === 'stopped' || (endReason === 'detached' && component.config.reinject))
 	) {
-		if (endReason === 'detached') component.state.set({ status: 'waiting' });
+		if (endReason === 'detached') component.state.set('waiting');
 		if (component.intent === 'running' && component.executionSlot.kind === 'empty') {
-			componentControl.start();
+			if (endReason === 'stopped') startComponent(component);
+			else startExecution(component);
 		}
 		return;
 	}
@@ -294,5 +301,5 @@ async function endExecution(
 		component.lastError = executionError;
 		console.error(executionError);
 	}
-	component.state.set({ status: endReason === 'stopped' ? 'idle' : 'failed' });
+	component.state.set(endReason === 'stopped' ? 'idle' : 'failed');
 }

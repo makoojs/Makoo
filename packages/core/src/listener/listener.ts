@@ -9,7 +9,13 @@ import {
 	createListenerExecution,
 	type ListenerExecution
 } from './execution';
-import type { ListenerControl, ListenerSnapshot, MakooListenerDeclaration } from './types';
+import type {
+	ListenerCommand,
+	ListenerInjection,
+	ListenerStatus,
+	ListenerStatusHandle,
+	MakooListenerDeclaration
+} from './types';
 
 type CleanupCompletion = {
 	promise: Promise<void>;
@@ -32,7 +38,7 @@ export type ExecutionSlot =
 
 export type ListenerState = {
 	readonly config: MakooListenerDeclaration;
-	readonly state: ReturnType<typeof createState<ListenerSnapshot>>;
+	readonly state: ReturnType<typeof createState<ListenerStatus>>;
 	lastError: MakooError | undefined;
 };
 
@@ -47,26 +53,30 @@ export function createListener(
 	config: MakooListenerDeclaration,
 	dom: DOMObserver,
 	onRemoved: () => void
-): ListenerControl {
+): ListenerInjection {
 	const listener: Listener = {
 		kind: 'listener',
 		config,
-		state: createState<ListenerSnapshot>({ status: 'idle' }),
+		state: createState<ListenerStatus>('idle'),
 		intent: 'stopped',
 		executionSlot: { kind: 'empty', cleanupPromise: Promise.resolve() },
 		lastError: undefined,
 		onRemoved
 	};
-	return Object.freeze({
+	const command: ListenerCommand = Object.freeze({
 		name: config.name,
-		state: listener.state.view,
-		get lastError() {
-			return listener.lastError;
-		},
 		start: () => startListener(listener, dom),
 		stop: () => stopListener(listener, dom),
 		remove: () => removeListener(listener, dom)
 	});
+	const status: ListenerStatusHandle = Object.freeze({
+		getSnapshot: () => listener.state.view.getSnapshot(),
+		subscribe: (notify: () => void) => listener.state.view.subscribe(notify),
+		get lastError() {
+			return listener.lastError;
+		}
+	});
+	return { kind: 'listener', command, status };
 }
 
 export function startListener(listener: Listener | AttachListener, dom: DOMObserver): void {
@@ -123,7 +133,7 @@ function startExecution(listener: Listener | AttachListener, dom: DOMObserver): 
 		status(status) {
 			const currentSlot = listener.executionSlot;
 			if (currentSlot.kind === 'active' && currentSlot.execution === execution)
-				listener.state.set({ status });
+				listener.state.set(status);
 		},
 		ended(reason, error) {
 			const currentSlot = listener.executionSlot;
@@ -140,7 +150,7 @@ function stopListener(listener: Listener, dom: DOMObserver): Promise<void> {
 	if (listener.intent !== 'removed') listener.intent = 'stopped';
 	switch (executionSlot.kind) {
 		case 'empty':
-			listener.state.set({ status: 'idle' });
+			listener.state.set('idle');
 			return executionSlot.cleanupPromise;
 		case 'closing':
 			return executionSlot.cleanupCompletion.promise;
@@ -195,7 +205,7 @@ export function endExecution(
 		cleanupCompletion.reject(firstCleanupError);
 		console.error(error);
 		const completedSlot = listener.executionSlot;
-		listener.state.set({ status: 'failed' });
+		listener.state.set('failed');
 		if (listener.kind === 'attach' && listener.executionSlot === completedSlot)
 			listener.onFailed(error);
 		return cleanupCompletion.promise;
@@ -206,7 +216,7 @@ export function endExecution(
 	cleanupCompletion.resolve();
 	if (listener.kind === 'listener' && listener.intent === 'removed') {
 		listener.executionSlot = { kind: 'removed', cleanupPromise: cleanupCompletion.promise };
-		listener.state.set({ status: 'idle' });
+		listener.state.set('idle');
 		listener.onRemoved();
 		return cleanupCompletion.promise;
 	}
@@ -214,7 +224,7 @@ export function endExecution(
 		listener.intent === 'running' &&
 		(endReason === 'stopped' || (endReason === 'detached' && listener.config.reinject))
 	) {
-		if (endReason === 'detached') listener.state.set({ status: 'waiting' });
+		if (endReason === 'detached') listener.state.set('waiting');
 		if (listener.intent === 'running' && listener.executionSlot.kind === 'empty') {
 			if (endReason === 'stopped') startListener(listener, dom);
 			else startExecution(listener, dom);
@@ -227,7 +237,7 @@ export function endExecution(
 		console.error(executionError);
 	}
 	const completedSlot = listener.executionSlot;
-	listener.state.set({ status: endReason === 'stopped' ? 'idle' : 'failed' });
+	listener.state.set(endReason === 'stopped' ? 'idle' : 'failed');
 	if (executionError && listener.kind === 'attach' && listener.executionSlot === completedSlot)
 		listener.onFailed(executionError);
 	return cleanupCompletion.promise;

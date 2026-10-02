@@ -1,5 +1,6 @@
 import {
-	type ComponentControl,
+	type ComponentCommand,
+	type ComponentStatusHandle,
 	createMakoo,
 	ErrorCode,
 	inject,
@@ -32,7 +33,7 @@ function Badge(_props: { title: string }) {
 
 function renderedChild(): ReactElement<{ title: string }> {
 	const provider = reactDomClientMock.root.render.mock.calls[0]?.[0] as ReactElement<{
-		value: ComponentControl;
+		value: { command: ComponentCommand; status: ComponentStatusHandle };
 		children: ReactElement<{ title: string }>;
 	}>;
 	return provider.props.children;
@@ -64,19 +65,20 @@ describe('ReactAdapter', () => {
 				props: { title: 'hello', data }
 			})
 		]);
-		const control = core.get('badge');
+		const command = core.command('badge');
+		const status = core.status('badge');
 
 		const container = reactDomClientMock.createRoot.mock.calls[0]?.[0];
 		expect(container?.parentElement?.id).toBe('host');
 		const provider = reactDomClientMock.root.render.mock.calls[0]?.[0];
 		expect(isValidElement(provider)).toBe(true);
-		expect(provider.props.value).toBe(control);
+		expect(provider.props.value).toEqual({ command, status });
 		expect(renderedChild().type).toBe(Badge);
 		expect(renderedChild().props).toMatchObject({ title: 'hello', data });
 		expect(Object.isFrozen(data)).toBe(false);
-		expect(control.state.getSnapshot().status).toBe('mounted');
+		expect(status.getSnapshot()).toBe('mounted');
 
-		await control.stop();
+		await command.stop();
 		expect(reactDomClientMock.root.unmount).toHaveBeenCalledOnce();
 	});
 
@@ -88,7 +90,7 @@ describe('ReactAdapter', () => {
 		]);
 
 		expect(reactDomClientMock.root.render).toHaveBeenCalledOnce();
-		expect(core.get('badge').state.getSnapshot().status).toBe('mounted');
+		expect(core.status('badge').getSnapshot()).toBe('mounted');
 	});
 
 	it('wraps createRoot failures and normalizes non-Error causes', () => {
@@ -100,10 +102,10 @@ describe('ReactAdapter', () => {
 		try {
 			createReactAdapter().mount({
 				component: Badge,
-				listenerNames: [],
 				props: undefined,
 				container: document.createElement('div'),
-				control: {} as ComponentControl
+				command: {} as ComponentCommand,
+				status: {} as ComponentStatusHandle
 			});
 		} catch (error) {
 			thrown = error;
@@ -128,10 +130,10 @@ describe('ReactAdapter', () => {
 		try {
 			createReactAdapter().mount({
 				component: Badge,
-				listenerNames: [],
 				props: undefined,
 				container: document.createElement('div'),
-				control: {} as ComponentControl
+				command: {} as ComponentCommand,
+				status: {} as ComponentStatusHandle
 			});
 		} catch (error) {
 			thrown = error;
@@ -174,13 +176,13 @@ describe('ReactAdapter', () => {
 		reactDomClientMock.root.unmount.mockImplementationOnce(() => {
 			throw new Error('root unmount failed');
 		});
-		const control = core.get('badge');
+		const command = core.command('badge');
 
-		await expect(control.stop()).rejects.toMatchObject({
+		await expect(command.stop()).rejects.toMatchObject({
 			code: ErrorCode.ADAPTER_UNMOUNT_FAIL
 		});
-		expect(control.state.getSnapshot().status).toBe('failed');
-		expect(() => control.start()).toThrow(
+		expect(core.status('badge').getSnapshot()).toBe('failed');
+		expect(() => command.start()).toThrow(
 			expect.objectContaining({ code: ErrorCode.INJECTION_CLEANUP_FAILED })
 		);
 	});

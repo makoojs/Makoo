@@ -1,10 +1,10 @@
 import {
-	type ComponentControl,
-	type ComponentSnapshot,
+	type ComponentCommand,
+	type ComponentStatusHandle,
 	createMakoo,
-	type InjectionControl,
+	type InjectionCommand,
 	inject,
-	type ListenerSnapshot,
+	type ListenerStatus,
 	listen,
 	type MakooRuntime,
 	type StateView
@@ -13,11 +13,10 @@ import { act, createElement, useEffect, useState } from 'react';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	createReactAdapter,
-	type ReactComponentControl,
 	type ReactMountAdapter,
-	useComponentControl,
-	useComponentState,
-	useListenerState
+	useComponentCommand,
+	useComponentStatus,
+	useListenerStatus
 } from '../src';
 
 type ActEnvironment = typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean };
@@ -38,13 +37,17 @@ const playListener = () =>
 	listen({ name: 'play', listenAt: '#play', type: 'click', callback: vi.fn() });
 
 describe('React components mounted by core', () => {
-	const controls: InjectionControl[] = [];
+	const controls: InjectionCommand[] = [];
 	let core: MakooRuntime;
 
-	function panelControl(): ComponentControl {
-		const control = core.get('panel');
-		if (!('listenerState' in control)) throw new Error('Expected a component');
-		return control;
+	function panelCommand(): ComponentCommand {
+		return core.command('panel');
+	}
+
+	function panelStatus(): ComponentStatusHandle {
+		const status = core.status('panel');
+		if (!('listener' in status)) throw new Error('Expected a component');
+		return status;
 	}
 
 	async function applyPanel(component: () => unknown, reinject = false): Promise<void> {
@@ -59,7 +62,7 @@ describe('React components mounted by core', () => {
 					listeners: [playListener()]
 				})
 			]);
-			controls.push(core.get('panel'));
+			controls.push(core.command('panel'));
 		});
 	}
 
@@ -86,11 +89,11 @@ describe('React components mounted by core', () => {
 	});
 
 	it('passes props and the owning control to a real component', async () => {
-		let received: ReactComponentControl | undefined;
-		let state: Readonly<ComponentSnapshot> | undefined;
+		let received: ComponentCommand | undefined;
+		let status: string | undefined;
 		function Panel({ title }: { title: string }) {
-			received = useComponentControl();
-			state = useComponentState();
+			received = useComponentCommand();
+			status = useComponentStatus();
 			return createElement('p', null, title);
 		}
 		await act(async () => {
@@ -104,51 +107,52 @@ describe('React components mounted by core', () => {
 				})
 			]);
 		});
-		controls.push(core.get('panel'));
+		controls.push(core.command('panel'));
 
 		expect(element('#host').textContent).toBe('hello');
-		expect(received?.stop).toBe(core.get('panel').stop);
-		expect(state?.status).toBe('mounted');
+		expect(received?.stop).toBe(core.command('panel').stop);
+		expect(status).toBe('mounted');
 	});
 
 	it('connects a same-name replacement to its own control and state only', async () => {
-		const received: ReactComponentControl[] = [];
+		const received: ComponentCommand[] = [];
 		function Panel() {
-			const control = useComponentControl();
-			const play = useListenerState('play');
+			const control = useComponentCommand();
+			const play = useListenerStatus('play');
 			received.push(control);
-			return createElement('p', null, play.status);
+			return createElement('p', null, play);
 		}
 		addButton('play');
 		await applyPanel(Panel);
-		const oldControl = panelControl();
-		const oldView = oldControl.listenerState('play');
-		await act(async () => oldControl.remove());
+		const oldCommand = panelCommand();
+		const oldView = panelStatus().listener('play');
+		await act(async () => oldCommand.remove());
 
 		await applyPanel(Panel);
-		const replacement = panelControl();
-		expect(replacement).not.toBe(oldControl);
-		expect(replacement.listenerState('play')).not.toBe(oldView);
+		const replacement = panelCommand();
+		const replacementStatus = panelStatus();
+		expect(replacement).not.toBe(oldCommand);
+		expect(replacementStatus.listener('play')).not.toBe(oldView);
 		expect(received.at(-1)?.stop).toBe(replacement.stop);
 		expect(element('#host').textContent).toBe('bound');
 
-		expect(() => oldControl.start()).toThrow();
-		await act(async () => oldControl.stop());
-		expect(replacement.state.getSnapshot().status).toBe('mounted');
+		expect(() => oldCommand.start()).toThrow();
+		await act(async () => oldCommand.stop());
+		expect(replacementStatus.getSnapshot()).toBe('mounted');
 		expect(element('#host').textContent).toBe('bound');
 	});
 
 	it('renders waiting, binding and local recovery with stable snapshots and no remount', async () => {
 		let mounts = 0;
-		const seen: ListenerSnapshot[] = [];
+		const seen: ListenerStatus[] = [];
 		function Panel() {
-			const play = useListenerState('play');
-			const component = useComponentState();
+			const play = useListenerStatus('play');
+			const component = useComponentStatus();
 			seen.push(play);
 			useEffect(() => {
 				mounts += 1;
 			}, []);
-			return createElement('p', null, `${component.status}/${play.status}`);
+			return createElement('p', null, `${component}/${play}`);
 		}
 		await applyPanel(Panel, true);
 		const text = () => element('#host').textContent;
@@ -156,7 +160,7 @@ describe('React components mounted by core', () => {
 
 		await act(async () => addButton('play'));
 		expect(text()).toBe('mounted/bound');
-		const bound = panelControl().listenerState('play').getSnapshot();
+		const bound = panelStatus().listener('play').getSnapshot();
 		expect(seen.at(-1)).toBe(bound);
 
 		await act(async () => element('#play').remove());
@@ -171,12 +175,12 @@ describe('React components mounted by core', () => {
 		let renders = 0;
 		function Panel() {
 			const [selected, select] = useState('play');
-			const listener = useListenerState(selected);
+			const listener = useListenerStatus(selected);
 			renders += 1;
 			return createElement(
 				'button',
 				{ type: 'button', className: 'select', onClick: () => select('mute') },
-				`${selected}:${listener.status}`
+				`${selected}:${listener}`
 			);
 		}
 		await act(async () => {
@@ -193,7 +197,7 @@ describe('React components mounted by core', () => {
 				})
 			]);
 		});
-		controls.push(core.get('panel'), core.get('external'));
+		controls.push(core.command('panel'), core.command('external'));
 		expect(element('#host').textContent).toBe('play:waiting');
 		const playRenders = renders;
 		await act(async () => addButton('mute'));
@@ -209,10 +213,10 @@ describe('React components mounted by core', () => {
 		core.apply([
 			listen({ name: 'external', listenAt: '#host', type: 'click', callback: vi.fn() })
 		]);
-		controls.push(core.get('external'));
+		controls.push(core.command('external'));
 		function Panel() {
-			const listener = useListenerState('external');
-			return createElement('p', null, listener.status);
+			const listener = useListenerStatus('external');
+			return createElement('p', null, listener);
 		}
 		await expect(applyPanel(Panel)).rejects.toThrow(/Unknown listener/);
 	});
@@ -220,10 +224,8 @@ describe('React components mounted by core', () => {
 	it('drops the old subscription on unmount and connects the component after reinjection', async () => {
 		const renders: string[] = [];
 		let subscriptions = 0;
-		const counted = new WeakMap<StateView<ListenerSnapshot>, StateView<ListenerSnapshot>>();
-		function countSubscriptions(
-			view: StateView<ListenerSnapshot>
-		): StateView<ListenerSnapshot> {
+		const counted = new WeakMap<StateView<ListenerStatus>, StateView<ListenerStatus>>();
+		function countSubscriptions(view: StateView<ListenerStatus>): StateView<ListenerStatus> {
 			let wrapped = counted.get(view);
 			if (!wrapped) {
 				wrapped = {
@@ -248,41 +250,41 @@ describe('React components mounted by core', () => {
 			mount(params) {
 				return adapter.mount({
 					...params,
-					control: {
-						...params.control,
-						listenerState: (name) =>
-							countSubscriptions(params.control.listenerState(name))
+					status: {
+						...params.status,
+						listener: (name) => countSubscriptions(params.status.listener(name))
 					}
 				});
 			}
 		} satisfies ReactMountAdapter);
 		function Panel() {
-			const control = useComponentControl();
-			const play = useListenerState('play');
-			renders.push(play.status);
+			const control = useComponentCommand();
+			const play = useListenerStatus('play');
+			renders.push(play);
 			return createElement(
 				'button',
 				{ type: 'button', className: 'close', onClick: () => control.stop() },
-				play.status
+				play
 			);
 		}
 		addButton('play');
 		await applyPanel(Panel, true);
-		const panel = panelControl();
-		const view = panel.listenerState('play');
+		const panel = panelCommand();
+		const status = panelStatus();
+		const view = status.listener('play');
 		expect(element('#host .close').textContent).toBe('bound');
 		expect(subscriptions).toBe(1);
 
 		await act(async () => element('#host').replaceChildren());
 		await vi.waitFor(() => expect(element('#host .close').textContent).toBe('bound'));
-		expect(panel.listenerState('play')).toBe(view);
+		expect(status.listener('play')).toBe(view);
 		expect(subscriptions).toBe(1);
 
 		await act(async () => {
 			element('#host .close').click();
 			await Promise.resolve();
 		});
-		await vi.waitFor(() => expect(panel.state.getSnapshot().status).toBe('idle'));
+		await vi.waitFor(() => expect(status.getSnapshot()).toBe('idle'));
 		expect(element('#host').childElementCount).toBe(0);
 		expect(subscriptions).toBe(0);
 		const rendersAfterStop = renders.length;

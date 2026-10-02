@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AdapterMountParams, MountAdapter } from '../src';
-import { createMakoo, type InjectionControl, inject, listen } from '../src';
+import { createMakoo, type InjectionCommand, inject, listen } from '../src';
 
 describe('single component injection', () => {
-	const handles: InjectionControl[] = [];
+	const handles: InjectionCommand[] = [];
 	beforeEach(() => {
 		document.body.replaceChildren();
 		vi.useFakeTimers();
@@ -49,27 +49,32 @@ describe('single component injection', () => {
 			props
 		});
 		core.apply([declaration]);
-		const panel = core.get('panel');
+		const panel = core.command('panel');
 		handles.push(panel);
 		Object.assign(declaration, { component: { id: 'other' }, props: { title: 'changed' } });
 		props.nested.n = 2;
 
 		expect(params?.component).toBe(component);
 		expect(params?.props).toBe(props);
-		expect(params?.control).toBe(panel);
-		expect(Object.keys(params?.control ?? {}).sort()).toEqual([
-			'lastError',
-			'listenerState',
+		expect(params?.command).toBe(panel);
+		expect(params?.status).toBe(core.status('panel'));
+		expect(Object.keys(params?.command ?? {}).sort()).toEqual([
 			'name',
 			'remove',
 			'start',
-			'state',
 			'stop'
+		]);
+		expect(Object.keys(params?.status ?? {}).sort()).toEqual([
+			'getSnapshot',
+			'lastError',
+			'listener',
+			'listenerNames',
+			'subscribe'
 		]);
 		expect(params?.container.parentElement).toBe(host);
 		expect(extra.querySelector('div')).toBeNull();
 		expect(host.firstChild?.textContent).toBe('keep');
-		expect(panel.state.getSnapshot().status).toBe('mounted');
+		expect(core.status('panel').getSnapshot()).toBe('mounted');
 		expect(Object.isFrozen(props)).toBe(false);
 		expect(Object.isFrozen(props.nested)).toBe(false);
 		expect(vi.getTimerCount()).toBe(0);
@@ -83,13 +88,13 @@ describe('single component injection', () => {
 		const core = createMakoo();
 		core.useAdapter(adapter(() => handle, unmount));
 		core.apply([inject({ name: 'panel', injectAt: '#host', adapter: 'plain', component: {} })]);
-		const panel = core.get('panel');
+		const panel = core.command('panel');
 		handles.push(panel);
 		const container = host.querySelector('div');
 		await panel.stop();
 		expect(unmount).toHaveBeenCalledWith(handle);
 		expect(container?.isConnected).toBe(false);
-		expect(panel.state.getSnapshot().status).toBe('idle');
+		expect(core.status('panel').getSnapshot()).toBe('idle');
 	});
 
 	it('unmounts synchronously before removing the container, then starts a new execution', async () => {
@@ -113,7 +118,7 @@ describe('single component injection', () => {
 			)
 		);
 		core.apply([inject({ name: 'panel', injectAt: '#host', adapter: 'plain', component: {} })]);
-		const panel = core.get('panel');
+		const panel = core.command('panel');
 		handles.push(panel);
 		panel.start();
 		expect(containers).toHaveLength(1);
@@ -124,10 +129,10 @@ describe('single component injection', () => {
 		expect(containers).toHaveLength(2);
 		expect(containers[0]).not.toBe(containers[1]);
 		expect(containers[1]?.parentElement).toBe(host);
-		expect(panel.state.getSnapshot().status).toBe('mounted');
+		expect(core.status('panel').getSnapshot()).toBe('mounted');
 		await panel.remove();
 		expect(containers[1]?.isConnected).toBe(false);
-		expect(() => core.get('panel')).toThrow();
+		expect(() => core.command('panel')).toThrow();
 		expect(() => panel.start()).toThrow();
 	});
 
@@ -141,18 +146,18 @@ describe('single component injection', () => {
 		core.apply([
 			inject({ name: 'panel', injectAt: '#host', adapter: 'plain', component: {}, timeout })
 		]);
-		const panel = core.get('panel');
+		const panel = core.command('panel');
 		handles.push(panel);
-		expect(panel.state.getSnapshot().status).toBe('waiting');
+		expect(core.status('panel').getSnapshot()).toBe('waiting');
 		expect(mount).not.toHaveBeenCalled();
 		const budget = timeout ?? 15000;
 		vi.advanceTimersByTime(budget - 1);
 		document.body.append(document.createElement('div'));
 		await Promise.resolve();
-		expect(panel.state.getSnapshot().status).toBe('waiting');
+		expect(core.status('panel').getSnapshot()).toBe('waiting');
 		await vi.advanceTimersByTimeAsync(1);
-		expect(panel.state.getSnapshot().status).toBe('failed');
-		expect(panel.lastError).toMatchObject({
+		expect(core.status('panel').getSnapshot()).toBe('failed');
+		expect(core.status('panel').lastError).toMatchObject({
 			code: 'MAKOO_DOM_WAIT_TIMEOUT',
 			context: { injection: 'panel', phase: 'wait', reason: 'timeout' }
 		});
@@ -163,7 +168,7 @@ describe('single component injection', () => {
 		expect(mount).not.toHaveBeenCalled();
 		panel.start();
 		expect(mount).toHaveBeenCalledOnce();
-		expect(panel.lastError).toBeUndefined();
+		expect(core.status('panel').lastError).toBeUndefined();
 		expect(host.querySelector('div')).toBeInstanceOf(HTMLElement);
 	});
 
@@ -172,7 +177,7 @@ describe('single component injection', () => {
 		const mount = vi.fn(() => 'handle');
 		core.useAdapter(adapter(mount));
 		core.apply([inject({ name: 'panel', injectAt: '#host', adapter: 'plain', component: {} })]);
-		const panel = core.get('panel');
+		const panel = core.command('panel');
 		handles.push(panel);
 		const host = document.createElement('section');
 		host.id = 'host';
@@ -181,7 +186,7 @@ describe('single component injection', () => {
 		await Promise.resolve();
 		await completion;
 		expect(mount).not.toHaveBeenCalled();
-		expect(panel.state.getSnapshot().status).toBe('idle');
+		expect(core.status('panel').getSnapshot()).toBe('idle');
 		expect(vi.getTimerCount()).toBe(0);
 	});
 
@@ -193,13 +198,13 @@ describe('single component injection', () => {
 		const core = createMakoo();
 		core.useAdapter(adapter(mount));
 		core.apply([inject({ name: 'panel', injectAt: '#host', adapter: 'plain', component: {} })]);
-		const panel = core.get('panel');
+		const panel = core.command('panel');
 		handles.push(panel);
 		expect(mount).not.toHaveBeenCalled();
-		await vi.waitFor(() => expect(panel.state.getSnapshot().status).toBe('failed'), {
+		await vi.waitFor(() => expect(core.status('panel').getSnapshot()).toBe('failed'), {
 			interval: 1
 		});
-		expect(panel.lastError?.code).toBe('MAKOO_COMPONENT_TARGET_DETACHED');
+		expect(core.status('panel').lastError?.code).toBe('MAKOO_COMPONENT_TARGET_DETACHED');
 		expect(vi.getTimerCount()).toBe(0);
 	});
 
@@ -212,24 +217,25 @@ describe('single component injection', () => {
 		const core = createMakoo();
 		core.useAdapter(adapter(mount, unmount));
 		core.apply([inject({ name: 'panel', injectAt: '#host', adapter: 'plain', component: {} })]);
-		const panel = core.get('panel');
+		const panel = core.command('panel');
+		const status = core.status('panel');
 		handles.push(panel);
 		await panel.stop();
 		mount.mockClear();
 		unmount.mockClear();
-		const unsubscribe = panel.state.subscribe(() => {
-			if (panel.state.getSnapshot().status === 'waiting') host.remove();
+		const unsubscribe = status.subscribe(() => {
+			if (status.getSnapshot() === 'waiting') host.remove();
 		});
 		panel.start();
 		unsubscribe();
 		expect(mount).not.toHaveBeenCalled();
 		expect(unmount).not.toHaveBeenCalled();
-		await vi.waitFor(() => expect(panel.state.getSnapshot().status).toBe('failed'), {
+		await vi.waitFor(() => expect(status.getSnapshot()).toBe('failed'), {
 			interval: 1
 		});
 		expect(host.children).toHaveLength(0);
-		expect(panel.state.getSnapshot().status).toBe('failed');
-		expect(panel.lastError?.code).toBe('MAKOO_COMPONENT_TARGET_DETACHED');
+		expect(status.getSnapshot()).toBe('failed');
+		expect(core.status('panel').lastError?.code).toBe('MAKOO_COMPONENT_TARGET_DETACHED');
 		expect(vi.getTimerCount()).toBe(0);
 	});
 
@@ -243,11 +249,11 @@ describe('single component injection', () => {
 		const removedCallback = vi.fn();
 		const replacementCallback = vi.fn();
 		const thirdCallback = vi.fn();
-		let removed: InjectionControl | undefined;
+		let removed: InjectionCommand | undefined;
 		const core = createMakoo();
 		core.useAdapter(
 			adapter(() => {
-				removed = core.get('second');
+				removed = core.command('second');
 				void removed.remove();
 				if (replace) {
 					core.apply([
@@ -258,7 +264,7 @@ describe('single component injection', () => {
 							callback: replacementCallback
 						})
 					]);
-					const replacement = core.get('second');
+					const replacement = core.command('second');
 					handles.push(replacement);
 					void replacement.stop();
 				}
@@ -277,14 +283,14 @@ describe('single component injection', () => {
 				listen({ name: 'third', listenAt: '#host', type: 'click', callback: thirdCallback })
 			])
 		).not.toThrow();
-		handles.push(core.get('first'), core.get('third'));
+		handles.push(core.command('first'), core.command('third'));
 		expect(() => removed?.start()).toThrow(/was removed/);
-		expect(core.get('third').state.getSnapshot().status).toBe('bound');
+		expect(core.status('third').getSnapshot()).toBe('bound');
 		if (replace) {
-			expect(core.get('second')).not.toBe(removed);
-			expect(core.get('second').state.getSnapshot().status).toBe('idle');
+			expect(core.command('second')).not.toBe(removed);
+			expect(core.status('second').getSnapshot()).toBe('idle');
 		} else {
-			expect(() => core.get('second')).toThrow();
+			expect(() => core.command('second')).toThrow();
 		}
 		host.click();
 		expect(removedCallback).not.toHaveBeenCalled();
@@ -309,8 +315,8 @@ describe('single component injection', () => {
 		host.click();
 		expect(callback).not.toHaveBeenCalled();
 		expect(mount).not.toHaveBeenCalled();
-		expect(() => core.get('play')).toThrow();
-		expect(() => core.get('panel')).toThrow();
+		expect(() => core.command('play')).toThrow();
+		expect(() => core.command('panel')).toThrow();
 		expect(vi.getTimerCount()).toBe(0);
 	});
 
@@ -324,7 +330,7 @@ describe('single component injection', () => {
 		host.id = 'host';
 		document.body.append(host);
 		core.apply([inject({ name: 'panel', injectAt: '#host', adapter: 'plain', component: {} })]);
-		handles.push(core.get('panel'));
+		handles.push(core.command('panel'));
 		expect(first).toHaveBeenCalledOnce();
 		expect(second).not.toHaveBeenCalled();
 	});
@@ -346,18 +352,17 @@ describe('single component injection', () => {
 			listen({ name: 'play', listenAt: '.play', type: 'click', callback }),
 			inject({ name: 'panel', injectAt: '#host', adapter: 'plain', component: {} })
 		]);
-		handles.push(core.get('play'), core.get('panel'));
+		handles.push(core.command('play'), core.command('panel'));
 		button.click();
 		expect(callback).toHaveBeenCalledOnce();
-		await vi.waitFor(
-			() => expect(core.get('panel').state.getSnapshot().status).toBe('failed'),
-			{ interval: 1 }
-		);
-		expect(core.get('panel').lastError?.code).toBe('MAKOO_ADAPTER_MOUNT_FAIL');
+		await vi.waitFor(() => expect(core.status('panel').getSnapshot()).toBe('failed'), {
+			interval: 1
+		});
+		expect(core.status('panel').lastError?.code).toBe('MAKOO_ADAPTER_MOUNT_FAIL');
 		expect(host.querySelector('div')).toBeNull();
 		expect(() =>
 			core.apply([listen({ name: 'panel', listenAt: '.play', type: 'click', callback() {} })])
 		).toThrow();
-		expect(core.get('panel').state.getSnapshot().status).toBe('failed');
+		expect(core.status('panel').getSnapshot()).toBe('failed');
 	});
 });

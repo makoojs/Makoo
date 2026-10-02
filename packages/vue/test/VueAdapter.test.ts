@@ -1,7 +1,8 @@
 import {
-	type ComponentControl,
+	type ComponentCommand,
+	type ComponentStatusHandle,
 	ErrorCode,
-	type ListenerSnapshot,
+	type ListenerStatus,
 	type MakooError,
 	type StateView
 } from '@makoojs/core';
@@ -12,21 +13,28 @@ import { VueAdapterError } from '../src/error';
 import { createVueAdapter } from '../src/VueAdapter';
 import { VuePlugin } from '../src/VuePlugin';
 
-function createControl(view: StateView<ListenerSnapshot>): ComponentControl {
+function createCommand(): ComponentCommand {
 	return {
 		name: 'panel',
-		state: { getSnapshot: () => ({ status: 'mounted' }), subscribe: () => () => {} },
-		lastError: undefined,
-		listenerState: () => view,
 		start: vi.fn(),
 		stop: vi.fn(async () => {}),
 		remove: vi.fn(async () => {})
 	};
 }
 
-function createView(unsubscribe: () => void): StateView<ListenerSnapshot> {
+function createStatus(view: StateView<ListenerStatus>): ComponentStatusHandle {
 	return {
-		getSnapshot: () => ({ status: 'waiting' }),
+		getSnapshot: () => 'mounted',
+		subscribe: () => () => {},
+		lastError: undefined,
+		listenerNames: ['play'],
+		listener: () => view
+	};
+}
+
+function createView(unsubscribe: () => void): StateView<ListenerStatus> {
+	return {
+		getSnapshot: () => 'waiting',
 		subscribe: vi.fn(() => unsubscribe)
 	};
 }
@@ -39,8 +47,8 @@ const FailingChild = defineComponent({
 
 const SubscribingParent = defineComponent({
 	setup() {
-		const play = useMakooComponent().listenerState('play');
-		return () => h('div', [play.value.status, h(FailingChild)]);
+		const play = useMakooComponent().listener('play');
+		return () => h('div', [play.value, h(FailingChild)]);
 	}
 });
 
@@ -67,10 +75,10 @@ describe('VueAdapter', () => {
 		try {
 			createVueAdapter().mount({
 				component: defineComponent({ render: () => h('div') }),
-				listenerNames: [],
 				props: undefined,
 				container: document.createElement('div'),
-				control: createControl(createView(() => {}))
+				command: createCommand(),
+				status: createStatus(createView(() => {}))
 			});
 		} catch (error) {
 			thrown = error;
@@ -92,10 +100,10 @@ describe('VueAdapter', () => {
 		expect(() =>
 			createVueAdapter().mount({
 				component: SubscribingParent,
-				listenerNames: ['play'],
 				props: undefined,
 				container: document.createElement('div'),
-				control: createControl(view)
+				command: createCommand(),
+				status: createStatus(view)
 			})
 		).toThrow(
 			expect.objectContaining({
@@ -115,10 +123,10 @@ describe('VueAdapter', () => {
 		try {
 			createVueAdapter().mount({
 				component: SubscribingParent,
-				listenerNames: ['play'],
 				props: undefined,
 				container: document.createElement('div'),
-				control: createControl(
+				command: createCommand(),
+				status: createStatus(
 					createView(() => {
 						throw releaseCause;
 					})

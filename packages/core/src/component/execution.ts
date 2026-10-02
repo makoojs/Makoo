@@ -1,4 +1,3 @@
-import type { MountAdapter } from '../adapter/types';
 import type { DOMObserver } from '../dom/observer';
 import { DEFAULT_DOM_TIMEOUT, waitForElement } from '../dom/waitForElement';
 import { watchElement } from '../dom/watchElement';
@@ -6,7 +5,17 @@ import { ErrorCode } from '../error/ErrorCode';
 import { MakooError } from '../error/MakooError';
 import { type AttachListener, stopAttachListeners } from '../listener/attach';
 import { startListener } from '../listener/listener';
-import type { ComponentControl, MakooComponentDeclaration } from './types';
+
+export type ComponentMounter = {
+	mount(container: HTMLElement): unknown;
+	unmount(handle: unknown): void;
+};
+
+type ComponentExecutionConfig = {
+	readonly name: string;
+	readonly injectAt: string;
+	readonly timeout?: number;
+};
 
 export type ComponentExecution = {
 	readonly phase: 'pending' | 'mounting' | 'mounted' | 'ended';
@@ -22,7 +31,7 @@ type ExecutionCallbacks = {
 };
 
 type ComponentExecutionState = {
-	readonly config: MakooComponentDeclaration;
+	readonly config: ComponentExecutionConfig;
 	readonly domWaitAbortController: AbortController;
 	phase: ComponentExecution['phase'];
 	isCancelled: boolean;
@@ -35,10 +44,9 @@ type ComponentExecutionState = {
 };
 
 export function createComponentExecution(
-	config: MakooComponentDeclaration,
-	adapter: MountAdapter,
+	config: ComponentExecutionConfig,
 	dom: DOMObserver,
-	componentControl: ComponentControl,
+	mounter: ComponentMounter,
 	attachListeners: ReadonlyMap<string, AttachListener>,
 	callbacks: ExecutionCallbacks
 ): ComponentExecution {
@@ -61,17 +69,16 @@ export function createComponentExecution(
 		get isCancelled() {
 			return execution.isCancelled;
 		},
-		start: () => awaitMountTarget(execution, adapter, dom, componentControl, callbacks),
+		start: () => awaitMountTarget(execution, dom, mounter, callbacks),
 		cancel: () => cancelExecution(execution),
-		finish: () => cleanupExecution(execution, adapter, dom)
+		finish: () => cleanupExecution(execution, dom, mounter)
 	};
 }
 
 function awaitMountTarget(
 	execution: ComponentExecutionState,
-	adapter: MountAdapter,
 	dom: DOMObserver,
-	componentControl: ComponentControl,
+	mounter: ComponentMounter,
 	callbacks: ExecutionCallbacks
 ): void {
 	const { config, domWaitAbortController } = execution;
@@ -81,8 +88,7 @@ function awaitMountTarget(
 			config.injectAt,
 			domWaitAbortController.signal,
 			config.timeout ?? DEFAULT_DOM_TIMEOUT,
-			(mountTarget) =>
-				mountComponent(execution, adapter, dom, componentControl, callbacks, mountTarget),
+			(mountTarget) => mountComponent(execution, dom, mounter, callbacks, mountTarget),
 			() => {
 				notifyExecutionEnd(
 					execution,
@@ -124,9 +130,8 @@ function awaitMountTarget(
 
 function mountComponent(
 	execution: ComponentExecutionState,
-	adapter: MountAdapter,
 	dom: DOMObserver,
-	componentControl: ComponentControl,
+	mounter: ComponentMounter,
 	callbacks: ExecutionCallbacks,
 	mountTarget: Element
 ): void {
@@ -198,13 +203,7 @@ function mountComponent(
 	}
 
 	try {
-		const mountHandle = adapter.mount({
-			component: config.component,
-			props: config.props,
-			container: componentContainer,
-			listenerNames: [...execution.attachListeners.keys()],
-			control: componentControl
-		});
+		const mountHandle = mounter.mount(componentContainer);
 		execution.mountedComponent = { handle: mountHandle };
 		execution.phase = 'mounted';
 	} catch (cause) {
@@ -263,8 +262,8 @@ function cancelExecution(execution: ComponentExecutionState): void {
 
 async function cleanupExecution(
 	execution: ComponentExecutionState,
-	adapter: MountAdapter,
-	dom: DOMObserver
+	dom: DOMObserver,
+	mounter: ComponentMounter
 ): Promise<MakooError[]> {
 	const { config, cleanupErrors } = execution;
 	if (execution.hasCleanupStarted) return cleanupErrors;
@@ -287,17 +286,20 @@ async function cleanupExecution(
 
 	const attachListenerErrors = await stopAttachListeners(execution.attachListeners, dom);
 	collectAttachListenerErrors(execution, attachListenerErrors);
-	return unmountComponent(execution, adapter);
+	return unmountComponent(execution, mounter);
 }
 
-function unmountComponent(execution: ComponentExecutionState, adapter: MountAdapter): MakooError[] {
+function unmountComponent(
+	execution: ComponentExecutionState,
+	mounter: ComponentMounter
+): MakooError[] {
 	const { config, cleanupErrors } = execution;
 
 	const mountedComponent = execution.mountedComponent;
 	if (mountedComponent) {
 		execution.mountedComponent = null;
 		try {
-			adapter.unmount(mountedComponent.handle);
+			mounter.unmount(mountedComponent.handle);
 		} catch (cause) {
 			cleanupErrors.push(
 				cleanupError(

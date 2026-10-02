@@ -1,9 +1,11 @@
 import type {
-	ComponentControl,
-	ComponentSnapshot,
-	ListenerSnapshot,
+	ComponentCommand,
+	ComponentStatus,
+	ComponentStatusHandle,
+	ListenerStatus,
 	StateView
 } from '@makoojs/core';
+import { MakooError } from '@makoojs/core';
 import {
 	act,
 	type ComponentType,
@@ -18,11 +20,11 @@ import { createRoot } from 'react-dom/client';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	createReactAdapter,
-	type ReactComponentControl,
 	type ReactMountRoot,
-	useComponentControl,
-	useComponentState,
-	useListenerState
+	useComponentCommand,
+	useComponentStatus,
+	useComponentStatusHandle,
+	useListenerStatus
 } from '../src';
 
 function stateSource<T>(initial: Readonly<T>) {
@@ -52,10 +54,11 @@ function stateSource<T>(initial: Readonly<T>) {
 describe('React hook subscriptions at the adapter boundary', () => {
 	const adapter = createReactAdapter();
 	const roots: ReactMountRoot[] = [];
-	let componentState: ReturnType<typeof stateSource<ComponentSnapshot>>;
-	let playState: ReturnType<typeof stateSource<ListenerSnapshot>>;
-	let muteState: ReturnType<typeof stateSource<ListenerSnapshot>>;
-	let control: ComponentControl;
+	let componentState: ReturnType<typeof stateSource<ComponentStatus>>;
+	let playState: ReturnType<typeof stateSource<ListenerStatus>>;
+	let muteState: ReturnType<typeof stateSource<ListenerStatus>>;
+	let command: ComponentCommand;
+	let status: ComponentStatusHandle;
 	let container: HTMLDivElement;
 
 	async function mount(component: ComponentType) {
@@ -65,8 +68,8 @@ describe('React hook subscriptions at the adapter boundary', () => {
 					component: () => createElement(StrictMode, null, createElement(component)),
 					props: undefined,
 					container,
-					control,
-					listenerNames: ['play', 'mute']
+					command,
+					status
 				})
 			);
 		});
@@ -85,17 +88,21 @@ describe('React hook subscriptions at the adapter boundary', () => {
 	beforeEach(() => {
 		container = document.createElement('div');
 		document.body.append(container);
-		componentState = stateSource<ComponentSnapshot>({ status: 'mounted' });
-		playState = stateSource<ListenerSnapshot>({ status: 'waiting' });
-		muteState = stateSource<ListenerSnapshot>({ status: 'waiting' });
-		control = {
+		componentState = stateSource<ComponentStatus>('mounted');
+		playState = stateSource<ListenerStatus>('waiting');
+		muteState = stateSource<ListenerStatus>('waiting');
+		command = {
 			name: 'panel',
-			lastError: undefined,
-			state: componentState.view,
 			start: vi.fn(),
 			stop: vi.fn(async () => {}),
-			remove: vi.fn(async () => {}),
-			listenerState(name) {
+			remove: vi.fn(async () => {})
+		};
+		status = {
+			getSnapshot: componentState.view.getSnapshot,
+			subscribe: componentState.view.subscribe,
+			lastError: undefined,
+			listenerNames: ['play', 'mute'],
+			listener(name) {
 				if (name === 'play') return playState.view;
 				if (name === 'mute') return muteState.view;
 				throw new Error(`Unknown listener: ${name}`);
@@ -113,9 +120,9 @@ describe('React hook subscriptions at the adapter boundary', () => {
 	});
 
 	it('keeps controls stable across local renders without subscribing to any state', async () => {
-		const received: ReactComponentControl[] = [];
+		const received: ComponentCommand[] = [];
 		function Panel() {
-			const actions = useComponentControl();
+			const actions = useComponentCommand();
 			const [count, setCount] = useState(0);
 			received.push(actions);
 			return createElement(
@@ -130,8 +137,8 @@ describe('React hook subscriptions at the adapter boundary', () => {
 		expect(muteState.subscriptions).toBe(0);
 		const initialRenders = received.length;
 		await act(async () => {
-			componentState.publish({ status: 'waiting' });
-			playState.publish({ status: 'bound' });
+			componentState.publish('waiting');
+			playState.publish('bound');
 		});
 		expect(received).toHaveLength(initialRenders);
 		await act(async () => container.querySelector('button')?.click());
@@ -139,30 +146,64 @@ describe('React hook subscriptions at the adapter boundary', () => {
 		expect(received.at(-1)).toBe(received[0]);
 		expect(received[0]).toMatchObject({
 			name: 'panel',
-			start: control.start,
-			stop: control.stop,
-			remove: control.remove
+			start: command.start,
+			stop: command.stop,
+			remove: command.remove
 		});
-		expect(received[0]).not.toHaveProperty('state');
-		expect(received[0]).not.toHaveProperty('listenerState');
+		expect(received[0]).not.toHaveProperty('status');
+		expect(received[0]).not.toHaveProperty('listener');
+	});
+
+	it('exposes a stable status handle whose lastError reads do not subscribe', async () => {
+		let lastError: MakooError | undefined;
+		status = {
+			...status,
+			get lastError() {
+				return lastError;
+			}
+		};
+		const received: ComponentStatusHandle[] = [];
+		const readErrors: Array<MakooError | undefined> = [];
+		function Panel() {
+			const handle = useComponentStatusHandle();
+			const [count, setCount] = useState(0);
+			received.push(handle);
+			readErrors.push(handle.lastError);
+			return createElement(
+				'button',
+				{ type: 'button', onClick: () => setCount(count + 1) },
+				count
+			);
+		}
+		await mount(Panel);
+		expect(componentState.subscriptions).toBe(0);
+		const initialRenders = received.length;
+		lastError = new MakooError('mount failed');
+		await act(async () => componentState.publish('failed'));
+		expect(received).toHaveLength(initialRenders);
+		await act(async () => container.querySelector('button')?.click());
+		expect(received.at(-1)).toBe(received[0]);
+		expect(received[0]).toBe(status);
+		expect(readErrors.at(-1)).toBe(lastError);
+		expect(componentState.subscriptions).toBe(0);
 	});
 
 	it('isolates component state and attached listeners in sibling consumers', async () => {
 		const renders = { component: 0, play: 0, mute: 0 };
 		function Status() {
-			const state = useComponentState();
+			const componentStatus = useComponentStatus();
 			renders.component += 1;
-			return createElement('p', { id: 'component-status' }, state.status);
+			return createElement('p', { id: 'component-status' }, componentStatus);
 		}
 		function Play() {
-			const state = useListenerState('play');
+			const listenerStatus = useListenerStatus('play');
 			renders.play += 1;
-			return createElement('p', { id: 'play-status' }, state.status);
+			return createElement('p', { id: 'play-status' }, listenerStatus);
 		}
 		function Mute() {
-			const state = useListenerState('mute');
+			const listenerStatus = useListenerStatus('mute');
 			renders.mute += 1;
-			return createElement('p', { id: 'mute-status' }, state.status);
+			return createElement('p', { id: 'mute-status' }, listenerStatus);
 		}
 		await mount(() =>
 			createElement(
@@ -174,13 +215,13 @@ describe('React hook subscriptions at the adapter boundary', () => {
 			)
 		);
 		const initialRenders = { ...renders };
-		await act(async () => muteState.publish({ status: 'bound' }));
+		await act(async () => muteState.publish('bound'));
 		expect(renders.component).toBe(initialRenders.component);
 		expect(renders.play).toBe(initialRenders.play);
 		expect(renders.mute).toBeGreaterThan(initialRenders.mute);
 		expect(container.querySelector('#mute-status')?.textContent).toBe('bound');
 		const muteRenders = renders.mute;
-		await act(async () => componentState.publish({ status: 'waiting' }));
+		await act(async () => componentState.publish('waiting'));
 		expect(renders.component).toBeGreaterThan(initialRenders.component);
 		expect(renders.play).toBe(initialRenders.play);
 		expect(renders.mute).toBe(muteRenders);
@@ -189,58 +230,58 @@ describe('React hook subscriptions at the adapter boundary', () => {
 	it('releases the previous listener when the name changes', async () => {
 		function Panel() {
 			const [name, setName] = useState('play');
-			const state = useListenerState(name);
+			const listenerStatus = useListenerStatus(name);
 			return createElement(
 				'button',
 				{ type: 'button', onClick: () => setName('mute') },
-				`${name}:${state.status}`
+				`${name}:${listenerStatus}`
 			);
 		}
 		await mount(Panel);
 		expect(playState.subscriptions).toBe(1);
 		expect(muteState.subscriptions).toBe(0);
-		await act(async () => muteState.publish({ status: 'bound' }));
+		await act(async () => muteState.publish('bound'));
 		await act(async () => container.querySelector('button')?.click());
 		expect(container.textContent).toBe('mute:bound');
 		expect(playState.subscriptions).toBe(0);
 		expect(muteState.subscriptions).toBe(1);
-		await act(async () => muteState.publish({ status: 'waiting' }));
+		await act(async () => muteState.publish('waiting'));
 		expect(container.textContent).toBe('mute:waiting');
 	});
 
 	it('renders a listener selection only when its result changes', async () => {
 		let renders = 0;
 		function Panel() {
-			const ready = useListenerState('play', (state) => state.status === 'bound');
+			const ready = useListenerStatus('play', (listenerStatus) => listenerStatus === 'bound');
 			renders += 1;
 			return createElement('p', null, String(ready));
 		}
 		await mount(Panel);
 		expect(container.textContent).toBe('false');
 		const initialRenders = renders;
-		await act(async () => playState.publish({ status: 'idle' }));
+		await act(async () => playState.publish('idle'));
 		expect(renders).toBe(initialRenders);
-		await act(async () => playState.publish({ status: 'bound' }));
+		await act(async () => playState.publish('bound'));
 		expect(container.textContent).toBe('true');
 		expect(renders).toBeGreaterThan(initialRenders);
 		const boundRenders = renders;
-		await act(async () => playState.publish({ status: 'bound' }));
+		await act(async () => playState.publish('bound'));
 		expect(renders).toBe(boundRenders);
 	});
 
 	it('renders a component selection only when its result changes', async () => {
 		let renders = 0;
 		function Panel() {
-			const failed = useComponentState((state) => state.status === 'failed');
+			const failed = useComponentStatus((componentStatus) => componentStatus === 'failed');
 			renders += 1;
 			return createElement('p', null, String(failed));
 		}
 		await mount(Panel);
 		expect(container.textContent).toBe('false');
 		const initialRenders = renders;
-		await act(async () => componentState.publish({ status: 'waiting' }));
+		await act(async () => componentState.publish('waiting'));
 		expect(renders).toBe(initialRenders);
-		await act(async () => componentState.publish({ status: 'failed' }));
+		await act(async () => componentState.publish('failed'));
 		expect(container.textContent).toBe('true');
 		expect(renders).toBeGreaterThan(initialRenders);
 	});
@@ -249,7 +290,10 @@ describe('React hook subscriptions at the adapter boundary', () => {
 		const subscribe = vi.spyOn(playState.view, 'subscribe');
 		function Panel() {
 			const [expected, setExpected] = useState('bound');
-			const matches = useListenerState('play', (state) => state.status === expected);
+			const matches = useListenerStatus(
+				'play',
+				(listenerStatus) => listenerStatus === expected
+			);
 			return createElement(
 				'button',
 				{ type: 'button', onClick: () => setExpected('waiting') },
@@ -261,31 +305,31 @@ describe('React hook subscriptions at the adapter boundary', () => {
 		const subscriptionCalls = subscribe.mock.calls.length;
 		await act(async () => container.querySelector('button')?.click());
 		expect(container.textContent).toBe('true');
-		await act(async () => playState.publish({ status: 'bound' }));
+		await act(async () => playState.publish('bound'));
 		expect(container.textContent).toBe('false');
 		expect(subscribe).toHaveBeenCalledTimes(subscriptionCalls);
 	});
 
 	it('caches object selection results for repeated reads of the same snapshot', async () => {
 		function Panel() {
-			const selected = useListenerState('play', (state) => ({
-				ready: state.status === 'bound'
+			const selected = useListenerStatus('play', (listenerStatus) => ({
+				ready: listenerStatus === 'bound'
 			}));
 			return createElement('p', null, String(selected.ready));
 		}
 		await mount(Panel);
 		expect(container.textContent).toBe('false');
-		await act(async () => playState.publish({ status: 'bound' }));
+		await act(async () => playState.publish('bound'));
 		expect(container.textContent).toBe('true');
 	});
 
 	it('catches a state change between rendering and subscription', async () => {
 		function Panel() {
-			const status = useListenerState('play', (state) => state.status);
+			const listenerStatus = useListenerStatus('play');
 			useLayoutEffect(() => {
-				playState.publish({ status: 'bound' });
+				playState.publish('bound');
 			}, []);
-			return createElement('p', null, status);
+			return createElement('p', null, listenerStatus);
 		}
 		await mount(Panel);
 		expect(container.textContent).toBe('bound');
@@ -299,15 +343,15 @@ describe('React hook subscriptions at the adapter boundary', () => {
 			resume = resolve;
 		});
 		function Panel() {
-			const status = useListenerState('play', (state) => state.status);
+			const listenerStatus = useListenerStatus('play');
 			if (pending) throw ready;
-			return createElement('p', null, status);
+			return createElement('p', null, listenerStatus);
 		}
 		await mount(() => createElement(Suspense, { fallback: 'loading' }, createElement(Panel)));
 		expect(container.textContent).toBe('loading');
 		expect(playState.subscriptions).toBe(0);
 		await act(async () => {
-			playState.publish({ status: 'bound' });
+			playState.publish('bound');
 			pending = false;
 			resume();
 			await ready;
@@ -322,9 +366,12 @@ describe('React hook subscriptions at the adapter boundary', () => {
 		const ready = new Promise<void>((resolve) => {
 			resume = resolve;
 		});
-		playState.publish({ status: 'bound' });
+		playState.publish('bound');
 		function Panel({ expected }: { expected: string }) {
-			const matches = useListenerState('play', (state) => state.status === expected);
+			const matches = useListenerStatus(
+				'play',
+				(listenerStatus) => listenerStatus === expected
+			);
 			if (expected === 'waiting' && pending) throw ready;
 			return createElement('p', null, `${expected}:${matches}`);
 		}
@@ -347,7 +394,7 @@ describe('React hook subscriptions at the adapter boundary', () => {
 		await mount(App);
 		await act(async () => container.querySelector('button')?.click());
 		expect(container.querySelector('p')?.textContent).toBe('bound:true');
-		await act(async () => playState.publish({ status: 'waiting' }));
+		await act(async () => playState.publish('waiting'));
 		expect(container.querySelector('p')?.textContent).toBe('bound:false');
 		expect(playState.subscriptions).toBe(1);
 		await act(async () => {
@@ -360,9 +407,10 @@ describe('React hook subscriptions at the adapter boundary', () => {
 	});
 
 	it.each([
-		['useComponentControl', () => useComponentControl()],
-		['useComponentState', () => useComponentState()],
-		['useListenerState', () => useListenerState('play')]
+		['useComponentCommand', () => useComponentCommand()],
+		['useComponentStatus', () => useComponentStatus()],
+		['useComponentStatusHandle', () => useComponentStatusHandle()],
+		['useListenerStatus', () => useListenerStatus('play')]
 	] as const)('rejects %s outside an adapter-mounted component', async (_name, useHook) => {
 		function Panel() {
 			useHook();

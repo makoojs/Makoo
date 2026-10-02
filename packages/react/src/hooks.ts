@@ -1,66 +1,54 @@
 import type {
-	ComponentControl,
-	ComponentSnapshot,
-	ListenerSnapshot,
+	ComponentCommand,
+	ComponentStatus,
+	ComponentStatusHandle,
+	ListenerStatus,
 	StateView
 } from '@makoojs/core';
 import { MakooError } from '@makoojs/core';
 import { createContext, useContext, useMemo, useSyncExternalStore } from 'react';
 
-export const MakooComponentContext = createContext<ComponentControl | null>(null);
+type MakooComponentContextValue = {
+	command: ComponentCommand;
+	status: ComponentStatusHandle;
+};
 
-export type ReactComponentControl = Pick<
-	ComponentControl,
-	'name' | 'lastError' | 'start' | 'stop' | 'remove'
->;
+export const MakooComponentContext = createContext<MakooComponentContextValue | null>(null);
 
-/** Returns stable controls; reading lastError does not establish a subscription. */
-export function useComponentControl(): ReactComponentControl {
-	const control = useComponentContext();
-	return useMemo(
-		() => ({
-			name: control.name,
-			get lastError() {
-				return control.lastError;
-			},
-			start: control.start,
-			stop: control.stop,
-			remove: control.remove
-		}),
-		[control]
-	);
+/** Returns the stable command for this mount. */
+export function useComponentCommand(): ComponentCommand {
+	return useComponentContext().command;
 }
 
-/** Subscribes to the component snapshot, or to a selector result compared with Object.is. */
-export function useComponentState(): Readonly<ComponentSnapshot>;
-export function useComponentState<T>(select: (state: Readonly<ComponentSnapshot>) => T): T;
-export function useComponentState<T>(select?: (state: Readonly<ComponentSnapshot>) => T) {
-	const { state } = useComponentContext();
-	return useSelectedState(state, select);
+/** Returns the raw status handle for this mount; reading it, including lastError, does not subscribe. */
+export function useComponentStatusHandle(): ComponentStatusHandle {
+	return useComponentContext().status;
+}
+
+/** Subscribes to the component status, or to a selector result compared with Object.is. */
+export function useComponentStatus(): ComponentStatus;
+export function useComponentStatus<T>(select: (status: ComponentStatus) => T): T;
+export function useComponentStatus<T>(select?: (status: ComponentStatus) => T) {
+	const { status } = useComponentContext();
+	return useSelectedState(status, select);
 }
 
 /** Subscribes only to the named attached listener; selector results use Object.is. */
-export function useListenerState(name: string): Readonly<ListenerSnapshot>;
-export function useListenerState<T>(
-	name: string,
-	select: (state: Readonly<ListenerSnapshot>) => T
-): T;
-export function useListenerState<T>(
-	name: string,
-	select?: (state: Readonly<ListenerSnapshot>) => T
-) {
-	const control = useComponentContext();
-	return useSelectedState(control.listenerState(name), select);
+export function useListenerStatus(name: string): ListenerStatus;
+export function useListenerStatus<T>(name: string, select: (status: ListenerStatus) => T): T;
+export function useListenerStatus<T>(name: string, select?: (status: ListenerStatus) => T) {
+	const { status } = useComponentContext();
+	return useSelectedState(status.listener(name), select);
 }
 
-function useComponentContext(): ComponentControl {
-	const control = useContext(MakooComponentContext);
-	if (!control) {
+function useComponentContext(): MakooComponentContextValue {
+	const context = useContext(MakooComponentContext);
+	if (!context) {
 		throw new MakooError(
 			'Makoo hooks must be called inside a component mounted by the Makoo React adapter'
 		);
 	}
-	return control;
+	return context;
 }
 
 function useSelectedState<Snapshot, Selection>(

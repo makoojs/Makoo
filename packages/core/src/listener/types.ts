@@ -17,15 +17,19 @@ export type MakooListenerDeclaration = Readonly<MakooListenerInput & { kind: 'li
 
 export type ListenerStatus = 'idle' | 'waiting' | 'bound' | 'failed';
 
-export interface ListenerSnapshot {
-	readonly status: ListenerStatus;
-}
-
-export interface ListenerControl {
+export interface ListenerCommand {
 	readonly name: string;
-	readonly state: StateView<ListenerSnapshot>;
-	readonly lastError: MakooError | undefined;
 	start(): void;
 	stop(): Promise<void>;
 	remove(): Promise<void>;
 }
+
+export interface ListenerStatusHandle extends StateView<ListenerStatus> {
+	readonly lastError: MakooError | undefined;
+}
+
+export type ListenerInjection = {
+	readonly kind: 'listener';
+	readonly command: ListenerCommand;
+	readonly status: ListenerStatusHandle;
+};

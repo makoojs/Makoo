@@ -14,14 +14,14 @@ export type ReactMountAdapter = MountAdapter<ReactMountComponent, ReactMountProp
 export function createReactAdapter(): ReactMountAdapter {
 	return {
 		name: 'react',
-		mount({ component, props, control, container }) {
+		mount({ component, props, command, status, container }) {
 			let root: Root | undefined;
 			try {
 				root = createRoot(container);
 				root.render(
 					createElement(
 						MakooComponentContext.Provider,
-						{ value: control },
+						{ value: { command, status } },
 						createElement(component, props)
 					)
 				);

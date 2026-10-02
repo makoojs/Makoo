@@ -25,7 +25,7 @@ describe('createMakoo', () => {
 
 		button.click();
 		expect(callback).toHaveBeenCalledTimes(1);
-		await makoo.get('listener').stop();
+		await makoo.command('listener').stop();
 	});
 
 	it('should start object-form listener declarations with explicit name', async () => {
@@ -46,7 +46,7 @@ describe('createMakoo', () => {
 
 		button.click();
 		expect(callback).toHaveBeenCalledOnce();
-		await makoo.get('object-listener').stop();
+		await makoo.command('object-listener').stop();
 	});
 
 	it('should reject an empty declaration batch', () => {

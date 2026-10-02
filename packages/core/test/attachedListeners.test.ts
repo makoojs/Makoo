@@ -1,28 +1,43 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+	type ComponentCommand,
+	type ComponentStatusHandle,
 	createMakoo,
-	type ComponentControl,
-	type InjectionControl,
+	type InjectionCommand,
 	inject,
-	type ListenerSnapshot,
+	type ListenerStatus,
 	listen,
 	type MakooListenerDeclaration,
 	type StateView
 } from '../src';
 
 describe('attached host listeners', () => {
-	const controls: InjectionControl[] = [];
+	const controls: InjectionCommand[] = [];
 	function element(selector: string): HTMLElement {
 		const target = document.querySelector<HTMLElement>(selector);
 		if (!target) throw new Error(`Missing test element: ${selector}`);
 		return target;
 	}
+	function listenerOf(status: ComponentStatusHandle, name: string): StateView<ListenerStatus> {
+		if (!('listener' in status)) throw new Error('Expected a component');
+		return status.listener(name);
+	}
 	function setup(listeners: readonly MakooListenerDeclaration[], reinject = false) {
 		const core = createMakoo();
-		let panel!: ComponentControl;
-		const mount = vi.fn(({ control }: { control: ComponentControl }) => {
-			panel = control;
-		});
+		let panel!: ComponentCommand;
+		let status!: ComponentStatusHandle;
+		const mount = vi.fn(
+			({
+				command,
+				status: mountStatus
+			}: {
+				command: ComponentCommand;
+				status: ComponentStatusHandle;
+			}) => {
+				panel = command;
+				status = mountStatus;
+			}
+		);
 		const unmount = vi.fn();
 		core.useAdapter({ name: 'plain', mount, unmount });
 		core.apply([
@@ -35,8 +50,8 @@ describe('attached host listeners', () => {
 				reinject
 			})
 		]);
-		controls.push(core.get('panel'));
-		return { core, panel, mount, unmount };
+		controls.push(core.command('panel'));
+		return { core, panel, status, mount, unmount };
 	}
 	function child(name = 'play', callback = vi.fn(), timeout = 50) {
 		return listen({ name, listenAt: `#${name}`, type: 'click', callback, timeout });
@@ -49,8 +64,8 @@ describe('attached host listeners', () => {
 					rejectHandler = reject;
 				})
 		);
-		const { core, panel } = setup([child('play', callback)]);
-		const oldState = panel.listenerState('play');
+		const { core, panel, status } = setup([child('play', callback)]);
+		const oldState = listenerOf(status, 'play');
 		element('#play').click();
 		await panel.remove();
 		const replacementCallback = vi.fn();
@@ -63,10 +78,11 @@ describe('attached host listeners', () => {
 				listeners: [child('play', replacementCallback)]
 			})
 		]);
-		const replacement = core.get('panel');
+		const replacement = core.command('panel');
 		controls.push(replacement);
-		if (!('listenerState' in replacement)) throw new Error('Expected a component');
-		const newState = replacement.listenerState('play');
+		const replacementStatus = core.status('panel');
+		if (!('listener' in replacementStatus)) throw new Error('Expected a component');
+		const newState = replacementStatus.listener('play');
 		const snapshot = newState.getSnapshot();
 		expect(newState).not.toBe(oldState);
 		const cause = new Error('late business failure');
@@ -77,8 +93,8 @@ describe('attached host listeners', () => {
 		expect(callback).toHaveBeenCalledOnce();
 		expect(replacementCallback).toHaveBeenCalledOnce();
 		expect(newState.getSnapshot()).toBe(snapshot);
-		expect(oldState.getSnapshot().status).toBe('idle');
-		expect(replacement.lastError).toBeUndefined();
+		expect(oldState.getSnapshot()).toBe('idle');
+		expect(core.status('panel').lastError).toBeUndefined();
 		expect(console.error).toHaveBeenCalledWith(expect.objectContaining({ cause }));
 	});
 	it.each([
@@ -88,21 +104,20 @@ describe('attached host listeners', () => {
 		const button = element('#play');
 		vi.spyOn(button, 'isConnected', 'get').mockReturnValueOnce(true).mockReturnValue(false);
 		const bind = vi.spyOn(button, 'addEventListener');
-		const { panel } = setup([child()], reinject);
+		const { panel, status } = setup([child()], reinject);
 		expect(bind).not.toHaveBeenCalled();
-		expect(panel.listenerState('play').getSnapshot().status).toBe(reinject ? 'waiting' : 'failed');
-		await vi.waitFor(
-			() => expect(panel.state.getSnapshot().status).toBe(reinject ? 'mounted' : 'failed'),
-			{ interval: 1 }
-		);
+		expect(listenerOf(status, 'play').getSnapshot()).toBe(reinject ? 'waiting' : 'failed');
+		await vi.waitFor(() => expect(status.getSnapshot()).toBe(reinject ? 'mounted' : 'failed'), {
+			interval: 1
+		});
 		await panel.stop();
 	});
 	it('stops local recovery immediately when a waiting subscriber stops the parent', async () => {
-		const { panel } = setup([child()], true);
-		const state = panel.listenerState('play');
+		const { panel, status } = setup([child()], true);
+		const state = listenerOf(status, 'play');
 		let completion: Promise<void> | undefined;
 		const unsubscribe = state.subscribe(() => {
-			if (state.getSnapshot().status === 'waiting') completion = panel.stop();
+			if (state.getSnapshot() === 'waiting') completion = panel.stop();
 		});
 		element('#play').remove();
 		await Promise.resolve();
@@ -114,15 +129,15 @@ describe('attached host listeners', () => {
 		expect(bind).not.toHaveBeenCalled();
 		expect(completion).toBeDefined();
 		await completion;
-		expect(panel.state.getSnapshot().status).toBe('idle');
-		expect(state.getSnapshot().status).toBe('idle');
+		expect(status.getSnapshot()).toBe('idle');
+		expect(state.getSnapshot()).toBe('idle');
 		unsubscribe();
 	});
 	it('does not apply an old child failure to a parent restarted by a state subscriber', async () => {
-		const { panel, mount } = setup([child('missing')], true);
-		const state = panel.listenerState('missing');
+		const { panel, status, mount } = setup([child('missing')], true);
+		const state = listenerOf(status, 'missing');
 		const unsubscribe = state.subscribe(() => {
-			if (state.getSnapshot().status !== 'failed') return;
+			if (state.getSnapshot() !== 'failed') return;
 			const button = document.createElement('button');
 			button.id = 'missing';
 			document.body.append(button);
@@ -131,55 +146,58 @@ describe('attached host listeners', () => {
 		});
 		await vi.advanceTimersByTimeAsync(50);
 		expect(mount).toHaveBeenCalledTimes(2);
-		expect(panel.state.getSnapshot().status).toBe('mounted');
-		expect(state.getSnapshot().status).toBe('bound');
-		expect(panel.lastError).toBeUndefined();
+		expect(status.getSnapshot()).toBe('mounted');
+		expect(state.getSnapshot()).toBe('bound');
+		expect(status.lastError).toBeUndefined();
 		unsubscribe();
 	});
 	it('keeps accepted child declarations fixed when the original inputs change', async () => {
 		const callback = vi.fn();
 		const input = { name: 'play', listenAt: '#play', type: 'click', callback };
 		const listeners = [listen(input)];
-		const { panel } = setup(listeners);
+		const { panel, status } = setup(listeners);
 		await panel.stop();
 		Object.assign(listeners[0], { listenAt: '#pause', callback: vi.fn() });
 		listeners.push(child('extra'));
 		panel.start();
 		element('#play').click();
 		expect(callback).toHaveBeenCalledOnce();
-		expect(() => panel.listenerState('extra')).toThrow();
+		expect(() => listenerOf(status, 'extra')).toThrow();
 	});
 	it('uses the default 15 second child search budget', async () => {
-		const { panel } = setup([
+		const { status } = setup([
 			listen({ name: 'missing', listenAt: '#missing', type: 'click', callback() {} })
 		]);
 		await vi.advanceTimersByTimeAsync(14999);
-		expect(panel.listenerState('missing').getSnapshot().status).toBe('waiting');
+		expect(listenerOf(status, 'missing').getSnapshot()).toBe('waiting');
 		await vi.advanceTimersByTimeAsync(1);
-		expect(panel.state.getSnapshot().status).toBe('failed');
+		expect(status.getSnapshot()).toBe('failed');
 	});
 	it('keeps child views stable across overall reinjection and replaces cancelled bindings', async () => {
 		const callback = vi.fn();
-		const { panel, mount, unmount } = setup([child('play', callback), child('pause')], true);
-		const state = panel.listenerState('play');
+		const { panel, status, mount, unmount } = setup(
+			[child('play', callback), child('pause')],
+			true
+		);
+		const state = listenerOf(status, 'play');
 		const notify = vi.fn();
 		const unsubscribe = state.subscribe(notify);
 		const oldHost = element('#host');
 		oldHost.remove();
-		await vi.waitFor(() => expect(panel.state.getSnapshot().status).toBe('waiting'), {
+		await vi.waitFor(() => expect(status.getSnapshot()).toBe('waiting'), {
 			interval: 1
 		});
 		expect(unmount).toHaveBeenCalledOnce();
-		expect(panel.state.getSnapshot().status).toBe('waiting');
-		expect(state.getSnapshot().status).toBe('idle');
+		expect(status.getSnapshot()).toBe('waiting');
+		expect(state.getSnapshot()).toBe('idle');
 		const button = element('#play');
 		button.click();
 		expect(callback).not.toHaveBeenCalled();
 		document.body.append(oldHost);
 		await Promise.resolve();
 		expect(mount).toHaveBeenCalledTimes(2);
-		expect(panel.listenerState('play')).toBe(state);
-		expect(state.getSnapshot().status).toBe('bound');
+		expect(listenerOf(status, 'play')).toBe(state);
+		expect(state.getSnapshot()).toBe('bound');
 		button.click();
 		expect(callback).toHaveBeenCalledOnce();
 		expect(notify).toHaveBeenCalledTimes(2);
@@ -191,7 +209,7 @@ describe('attached host listeners', () => {
 		'host-detach'
 	] as const)('cancels queued child discovery on parent %s', async (action) => {
 		const callback = vi.fn();
-		const { panel } = setup([child('missing', callback)], true);
+		const { panel, status } = setup([child('missing', callback)], true);
 		const button = document.createElement('button');
 		button.id = 'missing';
 		const bind = vi.spyOn(button, 'addEventListener');
@@ -202,7 +220,7 @@ describe('attached host listeners', () => {
 		button.click();
 		expect(bind).not.toHaveBeenCalled();
 		expect(callback).not.toHaveBeenCalled();
-		expect(panel.listenerState('missing').getSnapshot().status).toBe('idle');
+		expect(listenerOf(status, 'missing').getSnapshot()).toBe('idle');
 	});
 	it.each([
 		'stop',
@@ -212,14 +230,16 @@ describe('attached host listeners', () => {
 	] as const)('does not start children after mount is interrupted by %s', async (action) => {
 		const core = createMakoo();
 		const bind = vi.spyOn(element('#play'), 'addEventListener');
-		let panel!: ComponentControl;
+		let panel!: ComponentCommand;
+		let status!: ComponentStatusHandle;
 		core.useAdapter({
 			name: 'plain',
-			mount({ control }) {
-				panel = control;
+			mount({ command, status: mountStatus }) {
+				panel = command;
+				status = mountStatus;
 				if (action === 'throw') throw new Error('mount failed');
 				if (action === 'detach') element('#host').remove();
-				else void control[action]();
+				else void command[action]();
 			},
 			unmount() {}
 		});
@@ -234,12 +254,12 @@ describe('attached host listeners', () => {
 		]);
 		controls.push(panel);
 		expect(bind).not.toHaveBeenCalled();
-		expect(panel.listenerState('play').getSnapshot().status).toBe('idle');
+		expect(listenerOf(status, 'play').getSnapshot()).toBe('idle');
 		await Promise.resolve();
 	});
 	it('isolates child names from other parents and the top-level namespace', () => {
 		const callback = vi.fn();
-		const { core, panel } = setup([child('play', callback)]);
+		const { core, status } = setup([child('play', callback)]);
 		core.apply([
 			child('play', callback),
 			inject({
@@ -250,8 +270,8 @@ describe('attached host listeners', () => {
 				listeners: [child('play', callback)]
 			})
 		]);
-		controls.push(core.get('play'), core.get('other'));
-		expect(panel.listenerState('play')).not.toBe(core.get('play').state);
+		controls.push(core.command('play'), core.command('other'));
+		expect(listenerOf(status, 'play')).not.toBe(core.status('play'));
 		element('#play').click();
 		expect(callback).toHaveBeenCalledTimes(3);
 	});
@@ -264,8 +284,8 @@ describe('attached host listeners', () => {
 			if (failure === 'throw') throw cause;
 			return Promise.reject(cause);
 		});
-		const { panel, unmount } = setup([child('play', callback)]);
-		const state = panel.listenerState('play');
+		const { status, unmount } = setup([child('play', callback)]);
+		const state = listenerOf(status, 'play');
 		const snapshot = state.getSnapshot();
 		const notify = vi.fn();
 		const unsubscribe = state.subscribe(notify);
@@ -274,32 +294,35 @@ describe('attached host listeners', () => {
 		expect(console.error).toHaveBeenCalledWith(expect.objectContaining({ cause }));
 		expect(state.getSnapshot()).toBe(snapshot);
 		expect(notify).not.toHaveBeenCalled();
-		expect(panel.state.getSnapshot().status).toBe('mounted');
+		expect(status.getSnapshot()).toBe('mounted');
 		expect(unmount).not.toHaveBeenCalled();
 		unsubscribe();
 	});
 	it('uses a fresh recovery budget without resetting it on unrelated DOM changes', async () => {
-		const { panel } = setup([child()], true);
+		const { status } = setup([child()], true);
 		await vi.advanceTimersByTimeAsync(40);
 		element('#play').remove();
 		await Promise.resolve();
 		await vi.advanceTimersByTimeAsync(40);
-		expect(panel.listenerState('play').getSnapshot().status).toBe('waiting');
+		expect(listenerOf(status, 'play').getSnapshot()).toBe('waiting');
 		document.body.append(document.createElement('aside'));
 		await vi.advanceTimersByTimeAsync(10);
-		expect(panel.state.getSnapshot().status).toBe('failed');
+		expect(status.getSnapshot()).toBe('failed');
 	});
 	it('does not start later children when a state subscriber invalidates the mount target', async () => {
 		const core = createMakoo();
 		const host = element('#host');
 		const bindPause = vi.spyOn(element('#pause'), 'addEventListener');
-		let panel!: ComponentControl;
+		let panel!: ComponentCommand;
+		let status!: ComponentStatusHandle;
 		core.useAdapter({
 			name: 'plain',
-			mount({ control }) {
-				panel = control;
-				control.listenerState('play').subscribe(() => {
-					if (control.listenerState('play').getSnapshot().status === 'bound') host.remove();
+			mount({ command, status: mountStatus }) {
+				panel = command;
+				status = mountStatus;
+				const playStatus = mountStatus.listener('play');
+				playStatus.subscribe(() => {
+					if (playStatus.getSnapshot() === 'bound') host.remove();
 				});
 			},
 			unmount() {}
@@ -315,7 +338,7 @@ describe('attached host listeners', () => {
 		]);
 		controls.push(panel);
 		expect(bindPause).not.toHaveBeenCalled();
-		await vi.waitFor(() => expect(panel.state.getSnapshot().status).toBe('failed'), {
+		await vi.waitFor(() => expect(status.getSnapshot()).toBe('failed'), {
 			interval: 1
 		});
 		await panel.stop();
@@ -324,7 +347,7 @@ describe('attached host listeners', () => {
 		false,
 		true
 	])('waits for an already-running child cleanup before unmounting (failure=%s)', async (fails) => {
-		const { panel, unmount } = setup([child()], true);
+		const { panel, status, unmount } = setup([child()], true);
 		const play = element('#play');
 		const remove = play.removeEventListener.bind(play);
 		const order: string[] = [];
@@ -346,7 +369,7 @@ describe('attached host listeners', () => {
 		if (fails) await expect(completion).rejects.toThrow(/unbind/);
 		else await completion;
 		expect(order).toEqual(['unbind-start', 'unbind-end', 'unmount']);
-		expect(panel.state.getSnapshot().status).toBe(fails ? 'failed' : 'idle');
+		expect(status.getSnapshot()).toBe(fails ? 'failed' : 'idle');
 	});
 	it.each([
 		'restart',
@@ -354,7 +377,7 @@ describe('attached host listeners', () => {
 		'remove'
 	] as const)('applies the latest %s intent while child cleanup is awaiting completion', async (intent) => {
 		const callback = vi.fn();
-		const { core, panel, mount, unmount } = setup(
+		const { core, panel, status, mount, unmount } = setup(
 			[child('play', callback), child('pause', callback)],
 			true
 		);
@@ -371,18 +394,18 @@ describe('attached host listeners', () => {
 		await Promise.all([completion, latestCompletion]);
 		expect(unmount).toHaveBeenCalledOnce();
 		expect(mount).toHaveBeenCalledTimes(intent === 'restart' ? 2 : 1);
-		expect(panel.state.getSnapshot().status).toBe(intent === 'restart' ? 'mounted' : 'idle');
+		expect(status.getSnapshot()).toBe(intent === 'restart' ? 'mounted' : 'idle');
 		play.click();
 		pause.click();
 		expect(callback).toHaveBeenCalledTimes(intent === 'restart' ? 2 : 0);
-		if (intent === 'remove') expect(() => core.get('panel')).toThrow();
+		if (intent === 'remove') expect(() => core.command('panel')).toThrow();
 	});
 	it('invalidates every child before cleanup notifications and still unmounts when one unbind fails', async () => {
 		const callback = vi.fn();
-		const { panel, unmount } = setup([child(), child('pause', callback)], true);
+		const { panel, status, unmount } = setup([child(), child('pause', callback)], true);
 		const play = element('#play');
 		const pause = element('#pause');
-		panel.listenerState('play').subscribe(() => {
+		listenerOf(status, 'play').subscribe(() => {
 			pause.click();
 		});
 		const cause = new Error('cannot unbind');
@@ -395,8 +418,8 @@ describe('attached host listeners', () => {
 		expect(removePause).toHaveBeenCalled();
 		expect(unmount).toHaveBeenCalledOnce();
 		expect(element('#host').children).toHaveLength(0);
-		expect(panel.state.getSnapshot().status).toBe('failed');
-		expect(panel.lastError?.cleanupErrors).toEqual(
+		expect(status.getSnapshot()).toBe('failed');
+		expect(status.lastError?.cleanupErrors).toEqual(
 			expect.arrayContaining([expect.objectContaining({ cause })])
 		);
 		expect(() => panel.start()).toThrow(/cleanup failed/);
@@ -410,19 +433,19 @@ describe('attached host listeners', () => {
 	it('keeps the component mounted while a child waits and recovers only the missing child', async () => {
 		const callback = vi.fn();
 		const pauseCallback = vi.fn();
-		const { panel, mount, unmount } = setup(
+		const { status, mount, unmount } = setup(
 			[child('play', callback), child('missing'), child('pause', pauseCallback)],
 			true
 		);
-		const pauseSnapshot = panel.listenerState('pause').getSnapshot();
-		const state = panel.listenerState('play');
+		const pauseSnapshot = listenerOf(status, 'pause').getSnapshot();
+		const state = listenerOf(status, 'play');
 		const bound = state.getSnapshot();
-		expect(panel.state.getSnapshot().status).toBe('mounted');
-		expect(panel.listenerState('missing').getSnapshot().status).toBe('waiting');
+		expect(status.getSnapshot()).toBe('mounted');
+		expect(listenerOf(status, 'missing').getSnapshot()).toBe('waiting');
 		const oldButton = element('#play');
 		oldButton.remove();
 		await Promise.resolve();
-		expect(state.getSnapshot().status).toBe('waiting');
+		expect(state.getSnapshot()).toBe('waiting');
 		expect(state.getSnapshot()).not.toBe(bound);
 		oldButton.click();
 		expect(callback).not.toHaveBeenCalled();
@@ -430,13 +453,13 @@ describe('attached host listeners', () => {
 		replacement.id = 'play';
 		document.body.append(replacement);
 		await Promise.resolve();
-		expect(panel.listenerState('play')).toBe(state);
-		expect(state.getSnapshot().status).toBe('bound');
+		expect(listenerOf(status, 'play')).toBe(state);
+		expect(state.getSnapshot()).toBe('bound');
 		replacement.click();
 		expect(callback).toHaveBeenCalledOnce();
 		expect(mount).toHaveBeenCalledOnce();
 		expect(unmount).not.toHaveBeenCalled();
-		expect(panel.listenerState('pause').getSnapshot()).toBe(pauseSnapshot);
+		expect(listenerOf(status, 'pause').getSnapshot()).toBe(pauseSnapshot);
 		element('#pause').click();
 		expect(pauseCallback).toHaveBeenCalledOnce();
 	});
@@ -452,18 +475,18 @@ describe('attached host listeners', () => {
 				throw cause;
 			});
 		const name = failure === 'initial-timeout' ? 'missing' : 'play';
-		const { panel, mount, unmount } = setup([child(name)], failure !== 'detached');
+		const { panel, status, mount, unmount } = setup([child(name)], failure !== 'detached');
 		if (failure === 'recovery-timeout' || failure === 'detached') {
 			element('#play').remove();
 			await Promise.resolve();
 		}
 		if (failure.endsWith('timeout')) await vi.advanceTimersByTimeAsync(50);
-		await vi.waitFor(() => expect(panel.state.getSnapshot().status).toBe('failed'), {
+		await vi.waitFor(() => expect(status.getSnapshot()).toBe('failed'), {
 			interval: 1
 		});
-		expect(panel.lastError?.context).toMatchObject({ injection: 'panel', listener: name });
-		expect(panel.listenerState(name).getSnapshot().status).toBe('failed');
-		if (failure === 'bind-failed') expect(panel.lastError?.cause).toBe(cause);
+		expect(status.lastError?.context).toMatchObject({ injection: 'panel', listener: name });
+		expect(listenerOf(status, name).getSnapshot()).toBe('failed');
+		if (failure === 'bind-failed') expect(status.lastError?.cause).toBe(cause);
 		expect(unmount).toHaveBeenCalledOnce();
 		expect(element('#host').children).toHaveLength(0);
 		await vi.advanceTimersByTimeAsync(15000);
@@ -497,7 +520,7 @@ describe('attached host listeners', () => {
 			])
 		).toThrow();
 		expect(mount).not.toHaveBeenCalled();
-		expect(() => core.get('first')).toThrow();
+		expect(() => core.command('first')).toThrow();
 	});
 	afterEach(async () => {
 		for (const control of controls.splice(0)) await control.remove().catch(() => {});
@@ -510,14 +533,14 @@ describe('attached host listeners', () => {
 		const core = createMakoo();
 		const callback = vi.fn();
 		const button = element('#play');
-		let panel!: ComponentControl;
-		let state!: StateView<ListenerSnapshot>;
+		let panel!: ComponentCommand;
+		let state!: StateView<ListenerStatus>;
 		core.useAdapter({
 			name: 'plain',
-			mount({ control }) {
-				panel = control;
-				state = control.listenerState('play');
-				expect(state.getSnapshot().status).toBe('idle');
+			mount({ command, status }) {
+				panel = command;
+				state = status.listener('play');
+				expect(state.getSnapshot()).toBe('idle');
 				button.click();
 				expect(callback).not.toHaveBeenCalled();
 			},
@@ -532,13 +555,15 @@ describe('attached host listeners', () => {
 				listeners: [listen({ name: 'play', listenAt: '#play', type: 'click', callback })]
 			})
 		]);
-		controls.push(core.get('panel'));
-		expect(core.get('panel').state.getSnapshot().status).toBe('mounted');
-		expect(state.getSnapshot().status).toBe('bound');
+		controls.push(core.command('panel'));
+		const status = core.status('panel');
+		if (!('listener' in status)) throw new Error('Expected a component');
+		expect(status.getSnapshot()).toBe('mounted');
+		expect(state.getSnapshot()).toBe('bound');
 		expect(Object.keys(state).sort()).toEqual(['getSnapshot', 'subscribe']);
-		expect(panel.listenerState('play')).toBe(state);
-		expect(() => panel.listenerState('missing')).toThrow();
-		expect(() => core.get('play')).toThrow();
+		expect(status.listener('play')).toBe(state);
+		expect(() => status.listener('missing')).toThrow();
+		expect(() => core.command('play')).toThrow();
 		button.click();
 		expect(callback).toHaveBeenCalledOnce();
 		await panel.stop();

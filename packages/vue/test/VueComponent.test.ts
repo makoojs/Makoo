@@ -1,9 +1,11 @@
 import {
-	type ComponentControl,
+	type ComponentCommand,
+	type ComponentStatusHandle,
 	createMakoo,
 	ErrorCode,
-	type InjectionControl,
+	type InjectionCommand,
 	inject,
+	type ListenerStatus,
 	listen,
 	type MakooRuntime
 } from '@makoojs/core';
@@ -30,13 +32,17 @@ async function flush(): Promise<void> {
 }
 
 describe('Vue components mounted by core', () => {
-	const controls: InjectionControl[] = [];
+	const controls: InjectionCommand[] = [];
 	let core: MakooRuntime;
 
-	function panelControl(): ComponentControl {
-		const control = core.get('panel');
-		if (!('listenerState' in control)) throw new Error('Expected a component');
-		return control;
+	function panelCommand(): ComponentCommand {
+		return core.command('panel');
+	}
+
+	function panelStatus(): ComponentStatusHandle {
+		const status = core.status('panel');
+		if (!('listener' in status)) throw new Error('Expected a component');
+		return status;
 	}
 
 	beforeEach(() => {
@@ -80,12 +86,12 @@ describe('Vue components mounted by core', () => {
 				props: { title: 'Count', store }
 			})
 		]);
-		controls.push(core.get('panel'));
+		controls.push(core.command('panel'));
 
 		const container = element('#host').firstElementChild;
 		expect(container?.textContent).toBe('Count:1');
-		expect(received?.stop).toBe(core.get('panel').stop);
-		expect(received?.state.value.status).toBe('mounted');
+		expect(received?.stop).toBe(core.command('panel').stop);
+		expect(received?.status.value).toBe('mounted');
 		expect(Object.isFrozen(store)).toBe(false);
 
 		store.count = 2;
@@ -99,9 +105,9 @@ describe('Vue components mounted by core', () => {
 			setup() {
 				setups += 1;
 				const control = useMakooComponent();
-				const play = control.listenerState('play');
-				const component = control.state;
-				return () => h('p', `${component.value.status}/${play.value.status}`);
+				const play = control.listener('play');
+				const component = control.status;
+				return () => h('p', `${component.value}/${play.value}`);
 			}
 		});
 
@@ -117,7 +123,7 @@ describe('Vue components mounted by core', () => {
 				]
 			})
 		]);
-		controls.push(core.get('panel'));
+		controls.push(core.command('panel'));
 		await nextTick();
 		const text = () => element('#host').textContent;
 		expect(text()).toBe('mounted/waiting');
@@ -143,10 +149,7 @@ describe('Vue components mounted by core', () => {
 				const control = useMakooComponent();
 				received = control;
 				return () =>
-					h(
-						'p',
-						`${control.listenerState('play').value.status}/${control.listenerState('mute').value.status}`
-					);
+					h('p', `${control.listener('play').value}/${control.listener('mute').value}`);
 			}
 		});
 		core.apply([
@@ -161,7 +164,7 @@ describe('Vue components mounted by core', () => {
 				)
 			})
 		]);
-		controls.push(core.get('panel'), core.get('external'));
+		controls.push(core.command('panel'), core.command('external'));
 		await nextTick();
 		expect(element('#host').textContent).toBe('waiting/waiting');
 		addButton('mute');
@@ -170,23 +173,19 @@ describe('Vue components mounted by core', () => {
 		addButton('play');
 		await flush();
 		expect(element('#host').textContent).toBe('bound/bound');
-		expect(received?.listenerState('play')).toBe(received?.listenerState('play'));
-		expect(() => received?.listenerState('external')).toThrow(/Unknown listener/);
+		expect(received?.listener('play')).toBe(received?.listener('play'));
+		expect(() => received?.listener('external')).toThrow(/Unknown listener/);
 	});
 
 	it('releases the old instance subscription when the component stops itself and restarts externally', async () => {
-		const snapshots: Ref<{ readonly status: string }>[] = [];
+		const snapshots: Ref<ListenerStatus>[] = [];
 		const Panel = defineComponent({
 			setup() {
 				const control = useMakooComponent();
-				const play = control.listenerState('play');
+				const play = control.listener('play');
 				snapshots.push(play);
 				return () =>
-					h(
-						'button',
-						{ class: 'close', onClick: () => control.stop() },
-						play.value.status
-					);
+					h('button', { class: 'close', onClick: () => control.stop() }, play.value);
 			}
 		});
 		addButton('play');
@@ -202,28 +201,29 @@ describe('Vue components mounted by core', () => {
 				]
 			})
 		]);
-		controls.push(core.get('panel'));
-		const panel = panelControl();
-		const view = panel.listenerState('play');
+		controls.push(core.command('panel'));
+		const panel = panelCommand();
+		const status = panelStatus();
+		const view = status.listener('play');
 		await nextTick();
 		expect(element('#host .close').textContent).toBe('bound');
 
 		element('#host .close').click();
-		await vi.waitFor(() => expect(panel.state.getSnapshot().status).toBe('idle'));
+		await vi.waitFor(() => expect(status.getSnapshot()).toBe('idle'));
 		expect(element('#host').childElementCount).toBe(0);
 		const oldSnapshot = snapshots[0]?.value;
 
 		panel.start();
 		await nextTick();
 		expect(snapshots).toHaveLength(2);
-		expect(panel.listenerState('play')).toBe(view);
+		expect(status.listener('play')).toBe(view);
 		expect(element('#host .close').textContent).toBe('bound');
 		expect(snapshots[1]?.value).toBe(view.getSnapshot());
 
 		element('#play').remove();
 		await flush();
 		expect(snapshots[0]?.value).toBe(oldSnapshot);
-		expect(snapshots[1]?.value.status).toBe('failed');
+		expect(snapshots[1]?.value).toBe('failed');
 	});
 
 	it('blocks restart and removal when a failed Vue mount leaves component resources', async () => {
@@ -247,11 +247,11 @@ describe('Vue components mounted by core', () => {
 			core.apply([
 				inject({ name: 'panel', injectAt: '#host', adapter: 'vue', component: Panel })
 			]);
-			const panel = panelControl();
+			const panel = panelCommand();
 			controls.push(panel);
-			await vi.waitFor(() => expect(panel.state.getSnapshot().status).toBe('failed'));
+			await vi.waitFor(() => expect(panelStatus().getSnapshot()).toBe('failed'));
 
-			expect(panel.lastError).toMatchObject({
+			expect(panelStatus().lastError).toMatchObject({
 				code: ErrorCode.ADAPTER_MOUNT_FAIL,
 				cause: { cause },
 				cleanupErrors: [expect.objectContaining({ code: ErrorCode.ADAPTER_UNMOUNT_FAIL })]
@@ -265,7 +265,7 @@ describe('Vue components mounted by core', () => {
 			await expect(panel.remove()).rejects.toMatchObject({
 				code: ErrorCode.ADAPTER_UNMOUNT_FAIL
 			});
-			expect(core.get('panel')).toBe(panel);
+			expect(core.command('panel')).toBe(panel);
 			expect(element('#host').childElementCount).toBe(0);
 			expect(effect).toHaveBeenCalledTimes(1);
 		} finally {
@@ -287,11 +287,11 @@ describe('Vue components mounted by core', () => {
 		core.apply([
 			inject({ name: 'panel', injectAt: '#host', adapter: 'vue', component: Panel })
 		]);
-		controls.push(core.get('panel'));
-		const panel = panelControl();
+		controls.push(core.command('panel'));
+		const panel = panelCommand();
 
 		await expect(panel.stop()).rejects.toMatchObject({ code: ErrorCode.ADAPTER_UNMOUNT_FAIL });
-		expect(panel.state.getSnapshot().status).toBe('failed');
+		expect(panelStatus().getSnapshot()).toBe('failed');
 		expect(() => panel.start()).toThrow(
 			expect.objectContaining({ code: ErrorCode.INJECTION_CLEANUP_FAILED })
 		);

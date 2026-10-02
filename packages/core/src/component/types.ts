@@ -1,5 +1,5 @@
 import type { MakooError } from '../error/MakooError';
-import type { ListenerSnapshot, MakooListenerDeclaration } from '../listener/types';
+import type { ListenerStatus, MakooListenerDeclaration } from '../listener/types';
 import type { StateView } from '../state/types';
 
 export interface MakooComponentInput<TComponent = unknown, TProps = unknown> {
@@ -22,16 +22,22 @@ export type MakooComponentDeclaration<TComponent = unknown, TProps = unknown> = 
 
 export type ComponentStatus = 'idle' | 'waiting' | 'mounted' | 'failed';
 
-export interface ComponentSnapshot {
-	readonly status: ComponentStatus;
-}
-
-export interface ComponentControl {
+export interface ComponentCommand {
 	readonly name: string;
-	readonly state: StateView<ComponentSnapshot>;
-	readonly lastError: MakooError | undefined;
-	listenerState(listenerName: string): StateView<ListenerSnapshot>;
 	start(): void;
 	stop(): Promise<void>;
 	remove(): Promise<void>;
 }
+
+/** Component status entry: own stage plus attached listener status views. */
+export interface ComponentStatusHandle extends StateView<ComponentStatus> {
+	readonly lastError: MakooError | undefined;
+	readonly listenerNames: readonly string[];
+	listener(name: string): StateView<ListenerStatus>;
+}
+
+export type ComponentInjection = {
+	readonly kind: 'component';
+	readonly command: ComponentCommand;
+	readonly status: ComponentStatusHandle;
+};
