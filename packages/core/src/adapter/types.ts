@@ -1,63 +1,15 @@
-import type { ObserveEventName, ObserveHook } from '../hooks/types';
-import type { ILogger } from '../logger/types';
-import type { ActionEvent } from '../Makoo/types';
-import type { ActivitySignalSource } from '../signal/types';
+import type { ComponentCommand, ComponentStatusHandle } from '../component/types';
 
-export type AdapterUnmountReason = 'destroy' | 'reset' | 'remount' | 'manual';
-
-export type AdapterRegistry = {
-	resolve(artifact: unknown): MountAdapter | undefined;
-	use(adapter: ResolvableMountAdapter): void;
-};
-
-export type MakooContext = {
-	taskId: string;
-	injectAt: string;
-	enableAlive: () => void;
-	disableAlive: () => void;
-	reset: () => void;
-	destroy: () => void;
-	on: (event: ObserveEventName, hook: ObserveHook) => () => void;
-	onTask: (event: ObserveEventName, hook: ObserveHook) => () => void;
-	off: (event: ObserveEventName, hook?: ObserveHook) => void;
-	offTask: (event?: ObserveEventName, hook?: ObserveHook) => void;
-	getLogger: () => ILogger;
-	bindListenerSignal: (source: ActivitySignalSource<boolean>) => boolean;
-	controlListener: (event: ActionEvent) => boolean;
-};
-
-export type AdapterMountInput<TArtifact = unknown> = {
-	host: HTMLElement;
-	mountPoint: HTMLElement;
-	artifact: TArtifact;
-	taskId: string;
-	injectAt: string;
-	makoo: MakooContext;
-};
-
-export type AdapterMountResult<THandle = unknown, TInstance = unknown> = {
-	handle: THandle;
-	instance?: TInstance;
-};
-
-export type AdapterUnmountInput<THandle = unknown> = {
-	host?: HTMLElement;
-	mountPoint: HTMLElement;
-	handle: THandle;
-	taskId: string;
-	injectAt: string;
-	reason: AdapterUnmountReason;
-};
-
-export interface MountAdapter<TArtifact = unknown, THandle = unknown, TInstance = unknown> {
-	name: string;
-	mount(input: AdapterMountInput<TArtifact>): AdapterMountResult<THandle, TInstance>;
-	unmount(input: AdapterUnmountInput<THandle>): void;
+export interface AdapterMountParams<TComponent = unknown, TProps = unknown> {
+	component: TComponent;
+	command: ComponentCommand;
+	status: ComponentStatusHandle;
+	props: TProps | undefined;
+	container: HTMLElement;
 }
 
-export interface ResolvableMountAdapter<TArtifact = unknown, THandle = unknown, TInstance = unknown>
-	extends MountAdapter<TArtifact, THandle, TInstance> {
-	matches(artifact: unknown): artifact is TArtifact;
+export interface MountAdapter<TComponent = unknown, TProps = unknown, THandle = unknown> {
+	readonly name: string;
+	mount(params: AdapterMountParams<TComponent, TProps>): THandle;
+	unmount(handle: THandle): void;
 }
-
-export type AdapterResolver = (artifact: unknown) => MountAdapter | undefined;

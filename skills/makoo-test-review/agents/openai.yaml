@@ -1,0 +1,4 @@
+interface:
+  display_name: "Makoo Test Review"
+  short_description: "Review Makoo tests through titles, mutation survivors, and smells"
+  default_prompt: "Use $makoo-test-review to review the tests changed in this Makoo work."

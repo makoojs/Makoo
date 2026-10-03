@@ -1,10 +1,11 @@
+export type { VueMakooComponent } from './composables';
+export { useMakooComponent } from './composables';
 export { VueAdapterError } from './error';
 export type {
 	VueMountAdapter,
-	VueMountArtifact,
+	VueMountComponent,
 	VueMountHandle,
-	VueMountInstance,
 	VueMountProps
-} from './types';
+} from './VueAdapter';
 export { createVueAdapter } from './VueAdapter';
 export { VuePlugin } from './VuePlugin';

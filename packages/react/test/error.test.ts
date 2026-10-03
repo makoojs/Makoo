@@ -1,4 +1,4 @@
-import { AdapterError, ErrorCode, MakooError } from '@makoojs/core';
+import { ErrorCode, MakooError } from '@makoojs/core';
 import { describe, expect, it } from 'vitest';
 import { ReactAdapterError } from '../src/error';
 
@@ -17,9 +17,8 @@ describe('ReactAdapterError', () => {
 		expect(err.code).toBe(ErrorCode.ADAPTER_UNMOUNT_FAIL);
 	});
 
-	it('is an instance of AdapterError and MakooError', () => {
+	it('is an instance of MakooError', () => {
 		const err = new ReactAdapterError('msg');
-		expect(err).toBeInstanceOf(AdapterError);
 		expect(err).toBeInstanceOf(MakooError);
 	});
 });

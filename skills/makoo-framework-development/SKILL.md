@@ -1,97 +1,96 @@
 ---
 name: makoo-framework-development
-description: Use when developing the Makoo framework/monorepo itself, especially when changing packages/core, packages/cli, packages/react, packages/vue, packages/create-makoo, repository config, tests, package APIs, adapters, or internal documentation. Do not use for ordinary downstream projects that only consume Makoo.
+description: Guardrails for changing the Makoo framework monorepo itself: package source, public APIs, adapters, CLI, scaffold templates, tests, repository config, or internal docs. For userscript projects that only consume Makoo, use the Makoo injection workflow skill instead.
 ---
 
 # Makoo Framework Development
 
-Use this skill for Makoo's framework monorepo, packages, adapters, CLI, scaffolding, tests, docs, and shared configuration. Preserve its library-first architecture and existing domain boundaries. For an ordinary userscript project that consumes Makoo, use the Makoo injection workflow skill instead.
+Makoo is a pre-1.0, same-repository, lockstep-maintained project. Judge architecture, compatibility, and recovery costs at that scale rather than by the needs of a mature cross-team platform.
 
-Makoo is currently a pre-1.0, same-repository, lockstep-maintained project. Judge architecture, compatibility, and recovery costs at that scale rather than assuming the needs of a mature cross-team platform.
+## Workflow
 
-## Start With The Owning Boundary
+1. **Locate the owning boundary.** Read the target package's implementation, sibling files, tests, and public exports. For `packages/core`, read `CONTEXT.md` and use its terms. Read [references/project-map.md](references/project-map.md) when a change spans packages, adds files, changes public exports, or leaves ownership unclear. Done when you can name the package and file that own the change.
+2. **Pass the current-need gate** (below) for every field, branch, guard, file, and abstraction you add. Done when each addition has a named current requirement and consumer.
+3. **Implement** within the conventions below. For lifecycle, cancellation, recovery, or status-transition code in `packages/core` (`component/`, `listener/`, `dom/`), read [references/core-runtime.md](references/core-runtime.md) first.
+4. **Test.** Done when every added or changed branch has a test that reaches it through public behavior and fails when that branch is removed.
+5. **Verify**, smallest scope first:
+   - `pnpm test <path>`
+   - `pnpm exec tsc --noEmit -p packages/<pkg>/tsconfig.json` when types or signatures change (`--noEmit` keeps `.d.ts` files out of source directories)
+   - `pnpm exec biome check <changed files>`
+   - `pnpm build` when public APIs, exports, build output, or dependencies change
+   - `pnpm docs:build` for documentation changes
 
-Identify the target package, then read its nearest implementation, sibling files, tests, and public exports before editing. Keep responsibility in the package that already owns it.
-
-Read [references/project-map.md](references/project-map.md) when a change spans packages, adds files, changes public exports, or leaves ownership unclear.
+   Done when each applicable check passes, or a failure is shown to be pre-existing.
+6. **Review the tests.** When tests were added or changed, run `skills/makoo-test-review/SKILL.md` before finishing.
 
 ## Current-Need Gate
 
-Design from Makoo's current requirements, consumers, and observed failure modes. Do not infer infrastructure merely from an architectural label.
-
-Before adding any field, file, service, protocol, discovery mechanism, compatibility layer, fallback, or abstraction, answer:
+Design from Makoo's current requirements, consumers, and observed failure modes. Before adding anything, answer:
 
 - What current behavior, constraint, or observed failure requires it?
 - Which current consumer reads, calls, or enforces it?
 - Why is explicit failure insufficient for this case?
 
-If there is no current requirement and no current consumer, leave it out. A plausible future workflow is not a requirement. Terms such as "runtime session" do not by themselves justify service discovery, protocol versioning, authentication, reconnection, multi-instance coordination, or cross-version compatibility.
+With no current requirement and no current consumer, leave it out. A plausible future workflow is not a requirement, and an architectural label (such as "runtime session") does not by itself justify discovery, versioning, reconnection, or cross-version compatibility. Prefer the simplest implementation that satisfies the present contract; generalize after real repetition appears and the boundary has stabilized.
 
-Prefer the simplest clear implementation that satisfies the present contract. Generalize only after real repetition appears and the boundary has stabilized. Do not introduce layers, generic frameworks, configuration, or extension points to make a design look complete.
+**Defensive code passes the same gate.** A guard, re-check, fallback, or flag needs a concrete trigger: the code path that makes its condition true, and the test that drives that path. A branch with no reachable trigger is dead code. Delete it instead of testing it.
+
+**One fact, one owner, one representation.** Before adding a check, find the code that already owns that invariant and keep the check there. Derive state from its existing source rather than mirroring it. For example, cancellation is an `AbortSignal`, not a boolean kept beside it. Two checks that encode the same fact mask each other: removing either one changes nothing, so neither is protected by tests.
 
 ## Failure And Fallback Policy
 
-Explicit failure is a valid design when automatic recovery is not part of the current contract. Validate required data close to its source and fail with a specific error; do not force values to "always exist" through defaults, `??`, optional chaining, recovery branches, or compatibility code that masks an abnormal state.
+Explicit failure is a valid design when automatic recovery is not part of the current contract. Validate required data close to its source and fail with a specific error. Defaults, `??`, optional chaining, recovery branches, or compatibility code must not mask an abnormal state.
 
-Add fallback or recovery only when at least one of these currently requires it:
+Add fallback or recovery only when one of these requires it:
 
 - a runtime constraint;
 - public API semantics;
 - an existing package-local behavior with the same purpose;
 - an explicit user requirement or observed workflow.
 
-Inspect the current package for an established handling pattern before adding a new one. Preserve explicit failure when no concrete requirement justifies recovery.
-
-When a design is challenged, reassess each part independently against current evidence. Remove unsupported completeness, but retain mechanisms that still have a concrete consumer and justification. Do not swing between keeping everything and deleting everything merely to agree.
+When a design is challenged, reassess each part against current evidence. Remove unsupported completeness, and keep mechanisms that still have a concrete consumer.
 
 ## Leave No Scope-Creep Residue
 
-When unsolicited scope, an unnecessary mechanism, or a rejected design is removed, return the work to the ordinary requested state. The removed mistake must not become a new concept that survives in names, comments, docs, tests, changelogs, commit messages, or pull-request titles and descriptions.
-
-- Name the result for what it is, not for what it excludes. Do not create "without X," "legacy-free," or similar variants for something that was never part of the accepted requirement.
-- Do not add comments, documentation, or tests explaining the absence of rejected work unless that absence is an actual public contract or a non-obvious invariant future maintainers must preserve.
-- Describe the delivered behavior and relevant constraints directly. Do not turn cleanup of unsolicited work into feature history or release narrative.
+When unsolicited scope or a rejected design is removed, return the work to the ordinary requested state. Name the result for what it is. The removed idea leaves no trace in names, comments, docs, tests, changelogs, commit messages, or pull-request text, unless its absence is a public contract or an invariant maintainers must preserve.
 
 ## Repository Invariants
 
-- Keep `packages/core` framework-agnostic. Framework-specific behavior belongs in its adapter package.
-- Place implementation near its domain and add a directory only for a real domain boundary, not one-off indirection.
-- Keep package entrypoints minimal. Export public API intentionally from package entrypoints; keep internal symbols private.
-- Extend the repository's existing package and domain patterns instead of introducing generic application layers such as controller/service/repository or SPA-specific architecture.
-- Preserve config, runtime, adapter, and CLI concerns as separate responsibilities when the package already separates them.
-- Do not broaden a package's public API unless the requested behavior requires it.
+- `packages/core` stays framework-agnostic; framework-specific behavior lives in its adapter package.
+- Implementation sits near its domain. A new directory marks a real domain boundary.
+- Package entrypoints export the intended public API only; internal symbols stay private.
+- Extend the existing package and domain patterns; config, runtime, adapter, and CLI concerns stay separate where the package already separates them.
+- A package's public API grows only when the requested behavior requires it.
 
 ## Implementation Conventions
 
-- Write TypeScript with ESM imports and exports. Prefer named exports and use barrel exports only at package entrypoints.
-- Let Biome define formatting and import order. Match nearby code for file layout and naming.
-- Reuse Makoo's existing domain vocabulary, such as `inject`, `listen`, `register`, `resolve`, `normalize`, `observe`, `watch`, `adapter`, `task`, and `config`.
-- Use explicit names for booleans, state transitions, structured types, and recursive traversals. Avoid context-free names such as `process`, `handle`, or `walk` when the domain can be named.
-- Keep shared or semantically important defaults centralized. Infer values only where the package already does so; fail specifically when ambiguity is unsafe.
-- Use Makoo-specific error types and preserve the `[makoo]` tone. Include stable error codes and structured issue details when extending an error pattern that already supports them.
-- Validate input at the boundary and return normalized values instead of mutating caller input.
-- Add comments only for intent, invariants, or subtle behavior.
+- TypeScript with ESM and named exports; barrel exports only at package entrypoints. Biome owns formatting and import order.
+- Core terminology comes from `CONTEXT.md`. Elsewhere, reuse the names the package already uses.
+- Use explicit names for booleans, state transitions, structured types, and recursive traversals. Declare recursive traversal at module scope and pass context through parameters.
+- Keep shared or semantically important defaults centralized.
+- Use Makoo error types with stable `ErrorCode` values and structured `issues`, in the existing `[makoo]` tone.
+- Validate input at the boundary and return normalized values without mutating caller input.
+- Keep simple control flow continuous. Extract a function when it names a domain concept, is reused, isolates a testable algorithm, or removes real duplication or nesting.
+- Write a comment only for intent, an invariant, or subtle behavior the code cannot show.
 
-Keep simple, continuous control flow intact. Do not extract one-use helpers that merely forward arguments or wrap a few expressions. Extract when a function names a real domain concept, is reused, isolates a testable algorithm, or materially removes duplication or nesting.
+## Testing
 
-Declare recursive traversal at module scope with an explicit, domain-specific name. Pass context and accumulators through parameters rather than hiding data flow in an enclosing closure.
+Tests guard public behavior and package contracts:
 
-## Scope And Verification
+- Drive scenarios through public controls: Command, Status, adapter callbacks, and real DOM changes.
+- Assert exact outcomes: status values, `ErrorCode` via `toThrow(expect.objectContaining({ code }))`, issue paths, and call counts or order.
+- Reach every branch with a scenario the real environment can produce. If the only way in is forcing a DOM primitive into an impossible state, such as `isConnected` changing between two consecutive reads, the branch is unreachable: delete it.
+- Keep changes narrow: update tests for changed observable behavior without expanding unrelated coverage.
 
-- Keep narrow changes narrow. Do not casually modify unrelated packages, generated outputs, scaffold templates, docs, dependencies, or release metadata.
-- Use the current `package.json` scripts through `pnpm`; change dependencies with `pnpm` rather than hand-editing manifests or lockfiles.
-- Run the smallest relevant Vitest target first. Update tests for changed observable behavior and normalization results without expanding unrelated coverage.
-- Test public behavior and package contracts rather than private implementation trivia unless the repository already follows that pattern.
-- Expand to broader build, test, or lint checks only when the change's scope or risk justifies them.
-- Do not routinely run package-level `tsc -p` commands: Makoo's package tsconfigs can emit `.d.ts` files into source directories. Use the package's actual build pipeline or targeted runtime checks instead.
-- Run formatting or autofixes only when the edited files need them.
+`skills/makoo-test-review/SKILL.md` holds the review process, the smell list, and the mutation-testing workflow.
 
-## Documentation Work
+## Scope
 
-When editing public README or documentation-site content, read [references/documentation.md](references/documentation.md). Keep internal architecture rationale out of user-facing guidance unless users need it to use or debug the feature.
+- Leave unrelated packages, generated output, scaffold templates, docs, dependencies, and release metadata untouched.
+- Change dependencies with `pnpm` commands rather than by editing manifests or lockfiles.
+- Run formatting or autofixes only on files that need them.
 
-## Changesets And Release Work
+## Documentation And Release
 
-Changesets are a separate, explicitly authorized release action. Never create, edit, or delete a changeset unless the user directly asks for changeset work. Do not infer permission from an implementation request, bug fix, breaking API change, documentation update, commit request, or the fact that a published package is affected.
-
-Read [references/release.md](references/release.md) only when the user asks about versioning, changelogs, release automation, publishing, or a release failure.
+- Read [references/documentation.md](references/documentation.md) before editing public README or documentation-site content. User-facing guidance describes current behavior; internal rationale stays out of it.
+- Changesets and release work happen only on an explicit user request. Implementation, bug fixes, breaking changes, or commit requests do not grant that permission. For that work, read [references/release.md](references/release.md).
