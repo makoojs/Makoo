@@ -44,19 +44,12 @@ describe('MakooError', () => {
 	it('merges structured context without replacing the error', () => {
 		const err = new MakooError('msg');
 
-		expect(
-			err.withContext({
-				taskId: 'main-panel',
-				component: 'Panel',
-				injectAt: 'body',
-				adapter: 'vue'
-			})
-		).toBe(err);
+		expect(err.withContext({ injection: 'panel', phase: 'mount' })).toBe(err);
+		expect(err.withContext({ reason: 'timeout' })).toBe(err);
 		expect(err.context).toEqual({
-			taskId: 'main-panel',
-			component: 'Panel',
-			injectAt: 'body',
-			adapter: 'vue'
+			injection: 'panel',
+			phase: 'mount',
+			reason: 'timeout'
 		});
 	});
 });

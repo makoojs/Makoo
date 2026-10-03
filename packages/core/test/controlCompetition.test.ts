@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AdapterMountParams, MountAdapter } from '../src';
-import { createMakoo, type InjectionCommand, inject, listen, MakooError } from '../src';
+import { createMakoo, ErrorCode, type InjectionCommand, inject, listen, MakooError } from '../src';
 
 describe('control races and cleanup failure', () => {
 	const handles: InjectionCommand[] = [];
@@ -71,7 +71,7 @@ describe('control races and cleanup failure', () => {
 		expect(core.command('panel')).toBe(panel);
 		expect(() =>
 			core.apply([listen({ name: 'panel', listenAt: '#host', type: 'click', callback() {} })])
-		).toThrow();
+		).toThrow(expect.objectContaining({ code: ErrorCode.INJECTION_NAME_CONFLICT }));
 		expect(mount).toHaveBeenCalledOnce();
 		expect(unmount).not.toHaveBeenCalled();
 		expect(host.children.length).toBe(failContainerCleanup ? 1 : 0);
@@ -225,7 +225,9 @@ describe('control races and cleanup failure', () => {
 		core.apply([inject({ name: 'panel', injectAt: '#host', adapter: 'plain', component: {} })]);
 		expect(mount).toHaveBeenCalledOnce();
 		await completion;
-		expect(() => core.command('panel')).toThrow();
+		expect(() => core.command('panel')).toThrow(
+			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+		);
 	});
 
 	it('keeps only the latest intent issued while unmount is running', async () => {
@@ -266,7 +268,9 @@ describe('control races and cleanup failure', () => {
 		mode = 'remove';
 		await panel.remove();
 		expect(mounts).toBe(3);
-		expect(() => core.command('panel')).toThrow();
+		expect(() => core.command('panel')).toThrow(
+			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+		);
 	});
 
 	it('still removes the container when unmount throws, and repeats the same failure', async () => {
@@ -299,7 +303,7 @@ describe('control races and cleanup failure', () => {
 		expect(core.status('panel').lastError?.code).toBe('MAKOO_ADAPTER_UNMOUNT_FAIL');
 		expect(() =>
 			core.apply([listen({ name: 'panel', listenAt: '#host', type: 'click', callback() {} })])
-		).toThrow();
+		).toThrow(expect.objectContaining({ code: ErrorCode.INJECTION_NAME_CONFLICT }));
 		expect(() => core.command('panel')).not.toThrow();
 	});
 
@@ -402,7 +406,9 @@ describe('control races and cleanup failure', () => {
 		previousStatus.subscribe(() => seen.push(previousStatus.getSnapshot()));
 		await previous.remove();
 		seen.length = 0;
-		expect(() => core.command('panel')).toThrow();
+		expect(() => core.command('panel')).toThrow(
+			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+		);
 		core.apply([inject({ name: 'panel', injectAt: '#host', adapter: 'plain', component: {} })]);
 		const replacement = core.command('panel');
 		handles.push(replacement);
@@ -513,7 +519,9 @@ describe('control races and cleanup failure', () => {
 		previousStatus.subscribe(() => seen.push(previousStatus.getSnapshot()));
 		await previous.remove();
 		seen.length = 0;
-		expect(() => core.command('play')).toThrow();
+		expect(() => core.command('play')).toThrow(
+			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+		);
 		core.apply([listen({ name: 'play', listenAt: '.host', type: 'click', callback() {} })]);
 		const replacement = core.command('play');
 		handles.push(replacement);

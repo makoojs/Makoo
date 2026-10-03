@@ -311,16 +311,21 @@ describe('React hook subscriptions at the adapter boundary', () => {
 	});
 
 	it('caches object selection results for repeated reads of the same snapshot', async () => {
+		let renders = 0;
 		function Panel() {
 			const selected = useListenerStatus('play', (listenerStatus) => ({
 				ready: listenerStatus === 'bound'
 			}));
+			renders += 1;
 			return createElement('p', null, String(selected.ready));
 		}
 		await mount(Panel);
 		expect(container.textContent).toBe('false');
 		await act(async () => playState.publish('bound'));
 		expect(container.textContent).toBe('true');
+		const boundRenders = renders;
+		await act(async () => playState.publish('bound'));
+		expect(renders).toBe(boundRenders);
 	});
 
 	it('catches a state change between rendering and subscription', async () => {

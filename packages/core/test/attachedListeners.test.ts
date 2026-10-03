@@ -3,6 +3,7 @@ import {
 	type ComponentCommand,
 	type ComponentStatusHandle,
 	createMakoo,
+	ErrorCode,
 	type InjectionCommand,
 	inject,
 	type ListenerStatus,
@@ -162,7 +163,9 @@ describe('attached host listeners', () => {
 		panel.start();
 		element('#play').click();
 		expect(callback).toHaveBeenCalledOnce();
-		expect(() => listenerOf(status, 'extra')).toThrow();
+		expect(() => listenerOf(status, 'extra')).toThrow(
+			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+		);
 	});
 	it('uses the default 15 second child search budget', async () => {
 		const { status } = setup([
@@ -343,6 +346,61 @@ describe('attached host listeners', () => {
 		});
 		await panel.stop();
 	});
+	it('does not start later children when a state subscriber stops the parent', async () => {
+		const core = createMakoo();
+		const bindPause = vi.spyOn(element('#pause'), 'addEventListener');
+		let panel!: ComponentCommand;
+		let status!: ComponentStatusHandle;
+		core.useAdapter({
+			name: 'plain',
+			mount({ command, status: mountStatus }) {
+				panel = command;
+				status = mountStatus;
+				const playStatus = mountStatus.listener('play');
+				playStatus.subscribe(() => {
+					if (playStatus.getSnapshot() === 'bound') void panel.stop();
+				});
+			},
+			unmount() {}
+		});
+		core.apply([
+			inject({
+				name: 'panel',
+				injectAt: '#host',
+				adapter: 'plain',
+				component: {},
+				listeners: [child(), child('pause')]
+			})
+		]);
+		controls.push(panel);
+		await vi.advanceTimersByTimeAsync(0);
+		expect(bindPause).not.toHaveBeenCalled();
+		expect(status.getSnapshot()).toBe('idle');
+		expect(listenerOf(status, 'pause').getSnapshot()).toBe('idle');
+	});
+	it('keeps a child idle when its target disappears in the same turn the parent stops', async () => {
+		const { panel, status } = setup([child(), child('pause')]);
+		element('#pause').remove();
+		await panel.stop();
+		expect(status.getSnapshot()).toBe('idle');
+		expect(listenerOf(status, 'pause').getSnapshot()).toBe('idle');
+	});
+	it('fails the parent when a child loses its target and its unbind also fails', async () => {
+		const { status, unmount } = setup([child()]);
+		const play = element('#play');
+		const cause = new Error('cannot unbind');
+		vi.spyOn(play, 'removeEventListener').mockImplementation(() => {
+			throw cause;
+		});
+		play.remove();
+		await vi.waitFor(() => expect(status.getSnapshot()).toBe('failed'), { interval: 1 });
+		expect(listenerOf(status, 'play').getSnapshot()).toBe('failed');
+		expect(unmount).toHaveBeenCalledOnce();
+		expect(status.lastError).toMatchObject({ code: ErrorCode.LISTENER_TARGET_DETACHED });
+		expect(status.lastError?.cleanupErrors).toEqual(
+			expect.arrayContaining([expect.objectContaining({ cause })])
+		);
+	});
 	it.each([
 		false,
 		true
@@ -398,7 +456,10 @@ describe('attached host listeners', () => {
 		play.click();
 		pause.click();
 		expect(callback).toHaveBeenCalledTimes(intent === 'restart' ? 2 : 0);
-		if (intent === 'remove') expect(() => core.command('panel')).toThrow();
+		if (intent === 'remove')
+			expect(() => core.command('panel')).toThrow(
+				expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+			);
 	});
 	it('invalidates every child before cleanup notifications and still unmounts when one unbind fails', async () => {
 		const callback = vi.fn();
@@ -493,10 +554,10 @@ describe('attached host listeners', () => {
 		expect(mount).toHaveBeenCalledOnce();
 	});
 	it.each([
-		'duplicate',
-		'override',
-		'invalid-selector'
-	])('rejects %s before starting any declaration', (invalid) => {
+		['duplicate', ErrorCode.INJECTION_NAME_CONFLICT, 'listeners.1.name'],
+		['override', ErrorCode.INVALID_DECLARATION, 'listeners.0.reinject'],
+		['invalid-selector', ErrorCode.INVALID_DECLARATION, 'listeners.0.listenAt']
+	])('rejects %s before starting any declaration', (invalid, code, path) => {
 		const core = createMakoo();
 		const mount = vi.fn();
 		core.useAdapter({ name: 'plain', mount, unmount() {} });
@@ -518,9 +579,16 @@ describe('attached host listeners', () => {
 					listeners: invalid === 'duplicate' ? [child, child] : [child]
 				})
 			])
-		).toThrow();
+		).toThrow(
+			expect.objectContaining({
+				code,
+				issues: expect.arrayContaining([expect.objectContaining({ path })])
+			})
+		);
 		expect(mount).not.toHaveBeenCalled();
-		expect(() => core.command('first')).toThrow();
+		expect(() => core.command('first')).toThrow(
+			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+		);
 	});
 	afterEach(async () => {
 		for (const control of controls.splice(0)) await control.remove().catch(() => {});
@@ -559,11 +627,16 @@ describe('attached host listeners', () => {
 		const status = core.status('panel');
 		if (!('listener' in status)) throw new Error('Expected a component');
 		expect(status.getSnapshot()).toBe('mounted');
+		expect(status.listenerNames).toEqual(['play']);
 		expect(state.getSnapshot()).toBe('bound');
 		expect(Object.keys(state).sort()).toEqual(['getSnapshot', 'subscribe']);
 		expect(status.listener('play')).toBe(state);
-		expect(() => status.listener('missing')).toThrow();
-		expect(() => core.command('play')).toThrow();
+		expect(() => status.listener('missing')).toThrow(
+			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+		);
+		expect(() => core.command('play')).toThrow(
+			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+		);
 		button.click();
 		expect(callback).toHaveBeenCalledOnce();
 		await panel.stop();

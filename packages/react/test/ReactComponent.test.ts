@@ -2,6 +2,7 @@ import {
 	type ComponentCommand,
 	type ComponentStatusHandle,
 	createMakoo,
+	ErrorCode,
 	type InjectionCommand,
 	inject,
 	type ListenerStatus,
@@ -136,7 +137,9 @@ describe('React components mounted by core', () => {
 		expect(received.at(-1)?.stop).toBe(replacement.stop);
 		expect(element('#host').textContent).toBe('bound');
 
-		expect(() => oldCommand.start()).toThrow();
+		expect(() => oldCommand.start()).toThrow(
+			expect.objectContaining({ code: ErrorCode.INJECTION_REMOVED })
+		);
 		await act(async () => oldCommand.stop());
 		expect(replacementStatus.getSnapshot()).toBe('mounted');
 		expect(element('#host').textContent).toBe('bound');

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createMakoo, type InjectionCommand, listen } from '../src';
+import { createMakoo, ErrorCode, type InjectionCommand, listen } from '../src';
 
 describe('host listener waiting and recovery', () => {
 	const handles: InjectionCommand[] = [];
@@ -93,13 +93,13 @@ describe('host listener waiting and recovery', () => {
 	});
 
 	it.each([
-		{ timeout: 0 },
-		{ timeout: -1 },
-		{ timeout: Infinity },
-		{ timeout: NaN },
-		{ timeout: '20' },
-		{ reinject: 'yes' }
-	])('rejects invalid recovery config %j before accepting the batch', (invalid) => {
+		['timeout 0', { timeout: 0 }],
+		['timeout -1', { timeout: -1 }],
+		['timeout Infinity', { timeout: Infinity }],
+		['timeout NaN', { timeout: NaN }],
+		['timeout "20"', { timeout: '20' }],
+		['reinject "yes"', { reinject: 'yes' }]
+	])('rejects invalid recovery config %s before accepting the batch', (_label, invalid) => {
 		const core = createMakoo();
 		const declaration = listen({
 			name: 'play',
@@ -111,8 +111,15 @@ describe('host listener waiting and recovery', () => {
 			Reflect.apply(core.apply, core, [
 				[declaration, { ...declaration, name: 'bad', ...invalid }]
 			])
-		).toThrow();
-		expect(() => core.command('play')).toThrow();
+		).toThrow(
+			expect.objectContaining({
+				code: ErrorCode.INVALID_DECLARATION,
+				issues: [expect.objectContaining({ path: Object.keys(invalid)[0] })]
+			})
+		);
+		expect(() => core.command('play')).toThrow(
+			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+		);
 		expect(vi.getTimerCount()).toBe(0);
 	});
 

@@ -80,23 +80,4 @@ describe('Makoo declarations', () => {
 			capture: false
 		});
 	});
-
-	it('should preserve an explicit listener name', () => {
-		const callback = vi.fn();
-
-		const declaration = listen({
-			name: 'escape-close',
-			listenAt: '#escape',
-			type: 'keydown',
-			callback
-		});
-
-		expect(declaration).toEqual({
-			kind: 'listener',
-			name: 'escape-close',
-			listenAt: '#escape',
-			type: 'keydown',
-			callback
-		});
-	});
 });

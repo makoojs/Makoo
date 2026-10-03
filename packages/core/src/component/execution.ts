@@ -235,7 +235,6 @@ function mountComponent(
 		return;
 	}
 	for (const attachListener of execution.attachListeners.values()) {
-		if (execution.hasCleanupStarted || execution.isCancelled) return;
 		startListener(attachListener, dom);
 		if (execution.hasCleanupStarted || execution.isCancelled) return;
 		if (

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createMakoo, listen } from '../src';
+import { createMakoo, ErrorCode, listen } from '../src';
 
 describe('standalone host listeners', () => {
 	beforeEach(() => {
@@ -36,7 +36,9 @@ describe('standalone host listeners', () => {
 		expect(replacement).not.toHaveBeenCalled();
 		expect(core.command('play')).toBe(handle);
 		await handle.remove();
-		expect(() => core.command('play')).toThrow();
+		expect(() => core.command('play')).toThrow(
+			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+		);
 	});
 
 	it.each([
@@ -54,23 +56,40 @@ describe('standalone host listeners', () => {
 		const core = createMakoo();
 		const good = listen({ name: 'good', listenAt: '.host', type: 'click', callback });
 		const bad = { ...good, name: 'bad', ...invalid };
-		expect(() => Reflect.apply(core.apply, core, [[good, bad]])).toThrow();
+		expect(() => Reflect.apply(core.apply, core, [[good, bad]])).toThrow(
+			expect.objectContaining({ code: ErrorCode.INVALID_DECLARATION })
+		);
 		document.querySelector<HTMLButtonElement>('.host')?.click();
 		expect(callback).not.toHaveBeenCalled();
-		expect(() => core.command('good')).toThrow();
-		expect(() => core.command('bad')).toThrow();
+		expect(() => core.command('good')).toThrow(
+			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+		);
+		expect(() => core.command('bad')).toThrow(
+			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+		);
 	});
 
 	it('rejects duplicate and occupied names without disturbing accepted listeners', async () => {
 		const core = createMakoo();
 		const callback = vi.fn();
 		const declaration = listen({ name: 'play', listenAt: '.host', type: 'click', callback });
-		expect(() => core.apply([declaration, declaration])).toThrow();
-		expect(() => core.command('play')).toThrow();
+		expect(() => core.apply([declaration, declaration])).toThrow(
+			expect.objectContaining({
+				code: ErrorCode.INJECTION_NAME_CONFLICT,
+				issues: [{ path: 'name', message: 'play' }]
+			})
+		);
+		expect(() => core.command('play')).toThrow(
+			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+		);
 		core.apply([declaration]);
 		const original = core.command('play');
-		expect(() => core.apply([{ ...declaration, name: 'new' }, declaration])).toThrow();
-		expect(() => core.command('new')).toThrow();
+		expect(() => core.apply([{ ...declaration, name: 'new' }, declaration])).toThrow(
+			expect.objectContaining({ code: ErrorCode.INJECTION_NAME_CONFLICT })
+		);
+		expect(() => core.command('new')).toThrow(
+			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+		);
 		expect(core.command('play')).toBe(original);
 		document.querySelector<HTMLButtonElement>('.host')?.click();
 		expect(callback).toHaveBeenCalledOnce();
@@ -207,7 +226,7 @@ describe('standalone host listeners', () => {
 		expect(seen).toEqual(['host', 'child', 'child']);
 	});
 
-	it('does not bind a host disconnected between discovery and use', async () => {
+	it('ignores a matched host that is already disconnected and keeps waiting', async () => {
 		const callback = vi.fn();
 		const target = document.querySelector<HTMLButtonElement>('.host');
 		if (!target) throw new Error('missing fixture');
@@ -219,7 +238,8 @@ describe('standalone host listeners', () => {
 		core.apply([listen({ name: 'play', listenAt: '.host', type: 'click', callback })]);
 		target.click();
 		expect(callback).not.toHaveBeenCalled();
-		expect(core.status('play').getSnapshot()).not.toBe('bound');
+		expect(core.status('play').getSnapshot()).toBe('waiting');
+		expect(core.status('play').lastError).toBeUndefined();
 		await core.command('play').remove();
 	});
 
@@ -242,7 +262,9 @@ describe('standalone host listeners', () => {
 		const replacement = core.command('play');
 		expect(replacement).not.toBe(old);
 		expect(core.status('play')).not.toBe(oldStatus);
-		expect(() => old.start()).toThrow();
+		expect(() => old.start()).toThrow(
+			expect.objectContaining({ code: ErrorCode.INJECTION_REMOVED })
+		);
 		await old.remove();
 		await old.stop();
 		reject(new Error('late failure'));
@@ -272,7 +294,9 @@ describe('standalone host listeners', () => {
 		await handle.remove();
 		expect(statuses).toEqual(['idle']);
 		expect(reported).toHaveBeenCalledWith(cause);
-		expect(() => core.command('play')).toThrow();
+		expect(() => core.command('play')).toThrow(
+			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+		);
 		document.querySelector<HTMLButtonElement>('.host')?.click();
 		expect(callback).not.toHaveBeenCalled();
 		unsubscribe();
@@ -304,7 +328,25 @@ describe('standalone host listeners', () => {
 		await handle.remove();
 		first.click();
 		expect(callback).toHaveBeenCalledTimes(2);
-		expect(() => core.command('play')).toThrow();
-		expect(() => handle.start()).toThrow();
+		expect(() => core.command('play')).toThrow(
+			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+		);
+		expect(() => handle.start()).toThrow(
+			expect.objectContaining({ code: ErrorCode.INJECTION_REMOVED })
+		);
+	});
+
+	it('unregisters a stopped listener as soon as it is removed and settles later controls with that removal', async () => {
+		const core = createMakoo();
+		core.apply([listen({ name: 'play', listenAt: '.host', type: 'click', callback() {} })]);
+		const handle = core.command('play');
+		await handle.stop();
+		const removal = handle.remove();
+		expect(() => core.command('play')).toThrow(
+			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+		);
+		expect(handle.stop()).toBe(removal);
+		expect(handle.remove()).toBe(removal);
+		await removal;
 	});
 });

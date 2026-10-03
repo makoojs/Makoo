@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AdapterMountParams, MountAdapter } from '../src';
-import { createMakoo, type InjectionCommand, inject, listen } from '../src';
+import { createMakoo, ErrorCode, type InjectionCommand, inject, listen } from '../src';
 
 describe('single component injection', () => {
 	const handles: InjectionCommand[] = [];
@@ -71,6 +71,7 @@ describe('single component injection', () => {
 			'listenerNames',
 			'subscribe'
 		]);
+		expect(params?.status.listenerNames).toEqual([]);
 		expect(params?.container.parentElement).toBe(host);
 		expect(extra.querySelector('div')).toBeNull();
 		expect(host.firstChild?.textContent).toBe('keep');
@@ -95,6 +96,33 @@ describe('single component injection', () => {
 		expect(unmount).toHaveBeenCalledWith(handle);
 		expect(container?.isConnected).toBe(false);
 		expect(core.status('panel').getSnapshot()).toBe('idle');
+	});
+
+	it('unregisters a stopped component as soon as it is removed and settles later controls with that removal', async () => {
+		const host = document.createElement('section');
+		host.id = 'host';
+		document.body.append(host);
+		const core = createMakoo();
+		core.useAdapter(adapter(() => 'handle'));
+		const declaration = inject({
+			name: 'panel',
+			injectAt: '#host',
+			adapter: 'plain',
+			component: {}
+		});
+		core.apply([declaration]);
+		const panel = core.command('panel');
+		await panel.stop();
+		const removal = panel.remove();
+		expect(() => core.command('panel')).toThrow(
+			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+		);
+		expect(panel.stop()).toBe(removal);
+		expect(panel.remove()).toBe(removal);
+		await removal;
+		core.apply([declaration]);
+		handles.push(core.command('panel'));
+		expect(core.status('panel').getSnapshot()).toBe('mounted');
 	});
 
 	it('unmounts synchronously before removing the container, then starts a new execution', async () => {
@@ -132,8 +160,12 @@ describe('single component injection', () => {
 		expect(core.status('panel').getSnapshot()).toBe('mounted');
 		await panel.remove();
 		expect(containers[1]?.isConnected).toBe(false);
-		expect(() => core.command('panel')).toThrow();
-		expect(() => panel.start()).toThrow();
+		expect(() => core.command('panel')).toThrow(
+			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+		);
+		expect(() => panel.start()).toThrow(
+			expect.objectContaining({ code: ErrorCode.INJECTION_REMOVED })
+		);
 	});
 
 	it.each([
@@ -290,12 +322,65 @@ describe('single component injection', () => {
 			expect(core.command('second')).not.toBe(removed);
 			expect(core.status('second').getSnapshot()).toBe('idle');
 		} else {
-			expect(() => core.command('second')).toThrow();
+			expect(() => core.command('second')).toThrow(
+				expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+			);
 		}
 		host.click();
 		expect(removedCallback).not.toHaveBeenCalled();
 		expect(replacementCallback).not.toHaveBeenCalled();
 		expect(thirdCallback).toHaveBeenCalledOnce();
+	});
+
+	it.each([
+		['name', { name: '' }],
+		['name', { name: '  ' }],
+		['injectAt', { injectAt: '[' }],
+		['injectAt', { injectAt: ' ' }],
+		['adapter', { adapter: '' }],
+		['timeout', { timeout: 0 }],
+		['reinject', { reinject: 'yes' }],
+		[
+			'listeners.0.listenAt',
+			{ listeners: [listen({ name: 'play', listenAt: '[', type: 'click', callback() {} })] }
+		]
+	])('rejects a component with invalid %s (%j) before starting the batch', (path, invalid) => {
+		const host = document.createElement('section');
+		host.id = 'host';
+		document.body.append(host);
+		const mount = vi.fn(() => 'handle');
+		const core = createMakoo();
+		core.useAdapter(adapter(mount));
+		const valid = inject({ name: 'panel', injectAt: '#host', adapter: 'plain', component: {} });
+		expect(() =>
+			Reflect.apply(core.apply, core, [[valid, { ...valid, name: 'bad', ...invalid }]])
+		).toThrow(
+			expect.objectContaining({
+				code: ErrorCode.INVALID_DECLARATION,
+				issues: expect.arrayContaining([expect.objectContaining({ path })])
+			})
+		);
+		expect(mount).not.toHaveBeenCalled();
+		expect(() => core.command('panel')).toThrow(
+			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+		);
+	});
+
+	it.each([
+		['name', { name: '  ' }],
+		['mount', { mount: 'mount' }],
+		['unmount', { unmount: null }]
+	])('rejects an adapter with invalid %s without registering it', (path, invalid) => {
+		const core = createMakoo();
+		expect(() =>
+			Reflect.apply(core.useAdapter, core, [{ ...adapter(() => 'handle'), ...invalid }])
+		).toThrow(
+			expect.objectContaining({
+				code: ErrorCode.INVALID_DECLARATION,
+				issues: [expect.objectContaining({ path })]
+			})
+		);
+		expect(() => core.useAdapter(adapter(() => 'handle'))).not.toThrow();
 	});
 
 	it('rejects an unknown adapter before starting anything else in the batch', () => {
@@ -311,12 +396,21 @@ describe('single component injection', () => {
 				listen({ name: 'play', listenAt: '.play', type: 'click', callback }),
 				inject({ name: 'panel', injectAt: '#host', adapter: 'missing', component: {} })
 			])
-		).toThrow();
+		).toThrow(
+			expect.objectContaining({
+				code: ErrorCode.ADAPTER_NOT_FOUND,
+				issues: [{ path: 'adapter', message: 'missing' }]
+			})
+		);
 		host.click();
 		expect(callback).not.toHaveBeenCalled();
 		expect(mount).not.toHaveBeenCalled();
-		expect(() => core.command('play')).toThrow();
-		expect(() => core.command('panel')).toThrow();
+		expect(() => core.command('play')).toThrow(
+			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+		);
+		expect(() => core.command('panel')).toThrow(
+			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+		);
 		expect(vi.getTimerCount()).toBe(0);
 	});
 
@@ -325,7 +419,12 @@ describe('single component injection', () => {
 		const first = vi.fn(() => 'first');
 		const second = vi.fn(() => 'second');
 		core.useAdapter(adapter(first));
-		expect(() => core.useAdapter(adapter(second))).toThrow();
+		expect(() => core.useAdapter(adapter(second))).toThrow(
+			expect.objectContaining({
+				code: ErrorCode.ADAPTER_NAME_CONFLICT,
+				issues: [{ path: 'name', message: 'plain' }]
+			})
+		);
 		const host = document.createElement('section');
 		host.id = 'host';
 		document.body.append(host);
@@ -362,7 +461,7 @@ describe('single component injection', () => {
 		expect(host.querySelector('div')).toBeNull();
 		expect(() =>
 			core.apply([listen({ name: 'panel', listenAt: '.play', type: 'click', callback() {} })])
-		).toThrow();
+		).toThrow(expect.objectContaining({ code: ErrorCode.INJECTION_NAME_CONFLICT }));
 		expect(core.status('panel').getSnapshot()).toBe('failed');
 	});
 });

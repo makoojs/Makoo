@@ -151,6 +151,7 @@ describe('core disposal', () => {
 			})
 		);
 		core.apply([inject({ name: 'panel', injectAt: '#host', adapter: 'plain', component: {} })]);
+		const panel = core.command('panel');
 		await vi.waitFor(() => expect(core.status('panel').getSnapshot()).toBe('failed'));
 		const diagnostic = core.status('panel').lastError;
 		expect(diagnostic?.code).toBe(ErrorCode.ADAPTER_MOUNT_FAIL);
@@ -159,7 +160,7 @@ describe('core disposal', () => {
 			code: ErrorCode.INJECTION_CLEANUP_FAILED
 		});
 		expect(core.status('panel').lastError).toBe(diagnostic);
-		expect(core.command('panel')).toBeDefined();
+		expect(core.command('panel')).toBe(panel);
 	});
 
 	it('continues disposing other injections when one cleanup fails', async () => {

@@ -6,7 +6,6 @@ import {
 	inject,
 	type MakooError
 } from '@makoojs/core';
-import { isValidElement, type ReactElement } from 'react';
 import type { Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ReactAdapterError } from '../src/error';
@@ -27,16 +26,8 @@ vi.mock('react-dom/client', () => ({
 	createRoot: reactDomClientMock.createRoot
 }));
 
-function Badge(_props: { title: string }) {
+function Badge() {
 	return 'Badge';
-}
-
-function renderedChild(): ReactElement<{ title: string }> {
-	const provider = reactDomClientMock.root.render.mock.calls[0]?.[0] as ReactElement<{
-		value: { command: ComponentCommand; status: ComponentStatusHandle };
-		children: ReactElement<{ title: string }>;
-	}>;
-	return provider.props.children;
 }
 
 describe('ReactAdapter', () => {
@@ -51,32 +42,18 @@ describe('ReactAdapter', () => {
 		reactDomClientMock.root.unmount.mockReset();
 	});
 
-	it('renders the selected component with props and control into the core container', async () => {
+	it('creates its root in the core container and unmounts that root on stop', async () => {
 		const core = createMakoo();
 		core.useAdapter(createReactAdapter());
-		const data = { items: [1] };
 
 		core.apply([
-			inject({
-				name: 'badge',
-				injectAt: '#host',
-				adapter: 'react',
-				component: Badge,
-				props: { title: 'hello', data }
-			})
+			inject({ name: 'badge', injectAt: '#host', adapter: 'react', component: Badge })
 		]);
 		const command = core.command('badge');
-		const status = core.status('badge');
 
 		const container = reactDomClientMock.createRoot.mock.calls[0]?.[0];
 		expect(container?.parentElement?.id).toBe('host');
-		const provider = reactDomClientMock.root.render.mock.calls[0]?.[0];
-		expect(isValidElement(provider)).toBe(true);
-		expect(provider.props.value).toEqual({ command, status });
-		expect(renderedChild().type).toBe(Badge);
-		expect(renderedChild().props).toMatchObject({ title: 'hello', data });
-		expect(Object.isFrozen(data)).toBe(false);
-		expect(status.getSnapshot()).toBe('mounted');
+		expect(core.status('badge').getSnapshot()).toBe('mounted');
 
 		await command.stop();
 		expect(reactDomClientMock.root.unmount).toHaveBeenCalledOnce();

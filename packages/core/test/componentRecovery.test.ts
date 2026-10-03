@@ -57,6 +57,22 @@ describe('injection target recovery', () => {
 		unmount.mockReset();
 	});
 
+	it('can stop reinjection from a waiting state notification before mounting again', async () => {
+		const { core, panel, host, mount, unmount } = mountInjection(true);
+		const status = core.status('panel');
+		const unsubscribe = status.subscribe(() => {
+			if (status.getSnapshot() !== 'waiting') return;
+			unsubscribe();
+			void panel.stop();
+		});
+		host.replaceWith(host.cloneNode());
+		await vi.waitFor(() => expect(unmount).toHaveBeenCalledOnce(), { interval: 1 });
+		await vi.advanceTimersByTimeAsync(0);
+		expect(status.getSnapshot()).toBe('idle');
+		expect(mount).toHaveBeenCalledOnce();
+		expect(vi.getTimerCount()).toBe(0);
+	});
+
 	it('keeps the mount through same-delivery moves, selector changes, and content updates', async () => {
 		const { core, panel, host, parent, container, mount, unmount } = mountInjection(true);
 		const snapshot = core.status('panel').getSnapshot();
