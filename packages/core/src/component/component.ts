@@ -180,6 +180,7 @@ function startExecution(component: Component): void {
 		component.dom,
 		component.mounter,
 		component.attachListeners,
+		// The execution only stops its own work; stale callbacks are filtered here.
 		{
 			status(nextStatus) {
 				const currentSlot = component.executionSlot;
@@ -269,7 +270,6 @@ async function endExecution(
 		component.lastError = (executionError ?? firstCleanupError).withCleanupErrors(
 			cleanupErrors
 		);
-		if (component.intent !== 'removed') component.intent = 'stopped';
 		component.executionSlot = {
 			kind: 'cleanup-failed',
 			cleanupPromise: cleanupCompletion.promise

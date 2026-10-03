@@ -202,7 +202,6 @@ export function endExecution(
 	if (firstCleanupError) {
 		const error = (executionError ?? firstCleanupError).withCleanupErrors(cleanupErrors);
 		listener.lastError = error;
-		if (listener.intent !== 'removed') listener.intent = 'stopped';
 		listener.executionSlot = {
 			kind: 'cleanup-failed',
 			cleanupPromise: cleanupCompletion.promise,

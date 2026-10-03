@@ -487,21 +487,6 @@ describe('host listener waiting and recovery', () => {
 		expect(core.status('play').lastError).toBeUndefined();
 	});
 
-	it('ends an execution if its selected target disconnects before binding, without leaving an unbudgeted wait', () => {
-		const button = document.createElement('button');
-		vi.spyOn(document, 'querySelector').mockReturnValueOnce(button);
-		vi.spyOn(button, 'isConnected', 'get').mockReturnValueOnce(true).mockReturnValue(false);
-		const callback = vi.fn();
-		const core = createMakoo();
-		core.apply([listen({ name: 'play', listenAt: '.host', type: 'click', callback })]);
-		const handle = core.command('play');
-		handles.push(handle);
-		button.click();
-		expect(callback).not.toHaveBeenCalled();
-		expect(core.status('play').getSnapshot()).toBe('failed');
-		expect(vi.getTimerCount()).toBe(0);
-	});
-
 	it('waits for the first delayed host, then stops searching for additional matches', async () => {
 		const core = createMakoo();
 		const callback = vi.fn();

@@ -78,10 +78,6 @@ function bindListener(
 ): void {
 	if (execution.phase !== 'active') return;
 	const { config } = execution;
-	if (!listenerTarget.isConnected) {
-		callbacks.ended('detached', targetDetachedError(config.name));
-		return;
-	}
 	// Retain the target before binding so partial setup can still be cleaned up.
 	execution.listenerTarget = listenerTarget;
 	try {

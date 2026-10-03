@@ -98,21 +98,6 @@ describe('attached host listeners', () => {
 		expect(core.status('panel').lastError).toBeUndefined();
 		expect(console.error).toHaveBeenCalledWith(expect.objectContaining({ cause }));
 	});
-	it.each([
-		false,
-		true
-	])('rechecks a selected child target before binding (reinject=%s)', async (reinject) => {
-		const button = element('#play');
-		vi.spyOn(button, 'isConnected', 'get').mockReturnValueOnce(true).mockReturnValue(false);
-		const bind = vi.spyOn(button, 'addEventListener');
-		const { panel, status } = setup([child()], reinject);
-		expect(bind).not.toHaveBeenCalled();
-		expect(listenerOf(status, 'play').getSnapshot()).toBe(reinject ? 'waiting' : 'failed');
-		await vi.waitFor(() => expect(status.getSnapshot()).toBe(reinject ? 'mounted' : 'failed'), {
-			interval: 1
-		});
-		await panel.stop();
-	});
 	it('stops local recovery immediately when a waiting subscriber stops the parent', async () => {
 		const { panel, status } = setup([child()], true);
 		const state = listenerOf(status, 'play');

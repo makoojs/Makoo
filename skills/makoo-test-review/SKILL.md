@@ -42,8 +42,9 @@ For each survivor, report the line, the mutation, and a decision:
 
 - **Behavior should change** → add or tighten a test through public behavior so it fails on this mutation.
 - **No observable difference** → equivalent mutant or dead code; report it and leave it, or flag the code for removal.
+- **Survives on each of two guards that check the same fact** → the guards mask each other. Keep the one right after the point where outside code runs, and test that one (see `skills/makoo-framework-development/references/core-runtime.md`).
 
-Timed-out mutants count as killed. Do not add tests whose only purpose is killing a mutant through implementation details, and do not chase 100%.
+Do not add tests whose only purpose is killing a mutant through implementation details, and do not chase 100%.
 
 ## 3. Smell scan
 
@@ -57,6 +58,7 @@ Search the changed test files for these and fix what applies:
 | assertions on a mock's internal call structure | assert the observable result, or rely on a real-render test |
 | `try { … } catch { expect … }` without a guaranteed throw | `expect(() => …).toThrow(…)` |
 | a test duplicated by a broader test elsewhere | delete the narrower one |
+| a DOM primitive mocked into a state the real DOM cannot reach (e.g. `isConnected` changing between consecutive reads) | delete the test and the unreachable branch it covers |
 
 ## 4. Two questions mutation testing cannot answer
 

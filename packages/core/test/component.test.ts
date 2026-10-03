@@ -240,6 +240,32 @@ describe('single component injection', () => {
 		expect(vi.getTimerCount()).toBe(0);
 	});
 
+	it('does not mount when a waiting subscriber stops the injection', async () => {
+		const host = document.createElement('section');
+		host.id = 'host';
+		document.body.append(host);
+		const mount = vi.fn(() => 'handle');
+		const unmount = vi.fn();
+		const core = createMakoo();
+		core.useAdapter(adapter(mount, unmount));
+		core.apply([inject({ name: 'panel', injectAt: '#host', adapter: 'plain', component: {} })]);
+		const panel = core.command('panel');
+		const status = core.status('panel');
+		handles.push(panel);
+		await panel.stop();
+		mount.mockClear();
+		unmount.mockClear();
+		const unsubscribe = status.subscribe(() => {
+			if (status.getSnapshot() === 'waiting') void panel.stop();
+		});
+		panel.start();
+		unsubscribe();
+		await vi.waitFor(() => expect(status.getSnapshot()).toBe('idle'), { interval: 1 });
+		expect(mount).not.toHaveBeenCalled();
+		expect(unmount).not.toHaveBeenCalled();
+		expect(host.children).toHaveLength(0);
+	});
+
 	it('does not mount when a waiting subscriber disconnects the selected target', async () => {
 		const host = document.createElement('section');
 		host.id = 'host';
