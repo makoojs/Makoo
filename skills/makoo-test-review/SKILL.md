@@ -34,7 +34,7 @@ Mutate only the changed source files:
 pnpm test:mutation --mutate packages/core/src/listener/execution.ts
 ```
 
-Incremental mode reuses earlier results. Read survivors from `.tmp/mutation/report.json` (mutants with `status: "Survived"`); the user can browse `.tmp/mutation/index.html`. A full core run takes several minutes, so prefer `--mutate` on changed files.
+Incremental mode reuses earlier results. Stryker writes its output under `.tmp/mutation/`: `report.json` (read mutants with `status: "Survived"`), `index.html` for browsing, `incremental.json`, and `sandbox/` for its temporary copy. Put extra analysis for that run in the same folder. A full core run takes several minutes, so prefer `--mutate` on changed files.
 
 Stryker counts `Timeout` as killed, but a loaded machine produces false timeouts. Do not run other test jobs alongside Stryker. Before trusting a score that rests on timeouts, apply one timed-out mutation by hand and run the suite: if it passes quickly, the mutant actually survived.
 

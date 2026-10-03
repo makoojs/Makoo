@@ -19,13 +19,14 @@
 		".claude",
 		".scratch",
 		".github",
-		".changeset"
+		".changeset",
+		".tmp"
 	],
 	"coverageAnalysis": "perTest",
 	"reporters": ["clear-text", "html", "json", "progress"],
 	"htmlReporter": { "fileName": ".tmp/mutation/index.html" },
 	"jsonReporter": { "fileName": ".tmp/mutation/report.json" },
-	"tempDirName": ".tmp/stryker",
+	"tempDirName": ".tmp/mutation/sandbox",
 	"incremental": true,
 	"incrementalFile": ".tmp/mutation/incremental.json"
 }
