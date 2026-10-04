@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { ErrorCode } from '../error/ErrorCode';
-import { MakooError } from '../error/MakooError';
+import { MakooErrorCode } from '../error/ErrorCode';
+import { MakooError, validationError } from '../error/MakooError';
 import type { MountAdapter } from './types';
 
 const adapterSchema = z.object(
@@ -28,32 +28,25 @@ export function createAdapterRegistry() {
 		use(adapter: MountAdapter) {
 			const parsed = adapterSchema.safeParse(adapter);
 			if (!parsed.success) {
-				throw new MakooError(
+				throw validationError(
 					'Invalid adapter',
-					parsed.error.issues.map((issue) => ({
-						path: issue.path.length ? issue.path.join('.') : '(root)',
-						message: issue.message
-					})),
-					ErrorCode.INVALID_DECLARATION
+					MakooErrorCode.ADAPTER_INVALID,
+					parsed.error
 				);
 			}
 			if (adapters.has(parsed.data.name)) {
-				throw new MakooError(
-					`Adapter "${parsed.data.name}" is already registered`,
-					[{ path: 'name', message: parsed.data.name }],
-					ErrorCode.ADAPTER_NAME_CONFLICT
-				);
+				throw new MakooError(`Adapter "${parsed.data.name}" is already registered`, {
+					code: MakooErrorCode.ADAPTER_NAME_CONFLICT
+				});
 			}
 			adapters.set(parsed.data.name, adapter);
 		},
 		require(name: string) {
 			const adapter = adapters.get(name);
 			if (!adapter) {
-				throw new MakooError(
-					`Unknown adapter "${name}"`,
-					[{ path: 'adapter', message: name }],
-					ErrorCode.ADAPTER_NOT_FOUND
-				);
+				throw new MakooError(`Unknown adapter "${name}"`, {
+					code: MakooErrorCode.ADAPTER_NOT_FOUND
+				});
 			}
 			return adapter;
 		}

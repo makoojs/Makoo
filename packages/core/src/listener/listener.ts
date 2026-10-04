@@ -1,6 +1,6 @@
 import type { DOMObserver } from '../dom/observer';
-import { ErrorCode } from '../error/ErrorCode';
-import { MakooError } from '../error/MakooError';
+import { MakooErrorCode } from '../error/ErrorCode';
+import { injectionCleanupFailed, MakooError } from '../error/MakooError';
 import { createState } from '../state/createState';
 import type { AttachListener } from './attach';
 import {
@@ -85,21 +85,19 @@ export function createListener(
 export function startListener(listener: Listener | AttachListener, dom: DOMObserver): void {
 	const { config, executionSlot } = listener;
 	if (listener.kind === 'listener' && listener.isDisposed()) {
-		throw new MakooError('Core instance is disposed', undefined, ErrorCode.INSTANCE_DISPOSED);
+		throw new MakooError('Core instance is disposed', {
+			code: MakooErrorCode.INSTANCE_DISPOSED
+		});
 	}
 	if (executionSlot.kind === 'cleanup-failed') {
-		throw new MakooError(
-			`Injection "${config.name}" cannot restart after cleanup failed`,
-			undefined,
-			ErrorCode.INJECTION_CLEANUP_FAILED
-		).withContext({ injection: config.name, phase: 'cleanup', reason: 'cleanup-failed' });
+		throw new MakooError(`Injection "${config.name}" cannot restart after cleanup failed`, {
+			code: MakooErrorCode.INJECTION_CLOSED
+		});
 	}
 	if (listener.intent === 'removed') {
-		throw new MakooError(
-			`Injection "${config.name}" was removed`,
-			undefined,
-			ErrorCode.INJECTION_REMOVED
-		);
+		throw new MakooError(`Injection "${config.name}" was removed`, {
+			code: MakooErrorCode.INJECTION_REMOVED
+		});
 	}
 	listener.intent = 'running';
 	if (executionSlot.kind !== 'empty') return;
@@ -198,21 +196,23 @@ export function endExecution(
 	listener.executionSlot = { ...executionSlot, kind: 'closing' };
 	cleanupExecution(execution);
 	const cleanupErrors = execution.cleanupErrors;
-	const firstCleanupError = cleanupErrors[0];
-	if (firstCleanupError) {
-		const error = (executionError ?? firstCleanupError).withCleanupErrors(cleanupErrors);
-		listener.lastError = error;
+	if (cleanupErrors.length > 0) {
+		const failure = injectionCleanupFailed(
+			listener.config.name,
+			executionError ? [executionError, ...cleanupErrors] : cleanupErrors
+		);
+		listener.lastError = failure;
 		listener.executionSlot = {
 			kind: 'cleanup-failed',
 			cleanupPromise: cleanupCompletion.promise,
 			cleanupErrors
 		};
-		cleanupCompletion.reject(firstCleanupError);
-		console.error(error);
+		cleanupCompletion.reject(failure);
+		console.error(failure);
 		const completedSlot = listener.executionSlot;
 		listener.state.set('failed');
 		if (listener.kind === 'attach' && listener.executionSlot === completedSlot)
-			listener.onFailed(error);
+			listener.onFailed(executionError ?? failure);
 		return cleanupCompletion.promise;
 	}
 

@@ -8,6 +8,7 @@ import {
 	inject,
 	type ListenerStatus,
 	listen,
+	MakooErrorCode,
 	type MakooListenerDeclaration,
 	type StateView
 } from '../src';
@@ -149,7 +150,7 @@ describe('attached host listeners', () => {
 		element('#play').click();
 		expect(callback).toHaveBeenCalledOnce();
 		expect(() => listenerOf(status, 'extra')).toThrow(
-			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+			expect.objectContaining({ code: MakooErrorCode.LISTENER_NOT_FOUND })
 		);
 	});
 	it('uses the default 15 second child search budget', async () => {
@@ -381,10 +382,16 @@ describe('attached host listeners', () => {
 		await vi.waitFor(() => expect(status.getSnapshot()).toBe('failed'), { interval: 1 });
 		expect(listenerOf(status, 'play').getSnapshot()).toBe('failed');
 		expect(unmount).toHaveBeenCalledOnce();
-		expect(status.lastError).toMatchObject({ code: ErrorCode.LISTENER_TARGET_DETACHED });
-		expect(status.lastError?.cleanupErrors).toEqual(
-			expect.arrayContaining([expect.objectContaining({ cause })])
-		);
+		expect(status.lastError).toMatchObject({
+			code: MakooErrorCode.INJECTION_CLEANUP_FAILED,
+			errors: expect.arrayContaining([
+				expect.objectContaining({
+					code: MakooErrorCode.ATTACHED_LISTENER_FAILED,
+					message: expect.stringContaining('play')
+				}),
+				expect.objectContaining({ cause })
+			])
+		});
 	});
 	it.each([
 		false,
@@ -459,15 +466,18 @@ describe('attached host listeners', () => {
 			throw cause;
 		});
 		const removePause = vi.spyOn(pause, 'removeEventListener');
-		await expect(panel.stop()).rejects.toMatchObject({ cause });
+		await expect(panel.stop()).rejects.toMatchObject({
+			code: MakooErrorCode.INJECTION_CLEANUP_FAILED,
+			errors: expect.arrayContaining([expect.objectContaining({ cause })])
+		});
 		expect(callback).not.toHaveBeenCalled();
 		expect(removePause).toHaveBeenCalled();
 		expect(unmount).toHaveBeenCalledOnce();
 		expect(element('#host').children).toHaveLength(0);
 		expect(status.getSnapshot()).toBe('failed');
-		expect(status.lastError?.cleanupErrors).toEqual(
-			expect.arrayContaining([expect.objectContaining({ cause })])
-		);
+		expect(status.lastError).toMatchObject({
+			errors: expect.arrayContaining([expect.objectContaining({ cause })])
+		});
 		expect(() => panel.start()).toThrow(/cleanup failed/);
 	});
 	beforeEach(() => {
@@ -530,18 +540,27 @@ describe('attached host listeners', () => {
 		await vi.waitFor(() => expect(status.getSnapshot()).toBe('failed'), {
 			interval: 1
 		});
-		expect(status.lastError?.context).toMatchObject({ injection: 'panel', listener: name });
+		expect(status.lastError).toMatchObject({
+			code: MakooErrorCode.ATTACHED_LISTENER_FAILED,
+			message: expect.stringContaining(name)
+		});
+		expect(status.lastError?.message).toContain('panel');
 		expect(listenerOf(status, name).getSnapshot()).toBe('failed');
-		if (failure === 'bind-failed') expect(status.lastError?.cause).toBe(cause);
+		if (failure === 'bind-failed') {
+			expect(status.lastError?.cause).toMatchObject({
+				code: MakooErrorCode.LISTENER_BIND_FAILED,
+				cause
+			});
+		}
 		expect(unmount).toHaveBeenCalledOnce();
 		expect(element('#host').children).toHaveLength(0);
 		await vi.advanceTimersByTimeAsync(15000);
 		expect(mount).toHaveBeenCalledOnce();
 	});
 	it.each([
-		['duplicate', ErrorCode.INJECTION_NAME_CONFLICT, 'listeners.1.name'],
-		['override', ErrorCode.INVALID_DECLARATION, 'listeners.0.reinject'],
-		['invalid-selector', ErrorCode.INVALID_DECLARATION, 'listeners.0.listenAt']
+		['duplicate', MakooErrorCode.INJECTION_NAME_CONFLICT, 'listeners[1]'],
+		['override', MakooErrorCode.DECLARATION_INVALID, 'listeners[0].reinject'],
+		['invalid-selector', MakooErrorCode.DECLARATION_INVALID, 'listeners[0]']
 	])('rejects %s before starting any declaration', (invalid, code, path) => {
 		const core = createMakoo();
 		const mount = vi.fn();
@@ -567,7 +586,7 @@ describe('attached host listeners', () => {
 		).toThrow(
 			expect.objectContaining({
 				code,
-				issues: expect.arrayContaining([expect.objectContaining({ path })])
+				message: expect.stringContaining(path)
 			})
 		);
 		expect(mount).not.toHaveBeenCalled();
@@ -617,7 +636,7 @@ describe('attached host listeners', () => {
 		expect(Object.keys(state).sort()).toEqual(['getSnapshot', 'subscribe']);
 		expect(status.listener('play')).toBe(state);
 		expect(() => status.listener('missing')).toThrow(
-			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+			expect.objectContaining({ code: MakooErrorCode.LISTENER_NOT_FOUND })
 		);
 		expect(() => core.command('play')).toThrow(
 			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })

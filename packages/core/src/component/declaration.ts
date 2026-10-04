@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { ErrorCode } from '../error/ErrorCode';
-import { MakooError } from '../error/MakooError';
+import { MakooErrorCode } from '../error/ErrorCode';
+import { declaredName, MakooError, validationError } from '../error/MakooError';
 import { validateListener } from '../listener/declaration';
 import type { MakooComponentDeclaration, MakooComponentInput } from './types';
 
@@ -48,13 +48,11 @@ export function inject<TComponent = unknown, TProps = unknown>(
 export function validateComponent(input: unknown): MakooComponentDeclaration {
 	const injectInput = componentSchema.safeParse(input);
 	if (!injectInput.success) {
-		throw new MakooError(
-			'Invalid component declaration',
-			injectInput.error.issues.map((issue) => ({
-				path: issue.path.length ? issue.path.join('.') : '(root)',
-				message: issue.message
-			})),
-			ErrorCode.INVALID_DECLARATION
+		const name = declaredName(input);
+		throw validationError(
+			name ? `Invalid component declaration "${name}"` : 'Invalid component declaration',
+			MakooErrorCode.DECLARATION_INVALID,
+			injectInput.error
 		);
 	}
 	const names = new Set<string>();
@@ -64,33 +62,23 @@ export function validateComponent(input: unknown): MakooComponentDeclaration {
 			listener = validateListener(input);
 		} catch (error) {
 			if (!(error instanceof MakooError)) throw error;
-			throw new MakooError(
-				'Invalid attached listener',
-				error.issues.map((issue) => ({
-					...issue,
-					path: `listeners.${index}.${issue.path}`
-				})),
-				error.code,
-				error
-			);
+			throw new MakooError(`Invalid attached listener at listeners[${index}]`, {
+				code: MakooErrorCode.DECLARATION_INVALID,
+				cause: error
+			});
 		}
 		if (names.has(listener.name)) {
 			throw new MakooError(
-				`Duplicate attached listener "${listener.name}"`,
-				[{ path: `listeners.${index}.name`, message: listener.name }],
-				ErrorCode.INJECTION_NAME_CONFLICT
+				`Duplicate attached listener "${listener.name}" at listeners[${index}]`,
+				{
+					code: MakooErrorCode.INJECTION_NAME_CONFLICT
+				}
 			);
 		}
 		if (listener.reinject !== undefined) {
 			throw new MakooError(
-				'Attached listeners inherit the component recovery setting',
-				[
-					{
-						path: `listeners.${index}.reinject`,
-						message: 'Configure reinject on the component'
-					}
-				],
-				ErrorCode.INVALID_DECLARATION
+				`Attached listeners inherit the component recovery setting (listeners[${index}].reinject)`,
+				{ code: MakooErrorCode.DECLARATION_INVALID }
 			);
 		}
 		names.add(listener.name);

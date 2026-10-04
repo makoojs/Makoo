@@ -1,8 +1,8 @@
 import type { DOMObserver } from '../dom/observer';
 import { DEFAULT_DOM_TIMEOUT, waitForElement } from '../dom/waitForElement';
 import { watchElement } from '../dom/watchElement';
-import { ErrorCode } from '../error/ErrorCode';
-import { MakooError } from '../error/MakooError';
+import { MakooErrorCode } from '../error/ErrorCode';
+import { MakooAggregateError, MakooError } from '../error/MakooError';
 import { type AttachListener, stopAttachListeners } from '../listener/attach';
 import { startListener } from '../listener/listener';
 
@@ -21,7 +21,7 @@ export type ComponentExecution = {
 	readonly phase: 'pending' | 'mounting' | 'mounted' | 'ended';
 	start(): void;
 	cancel(): void;
-	finish(): Promise<MakooError[]>;
+	finish(): Promise<unknown[]>;
 };
 
 type ExecutionCallbacks = {
@@ -35,7 +35,7 @@ type ComponentExecutionState = {
 	phase: ComponentExecution['phase'];
 	componentContainer: HTMLElement | null;
 	mountedComponent: { handle: unknown } | null;
-	readonly cleanupErrors: MakooError[];
+	readonly cleanupErrors: unknown[];
 	readonly attachListeners: ReadonlyMap<string, AttachListener>;
 };
 
@@ -80,20 +80,13 @@ function awaitMountTarget(
 			config.timeout ?? DEFAULT_DOM_TIMEOUT,
 			(mountTarget) => mountComponent(execution, dom, mounter, callbacks, mountTarget),
 			() => {
-				callbacks.ended(
-					'failed',
-					new MakooError(
-						`Timed out waiting for mount target "${config.name}"`,
-						undefined,
-						ErrorCode.DOM_WAIT_TIMEOUT
-					).withContext({ injection: config.name, phase: 'wait', reason: 'timeout' })
-				);
+				callbacks.ended('failed', waitTimedOut(config.name));
 			},
-			(cause) => callbacks.ended('failed', mountError(config.name, 'wait', cause))
+			(cause) => callbacks.ended('failed', mountFailed(execution, cause))
 		);
 		if (execution.phase === 'pending') callbacks.status('waiting');
 	} catch (cause) {
-		callbacks.ended('failed', mountError(config.name, 'mount', cause));
+		callbacks.ended('failed', mountFailed(execution, cause));
 	}
 }
 
@@ -143,8 +136,7 @@ function mountComponent(
 		execution.mountedComponent = { handle: mountHandle };
 		execution.phase = 'mounted';
 	} catch (cause) {
-		if (cause instanceof MakooError) execution.cleanupErrors.push(...cause.cleanupErrors);
-		callbacks.ended('failed', mountError(config.name, 'mount', cause));
+		callbacks.ended('failed', mountFailed(execution, cause));
 		return;
 	}
 
@@ -179,7 +171,7 @@ async function cleanupExecution(
 	execution: ComponentExecutionState,
 	dom: DOMObserver,
 	mounter: ComponentMounter
-): Promise<MakooError[]> {
+): Promise<unknown[]> {
 	execution.phase = 'ended';
 	execution.domWaitAbortController.abort();
 	const attachListenerErrors = await stopAttachListeners(execution.attachListeners, dom);
@@ -190,7 +182,7 @@ async function cleanupExecution(
 function unmountComponent(
 	execution: ComponentExecutionState,
 	mounter: ComponentMounter
-): MakooError[] {
+): unknown[] {
 	const { config, cleanupErrors } = execution;
 
 	const mountedComponent = execution.mountedComponent;
@@ -200,13 +192,10 @@ function unmountComponent(
 			mounter.unmount(mountedComponent.handle);
 		} catch (cause) {
 			cleanupErrors.push(
-				cleanupError(
-					config.name,
-					`Failed to unmount "${config.name}"`,
-					ErrorCode.ADAPTER_UNMOUNT_FAIL,
-					'unmount-failed',
+				new MakooError(`Failed to unmount "${config.name}"`, {
+					code: MakooErrorCode.UNMOUNT_FAILED,
 					cause
-				)
+				})
 			);
 		}
 	}
@@ -218,13 +207,10 @@ function unmountComponent(
 			componentContainer.remove();
 		} catch (cause) {
 			cleanupErrors.push(
-				cleanupError(
-					config.name,
-					`Failed to remove the container for "${config.name}"`,
-					ErrorCode.COMPONENT_CONTAINER_REMOVE_FAIL,
-					'container-remove-failed',
+				new MakooError(`Failed to remove container of "${config.name}"`, {
+					code: MakooErrorCode.CONTAINER_REMOVE_FAILED,
 					cause
-				)
+				})
 			);
 		}
 	}
@@ -234,41 +220,29 @@ function collectAttachListenerErrors(
 	execution: ComponentExecutionState,
 	errors: readonly MakooError[]
 ): void {
-	for (const error of errors)
-		execution.cleanupErrors.push(error.withContext({ injection: execution.config.name }));
+	execution.cleanupErrors.push(...errors);
 }
 
-function targetDetachedError(injectionName: string): MakooError {
-	return new MakooError(
-		`Mount target "${injectionName}" disconnected`,
-		undefined,
-		ErrorCode.COMPONENT_TARGET_DETACHED
-	).withContext({ injection: injectionName, phase: 'mount', reason: 'target-detached' });
-}
-
-function mountError(injectionName: string, phase: 'wait' | 'mount', cause: unknown): MakooError {
-	return new MakooError(
-		`Failed to mount "${injectionName}"`,
-		undefined,
-		ErrorCode.ADAPTER_MOUNT_FAIL,
-		causeError(cause)
-	).withContext({ injection: injectionName, phase, reason: 'mount-failed' });
-}
-
-function cleanupError(
-	injectionName: string,
-	message: string,
-	code: string,
-	reason: string,
-	cause: unknown
-): MakooError {
-	return new MakooError(message, undefined, code, causeError(cause)).withContext({
-		injection: injectionName,
-		phase: 'cleanup',
-		reason
+function waitTimedOut(name: string): MakooError {
+	return new MakooError(`Timed out waiting for "${name}"`, {
+		code: MakooErrorCode.TARGET_WAIT_TIMEOUT
 	});
 }
 
-function causeError(cause: unknown): Error {
-	return cause instanceof Error ? cause : new Error(String(cause), { cause });
+function targetDetachedError(name: string): MakooError {
+	return new MakooError(`Mount target "${name}" disconnected`, {
+		code: MakooErrorCode.MOUNT_TARGET_DETACHED
+	});
+}
+
+function mountFailed(execution: ComponentExecutionState, cause: unknown): MakooError {
+	const adapterCleanup =
+		cause instanceof MakooAggregateError && cause.code === MakooErrorCode.MOUNT_CLEANUP_FAILED
+			? cause
+			: undefined;
+	if (adapterCleanup) execution.cleanupErrors.push(...adapterCleanup.errors);
+	return new MakooError(`Failed to mount "${execution.config.name}"`, {
+		code: MakooErrorCode.MOUNT_FAILED,
+		cause: adapterCleanup ? adapterCleanup.cause : cause
+	});
 }

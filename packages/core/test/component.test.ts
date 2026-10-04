@@ -1,6 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AdapterMountParams, MountAdapter } from '../src';
-import { createMakoo, ErrorCode, type InjectionCommand, inject, listen } from '../src';
+import {
+	createMakoo,
+	ErrorCode,
+	type InjectionCommand,
+	inject,
+	listen,
+	MakooErrorCode
+} from '../src';
 
 describe('single component injection', () => {
 	const handles: InjectionCommand[] = [];
@@ -190,8 +197,8 @@ describe('single component injection', () => {
 		await vi.advanceTimersByTimeAsync(1);
 		expect(core.status('panel').getSnapshot()).toBe('failed');
 		expect(core.status('panel').lastError).toMatchObject({
-			code: 'MAKOO_DOM_WAIT_TIMEOUT',
-			context: { injection: 'panel', phase: 'wait', reason: 'timeout' }
+			code: 'MAKOO_TARGET_WAIT_TIMEOUT',
+			message: expect.stringContaining('panel')
 		});
 		const host = document.createElement('section');
 		host.id = 'host';
@@ -236,7 +243,7 @@ describe('single component injection', () => {
 		await vi.waitFor(() => expect(core.status('panel').getSnapshot()).toBe('failed'), {
 			interval: 1
 		});
-		expect(core.status('panel').lastError?.code).toBe('MAKOO_COMPONENT_TARGET_DETACHED');
+		expect(core.status('panel').lastError?.code).toBe('MAKOO_MOUNT_TARGET_DETACHED');
 		expect(vi.getTimerCount()).toBe(0);
 	});
 
@@ -293,7 +300,7 @@ describe('single component injection', () => {
 		});
 		expect(host.children).toHaveLength(0);
 		expect(status.getSnapshot()).toBe('failed');
-		expect(core.status('panel').lastError?.code).toBe('MAKOO_COMPONENT_TARGET_DETACHED');
+		expect(core.status('panel').lastError?.code).toBe('MAKOO_MOUNT_TARGET_DETACHED');
 		expect(vi.getTimerCount()).toBe(0);
 	});
 
@@ -382,8 +389,10 @@ describe('single component injection', () => {
 			Reflect.apply(core.apply, core, [[valid, { ...valid, name: 'bad', ...invalid }]])
 		).toThrow(
 			expect.objectContaining({
-				code: ErrorCode.INVALID_DECLARATION,
-				issues: expect.arrayContaining([expect.objectContaining({ path })])
+				code: MakooErrorCode.DECLARATION_INVALID,
+				message: expect.stringContaining(
+					path.startsWith('listeners') ? 'listeners[0]' : path
+				)
 			})
 		);
 		expect(mount).not.toHaveBeenCalled();
@@ -402,8 +411,8 @@ describe('single component injection', () => {
 			Reflect.apply(core.useAdapter, core, [{ ...adapter(() => 'handle'), ...invalid }])
 		).toThrow(
 			expect.objectContaining({
-				code: ErrorCode.INVALID_DECLARATION,
-				issues: [expect.objectContaining({ path })]
+				code: MakooErrorCode.ADAPTER_INVALID,
+				message: expect.stringContaining(path)
 			})
 		);
 		expect(() => core.useAdapter(adapter(() => 'handle'))).not.toThrow();
@@ -425,7 +434,7 @@ describe('single component injection', () => {
 		).toThrow(
 			expect.objectContaining({
 				code: ErrorCode.ADAPTER_NOT_FOUND,
-				issues: [{ path: 'adapter', message: 'missing' }]
+				message: expect.stringContaining('missing')
 			})
 		);
 		host.click();
@@ -448,7 +457,7 @@ describe('single component injection', () => {
 		expect(() => core.useAdapter(adapter(second))).toThrow(
 			expect.objectContaining({
 				code: ErrorCode.ADAPTER_NAME_CONFLICT,
-				issues: [{ path: 'name', message: 'plain' }]
+				message: expect.stringContaining('plain')
 			})
 		);
 		const host = document.createElement('section');
@@ -483,7 +492,7 @@ describe('single component injection', () => {
 		await vi.waitFor(() => expect(core.status('panel').getSnapshot()).toBe('failed'), {
 			interval: 1
 		});
-		expect(core.status('panel').lastError?.code).toBe('MAKOO_ADAPTER_MOUNT_FAIL');
+		expect(core.status('panel').lastError?.code).toBe('MAKOO_MOUNT_FAILED');
 		expect(host.querySelector('div')).toBeNull();
 		expect(() =>
 			core.apply([listen({ name: 'panel', listenAt: '.play', type: 'click', callback() {} })])

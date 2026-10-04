@@ -1,6 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AdapterMountParams, MountAdapter } from '../src';
-import { createMakoo, ErrorCode, type InjectionCommand, inject, listen, MakooError } from '../src';
+import {
+	createMakoo,
+	ErrorCode,
+	type InjectionCommand,
+	inject,
+	listen,
+	MakooAggregateError,
+	MakooErrorCode
+} from '../src';
 
 describe('control races and cleanup failure', () => {
 	const handles: InjectionCommand[] = [];
@@ -36,8 +44,12 @@ describe('control races and cleanup failure', () => {
 		true
 	])('locks an adapter mount cleanup failure, with container cleanup failure=%s', async (failContainerCleanup) => {
 		const host = hostElement();
-		const frameworkCleanup = new MakooError('framework cleanup failed');
-		const mountError = new MakooError('mount failed').withCleanupErrors([frameworkCleanup]);
+		const frameworkCleanup = new Error('framework cleanup failed');
+		const mountCause = new Error('mount failed');
+		const mountError = new MakooAggregateError([frameworkCleanup], 'adapter cleanup failed', {
+			code: MakooErrorCode.MOUNT_CLEANUP_FAILED,
+			cause: mountCause
+		});
 		const containerError = new Error('container cleanup failed');
 		const unmount = vi.fn();
 		const mount = vi.fn(({ container }: AdapterMountParams) => {
@@ -57,16 +69,24 @@ describe('control races and cleanup failure', () => {
 			interval: 1
 		});
 		const diagnostic = core.status('panel').lastError;
-		expect(diagnostic?.cause).toBe(mountError);
-		expect(diagnostic?.cleanupErrors[0]).toBe(frameworkCleanup);
-		expect(diagnostic?.cleanupErrors).toHaveLength(failContainerCleanup ? 2 : 1);
-		if (failContainerCleanup) expect(diagnostic?.cleanupErrors[1]?.cause).toBe(containerError);
+		expect(diagnostic).toMatchObject({
+			code: MakooErrorCode.INJECTION_CLEANUP_FAILED,
+			errors: expect.arrayContaining([
+				expect.objectContaining({ code: MakooErrorCode.MOUNT_FAILED, cause: mountCause }),
+				frameworkCleanup
+			])
+		});
+		expect(diagnostic).toBeInstanceOf(MakooAggregateError);
+		if (!(diagnostic instanceof MakooAggregateError)) throw diagnostic;
+		expect(diagnostic.errors).toHaveLength(failContainerCleanup ? 3 : 2);
+		if (failContainerCleanup)
+			expect(diagnostic.errors[2]).toMatchObject({ cause: containerError });
 		expect(() => panel.start()).toThrow(/cannot restart after cleanup failed/);
 		expect(core.status('panel').lastError).toBe(diagnostic);
 		const completion = panel.stop();
 		await Promise.all([
-			expect(completion).rejects.toBe(frameworkCleanup),
-			expect(panel.remove()).rejects.toBe(frameworkCleanup)
+			expect(completion).rejects.toBe(diagnostic),
+			expect(panel.remove()).rejects.toBe(diagnostic)
 		]);
 		expect(core.command('panel')).toBe(panel);
 		expect(() =>
@@ -291,7 +311,7 @@ describe('control races and cleanup failure', () => {
 		const [firstResult, secondResult] = await Promise.allSettled([first, second]);
 		expect(firstResult).toMatchObject({
 			status: 'rejected',
-			reason: { code: 'MAKOO_ADAPTER_UNMOUNT_FAIL' }
+			reason: { code: 'MAKOO_INJECTION_CLEANUP_FAILED' }
 		});
 		expect(secondResult).toEqual(firstResult);
 		expect(unmount).toHaveBeenCalledOnce();
@@ -300,7 +320,7 @@ describe('control races and cleanup failure', () => {
 		expect(core.status('panel').getSnapshot()).toBe('failed');
 		await expect(panel.remove()).rejects.toBe(await first.catch((error: unknown) => error));
 		expect(unmount).toHaveBeenCalledOnce();
-		expect(core.status('panel').lastError?.code).toBe('MAKOO_ADAPTER_UNMOUNT_FAIL');
+		expect(core.status('panel').lastError?.code).toBe('MAKOO_INJECTION_CLEANUP_FAILED');
 		expect(() =>
 			core.apply([listen({ name: 'panel', listenAt: '#host', type: 'click', callback() {} })])
 		).toThrow(expect.objectContaining({ code: ErrorCode.INJECTION_NAME_CONFLICT }));
@@ -327,13 +347,18 @@ describe('control races and cleanup failure', () => {
 		});
 		expect(unmount).not.toHaveBeenCalled();
 		expect(host.querySelector('div')?.isConnected).toBe(true);
-		expect(core.status('panel').lastError?.code).toBe('MAKOO_ADAPTER_MOUNT_FAIL');
-		expect(core.status('panel').lastError?.cause).toMatchObject({ message: 'mount failed' });
-		expect(core.status('panel').lastError?.cleanupErrors[0]).toMatchObject({
-			code: 'MAKOO_COMPONENT_CONTAINER_REMOVE_FAIL'
-		});
-		expect(core.status('panel').lastError?.cleanupErrors[0]?.cause).toMatchObject({
-			message: 'remove failed'
+		expect(core.status('panel').lastError).toMatchObject({
+			code: 'MAKOO_INJECTION_CLEANUP_FAILED',
+			errors: [
+				expect.objectContaining({
+					code: 'MAKOO_MOUNT_FAILED',
+					cause: expect.objectContaining({ message: 'mount failed' })
+				}),
+				expect.objectContaining({
+					code: 'MAKOO_CONTAINER_REMOVE_FAILED',
+					cause: expect.objectContaining({ message: 'remove failed' })
+				})
+			]
 		});
 		expect(console.error).toHaveBeenCalledWith(core.status('panel').lastError);
 		const diagnostic = core.status('panel').lastError;
@@ -359,8 +384,8 @@ describe('control races and cleanup failure', () => {
 		await vi.waitFor(() => expect(core.status('panel').getSnapshot()).toBe('failed'), {
 			interval: 1
 		});
-		expect(core.status('panel').lastError?.code).toBe('MAKOO_ADAPTER_MOUNT_FAIL');
-		expect(core.status('panel').lastError?.cleanupErrors).toEqual([]);
+		expect(core.status('panel').lastError?.code).toBe('MAKOO_MOUNT_FAILED');
+		expect(core.status('panel').lastError).not.toBeInstanceOf(MakooAggregateError);
 		expect(unmount).not.toHaveBeenCalled();
 		fail = false;
 		panel.start();
@@ -388,7 +413,7 @@ describe('control races and cleanup failure', () => {
 		]);
 		handles.push(core.command('play'), core.command('panel'));
 		await expect(core.command('panel').stop()).rejects.toMatchObject({
-			code: 'MAKOO_ADAPTER_UNMOUNT_FAIL'
+			code: 'MAKOO_INJECTION_CLEANUP_FAILED'
 		});
 		button.click();
 		expect(callback).toHaveBeenCalledOnce();
@@ -490,10 +515,13 @@ describe('control races and cleanup failure', () => {
 		button.remove();
 		await Promise.resolve();
 		expect(core.status('play').getSnapshot()).toBe('failed');
-		expect(core.status('play').lastError?.code).toBe('MAKOO_LISTENER_TARGET_DETACHED');
-		expect(core.status('play').lastError?.cleanupErrors[0]?.code).toBe(
-			'MAKOO_LISTENER_UNBIND_FAIL'
-		);
+		expect(core.status('play').lastError).toMatchObject({
+			code: 'MAKOO_INJECTION_CLEANUP_FAILED',
+			errors: [
+				expect.objectContaining({ code: 'MAKOO_LISTENER_TARGET_DETACHED' }),
+				expect.objectContaining({ code: 'MAKOO_LISTENER_UNBIND_FAILED' })
+			]
+		});
 		expect(console.error).toHaveBeenCalledWith(core.status('play').lastError);
 		expect(add).not.toHaveBeenCalled();
 		const diagnostic = core.status('play').lastError;
@@ -501,8 +529,8 @@ describe('control races and cleanup failure', () => {
 		expect(core.status('play').lastError).toBe(diagnostic);
 		const first = play.stop();
 		await Promise.all([
-			expect(first).rejects.toMatchObject({ code: 'MAKOO_LISTENER_UNBIND_FAIL' }),
-			expect(play.remove()).rejects.toMatchObject({ code: 'MAKOO_LISTENER_UNBIND_FAIL' })
+			expect(first).rejects.toBe(diagnostic),
+			expect(play.remove()).rejects.toBe(diagnostic)
 		]);
 		expect(() => core.command('play')).not.toThrow();
 	});

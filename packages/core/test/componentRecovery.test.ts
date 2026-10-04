@@ -104,7 +104,7 @@ describe('injection target recovery', () => {
 		await Promise.resolve();
 		expect(core.status('panel').getSnapshot()).toBe('waiting');
 		await vi.advanceTimersByTimeAsync(1);
-		expect(core.status('panel').lastError?.code).toBe('MAKOO_DOM_WAIT_TIMEOUT');
+		expect(core.status('panel').lastError?.code).toBe('MAKOO_TARGET_WAIT_TIMEOUT');
 		document.body.append(host);
 		await Promise.resolve();
 		expect(mount).toHaveBeenCalledOnce();
@@ -141,12 +141,12 @@ describe('injection target recovery', () => {
 			interval: 1
 		});
 		expect(container.isConnected).toBe(false);
-		expect(core.status('panel').lastError?.cleanupErrors[0]?.code).toBe(
-			'MAKOO_ADAPTER_UNMOUNT_FAIL'
+		expect(core.status('panel').lastError?.errors).toEqual(
+			expect.arrayContaining([expect.objectContaining({ code: 'MAKOO_UNMOUNT_FAILED' })])
 		);
 		expect(mount).toHaveBeenCalledOnce();
 		expect(() => panel.start()).toThrow(/cannot restart/);
-		await expect(panel.stop()).rejects.toMatchObject({ code: 'MAKOO_ADAPTER_UNMOUNT_FAIL' });
+		await expect(panel.stop()).rejects.toBe(core.status('panel').lastError);
 	});
 
 	it('rejects a container moved outside its target during mount before publishing mounted', async () => {

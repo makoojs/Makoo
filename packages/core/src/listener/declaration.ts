@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { ErrorCode } from '../error/ErrorCode';
-import { MakooError } from '../error/MakooError';
+import { MakooErrorCode } from '../error/ErrorCode';
+import { declaredName, validationError } from '../error/MakooError';
 import type { MakooListenerDeclaration, MakooListenerInput } from './types';
 
 const nonEmptyString = z
@@ -48,13 +48,11 @@ export function listen(input: MakooListenerInput): MakooListenerDeclaration {
 export function validateListener(input: unknown): MakooListenerDeclaration {
 	const parsed = listenerSchema.safeParse(input);
 	if (!parsed.success) {
-		throw new MakooError(
-			'Invalid listener declaration',
-			parsed.error.issues.map((issue) => ({
-				path: issue.path.length ? issue.path.join('.') : '(root)',
-				message: issue.message
-			})),
-			ErrorCode.INVALID_DECLARATION
+		const name = declaredName(input);
+		throw validationError(
+			name ? `Invalid listener declaration "${name}"` : 'Invalid listener declaration',
+			MakooErrorCode.DECLARATION_INVALID,
+			parsed.error
 		);
 	}
 	return Object.freeze(parsed.data);

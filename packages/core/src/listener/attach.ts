@@ -37,7 +37,7 @@ export async function stopAttachListeners(
 		if (currentSlot.kind === 'active') currentSlot.execution.phase = 'cancelled';
 	}
 	const errors: MakooError[] = [];
-	for (const [name, attachListener] of attachListeners) {
+	for (const attachListener of attachListeners.values()) {
 		const currentSlot = attachListener.executionSlot;
 		switch (currentSlot.kind) {
 			case 'empty':
@@ -46,8 +46,7 @@ export async function stopAttachListeners(
 					attachListener.state.set('idle');
 				continue;
 			case 'cleanup-failed':
-				for (const error of currentSlot.cleanupErrors)
-					errors.push(error.withContext({ listener: name }));
+				errors.push(...currentSlot.cleanupErrors);
 				continue;
 		}
 		const { execution } = currentSlot;
@@ -56,8 +55,7 @@ export async function stopAttachListeners(
 		} catch {
 			// Collect every cleanup error below, not just the rejected first error.
 		}
-		for (const error of execution.cleanupErrors)
-			errors.push(error.withContext({ listener: name }));
+		errors.push(...execution.cleanupErrors);
 	}
 	return errors;
 }

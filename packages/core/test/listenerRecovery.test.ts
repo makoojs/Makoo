@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createMakoo, ErrorCode, type InjectionCommand, listen } from '../src';
+import { createMakoo, ErrorCode, type InjectionCommand, listen, MakooErrorCode } from '../src';
 
 describe('host listener waiting and recovery', () => {
 	const handles: InjectionCommand[] = [];
@@ -33,8 +33,8 @@ describe('host listener waiting and recovery', () => {
 		vi.advanceTimersByTime(1);
 		expect(core.status('play').getSnapshot()).toBe('failed');
 		expect(core.status('play').lastError).toMatchObject({
-			code: 'MAKOO_DOM_WAIT_TIMEOUT',
-			context: { injection: 'play', phase: 'wait', reason: 'timeout' }
+			code: 'MAKOO_TARGET_WAIT_TIMEOUT',
+			message: expect.stringContaining('play')
 		});
 		expect(vi.getTimerCount()).toBe(0);
 		const button = document.createElement('button');
@@ -113,8 +113,8 @@ describe('host listener waiting and recovery', () => {
 			])
 		).toThrow(
 			expect.objectContaining({
-				code: ErrorCode.INVALID_DECLARATION,
-				issues: [expect.objectContaining({ path: Object.keys(invalid)[0] })]
+				code: MakooErrorCode.DECLARATION_INVALID,
+				message: expect.stringContaining(Object.keys(invalid)[0] ?? '')
 			})
 		);
 		expect(() => core.command('play')).toThrow(

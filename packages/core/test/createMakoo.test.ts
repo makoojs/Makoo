@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createMakoo, ErrorCode, MakooError } from '../src';
+import { createMakoo, MakooError, MakooErrorCode } from '../src';
 
 describe('createMakoo', () => {
 	it('should reject an empty declaration batch', () => {
@@ -7,7 +7,7 @@ describe('createMakoo', () => {
 
 		expect(() => makoo.apply([])).toThrow(MakooError);
 		expect(() => makoo.apply([])).toThrow(
-			expect.objectContaining({ code: ErrorCode.INVALID_DECLARATION })
+			expect.objectContaining({ code: MakooErrorCode.DECLARATION_INVALID })
 		);
 	});
 
@@ -20,8 +20,8 @@ describe('createMakoo', () => {
 
 		expect(() => Reflect.apply(makoo.apply, makoo, [[declaration]])).toThrow(
 			expect.objectContaining({
-				code: ErrorCode.INVALID_DECLARATION,
-				issues: [expect.objectContaining({ path: 'kind' })]
+				code: MakooErrorCode.DECLARATION_INVALID,
+				message: expect.stringContaining('kind')
 			})
 		);
 	});
