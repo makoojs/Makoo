@@ -25,6 +25,7 @@ export class MakooAggregateError extends MakooError {
 }
 
 function aggregateMessage(message: string, errors: readonly unknown[]): string {
+	// A child may itself list further errors. The parent keeps one line per direct child.
 	const lines = errors.map((error) => {
 		const text = error instanceof Error ? error.message : String(error);
 		const newline = text.indexOf('\n');
