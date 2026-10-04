@@ -310,7 +310,15 @@ describe('control races and cleanup failure', () => {
 		const [firstResult, secondResult] = await Promise.allSettled([first, second]);
 		expect(firstResult).toMatchObject({
 			status: 'rejected',
-			reason: { code: 'MAKOO_INJECTION_CLEANUP_FAILED' }
+			reason: {
+				code: MakooErrorCode.INJECTION_CLEANUP_FAILED,
+				errors: [
+					expect.objectContaining({
+						code: MakooErrorCode.UNMOUNT_FAILED,
+						cause: expect.objectContaining({ message: 'unmount failed' })
+					})
+				]
+			}
 		});
 		expect(secondResult).toEqual(firstResult);
 		expect(unmount).toHaveBeenCalledOnce();
@@ -319,7 +327,15 @@ describe('control races and cleanup failure', () => {
 		expect(core.status('panel').getSnapshot()).toBe('failed');
 		await expect(panel.remove()).rejects.toBe(await first.catch((error: unknown) => error));
 		expect(unmount).toHaveBeenCalledOnce();
-		expect(core.status('panel').lastError?.code).toBe('MAKOO_INJECTION_CLEANUP_FAILED');
+		expect(core.status('panel').lastError).toMatchObject({
+			code: MakooErrorCode.INJECTION_CLEANUP_FAILED,
+			errors: [
+				expect.objectContaining({
+					code: MakooErrorCode.UNMOUNT_FAILED,
+					cause: expect.objectContaining({ message: 'unmount failed' })
+				})
+			]
+		});
 		expect(() =>
 			core.apply([listen({ name: 'panel', listenAt: '#host', type: 'click', callback() {} })])
 		).toThrow(expect.objectContaining({ code: MakooErrorCode.INJECTION_NAME_CONFLICT }));
