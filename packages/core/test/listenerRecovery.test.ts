@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createMakoo, ErrorCode, type InjectionCommand, listen, MakooErrorCode } from '../src';
+import { createMakoo, type InjectionCommand, listen, MakooErrorCode } from '../src';
 
 describe('host listener waiting and recovery', () => {
 	const handles: InjectionCommand[] = [];
@@ -118,7 +118,7 @@ describe('host listener waiting and recovery', () => {
 			})
 		);
 		expect(() => core.command('play')).toThrow(
-			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 		);
 		expect(vi.getTimerCount()).toBe(0);
 	});

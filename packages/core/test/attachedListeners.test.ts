@@ -3,7 +3,6 @@ import {
 	type ComponentCommand,
 	type ComponentStatusHandle,
 	createMakoo,
-	ErrorCode,
 	type InjectionCommand,
 	inject,
 	type ListenerStatus,
@@ -450,7 +449,7 @@ describe('attached host listeners', () => {
 		expect(callback).toHaveBeenCalledTimes(intent === 'restart' ? 2 : 0);
 		if (intent === 'remove')
 			expect(() => core.command('panel')).toThrow(
-				expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+				expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 			);
 	});
 	it('invalidates every child before cleanup notifications and still unmounts when one unbind fails', async () => {
@@ -624,7 +623,7 @@ describe('attached host listeners', () => {
 		);
 		expect(mount).not.toHaveBeenCalled();
 		expect(() => core.command('first')).toThrow(
-			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 		);
 	});
 	afterEach(async () => {
@@ -672,7 +671,7 @@ describe('attached host listeners', () => {
 			expect.objectContaining({ code: MakooErrorCode.LISTENER_NOT_FOUND })
 		);
 		expect(() => core.command('play')).toThrow(
-			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 		);
 		button.click();
 		expect(callback).toHaveBeenCalledOnce();

@@ -14,8 +14,7 @@ export type {
 	MakooInjectionDeclaration,
 	MakooRuntime
 } from './core/types';
-export type { ErrorCodeValue } from './error/ErrorCode';
-export { ErrorCode, MakooErrorCode } from './error/ErrorCode';
+export { MakooErrorCode } from './error/ErrorCode';
 export { MakooAggregateError, MakooError } from './error/MakooError';
 export { listen } from './listener/declaration';
 export type {

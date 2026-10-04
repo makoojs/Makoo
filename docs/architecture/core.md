@@ -171,7 +171,7 @@ Injection execution ends in this order:
 
 If a step fails, the remaining executable steps are still attempted. A round's cleanup runs only once and repeated requests share its result; release actions are not registered into a single list whose registration order drives business cleanup.
 
-The internal end result separately expresses the end reason, the original execution error, and the collection of cleanup errors. The reasons discussed are explicit stop, target invalidation, and execution failure; when the concrete TypeScript types are settled, the failure reason must match the diagnostics and no cleanup error may be lost.
+The internal end result separately expresses the end reason, the original execution error, and the collection of cleanup errors. The reasons are explicit stop, target invalidation, and execution failure. When cleanup produced errors, the public diagnostic is one new `MakooAggregateError` (`INJECTION_CLEANUP_FAILED`): the execution error first, then each cleanup step. That object is both `lastError` and the rejection of `stop` / `remove`. `dispose` wraps those aggregates in `INSTANCE_CLEANUP_FAILED`. An attached listener does not build its own cleanup aggregate; its cleanup errors are merged into the component's list.
 
 | Result | Next step for the long-lived object |
 | --- | --- |
@@ -242,7 +242,7 @@ Adapters are registered with useAdapter, and injection declarations select one e
 
 Returning a mount result normally satisfies core's condition for continuing execution. React keeps the current boundary of returning a handle after root.render, without claiming that the first DOM commit or effects have completed. Unmount is a synchronous call, and the container is removed only after it returns normally.
 
-The adapter tears down framework resources created before a mount failure, and cleanup failures must also be reported. Business exceptions in event handlers are only recorded as diagnostics and are not escalated into execution failures. The error domain expresses errors, and the owning feature decides subsequent control; the exits for configuration errors, background errors, and explicit cleanup errors follow the behavior spec.
+The adapter tears down framework resources created before a mount failure. An ordinary `mount` or `unmount` throw is left raw; core wraps it once as `MOUNT_FAILED` or `UNMOUNT_FAILED`, with the raw value as `cause`. If mount fails and the adapter's own cleanup also fails, the adapter throws `MakooAggregateError` with core's `MOUNT_CLEANUP_FAILED`: `cause` is the original mount error and `errors` are the cleanup failures. Core then closes the injection. Hook misuse is a `MakooError` with the adapter package's own code. Event-handler and status-subscriber failures are reported and do not by themselves end the injection; a subscriber failure does not replace `lastError`. The error domain only defines `MakooError`, `MakooAggregateError`, and `MakooErrorCode`. The owning injection decides disposal.
 
 ## End-to-end scenarios and acceptance mapping
 

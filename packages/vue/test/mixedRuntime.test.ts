@@ -1,10 +1,10 @@
 import {
 	type ComponentStatusHandle,
 	createMakoo,
-	ErrorCode,
 	inject,
 	type ListenerStatusHandle,
-	listen
+	listen,
+	MakooErrorCode
 } from '@makoojs/core';
 import { createReactAdapter, useComponentStatus, useListenerStatus } from '@makoojs/react';
 import { act, createElement } from 'react';
@@ -85,7 +85,7 @@ describe('mixed Vue, React, and listener runtime', () => {
 					callback: vi.fn()
 				})
 			])
-		).toThrow(expect.objectContaining({ code: ErrorCode.INJECTION_NAME_CONFLICT }));
+		).toThrow(expect.objectContaining({ code: MakooErrorCode.INJECTION_NAME_CONFLICT }));
 		expect(element('#vue-host').childElementCount).toBe(0);
 
 		expect(() =>
@@ -111,7 +111,7 @@ describe('mixed Vue, React, and listener runtime', () => {
 					]
 				})
 			])
-		).toThrow(expect.objectContaining({ code: ErrorCode.INJECTION_NAME_CONFLICT }));
+		).toThrow(expect.objectContaining({ code: MakooErrorCode.INJECTION_NAME_CONFLICT }));
 		expect(element('#vue-host').childElementCount).toBe(0);
 	});
 
@@ -222,10 +222,10 @@ describe('mixed Vue, React, and listener runtime', () => {
 		element('#standalone').click();
 		expect(standalone).toHaveBeenCalledTimes(2);
 		expect(() => core.command('standalone')).toThrow(
-			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 		);
 		expect(() => core.status('react-panel')).toThrow(
-			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 		);
 	});
 });

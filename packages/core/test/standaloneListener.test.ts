@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createMakoo, ErrorCode, listen, MakooErrorCode } from '../src';
+import { createMakoo, listen, MakooErrorCode } from '../src';
 
 describe('standalone host listeners', () => {
 	beforeEach(() => {
@@ -37,7 +37,7 @@ describe('standalone host listeners', () => {
 		expect(core.command('play')).toBe(handle);
 		await handle.remove();
 		expect(() => core.command('play')).toThrow(
-			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 		);
 	});
 
@@ -62,10 +62,10 @@ describe('standalone host listeners', () => {
 		document.querySelector<HTMLButtonElement>('.host')?.click();
 		expect(callback).not.toHaveBeenCalled();
 		expect(() => core.command('good')).toThrow(
-			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 		);
 		expect(() => core.command('bad')).toThrow(
-			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 		);
 	});
 
@@ -75,20 +75,20 @@ describe('standalone host listeners', () => {
 		const declaration = listen({ name: 'play', listenAt: '.host', type: 'click', callback });
 		expect(() => core.apply([declaration, declaration])).toThrow(
 			expect.objectContaining({
-				code: ErrorCode.INJECTION_NAME_CONFLICT,
+				code: MakooErrorCode.INJECTION_NAME_CONFLICT,
 				message: expect.stringContaining('play')
 			})
 		);
 		expect(() => core.command('play')).toThrow(
-			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 		);
 		core.apply([declaration]);
 		const original = core.command('play');
 		expect(() => core.apply([{ ...declaration, name: 'new' }, declaration])).toThrow(
-			expect.objectContaining({ code: ErrorCode.INJECTION_NAME_CONFLICT })
+			expect.objectContaining({ code: MakooErrorCode.INJECTION_NAME_CONFLICT })
 		);
 		expect(() => core.command('new')).toThrow(
-			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 		);
 		expect(core.command('play')).toBe(original);
 		document.querySelector<HTMLButtonElement>('.host')?.click();
@@ -283,7 +283,7 @@ describe('standalone host listeners', () => {
 		expect(replacement).not.toBe(old);
 		expect(core.status('play')).not.toBe(oldStatus);
 		expect(() => old.start()).toThrow(
-			expect.objectContaining({ code: ErrorCode.INJECTION_REMOVED })
+			expect.objectContaining({ code: MakooErrorCode.INJECTION_REMOVED })
 		);
 		await old.remove();
 		await old.stop();
@@ -321,7 +321,7 @@ describe('standalone host listeners', () => {
 			})
 		);
 		expect(() => core.command('play')).toThrow(
-			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 		);
 		document.querySelector<HTMLButtonElement>('.host')?.click();
 		expect(callback).not.toHaveBeenCalled();
@@ -355,10 +355,10 @@ describe('standalone host listeners', () => {
 		first.click();
 		expect(callback).toHaveBeenCalledTimes(2);
 		expect(() => core.command('play')).toThrow(
-			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 		);
 		expect(() => handle.start()).toThrow(
-			expect.objectContaining({ code: ErrorCode.INJECTION_REMOVED })
+			expect.objectContaining({ code: MakooErrorCode.INJECTION_REMOVED })
 		);
 	});
 
@@ -369,7 +369,7 @@ describe('standalone host listeners', () => {
 		await handle.stop();
 		const removal = handle.remove();
 		expect(() => core.command('play')).toThrow(
-			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 		);
 		expect(handle.stop()).toBe(removal);
 		expect(handle.remove()).toBe(removal);

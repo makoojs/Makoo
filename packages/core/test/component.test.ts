@@ -1,13 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AdapterMountParams, MountAdapter } from '../src';
-import {
-	createMakoo,
-	ErrorCode,
-	type InjectionCommand,
-	inject,
-	listen,
-	MakooErrorCode
-} from '../src';
+import { createMakoo, type InjectionCommand, inject, listen, MakooErrorCode } from '../src';
 
 describe('single component injection', () => {
 	const handles: InjectionCommand[] = [];
@@ -122,7 +115,7 @@ describe('single component injection', () => {
 		await panel.stop();
 		const removal = panel.remove();
 		expect(() => core.command('panel')).toThrow(
-			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 		);
 		expect(panel.stop()).toBe(removal);
 		expect(panel.remove()).toBe(removal);
@@ -168,10 +161,10 @@ describe('single component injection', () => {
 		await panel.remove();
 		expect(containers[1]?.isConnected).toBe(false);
 		expect(() => core.command('panel')).toThrow(
-			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 		);
 		expect(() => panel.start()).toThrow(
-			expect.objectContaining({ code: ErrorCode.INJECTION_REMOVED })
+			expect.objectContaining({ code: MakooErrorCode.INJECTION_REMOVED })
 		);
 	});
 
@@ -356,7 +349,7 @@ describe('single component injection', () => {
 			expect(core.status('second').getSnapshot()).toBe('idle');
 		} else {
 			expect(() => core.command('second')).toThrow(
-				expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+				expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 			);
 		}
 		host.click();
@@ -402,7 +395,7 @@ describe('single component injection', () => {
 		});
 		expect(mount).not.toHaveBeenCalled();
 		expect(() => core.command('panel')).toThrow(
-			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 		);
 	});
 
@@ -439,7 +432,7 @@ describe('single component injection', () => {
 			])
 		).toThrow(
 			expect.objectContaining({
-				code: ErrorCode.ADAPTER_NOT_FOUND,
+				code: MakooErrorCode.ADAPTER_NOT_FOUND,
 				message: expect.stringContaining('missing')
 			})
 		);
@@ -447,10 +440,10 @@ describe('single component injection', () => {
 		expect(callback).not.toHaveBeenCalled();
 		expect(mount).not.toHaveBeenCalled();
 		expect(() => core.command('play')).toThrow(
-			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 		);
 		expect(() => core.command('panel')).toThrow(
-			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 		);
 		expect(vi.getTimerCount()).toBe(0);
 	});
@@ -462,7 +455,7 @@ describe('single component injection', () => {
 		core.useAdapter(adapter(first));
 		expect(() => core.useAdapter(adapter(second))).toThrow(
 			expect.objectContaining({
-				code: ErrorCode.ADAPTER_NAME_CONFLICT,
+				code: MakooErrorCode.ADAPTER_NAME_CONFLICT,
 				message: expect.stringContaining('plain')
 			})
 		);
@@ -498,11 +491,14 @@ describe('single component injection', () => {
 		await vi.waitFor(() => expect(core.status('panel').getSnapshot()).toBe('failed'), {
 			interval: 1
 		});
-		expect(core.status('panel').lastError?.code).toBe('MAKOO_MOUNT_FAILED');
+		expect(core.status('panel').lastError).toMatchObject({
+			code: MakooErrorCode.MOUNT_FAILED,
+			cause: expect.objectContaining({ message: 'mount failed' })
+		});
 		expect(host.querySelector('div')).toBeNull();
 		expect(() =>
 			core.apply([listen({ name: 'panel', listenAt: '.play', type: 'click', callback() {} })])
-		).toThrow(expect.objectContaining({ code: ErrorCode.INJECTION_NAME_CONFLICT }));
+		).toThrow(expect.objectContaining({ code: MakooErrorCode.INJECTION_NAME_CONFLICT }));
 		expect(core.status('panel').getSnapshot()).toBe('failed');
 	});
 

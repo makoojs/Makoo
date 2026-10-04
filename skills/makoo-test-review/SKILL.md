@@ -52,7 +52,7 @@ Search the changed test files for these and fix what applies:
 
 | Smell | Fix |
 |---|---|
-| `toThrow()` with no argument | `toThrow(expect.objectContaining({ code: ErrorCode.X }))` |
+| `toThrow()` with no argument | `toThrow(expect.objectContaining({ code: MakooErrorCode.X }))` |
 | `toBeDefined`, `toBeTruthy`, `not.toBe(` as the final state check | assert the exact expected value |
 | hardcoded dependency versions or large literal file contents | assert the contract (presence, source of truth such as `recommendedMakooVersions`) |
 | assertions on a mock's internal call structure | assert the observable result, or rely on a real-render test |

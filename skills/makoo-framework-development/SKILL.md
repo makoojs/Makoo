@@ -68,7 +68,7 @@ When unsolicited scope or a rejected design is removed, return the work to the o
 - Core terminology comes from `CONTEXT.md`. Elsewhere, reuse the names the package already uses.
 - Use explicit names for booleans, state transitions, structured types, and recursive traversals. Declare recursive traversal at module scope and pass context through parameters.
 - Keep shared or semantically important defaults centralized.
-- Use Makoo error types with stable `ErrorCode` values and structured `issues`, in the existing `[makoo]` tone.
+- Use `MakooError` and `MakooAggregateError`. Each package defines its codes in one constants object. The message says what happened and to whom, `code` identifies the problem, and `cause` holds the underlying throw.
 - Validate input at the boundary and return normalized values without mutating caller input.
 - Keep simple control flow continuous. Extract a function when it names a domain concept, is reused, isolates a testable algorithm, or removes real duplication or nesting.
 - Write a comment only for intent, an invariant, or subtle behavior the code cannot show.
@@ -78,7 +78,7 @@ When unsolicited scope or a rejected design is removed, return the work to the o
 Tests guard public behavior and package contracts:
 
 - Drive scenarios through public controls: Command, Status, adapter callbacks, and real DOM changes.
-- Assert exact outcomes: status values, `ErrorCode` via `toThrow(expect.objectContaining({ code }))`, issue paths, and call counts or order.
+- Assert exact outcomes: status values, error `code` via `toThrow(expect.objectContaining({ code }))`, the `cause` chain or aggregate `errors` when the behavior includes them, and call counts or order.
 - Reach every branch with a scenario the real environment can produce. If the only way in is forcing a DOM primitive into an impossible state, such as `isConnected` changing between two consecutive reads, the branch is unreachable: delete it.
 - Keep changes narrow: update tests for changed observable behavior without expanding unrelated coverage.
 

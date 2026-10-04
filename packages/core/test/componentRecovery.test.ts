@@ -142,7 +142,12 @@ describe('injection target recovery', () => {
 		});
 		expect(container.isConnected).toBe(false);
 		expect(core.status('panel').lastError?.errors).toEqual(
-			expect.arrayContaining([expect.objectContaining({ code: 'MAKOO_UNMOUNT_FAILED' })])
+			expect.arrayContaining([
+				expect.objectContaining({
+					code: 'MAKOO_UNMOUNT_FAILED',
+					cause: expect.objectContaining({ message: 'unmount failed' })
+				})
+			])
 		);
 		expect(mount).toHaveBeenCalledOnce();
 		expect(() => panel.start()).toThrow(/cannot restart/);

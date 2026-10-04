@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AdapterMountParams, MountAdapter } from '../src';
 import {
 	createMakoo,
-	ErrorCode,
 	type InjectionCommand,
 	inject,
 	listen,
@@ -91,7 +90,7 @@ describe('control races and cleanup failure', () => {
 		expect(core.command('panel')).toBe(panel);
 		expect(() =>
 			core.apply([listen({ name: 'panel', listenAt: '#host', type: 'click', callback() {} })])
-		).toThrow(expect.objectContaining({ code: ErrorCode.INJECTION_NAME_CONFLICT }));
+		).toThrow(expect.objectContaining({ code: MakooErrorCode.INJECTION_NAME_CONFLICT }));
 		expect(mount).toHaveBeenCalledOnce();
 		expect(unmount).not.toHaveBeenCalled();
 		expect(host.children.length).toBe(failContainerCleanup ? 1 : 0);
@@ -246,7 +245,7 @@ describe('control races and cleanup failure', () => {
 		expect(mount).toHaveBeenCalledOnce();
 		await completion;
 		expect(() => core.command('panel')).toThrow(
-			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 		);
 	});
 
@@ -289,7 +288,7 @@ describe('control races and cleanup failure', () => {
 		await panel.remove();
 		expect(mounts).toBe(3);
 		expect(() => core.command('panel')).toThrow(
-			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 		);
 	});
 
@@ -323,7 +322,7 @@ describe('control races and cleanup failure', () => {
 		expect(core.status('panel').lastError?.code).toBe('MAKOO_INJECTION_CLEANUP_FAILED');
 		expect(() =>
 			core.apply([listen({ name: 'panel', listenAt: '#host', type: 'click', callback() {} })])
-		).toThrow(expect.objectContaining({ code: ErrorCode.INJECTION_NAME_CONFLICT }));
+		).toThrow(expect.objectContaining({ code: MakooErrorCode.INJECTION_NAME_CONFLICT }));
 		expect(() => core.command('panel')).not.toThrow();
 	});
 
@@ -384,7 +383,10 @@ describe('control races and cleanup failure', () => {
 		await vi.waitFor(() => expect(core.status('panel').getSnapshot()).toBe('failed'), {
 			interval: 1
 		});
-		expect(core.status('panel').lastError?.code).toBe('MAKOO_MOUNT_FAILED');
+		expect(core.status('panel').lastError).toMatchObject({
+			code: MakooErrorCode.MOUNT_FAILED,
+			cause: expect.objectContaining({ message: 'mount failed' })
+		});
 		expect(core.status('panel').lastError).not.toBeInstanceOf(MakooAggregateError);
 		expect(unmount).not.toHaveBeenCalled();
 		fail = false;
@@ -432,7 +434,7 @@ describe('control races and cleanup failure', () => {
 		await previous.remove();
 		seen.length = 0;
 		expect(() => core.command('panel')).toThrow(
-			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 		);
 		core.apply([inject({ name: 'panel', injectAt: '#host', adapter: 'plain', component: {} })]);
 		const replacement = core.command('panel');
@@ -548,7 +550,7 @@ describe('control races and cleanup failure', () => {
 		await previous.remove();
 		seen.length = 0;
 		expect(() => core.command('play')).toThrow(
-			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
+			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 		);
 		core.apply([listen({ name: 'play', listenAt: '.host', type: 'click', callback() {} })]);
 		const replacement = core.command('play');
