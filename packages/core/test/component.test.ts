@@ -385,16 +385,21 @@ describe('single component injection', () => {
 		const core = createMakoo();
 		core.useAdapter(adapter(mount));
 		const valid = inject({ name: 'panel', injectAt: '#host', adapter: 'plain', component: {} });
-		expect(() =>
-			Reflect.apply(core.apply, core, [[valid, { ...valid, name: 'bad', ...invalid }]])
-		).toThrow(
-			expect.objectContaining({
-				code: MakooErrorCode.DECLARATION_INVALID,
-				message: expect.stringContaining(
-					path.startsWith('listeners') ? 'listeners[0]' : path
-				)
-			})
-		);
+		let thrown: unknown;
+		try {
+			Reflect.apply(core.apply, core, [[valid, { ...valid, name: 'bad', ...invalid }]]);
+		} catch (error) {
+			thrown = error;
+		}
+		expect(thrown).toMatchObject({
+			code: MakooErrorCode.DECLARATION_INVALID,
+			message: expect.stringContaining(path.startsWith('listeners') ? 'listeners[0]' : path),
+			cause: path.startsWith('listeners')
+				? expect.objectContaining({
+						cause: expect.objectContaining({ issues: expect.any(Array) })
+					})
+				: expect.objectContaining({ issues: expect.any(Array) })
+		});
 		expect(mount).not.toHaveBeenCalled();
 		expect(() => core.command('panel')).toThrow(
 			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
@@ -412,7 +417,8 @@ describe('single component injection', () => {
 		).toThrow(
 			expect.objectContaining({
 				code: MakooErrorCode.ADAPTER_INVALID,
-				message: expect.stringContaining(path)
+				message: expect.stringContaining(path),
+				cause: expect.objectContaining({ issues: expect.any(Array) })
 			})
 		);
 		expect(() => core.useAdapter(adapter(() => 'handle'))).not.toThrow();

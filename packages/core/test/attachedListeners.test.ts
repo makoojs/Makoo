@@ -603,7 +603,14 @@ describe('attached host listeners', () => {
 		).toThrow(
 			expect.objectContaining({
 				code,
-				message: expect.stringContaining(path)
+				message: expect.stringContaining(path),
+				...(invalid === 'invalid-selector'
+					? {
+							cause: expect.objectContaining({
+								cause: expect.objectContaining({ issues: expect.any(Array) })
+							})
+						}
+					: {})
 			})
 		);
 		expect(mount).not.toHaveBeenCalled();
