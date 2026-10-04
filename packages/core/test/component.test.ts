@@ -366,6 +366,7 @@ describe('single component injection', () => {
 		['adapter', { adapter: '' }],
 		['timeout', { timeout: 0 }],
 		['reinject', { reinject: 'yes' }],
+		['listeners.0', { listeners: [null] }],
 		[
 			'listeners.0.listenAt',
 			{ listeners: [listen({ name: 'play', listenAt: '[', type: 'click', callback() {} })] }
@@ -393,6 +394,11 @@ describe('single component injection', () => {
 					})
 				: expect.objectContaining({ issues: expect.any(Array) })
 		});
+		if (invalid.name === '' || invalid.name === '  ') {
+			expect((thrown as { message?: string }).message ?? '').not.toContain(
+				'Invalid component declaration "'
+			);
+		}
 		expect(mount).not.toHaveBeenCalled();
 		expect(() => core.command('panel')).toThrow(
 			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
@@ -410,7 +416,10 @@ describe('single component injection', () => {
 		).toThrow(
 			expect.objectContaining({
 				code: MakooErrorCode.ADAPTER_INVALID,
-				message: expect.stringContaining(path),
+				message:
+					path === 'name'
+						? expect.stringMatching(/^Invalid adapter\nname:/)
+						: expect.stringContaining('Invalid adapter "plain"'),
 				cause: expect.objectContaining({ issues: expect.any(Array) })
 			})
 		);
