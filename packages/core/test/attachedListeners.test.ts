@@ -483,17 +483,26 @@ describe('attached host listeners', () => {
 	it('names the listener when its state subscriber fails', async () => {
 		const { status } = setup([child()]);
 		const subscriberError = new Error('child subscriber failed');
-		listenerOf(status, 'play').subscribe(() => {
+		const listener = listenerOf(status, 'play');
+		const seen: string[] = [];
+		listener.subscribe(() => {
 			throw subscriberError;
+		});
+		listener.subscribe(() => {
+			seen.push(listener.getSnapshot());
 		});
 		element('#play').remove();
 		await vi.waitFor(() => expect(status.getSnapshot()).toBe('failed'), { interval: 1 });
-		expect(status.lastError?.code).not.toBe(MakooErrorCode.STATE_SUBSCRIBER_FAILED);
+		expect(listener.getSnapshot()).toBe('failed');
+		expect(seen).toContain('failed');
+		expect(status.lastError).toMatchObject({
+			code: MakooErrorCode.ATTACHED_LISTENER_FAILED
+		});
 		expect(console.error).toHaveBeenCalledWith(
 			expect.objectContaining({
 				code: MakooErrorCode.STATE_SUBSCRIBER_FAILED,
 				cause: subscriberError,
-				message: expect.stringContaining('listener "play"')
+				message: expect.stringContaining('"panel" listener "play"')
 			})
 		);
 	});
