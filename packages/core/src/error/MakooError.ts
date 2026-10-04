@@ -1,48 +1,34 @@
-import { ErrorCode } from './ErrorCode';
-
-export type MakooIssue = {
-	path: string;
-	message: string;
+type MakooErrorOptions = {
+	readonly code: string;
+	readonly cause?: unknown;
 };
-
-export type MakooErrorContextValue = string | number | boolean | null;
-export type MakooErrorContext = Record<string, MakooErrorContextValue>;
 
 export class MakooError extends Error {
 	readonly code: string;
-	readonly issues: MakooIssue[];
-	readonly summary: string;
-	readonly context: MakooErrorContext = {};
-	cleanupErrors: readonly MakooError[] = [];
-	override readonly cause?: Error;
 
-	constructor(
-		message: string,
-		issues?: MakooIssue[],
-		code: string = ErrorCode.UNKNOWN,
-		cause?: Error
-	) {
-		const parts: string[] = [`[makoo] ${message}`];
-		if (issues?.length) {
-			for (const i of issues) {
-				parts.push(`  - ${i.path}: ${i.message}`);
-			}
-		}
-		super(parts.join('\n'));
+	constructor(message: string, options: MakooErrorOptions) {
+		super(message);
 		this.name = 'MakooError';
-		this.code = code;
-		this.issues = issues ?? [];
-		this.summary = message;
-		if (cause) this.cause = cause;
+		this.code = options.code;
+		if (options.cause !== undefined) this.cause = options.cause;
 	}
+}
 
-	withContext(context: MakooErrorContext): this {
-		Object.assign(this.context, context);
-		return this;
-	}
+export class MakooAggregateError extends MakooError {
+	readonly errors: readonly unknown[];
 
-	withCleanupErrors(errors: readonly MakooError[]): this {
-		this.cleanupErrors = [...errors];
-		return this;
+	constructor(errors: readonly unknown[], message: string, options: MakooErrorOptions) {
+		super(aggregateMessage(message, errors), options);
+		this.name = 'MakooAggregateError';
+		this.errors = errors;
 	}
+}
+
+function aggregateMessage(message: string, errors: readonly unknown[]): string {
+	const lines = errors.map((error) => {
+		const text = error instanceof Error ? error.message : String(error);
+		const newline = text.indexOf('\n');
+		return newline === -1 ? text : text.slice(0, newline);
+	});
+	return [message, ...lines].join('\n');
 }

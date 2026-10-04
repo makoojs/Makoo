@@ -15,13 +15,8 @@ export type {
 	MakooRuntime
 } from './core/types';
 export type { ErrorCodeValue } from './error/ErrorCode';
-export { ErrorCode } from './error/ErrorCode';
-export type {
-	MakooErrorContext,
-	MakooErrorContextValue,
-	MakooIssue
-} from './error/MakooError';
-export { MakooError } from './error/MakooError';
+export { ErrorCode, MakooErrorCode } from './error/ErrorCode';
+export { MakooAggregateError, MakooError } from './error/MakooError';
 export { listen } from './listener/declaration';
 export type {
 	ListenerCommand,

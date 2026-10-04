@@ -1,55 +1,61 @@
 import { describe, expect, it } from 'vitest';
-import { ErrorCode, MakooError } from '../src';
+import { MakooAggregateError, MakooError, MakooErrorCode } from '../src';
 
 describe('MakooError', () => {
-	it('defaults code to UNKNOWN when no code is provided', () => {
-		const err = new MakooError('something failed');
-		expect(err.code).toBe(ErrorCode.UNKNOWN);
-	});
-
-	it('uses provided code when explicitly specified', () => {
-		const err = new MakooError('something failed', undefined, ErrorCode.ADAPTER_NOT_FOUND);
-		expect(err.code).toBe(ErrorCode.ADAPTER_NOT_FOUND);
-	});
-
-	it('retains cause without appending it to the message', () => {
-		const root = new Error('root problem');
-		const err = new MakooError('outer error', undefined, undefined, root);
-		expect(err.message).toBe('[makoo] outer error');
-		expect(err.cause).toBe(root);
-	});
-
-	it('formats message with issues', () => {
-		const err = new MakooError('Something went wrong', [
-			{ path: 'foo.bar', message: 'is required' },
-			{ path: 'baz', message: 'must be one of "a", "b"' }
-		]);
-		expect(err.message).toContain('[makoo] Something went wrong');
-		expect(err.message).toContain('- foo.bar: is required');
-		expect(err.message).toContain('- baz: must be one of "a", "b"');
-		expect(err).toBeInstanceOf(Error);
-	});
-
-	it('formats message without issues', () => {
-		const err = new MakooError('Something went wrong');
-		expect(err.message).toBe('[makoo] Something went wrong');
-	});
-
-	it('exposes issues for programmatic access', () => {
-		const issues = [{ path: 'x', message: 'bad' }];
-		const err = new MakooError('msg', issues);
-		expect(err.issues).toBe(issues);
-	});
-
-	it('merges structured context without replacing the error', () => {
-		const err = new MakooError('msg');
-
-		expect(err.withContext({ injection: 'panel', phase: 'mount' })).toBe(err);
-		expect(err.withContext({ reason: 'timeout' })).toBe(err);
-		expect(err.context).toEqual({
-			injection: 'panel',
-			phase: 'mount',
-			reason: 'timeout'
+	it('keeps the message unchanged and requires a code', () => {
+		const error = new MakooError('something failed', {
+			code: MakooErrorCode.ADAPTER_NOT_FOUND
 		});
+
+		expect(error).toBeInstanceOf(Error);
+		expect(error).toBeInstanceOf(MakooError);
+		expect(error.name).toBe('MakooError');
+		expect(error.message).toBe('something failed');
+		expect(error.code).toBe('MAKOO_ADAPTER_NOT_FOUND');
+		expect(Object.hasOwn(error, 'cause')).toBe(false);
+	});
+
+	it('keeps an error or a non-error cause without adding it to the message', () => {
+		const root = new Error('root problem');
+		const withError = new MakooError('outer error', {
+			code: MakooErrorCode.MOUNT_FAILED,
+			cause: root
+		});
+		const withValue = new MakooError('outer error', {
+			code: MakooErrorCode.MOUNT_FAILED,
+			cause: 'raw'
+		});
+
+		expect(withError.message).toBe('outer error');
+		expect(withError.cause).toBe(root);
+		expect(withValue.cause).toBe('raw');
+	});
+});
+
+describe('MakooAggregateError', () => {
+	it('is a Makoo error that keeps every given error and lists each on its own line', () => {
+		const child = new MakooError('Failed to bind listener "save"', {
+			code: MakooErrorCode.LISTENER_BIND_FAILED
+		});
+		const nested = new MakooAggregateError([child], 'Cleanup failed for listener "save"', {
+			code: MakooErrorCode.INJECTION_CLEANUP_FAILED
+		});
+		const given = [nested, 'plain'];
+		const error = new MakooAggregateError(given, 'Cleanup failed for "toolbar"', {
+			code: MakooErrorCode.INJECTION_CLEANUP_FAILED,
+			cause: child
+		});
+
+		expect(error).toBeInstanceOf(MakooError);
+		expect(error).toBeInstanceOf(MakooAggregateError);
+		expect(error.name).toBe('MakooAggregateError');
+		expect(error.code).toBe(MakooErrorCode.INJECTION_CLEANUP_FAILED);
+		expect(error.cause).toBe(child);
+		expect(error.errors).toBe(given);
+		expect(error.message).toBe(
+			['Cleanup failed for "toolbar"', 'Cleanup failed for listener "save"', 'plain'].join(
+				'\n'
+			)
+		);
 	});
 });
