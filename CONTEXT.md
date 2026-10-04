@@ -95,3 +95,27 @@ _Avoid_: ReadableState, event bus, command
 **Host Business Event** (宿主业务事件):
 A business event such as a click or play that happens on a listener target; an event occurring does not mean the listener's availability changed.
 _Avoid_: listener status change, lifecycle notification
+
+### Errors
+
+Errors are grouped by where they surface and who must act on them, not by what went wrong.
+
+**Configuration Error** (配置错误):
+An invalid declaration, batch, or adapter registration, reported before any of the batch runs so that nothing in it starts.
+_Avoid_: usage error, validation failure, execution failure
+
+**Control Error** (控制错误):
+A call that is not allowed in the current state or context, such as controlling an unknown, removed, or cleanup-failed injection, or using a framework hook outside a mounted component.
+_Avoid_: configuration error, cleanup failure
+
+**Execution Failure** (执行失败):
+A problem that ends one component or listener execution, such as a wait timeout, mount failure, lost target, or binding failure; once cleanup succeeds the injection can be started again.
+_Avoid_: callback error, cleanup failure, crash
+
+**Cleanup Failure** (清理失败):
+A teardown step that failed, leaving Core unable to confirm that no resources remain; the injection stays closed (ADR 0001).
+_Avoid_: execution failure, control error, retryable error
+
+**Callback Error** (回调异常):
+An exception thrown or rejected by code that Core calls but does not own, such as a host listener's event handler or a status subscriber; it is reported and does not change status or end the execution (ADR 0002).
+_Avoid_: execution failure, handler failure
