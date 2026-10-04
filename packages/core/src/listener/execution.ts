@@ -51,7 +51,7 @@ export function awaitListenerTarget(
 				if (execution.phase !== 'active') return;
 				callbacks.ended(
 					'failed',
-					new MakooError(`Timed out waiting for "${config.name}"`, {
+					new MakooError(`Timed out waiting for listener "${config.name}"`, {
 						code: MakooErrorCode.TARGET_WAIT_TIMEOUT
 					})
 				);

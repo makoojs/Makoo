@@ -175,7 +175,7 @@ async function cleanupExecution(
 	execution.phase = 'ended';
 	execution.domWaitAbortController.abort();
 	const attachListenerErrors = await stopAttachListeners(execution.attachListeners, dom);
-	collectAttachListenerErrors(execution, attachListenerErrors);
+	execution.cleanupErrors.push(...attachListenerErrors);
 	return unmountComponent(execution, mounter);
 }
 
@@ -216,15 +216,8 @@ function unmountComponent(
 	}
 	return cleanupErrors;
 }
-function collectAttachListenerErrors(
-	execution: ComponentExecutionState,
-	errors: readonly MakooError[]
-): void {
-	execution.cleanupErrors.push(...errors);
-}
-
 function waitTimedOut(name: string): MakooError {
-	return new MakooError(`Timed out waiting for "${name}"`, {
+	return new MakooError(`Timed out waiting for the mount target of "${name}"`, {
 		code: MakooErrorCode.TARGET_WAIT_TIMEOUT
 	});
 }

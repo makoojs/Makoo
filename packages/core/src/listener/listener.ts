@@ -196,6 +196,20 @@ export function endExecution(
 	listener.executionSlot = { ...executionSlot, kind: 'closing' };
 	cleanupExecution(execution);
 	const cleanupErrors = execution.cleanupErrors;
+	if (cleanupErrors.length > 0 && listener.kind === 'attach') {
+		if (executionError) listener.lastError = executionError;
+		listener.executionSlot = {
+			kind: 'cleanup-failed',
+			cleanupPromise: cleanupCompletion.promise,
+			cleanupErrors
+		};
+		cleanupCompletion.reject(executionError ?? cleanupErrors[0]);
+		const completedSlot = listener.executionSlot;
+		listener.state.set('failed');
+		if (executionError && listener.executionSlot === completedSlot)
+			listener.onFailed(executionError);
+		return cleanupCompletion.promise;
+	}
 	if (cleanupErrors.length > 0) {
 		const failure = injectionCleanupFailed(
 			listener.config.name,

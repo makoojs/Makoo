@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { MakooErrorCode } from '../error/ErrorCode';
-import { MakooError, validationError } from '../error/MakooError';
+import { declaredName, MakooError, validationError } from '../error/MakooError';
 import type { MountAdapter } from './types';
 
 const adapterSchema = z.object(
@@ -28,8 +28,9 @@ export function createAdapterRegistry() {
 		use(adapter: MountAdapter) {
 			const parsed = adapterSchema.safeParse(adapter);
 			if (!parsed.success) {
+				const name = declaredName(adapter);
 				throw validationError(
-					'Invalid adapter',
+					name ? `Invalid adapter "${name}"` : 'Invalid adapter',
 					MakooErrorCode.ADAPTER_INVALID,
 					parsed.error
 				);

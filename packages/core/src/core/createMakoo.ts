@@ -142,17 +142,7 @@ function disposeInstance(makooInstance: MakooInstance): Promise<void> {
 		)
 	);
 	void Promise.all(removals).then((results) => {
-		const cleanupErrors = results.flatMap((result) => {
-			if (result === undefined) return [];
-			return [
-				result instanceof MakooError
-					? result
-					: new MakooError('Failed to dispose an injection', {
-							code: MakooErrorCode.INJECTION_CLEANUP_FAILED,
-							cause: result
-						})
-			];
-		});
+		const cleanupErrors = results.filter((result) => result !== undefined);
 		if (cleanupErrors.length === 0) {
 			resolveDisposal();
 			return;
