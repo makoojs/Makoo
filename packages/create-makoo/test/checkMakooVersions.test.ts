@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-const {
-	buildExpectedVersions,
-	compareRecommendedVersions,
-	parseRecommendedVersions
-} = await import('../../../.github/scripts/check-makoo-versions.mjs');
+const { buildExpectedVersions, compareRecommendedVersions, parseRecommendedVersions } =
+	await import('../../../.github/scripts/check-makoo-versions.mjs');
 
 describe('check-makoo-versions', () => {
 	it('builds recommended versions from pending Changesets releases', () => {
