@@ -313,7 +313,13 @@ describe('standalone host listeners', () => {
 		});
 		await handle.remove();
 		expect(statuses).toEqual(['idle']);
-		expect(reported).toHaveBeenCalledWith(cause);
+		expect(reported).toHaveBeenCalledWith(
+			expect.objectContaining({
+				code: MakooErrorCode.STATE_SUBSCRIBER_FAILED,
+				cause,
+				message: expect.stringContaining('"play"')
+			})
+		);
 		expect(() => core.command('play')).toThrow(
 			expect.objectContaining({ code: ErrorCode.INJECTION_NOT_FOUND })
 		);

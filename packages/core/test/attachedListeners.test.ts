@@ -480,6 +480,23 @@ describe('attached host listeners', () => {
 		});
 		expect(() => panel.start()).toThrow(/cleanup failed/);
 	});
+	it('names the listener when its state subscriber fails', async () => {
+		const { status } = setup([child()]);
+		const subscriberError = new Error('child subscriber failed');
+		listenerOf(status, 'play').subscribe(() => {
+			throw subscriberError;
+		});
+		element('#play').remove();
+		await vi.waitFor(() => expect(status.getSnapshot()).toBe('failed'), { interval: 1 });
+		expect(status.lastError?.code).not.toBe(MakooErrorCode.STATE_SUBSCRIBER_FAILED);
+		expect(console.error).toHaveBeenCalledWith(
+			expect.objectContaining({
+				code: MakooErrorCode.STATE_SUBSCRIBER_FAILED,
+				cause: subscriberError,
+				message: expect.stringContaining('listener "play"')
+			})
+		);
+	});
 	beforeEach(() => {
 		document.body.innerHTML =
 			'<section id="host"></section><button id="play"></button><button id="pause"></button>';

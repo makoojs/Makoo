@@ -41,6 +41,13 @@ export function validationError(summary: string, code: string, error: ZodError):
 	return new MakooError([summary, ...lines].join('\n'), { code, cause: error });
 }
 
+export function stateSubscriberFailed(owner: string, cause: unknown): MakooError {
+	return new MakooError(`State subscriber of ${owner} failed`, {
+		code: MakooErrorCode.STATE_SUBSCRIBER_FAILED,
+		cause
+	});
+}
+
 export function injectionCleanupFailed(
 	name: string,
 	errors: readonly unknown[]

@@ -1,6 +1,6 @@
 import type { DOMObserver } from '../dom/observer';
 import { MakooErrorCode } from '../error/ErrorCode';
-import { injectionCleanupFailed, MakooError } from '../error/MakooError';
+import { injectionCleanupFailed, MakooError, stateSubscriberFailed } from '../error/MakooError';
 import { createState } from '../state/createState';
 import type { AttachListener } from './attach';
 import {
@@ -59,7 +59,9 @@ export function createListener(
 	const listener: Listener = {
 		kind: 'listener',
 		config,
-		state: createState<ListenerStatus>('idle'),
+		state: createState<ListenerStatus>('idle', (cause) => {
+			console.error(stateSubscriberFailed(`"${config.name}"`, cause));
+		}),
 		intent: 'stopped',
 		executionSlot: { kind: 'empty', cleanupPromise: Promise.resolve() },
 		lastError: undefined,

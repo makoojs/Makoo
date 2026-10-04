@@ -1,7 +1,7 @@
 import type { MountAdapter } from '../adapter/types';
 import type { DOMObserver } from '../dom/observer';
 import { MakooErrorCode } from '../error/ErrorCode';
-import { injectionCleanupFailed, MakooError } from '../error/MakooError';
+import { injectionCleanupFailed, MakooError, stateSubscriberFailed } from '../error/MakooError';
 import { type AttachListener, createAttachListener } from '../listener/attach';
 import type { ListenerStatus } from '../listener/types';
 import { createState } from '../state/createState';
@@ -104,7 +104,9 @@ export function createComponent(
 				adapter.unmount(handle);
 			}
 		},
-		state: createState<ComponentStatus>('idle'),
+		state: createState<ComponentStatus>('idle', (cause) => {
+			console.error(stateSubscriberFailed(`"${config.name}"`, cause));
+		}),
 		attachListeners: new Map(),
 		intent: 'stopped',
 		executionSlot: { kind: 'empty', cleanupPromise: Promise.resolve() },
@@ -113,8 +115,17 @@ export function createComponent(
 	for (const attachListenerConfig of config.listeners ?? []) {
 		component.attachListeners.set(
 			attachListenerConfig.name,
-			createAttachListener({ ...attachListenerConfig, reinject: config.reinject }, (error) =>
-				failComponent(component, attachListenerConfig.name, error)
+			createAttachListener(
+				{ ...attachListenerConfig, reinject: config.reinject },
+				(error) => failComponent(component, attachListenerConfig.name, error),
+				(cause) => {
+					console.error(
+						stateSubscriberFailed(
+							`"${config.name}" listener "${attachListenerConfig.name}"`,
+							cause
+						)
+					);
+				}
 			)
 		);
 	}

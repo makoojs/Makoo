@@ -499,4 +499,42 @@ describe('single component injection', () => {
 		).toThrow(expect.objectContaining({ code: ErrorCode.INJECTION_NAME_CONFLICT }));
 		expect(core.status('panel').getSnapshot()).toBe('failed');
 	});
+
+	it('reports a state subscriber failure without hiding the injection failure', async () => {
+		const host = document.createElement('section');
+		host.id = 'host';
+		document.body.append(host);
+		const subscriberError = new Error('subscriber failed');
+		const seen: string[] = [];
+		const core = createMakoo();
+		core.useAdapter(
+			adapter(
+				() => 'handle',
+				() => {
+					throw new Error('unmount failed');
+				}
+			)
+		);
+		core.apply([inject({ name: 'panel', injectAt: '#host', adapter: 'plain', component: {} })]);
+		const panel = core.command('panel');
+		handles.push(panel);
+		const status = core.status('panel');
+		status.subscribe(() => {
+			throw subscriberError;
+		});
+		status.subscribe(() => {
+			seen.push(status.getSnapshot());
+		});
+		host.replaceWith(host.cloneNode());
+		await vi.waitFor(() => expect(status.getSnapshot()).toBe('failed'), { interval: 1 });
+		expect(status.lastError?.code).toBe(MakooErrorCode.INJECTION_CLEANUP_FAILED);
+		expect(seen).toContain('failed');
+		expect(console.error).toHaveBeenCalledWith(
+			expect.objectContaining({
+				code: MakooErrorCode.STATE_SUBSCRIBER_FAILED,
+				cause: subscriberError,
+				message: expect.stringContaining('"panel"')
+			})
+		);
+	});
 });
