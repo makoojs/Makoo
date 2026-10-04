@@ -1,7 +1,7 @@
-import { ErrorCode, type MakooError, type MountAdapter } from '@makoojs/core';
+import { MakooAggregateError, MakooError, MakooErrorCode, type MountAdapter } from '@makoojs/core';
 import { type App, type Component, createApp } from 'vue';
 import { componentContextKey } from './composables';
-import { causeError, VueAdapterError } from './error';
+import { VueErrorCode } from './error';
 import { VuePlugin } from './VuePlugin';
 
 export type VueMountHandle = App<Element>;
@@ -29,53 +29,35 @@ export function createVueAdapter(): VueMountAdapter {
 			} catch (cause) {
 				const cleanupErrors = releaseSubscriptions(subscriptions);
 				if (hasMountStarted) {
-					// Vue cannot unmount a partially mounted tree through app.unmount().
+					// app.unmount() cannot clean a tree that failed during mount.
 					cleanupErrors.push(
-						new VueAdapterError(
+						new MakooError(
 							'Cannot confirm Vue component cleanup after mount failed; reload the page',
-							undefined,
-							ErrorCode.ADAPTER_UNMOUNT_FAIL,
-							causeError(cause)
+							{ code: VueErrorCode.VUE_PARTIAL_MOUNT_UNCONFIRMED }
 						)
 					);
 				}
-				throw new VueAdapterError(
-					'Failed to mount Vue component',
-					undefined,
-					ErrorCode.ADAPTER_MOUNT_FAIL,
-					causeError(cause)
-				).withCleanupErrors(cleanupErrors);
+				if (cleanupErrors.length === 0) throw cause;
+				throw new MakooAggregateError(
+					cleanupErrors,
+					'Failed to clean up after the Vue mount failed',
+					{ code: MakooErrorCode.MOUNT_CLEANUP_FAILED, cause }
+				);
 			}
 		},
 		unmount(app) {
-			try {
-				app.unmount();
-			} catch (cause) {
-				throw new VueAdapterError(
-					'Failed to unmount Vue component',
-					undefined,
-					ErrorCode.ADAPTER_UNMOUNT_FAIL,
-					causeError(cause)
-				);
-			}
+			app.unmount();
 		}
 	};
 }
 
-function releaseSubscriptions(subscriptions: Set<() => void>): MakooError[] {
-	const errors: MakooError[] = [];
+function releaseSubscriptions(subscriptions: Set<() => void>): unknown[] {
+	const errors: unknown[] = [];
 	for (const release of [...subscriptions]) {
 		try {
 			release();
 		} catch (cause) {
-			errors.push(
-				new VueAdapterError(
-					'Failed to release a Vue state subscription',
-					undefined,
-					ErrorCode.ADAPTER_UNMOUNT_FAIL,
-					causeError(cause)
-				)
-			);
+			errors.push(cause);
 		}
 	}
 	return errors;

@@ -5,7 +5,7 @@ import type {
 	ListenerStatus,
 	StateView
 } from '@makoojs/core';
-import { ErrorCode, MakooError } from '@makoojs/core';
+import { MakooError, MakooErrorCode } from '@makoojs/core';
 import {
 	computed,
 	getCurrentScope,
@@ -16,6 +16,7 @@ import {
 	type Ref,
 	shallowRef
 } from 'vue';
+import { VueErrorCode } from './error';
 
 export type VueComponentContext = {
 	readonly command: ComponentCommand;
@@ -36,12 +37,14 @@ export function useMakooComponent(): VueMakooComponent {
 	const context = hasInjectionContext() ? inject(componentContextKey, null) : null;
 	if (!context) {
 		throw new MakooError(
-			'useMakooComponent() must be called inside a component mounted by the Makoo Vue adapter'
+			'useMakooComponent() must be called inside a component mounted by the Makoo Vue adapter',
+			{ code: VueErrorCode.VUE_HOOK_OUTSIDE_COMPONENT }
 		);
 	}
 	if (!getCurrentScope()) {
 		throw new MakooError(
-			'useMakooComponent() must be called inside a component setup or effect scope'
+			'useMakooComponent() must be called inside a component setup or effect scope',
+			{ code: VueErrorCode.VUE_HOOK_OUTSIDE_SCOPE }
 		);
 	}
 	const { command, status } = context;
@@ -64,11 +67,9 @@ export function useMakooComponent(): VueMakooComponent {
 		listener(name) {
 			const listener = listeners.get(name);
 			if (!listener)
-				throw new MakooError(
-					`Unknown listener "${name}" in "${command.name}"`,
-					undefined,
-					ErrorCode.INJECTION_NOT_FOUND
-				);
+				throw new MakooError(`Unknown listener "${name}" in "${command.name}"`, {
+					code: MakooErrorCode.LISTENER_NOT_FOUND
+				});
 			return listener;
 		}
 	};

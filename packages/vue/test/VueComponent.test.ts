@@ -2,16 +2,17 @@ import {
 	type ComponentCommand,
 	type ComponentStatusHandle,
 	createMakoo,
-	ErrorCode,
 	type InjectionCommand,
 	inject,
 	type ListenerStatus,
 	listen,
+	MakooErrorCode,
 	type MakooRuntime
 } from '@makoojs/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h, nextTick, type Ref, reactive, watchEffect } from 'vue';
-import { createVueAdapter, useMakooComponent, type VueMakooComponent } from '../src';
+import { createApp, defineComponent, h, nextTick, type Ref, reactive, watchEffect } from 'vue';
+import { createVueAdapter, useMakooComponent, VueErrorCode, type VueMakooComponent } from '../src';
+import { componentContextKey } from '../src/composables';
 
 function element(selector: string): HTMLElement {
 	const target = document.querySelector<HTMLElement>(selector);
@@ -60,7 +61,27 @@ describe('Vue components mounted by core', () => {
 	});
 
 	it('rejects component helpers outside a component mounted by the adapter', () => {
-		expect(() => useMakooComponent()).toThrow(/Makoo Vue adapter/);
+		expect(() => useMakooComponent()).toThrow(
+			expect.objectContaining({ code: VueErrorCode.VUE_HOOK_OUTSIDE_COMPONENT })
+		);
+	});
+
+	it('rejects useMakooComponent outside an effect scope', () => {
+		const app = createApp({ render: () => null });
+		app.provide(componentContextKey, {
+			command: { name: 'panel', start() {}, stop: async () => {}, remove: async () => {} },
+			status: {
+				getSnapshot: () => 'mounted',
+				subscribe: () => () => {},
+				lastError: undefined,
+				listenerNames: [],
+				listener: () => ({ getSnapshot: () => 'waiting', subscribe: () => () => {} })
+			},
+			subscriptions: new Set()
+		});
+		expect(() => app.runWithContext(() => useMakooComponent())).toThrow(
+			expect.objectContaining({ code: VueErrorCode.VUE_HOOK_OUTSIDE_SCOPE })
+		);
 	});
 
 	it('mounts the selected component with live props and its own component control', async () => {
@@ -174,7 +195,9 @@ describe('Vue components mounted by core', () => {
 		await flush();
 		expect(element('#host').textContent).toBe('bound/bound');
 		expect(received?.listener('play')).toBe(received?.listener('play'));
-		expect(() => received?.listener('external')).toThrow(/Unknown listener/);
+		expect(() => received?.listener('external')).toThrow(
+			expect.objectContaining({ code: MakooErrorCode.LISTENER_NOT_FOUND })
+		);
 	});
 
 	it('releases the old instance subscription when the component stops itself and restarts externally', async () => {
@@ -251,20 +274,20 @@ describe('Vue components mounted by core', () => {
 			controls.push(panel);
 			await vi.waitFor(() => expect(panelStatus().getSnapshot()).toBe('failed'));
 
-			expect(panelStatus().lastError).toMatchObject({
-				code: ErrorCode.ADAPTER_MOUNT_FAIL,
-				cause: { cause },
-				cleanupErrors: [expect.objectContaining({ code: ErrorCode.ADAPTER_UNMOUNT_FAIL })]
+			const diagnostic = panelStatus().lastError;
+			expect(diagnostic).toMatchObject({
+				code: MakooErrorCode.INJECTION_CLEANUP_FAILED,
+				errors: expect.arrayContaining([
+					expect.objectContaining({ code: MakooErrorCode.MOUNT_FAILED, cause }),
+					expect.objectContaining({ code: VueErrorCode.VUE_PARTIAL_MOUNT_UNCONFIRMED })
+				])
 			});
 			expect(() => panel.start()).toThrow(
-				expect.objectContaining({ code: ErrorCode.INJECTION_CLEANUP_FAILED })
+				expect.objectContaining({ code: MakooErrorCode.INJECTION_CLOSED })
 			);
-			await expect(panel.stop()).rejects.toMatchObject({
-				code: ErrorCode.ADAPTER_UNMOUNT_FAIL
-			});
-			await expect(panel.remove()).rejects.toMatchObject({
-				code: ErrorCode.ADAPTER_UNMOUNT_FAIL
-			});
+			expect(panelStatus().lastError).toBe(diagnostic);
+			await expect(panel.stop()).rejects.toBe(diagnostic);
+			await expect(panel.remove()).rejects.toBe(diagnostic);
 			expect(core.command('panel')).toBe(panel);
 			expect(element('#host').childElementCount).toBe(0);
 			expect(effect).toHaveBeenCalledTimes(1);
@@ -290,10 +313,13 @@ describe('Vue components mounted by core', () => {
 		controls.push(core.command('panel'));
 		const panel = panelCommand();
 
-		await expect(panel.stop()).rejects.toMatchObject({ code: ErrorCode.ADAPTER_UNMOUNT_FAIL });
+		await expect(panel.stop()).rejects.toMatchObject({
+			code: MakooErrorCode.INJECTION_CLEANUP_FAILED,
+			errors: [expect.objectContaining({ code: MakooErrorCode.UNMOUNT_FAILED, cause })]
+		});
 		expect(panelStatus().getSnapshot()).toBe('failed');
 		expect(() => panel.start()).toThrow(
-			expect.objectContaining({ code: ErrorCode.INJECTION_CLEANUP_FAILED })
+			expect.objectContaining({ code: MakooErrorCode.INJECTION_CLOSED })
 		);
 	});
 });

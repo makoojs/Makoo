@@ -1,24 +1,10 @@
-import { ErrorCode, MakooError } from '@makoojs/core';
 import { describe, expect, it } from 'vitest';
-import { ReactAdapterError } from '../src/error';
+import { ReactErrorCode } from '../src';
 
-describe('ReactAdapterError', () => {
-	it('defaults code to ADAPTER_MOUNT_FAIL when no code is provided', () => {
-		const err = new ReactAdapterError('mount failed');
-		expect(err.code).toBe(ErrorCode.ADAPTER_MOUNT_FAIL);
-	});
-
-	it('accepts ADAPTER_UNMOUNT_FAIL as explicit code', () => {
-		const err = new ReactAdapterError(
-			'unmount failed',
-			undefined,
-			ErrorCode.ADAPTER_UNMOUNT_FAIL
-		);
-		expect(err.code).toBe(ErrorCode.ADAPTER_UNMOUNT_FAIL);
-	});
-
-	it('is an instance of MakooError', () => {
-		const err = new ReactAdapterError('msg');
-		expect(err).toBeInstanceOf(MakooError);
+describe('ReactErrorCode', () => {
+	it('publishes the React error code', () => {
+		expect(ReactErrorCode).toEqual({
+			REACT_HOOK_OUTSIDE_COMPONENT: 'MAKOO_REACT_HOOK_OUTSIDE_COMPONENT'
+		});
 	});
 });

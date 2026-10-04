@@ -7,6 +7,7 @@ import type {
 } from '@makoojs/core';
 import { MakooError } from '@makoojs/core';
 import { createContext, useContext, useMemo, useSyncExternalStore } from 'react';
+import { ReactErrorCode } from './error';
 
 type MakooComponentContextValue = {
 	command: ComponentCommand;
@@ -45,7 +46,8 @@ function useComponentContext(): MakooComponentContextValue {
 	const context = useContext(MakooComponentContext);
 	if (!context) {
 		throw new MakooError(
-			'Makoo hooks must be called inside a component mounted by the Makoo React adapter'
+			'Makoo hooks must be called inside a component mounted by the Makoo React adapter',
+			{ code: ReactErrorCode.REACT_HOOK_OUTSIDE_COMPONENT }
 		);
 	}
 	return context;

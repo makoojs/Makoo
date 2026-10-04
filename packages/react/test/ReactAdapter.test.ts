@@ -2,13 +2,12 @@ import {
 	type ComponentCommand,
 	type ComponentStatusHandle,
 	createMakoo,
-	ErrorCode,
 	inject,
-	type MakooError
+	MakooAggregateError,
+	MakooErrorCode
 } from '@makoojs/core';
 import type { Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ReactAdapterError } from '../src/error';
 import { createReactAdapter } from '../src/ReactAdapter';
 
 const reactDomClientMock = vi.hoisted(() => {
@@ -70,27 +69,20 @@ describe('ReactAdapter', () => {
 		expect(core.status('badge').getSnapshot()).toBe('mounted');
 	});
 
-	it('wraps createRoot failures and normalizes non-Error causes', () => {
+	it('rethrows a createRoot failure unchanged, including a non-Error cause', () => {
 		reactDomClientMock.createRoot.mockImplementationOnce(() => {
 			throw 'boom';
 		});
 
-		let thrown: unknown;
-		try {
+		expect(() =>
 			createReactAdapter().mount({
 				component: Badge,
 				props: undefined,
 				container: document.createElement('div'),
 				command: {} as ComponentCommand,
 				status: {} as ComponentStatusHandle
-			});
-		} catch (error) {
-			thrown = error;
-		}
-
-		expect(thrown).toBeInstanceOf(ReactAdapterError);
-		expect(thrown).toMatchObject({ code: ErrorCode.ADAPTER_MOUNT_FAIL, cleanupErrors: [] });
-		expect((thrown as MakooError).cause).toMatchObject({ message: 'boom' });
+			})
+		).toThrow('boom');
 	});
 
 	it('unmounts the created root when render throws and reports a failed cleanup', () => {
@@ -117,16 +109,15 @@ describe('ReactAdapter', () => {
 		}
 
 		expect(reactDomClientMock.root.unmount).toHaveBeenCalledOnce();
-		expect(thrown).toMatchObject({ code: ErrorCode.ADAPTER_MOUNT_FAIL, cause });
-		const { cleanupErrors } = thrown as MakooError;
-		expect(cleanupErrors).toHaveLength(1);
-		expect(cleanupErrors[0]).toMatchObject({
-			code: ErrorCode.ADAPTER_UNMOUNT_FAIL,
-			cause: releaseCause
+		expect(thrown).toBeInstanceOf(MakooAggregateError);
+		expect(thrown).toMatchObject({
+			code: MakooErrorCode.MOUNT_CLEANUP_FAILED,
+			cause,
+			errors: [releaseCause]
 		});
 	});
 
-	it('wraps unmount failures in ReactAdapterError', () => {
+	it('rethrows an unmount failure unchanged', () => {
 		const cause = new Error('root unmount failed');
 		const root = {
 			unmount: vi.fn(() => {
@@ -134,16 +125,31 @@ describe('ReactAdapter', () => {
 			})
 		} as unknown as Root;
 
-		expect(() => createReactAdapter().unmount(root)).toThrow(
-			expect.objectContaining({
-				name: 'ReactAdapterError',
-				code: ErrorCode.ADAPTER_UNMOUNT_FAIL,
-				cause
-			})
-		);
+		expect(() => createReactAdapter().unmount(root)).toThrow(cause);
+	});
+
+	it('reports a render failure through core with the original cause', async () => {
+		const cause = new Error('render failed');
+		reactDomClientMock.root.render.mockImplementationOnce(() => {
+			throw cause;
+		});
+		const core = createMakoo();
+		core.useAdapter(createReactAdapter());
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		core.apply([
+			inject({ name: 'badge', injectAt: '#host', adapter: 'react', component: Badge })
+		]);
+
+		await vi.waitFor(() => expect(core.status('badge').getSnapshot()).toBe('failed'));
+		expect(reactDomClientMock.root.unmount).toHaveBeenCalledOnce();
+		expect(core.status('badge').lastError).toMatchObject({
+			code: MakooErrorCode.MOUNT_FAILED,
+			cause
+		});
 	});
 
 	it('reports a throwing root unmount as a cleanup failure in core', async () => {
+		const cause = new Error('root unmount failed');
 		const core = createMakoo();
 		core.useAdapter(createReactAdapter());
 		vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -151,16 +157,17 @@ describe('ReactAdapter', () => {
 			inject({ name: 'badge', injectAt: '#host', adapter: 'react', component: Badge })
 		]);
 		reactDomClientMock.root.unmount.mockImplementationOnce(() => {
-			throw new Error('root unmount failed');
+			throw cause;
 		});
 		const command = core.command('badge');
 
 		await expect(command.stop()).rejects.toMatchObject({
-			code: ErrorCode.ADAPTER_UNMOUNT_FAIL
+			code: MakooErrorCode.INJECTION_CLEANUP_FAILED,
+			errors: [expect.objectContaining({ code: MakooErrorCode.UNMOUNT_FAILED, cause })]
 		});
 		expect(core.status('badge').getSnapshot()).toBe('failed');
 		expect(() => command.start()).toThrow(
-			expect.objectContaining({ code: ErrorCode.INJECTION_CLEANUP_FAILED })
+			expect.objectContaining({ code: MakooErrorCode.INJECTION_CLOSED })
 		);
 	});
 });

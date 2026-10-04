@@ -1,4 +1,4 @@
-export { ReactAdapterError } from './error';
+export { ReactErrorCode } from './error';
 export {
 	useComponentCommand,
 	useComponentStatus,

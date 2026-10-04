@@ -1,15 +1,14 @@
 import {
 	type ComponentCommand,
 	type ComponentStatusHandle,
-	ErrorCode,
 	type ListenerStatus,
-	type MakooError,
+	MakooAggregateError,
+	MakooErrorCode,
 	type StateView
 } from '@makoojs/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { type App, defineComponent, h } from 'vue';
-import { useMakooComponent } from '../src';
-import { VueAdapterError } from '../src/error';
+import { useMakooComponent, VueErrorCode } from '../src';
 import { createVueAdapter } from '../src/VueAdapter';
 import { VuePlugin } from '../src/VuePlugin';
 
@@ -63,7 +62,7 @@ describe('VueAdapter', () => {
 		expect(createVueAdapter().name).toBe('vue');
 	});
 
-	it('wraps mount failures and preserves the original cause', () => {
+	it('rethrows a mount failure when cleanup has nothing to report', () => {
 		const cause = new TypeError('plugin install failed');
 		VuePlugin.usePlugins({
 			install() {
@@ -71,25 +70,15 @@ describe('VueAdapter', () => {
 			}
 		});
 
-		let thrown: unknown;
-		try {
+		expect(() =>
 			createVueAdapter().mount({
 				component: defineComponent({ render: () => h('div') }),
 				props: undefined,
 				container: document.createElement('div'),
 				command: createCommand(),
 				status: createStatus(createView(() => {}))
-			});
-		} catch (error) {
-			thrown = error;
-		}
-
-		expect(thrown).toBeInstanceOf(VueAdapterError);
-		expect(thrown).toMatchObject({
-			code: ErrorCode.ADAPTER_MOUNT_FAIL,
-			cause,
-			cleanupErrors: []
-		});
+			})
+		).toThrow(cause);
 	});
 
 	it('releases state subscriptions created before a mount fails', () => {
@@ -107,8 +96,11 @@ describe('VueAdapter', () => {
 			})
 		).toThrow(
 			expect.objectContaining({
-				code: ErrorCode.ADAPTER_MOUNT_FAIL,
-				cleanupErrors: [expect.objectContaining({ code: ErrorCode.ADAPTER_UNMOUNT_FAIL })]
+				code: MakooErrorCode.MOUNT_CLEANUP_FAILED,
+				cause: expect.objectContaining({ message: 'child setup failed' }),
+				errors: [
+					expect.objectContaining({ code: VueErrorCode.VUE_PARTIAL_MOUNT_UNCONFIRMED })
+				]
 			})
 		);
 		expect(view.subscribe).toHaveBeenCalledOnce();
@@ -136,24 +128,22 @@ describe('VueAdapter', () => {
 			thrown = error;
 		}
 
-		expect(thrown).toBeInstanceOf(VueAdapterError);
-		const { cleanupErrors } = thrown as MakooError;
-		expect(cleanupErrors).toHaveLength(2);
-		expect(cleanupErrors).toEqual(
+		expect(thrown).toBeInstanceOf(MakooAggregateError);
+		if (!(thrown instanceof MakooAggregateError)) throw thrown;
+		expect(thrown).toMatchObject({
+			code: MakooErrorCode.MOUNT_CLEANUP_FAILED,
+			cause: expect.objectContaining({ message: 'child setup failed' })
+		});
+		expect(thrown.errors).toHaveLength(2);
+		expect(thrown.errors).toEqual(
 			expect.arrayContaining([
-				expect.objectContaining({
-					code: ErrorCode.ADAPTER_UNMOUNT_FAIL,
-					cause: releaseCause
-				}),
-				expect.objectContaining({
-					code: ErrorCode.ADAPTER_UNMOUNT_FAIL,
-					cause: expect.objectContaining({ message: 'child setup failed' })
-				})
+				releaseCause,
+				expect.objectContaining({ code: VueErrorCode.VUE_PARTIAL_MOUNT_UNCONFIRMED })
 			])
 		);
 	});
 
-	it('wraps unmount failures with the original cause', () => {
+	it('rethrows an unmount failure unchanged', () => {
 		const cause = new Error('unmount failed');
 		const app = {
 			unmount() {
@@ -161,12 +151,6 @@ describe('VueAdapter', () => {
 			}
 		} as unknown as App;
 
-		expect(() => createVueAdapter().unmount(app)).toThrow(
-			expect.objectContaining({
-				name: 'VueAdapterError',
-				code: ErrorCode.ADAPTER_UNMOUNT_FAIL,
-				cause
-			})
-		);
+		expect(() => createVueAdapter().unmount(app)).toThrow(cause);
 	});
 });

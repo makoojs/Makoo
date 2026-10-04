@@ -5,7 +5,7 @@ import type {
 	ListenerStatus,
 	StateView
 } from '@makoojs/core';
-import { MakooError } from '@makoojs/core';
+import { MakooError, MakooErrorCode } from '@makoojs/core';
 import {
 	act,
 	type ComponentType,
@@ -20,6 +20,7 @@ import { createRoot } from 'react-dom/client';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	createReactAdapter,
+	ReactErrorCode,
 	type ReactMountRoot,
 	useComponentCommand,
 	useComponentStatus,
@@ -178,7 +179,7 @@ describe('React hook subscriptions at the adapter boundary', () => {
 		await mount(Panel);
 		expect(componentState.subscriptions).toBe(0);
 		const initialRenders = received.length;
-		lastError = new MakooError('mount failed');
+		lastError = new MakooError('mount failed', { code: MakooErrorCode.MOUNT_FAILED });
 		await act(async () => componentState.publish('failed'));
 		expect(received).toHaveLength(initialRenders);
 		await act(async () => container.querySelector('button')?.click());
@@ -424,7 +425,7 @@ describe('React hook subscriptions at the adapter boundary', () => {
 		const root = createRoot(container);
 		roots.push(root);
 		await expect(act(async () => root.render(createElement(Panel)))).rejects.toThrow(
-			/mounted by the Makoo React adapter/
+			expect.objectContaining({ code: ReactErrorCode.REACT_HOOK_OUTSIDE_COMPONENT })
 		);
 	});
 });

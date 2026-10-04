@@ -1,7 +1,6 @@
-import { ErrorCode, type MountAdapter } from '@makoojs/core';
+import { MakooAggregateError, MakooErrorCode, type MountAdapter } from '@makoojs/core';
 import { type ComponentType, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { causeError, ReactAdapterError } from './error';
 import { MakooComponentContext } from './hooks';
 
 // biome-ignore lint/suspicious/noExplicitAny: accepts components with any props shape
@@ -27,37 +26,21 @@ export function createReactAdapter(): ReactMountAdapter {
 				);
 				return root;
 			} catch (cause) {
-				const error = new ReactAdapterError(
-					'Failed to mount React component',
-					undefined,
-					ErrorCode.ADAPTER_MOUNT_FAIL,
-					causeError(cause)
-				);
-				if (root) {
-					try {
-						root.unmount();
-					} catch (unmountCause) {
-						error.withCleanupErrors([unmountError(unmountCause)]);
-					}
+				if (!root) throw cause;
+				try {
+					root.unmount();
+				} catch (unmountCause) {
+					throw new MakooAggregateError(
+						[unmountCause],
+						'Failed to clean up after the React mount failed',
+						{ code: MakooErrorCode.MOUNT_CLEANUP_FAILED, cause }
+					);
 				}
-				throw error;
+				throw cause;
 			}
 		},
 		unmount(root) {
-			try {
-				root.unmount();
-			} catch (cause) {
-				throw unmountError(cause);
-			}
+			root.unmount();
 		}
 	};
-}
-
-function unmountError(cause: unknown): ReactAdapterError {
-	return new ReactAdapterError(
-		'Failed to unmount React component',
-		undefined,
-		ErrorCode.ADAPTER_UNMOUNT_FAIL,
-		causeError(cause)
-	);
 }
