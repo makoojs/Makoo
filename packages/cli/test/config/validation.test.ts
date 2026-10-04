@@ -42,17 +42,17 @@ describe('validateCliConfig', () => {
 			path: 'app'
 		}
 	])('reports the offending field for $name', ({ config, path }) => {
-		expect(() => validateCliConfig(config)).toThrow(MakooError);
+		let thrown: unknown;
 		try {
 			validateCliConfig(config);
 		} catch (error) {
-			expect(error).toMatchObject({
-				code: CliErrorCode.CLI_CONFIG_INVALID,
-				message: expect.stringContaining(`${path}:`)
-			});
-			expect(error).toBeInstanceOf(MakooError);
-			if (!(error instanceof MakooError)) throw error;
-			expect(error.cause).toBeInstanceOf(ZodError);
+			thrown = error;
 		}
+		expect(thrown).toBeInstanceOf(MakooError);
+		expect(thrown).toMatchObject({
+			code: CliErrorCode.CLI_CONFIG_INVALID,
+			message: expect.stringContaining(`${path}:`)
+		});
+		expect((thrown as MakooError).cause).toBeInstanceOf(ZodError);
 	});
 });

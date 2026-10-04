@@ -10,9 +10,8 @@ import {
 	type MakooRuntime
 } from '@makoojs/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createApp, defineComponent, h, nextTick, type Ref, reactive, watchEffect } from 'vue';
+import { defineComponent, h, nextTick, type Ref, reactive, watchEffect } from 'vue';
 import { createVueAdapter, useMakooComponent, VueErrorCode, type VueMakooComponent } from '../src';
-import { componentContextKey } from '../src/composables';
 
 function element(selector: string): HTMLElement {
 	const target = document.querySelector<HTMLElement>(selector);
@@ -63,24 +62,6 @@ describe('Vue components mounted by core', () => {
 	it('rejects component helpers outside a component mounted by the adapter', () => {
 		expect(() => useMakooComponent()).toThrow(
 			expect.objectContaining({ code: VueErrorCode.VUE_HOOK_OUTSIDE_COMPONENT })
-		);
-	});
-
-	it('rejects useMakooComponent outside an effect scope', () => {
-		const app = createApp({ render: () => null });
-		app.provide(componentContextKey, {
-			command: { name: 'panel', start() {}, stop: async () => {}, remove: async () => {} },
-			status: {
-				getSnapshot: () => 'mounted',
-				subscribe: () => () => {},
-				lastError: undefined,
-				listenerNames: [],
-				listener: () => ({ getSnapshot: () => 'waiting', subscribe: () => () => {} })
-			},
-			subscriptions: new Set()
-		});
-		expect(() => app.runWithContext(() => useMakooComponent())).toThrow(
-			expect.objectContaining({ code: VueErrorCode.VUE_HOOK_OUTSIDE_SCOPE })
 		);
 	});
 

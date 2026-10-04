@@ -62,6 +62,26 @@ describe('VueAdapter', () => {
 		expect(createVueAdapter().name).toBe('vue');
 	});
 
+	it('rejects useMakooComponent from a plugin outside an effect scope', () => {
+		VuePlugin.usePlugins({
+			install(app) {
+				app.runWithContext(() => {
+					useMakooComponent();
+				});
+			}
+		});
+
+		expect(() =>
+			createVueAdapter().mount({
+				component: defineComponent({ render: () => h('div') }),
+				props: undefined,
+				container: document.createElement('div'),
+				command: createCommand(),
+				status: createStatus(createView(() => {}))
+			})
+		).toThrow(expect.objectContaining({ code: VueErrorCode.VUE_HOOK_OUTSIDE_SCOPE }));
+	});
+
 	it('rethrows a mount failure when cleanup has nothing to report', () => {
 		const cause = new TypeError('plugin install failed');
 		VuePlugin.usePlugins({
@@ -129,13 +149,13 @@ describe('VueAdapter', () => {
 		}
 
 		expect(thrown).toBeInstanceOf(MakooAggregateError);
-		if (!(thrown instanceof MakooAggregateError)) throw thrown;
-		expect(thrown).toMatchObject({
+		const aggregate = thrown as MakooAggregateError;
+		expect(aggregate).toMatchObject({
 			code: MakooErrorCode.MOUNT_CLEANUP_FAILED,
 			cause: expect.objectContaining({ message: 'child setup failed' })
 		});
-		expect(thrown.errors).toHaveLength(2);
-		expect(thrown.errors).toEqual(
+		expect(aggregate.errors).toHaveLength(2);
+		expect(aggregate.errors).toEqual(
 			expect.arrayContaining([
 				releaseCause,
 				expect.objectContaining({ code: VueErrorCode.VUE_PARTIAL_MOUNT_UNCONFIRMED })
