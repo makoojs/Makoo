@@ -42,7 +42,7 @@ describe('injection target recovery', () => {
 	}
 
 	it('cleans the old mount before reinjecting into a replacement target', async () => {
-		const { core, panel, host, container, mount, unmount } = mountInjection(true);
+		const { core, host, container, mount, unmount } = mountInjection(true);
 		const replacement = host.cloneNode() as HTMLElement;
 		unmount.mockImplementation(() => {
 			expect(mount).toHaveBeenCalledOnce();
@@ -74,7 +74,7 @@ describe('injection target recovery', () => {
 	});
 
 	it('keeps the mount through same-delivery moves, selector changes, and content updates', async () => {
-		const { core, panel, host, parent, container, mount, unmount } = mountInjection(true);
+		const { core, host, parent, container, mount, unmount } = mountInjection(true);
 		const snapshot = core.status('panel').getSnapshot();
 		parent.remove();
 		document.body.append(parent);
@@ -141,14 +141,14 @@ describe('injection target recovery', () => {
 			interval: 1
 		});
 		expect(container.isConnected).toBe(false);
-		expect(core.status('panel').lastError?.errors).toEqual(
-			expect.arrayContaining([
+		expect(core.status('panel').lastError).toMatchObject({
+			errors: expect.arrayContaining([
 				expect.objectContaining({
 					code: MakooErrorCode.UNMOUNT_FAILED,
 					cause: expect.objectContaining({ message: 'unmount failed' })
 				})
 			])
-		);
+		});
 		expect(mount).toHaveBeenCalledOnce();
 		expect(() => panel.start()).toThrow(/cannot restart/);
 		await expect(panel.stop()).rejects.toBe(core.status('panel').lastError);
@@ -196,7 +196,7 @@ describe('injection target recovery', () => {
 		'container',
 		'outside'
 	] as const)('cleans up a disconnected %s without reinjection', async (removedPart) => {
-		const { core, panel, host, parent, container, mount, unmount } = mountInjection();
+		const { core, host, parent, container, mount, unmount } = mountInjection();
 		if (removedPart === 'target') host.remove();
 		if (removedPart === 'ancestor') parent.remove();
 		if (removedPart === 'container') container.remove();

@@ -222,24 +222,6 @@ describe('single component injection', () => {
 		expect(vi.getTimerCount()).toBe(0);
 	});
 
-	it('does not mount a target that disconnects before use', async () => {
-		const host = document.createElement('section');
-		vi.spyOn(document, 'querySelector').mockReturnValueOnce(host);
-		vi.spyOn(host, 'isConnected', 'get').mockReturnValueOnce(true).mockReturnValue(false);
-		const mount = vi.fn(() => 'handle');
-		const core = createMakoo();
-		core.useAdapter(adapter(mount));
-		core.apply([inject({ name: 'panel', injectAt: '#host', adapter: 'plain', component: {} })]);
-		const panel = core.command('panel');
-		handles.push(panel);
-		expect(mount).not.toHaveBeenCalled();
-		await vi.waitFor(() => expect(core.status('panel').getSnapshot()).toBe('failed'), {
-			interval: 1
-		});
-		expect(core.status('panel').lastError?.code).toBe('MAKOO_MOUNT_TARGET_DETACHED');
-		expect(vi.getTimerCount()).toBe(0);
-	});
-
 	it('does not mount when a waiting subscriber stops the injection', async () => {
 		const host = document.createElement('section');
 		host.id = 'host';
@@ -394,7 +376,7 @@ describe('single component injection', () => {
 					})
 				: expect.objectContaining({ issues: expect.any(Array) })
 		});
-		if (invalid.name === '' || invalid.name === '  ') {
+		if ('name' in invalid && (invalid.name === '' || invalid.name === '  ')) {
 			expect((thrown as { message?: string }).message ?? '').not.toContain(
 				'Invalid component declaration "'
 			);

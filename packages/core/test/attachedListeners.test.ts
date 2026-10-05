@@ -163,10 +163,7 @@ describe('attached host listeners', () => {
 	});
 	it('keeps child views stable across overall reinjection and replaces cancelled bindings', async () => {
 		const callback = vi.fn();
-		const { panel, status, mount, unmount } = setup(
-			[child('play', callback), child('pause')],
-			true
-		);
+		const { status, mount, unmount } = setup([child('play', callback), child('pause')], true);
 		const state = listenerOf(status, 'play');
 		const notify = vi.fn();
 		const unsubscribe = state.subscribe(notify);
@@ -556,7 +553,7 @@ describe('attached host listeners', () => {
 				throw cause;
 			});
 		const name = failure === 'initial-timeout' ? 'missing' : 'play';
-		const { panel, status, mount, unmount } = setup([child(name)], failure !== 'detached');
+		const { status, mount, unmount } = setup([child(name)], failure !== 'detached');
 		if (failure === 'recovery-timeout' || failure === 'detached') {
 			element('#play').remove();
 			await Promise.resolve();
