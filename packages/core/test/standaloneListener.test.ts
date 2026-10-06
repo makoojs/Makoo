@@ -176,7 +176,7 @@ describe('standalone host listeners', () => {
 	});
 
 	it('accepts all records before execution and isolates binding failure from other listeners', async () => {
-		vi.spyOn(console, 'error').mockImplementation(() => {});
+		const reported = vi.spyOn(console, 'error').mockImplementation(() => {});
 		const core = createMakoo();
 		const [first, second] = document.querySelectorAll<HTMLButtonElement>('.host');
 		first.id = 'broken';
@@ -199,6 +199,7 @@ describe('standalone host listeners', () => {
 			cause,
 			message: expect.stringContaining('broken')
 		});
+		expect(reported).toHaveBeenCalledWith(core.status('broken').lastError);
 		second.click();
 		expect(callback).toHaveBeenCalledOnce();
 		await core.command('broken').stop();

@@ -486,6 +486,7 @@ describe('single component injection', () => {
 			code: MakooErrorCode.MOUNT_FAILED,
 			cause: expect.objectContaining({ message: 'mount failed' })
 		});
+		expect(console.error).toHaveBeenCalledWith(core.status('panel').lastError);
 		expect(host.querySelector('div')).toBeNull();
 		expect(() =>
 			core.apply([listen({ name: 'panel', listenAt: '.play', type: 'click', callback() {} })])
