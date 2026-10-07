@@ -71,7 +71,7 @@ describe('React hook subscriptions at the adapter boundary', () => {
 					props: undefined,
 					container,
 					command,
-					status,
+					statusHandle: status,
 					globalListener: () => ({}) as ReturnType<AdapterMountParams['globalListener']>
 				})
 			);

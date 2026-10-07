@@ -41,7 +41,7 @@ export function createMakoo(): MakooRuntime {
 			applyDeclarations(makooInstance, declarations);
 		},
 		command: (name) => getInjection(makooInstance.injections, name).command,
-		status: (name) => getInjection(makooInstance.injections, name).status,
+		statusHandle: (name) => getInjection(makooInstance.injections, name).statusHandle,
 		dispose: () => disposeInstance(makooInstance)
 	};
 }
@@ -164,7 +164,7 @@ function standaloneListener(injections: ReadonlyMap<string, Injection>, name: st
 			code: MakooErrorCode.INJECTION_NOT_FOUND
 		});
 	}
-	return { command: injection.command, status: injection.status };
+	return { command: injection.command, statusHandle: injection.statusHandle };
 }
 
 function getInjection(injections: ReadonlyMap<string, Injection>, name: string): Injection {

@@ -1,10 +1,10 @@
 import type { DOMObserver } from '../dom/observer';
 import type { MakooError } from '../error/MakooError';
 import { createState } from '../state/createState';
-import { type ExecutionSlot, endExecution, type ListenerState } from './listener';
+import { type ExecutionSlot, endExecution, type HostListener } from './listener';
 import type { ListenerStatus, MakooListenerDeclaration } from './types';
 
-export type AttachListener = ListenerState & {
+export type AttachListener = HostListener & {
 	readonly kind: 'attach';
 	intent: 'running' | 'stopped';
 	executionSlot: ExecutionSlot;

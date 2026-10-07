@@ -8,7 +8,7 @@ import { startListener } from '../listener/listener';
 
 export type ComponentMounter = {
 	mount(container: HTMLElement): unknown;
-	unmount(handle: unknown): void;
+	unmount(mountHandle: unknown): void;
 };
 
 type ComponentExecutionConfig = {
@@ -17,7 +17,7 @@ type ComponentExecutionConfig = {
 	readonly timeout?: number;
 };
 
-export type ComponentExecution = {
+export type ComponentExecutionControl = {
 	readonly phase: 'pending' | 'mounting' | 'mounted' | 'ended';
 	start(): void;
 	cancel(): void;
@@ -25,16 +25,16 @@ export type ComponentExecution = {
 };
 
 type ExecutionCallbacks = {
-	status(status: 'waiting' | 'mounted'): void;
+	setStatus(nextStatus: 'waiting' | 'mounted'): void;
 	ended(reason: 'stopped' | 'detached' | 'failed', error?: MakooError): void;
 };
 
-type ComponentExecutionState = {
+type ComponentExecution = {
 	readonly config: ComponentExecutionConfig;
 	readonly domWaitAbortController: AbortController;
-	phase: ComponentExecution['phase'];
+	phase: ComponentExecutionControl['phase'];
 	componentContainer: HTMLElement | null;
-	mountedComponent: { handle: unknown } | null;
+	mountedComponent: { mountHandle: unknown } | null;
 	readonly cleanupErrors: unknown[];
 	readonly attachListeners: ReadonlyMap<string, AttachListener>;
 };
@@ -45,8 +45,8 @@ export function createComponentExecution(
 	mounter: ComponentMounter,
 	attachListeners: ReadonlyMap<string, AttachListener>,
 	callbacks: ExecutionCallbacks
-): ComponentExecution {
-	const execution: ComponentExecutionState = {
+): ComponentExecutionControl {
+	const execution: ComponentExecution = {
 		config,
 		attachListeners,
 		domWaitAbortController: new AbortController(),
@@ -66,7 +66,7 @@ export function createComponentExecution(
 }
 
 function awaitMountTarget(
-	execution: ComponentExecutionState,
+	execution: ComponentExecution,
 	dom: DOMObserver,
 	mounter: ComponentMounter,
 	callbacks: ExecutionCallbacks
@@ -84,14 +84,14 @@ function awaitMountTarget(
 			},
 			(cause) => callbacks.ended('failed', mountFailed(execution, cause))
 		);
-		if (execution.phase === 'pending') callbacks.status('waiting');
+		if (execution.phase === 'pending') callbacks.setStatus('waiting');
 	} catch (cause) {
 		callbacks.ended('failed', mountFailed(execution, cause));
 	}
 }
 
 function mountComponent(
-	execution: ComponentExecutionState,
+	execution: ComponentExecution,
 	dom: DOMObserver,
 	mounter: ComponentMounter,
 	callbacks: ExecutionCallbacks,
@@ -117,7 +117,7 @@ function mountComponent(
 	// Only subscribers, the adapter, and child subscribers can stop this execution synchronously,
 	// so cancellation is rechecked after each of them.
 	execution.phase = 'mounting';
-	callbacks.status('waiting');
+	callbacks.setStatus('waiting');
 	if (signal.aborted) {
 		callbacks.ended('stopped');
 		return;
@@ -133,7 +133,7 @@ function mountComponent(
 
 	try {
 		const mountHandle = mounter.mount(componentContainer);
-		execution.mountedComponent = { handle: mountHandle };
+		execution.mountedComponent = { mountHandle };
 		execution.phase = 'mounted';
 	} catch (cause) {
 		callbacks.ended('failed', mountFailed(execution, cause));
@@ -164,11 +164,11 @@ function mountComponent(
 			return;
 		}
 	}
-	callbacks.status('mounted');
+	callbacks.setStatus('mounted');
 }
 
 async function cleanupExecution(
-	execution: ComponentExecutionState,
+	execution: ComponentExecution,
 	dom: DOMObserver,
 	mounter: ComponentMounter
 ): Promise<unknown[]> {
@@ -179,17 +179,14 @@ async function cleanupExecution(
 	return unmountComponent(execution, mounter);
 }
 
-function unmountComponent(
-	execution: ComponentExecutionState,
-	mounter: ComponentMounter
-): unknown[] {
+function unmountComponent(execution: ComponentExecution, mounter: ComponentMounter): unknown[] {
 	const { config, cleanupErrors } = execution;
 
 	const mountedComponent = execution.mountedComponent;
 	if (mountedComponent) {
 		execution.mountedComponent = null;
 		try {
-			mounter.unmount(mountedComponent.handle);
+			mounter.unmount(mountedComponent.mountHandle);
 		} catch (cause) {
 			cleanupErrors.push(
 				new MakooError(`Failed to unmount "${config.name}"`, {
@@ -228,7 +225,7 @@ function targetDetachedError(name: string): MakooError {
 	});
 }
 
-function mountFailed(execution: ComponentExecutionState, cause: unknown): MakooError {
+function mountFailed(execution: ComponentExecution, cause: unknown): MakooError {
 	const adapterCleanup =
 		cause instanceof MakooAggregateError && cause.code === MakooErrorCode.MOUNT_CLEANUP_FAILED
 			? cause

@@ -36,13 +36,13 @@ export type ExecutionSlot =
 			cleanupCompletion: CleanupCompletion;
 	  };
 
-export type ListenerState = {
+export type HostListener = {
 	readonly config: MakooListenerDeclaration;
 	readonly state: ReturnType<typeof createState<ListenerStatus>>;
 	lastError: MakooError | undefined;
 };
 
-export type Listener = ListenerState & {
+export type Listener = HostListener & {
 	readonly kind: 'listener';
 	intent: 'running' | 'stopped' | 'removed';
 	executionSlot: ExecutionSlot | { kind: 'removed'; cleanupPromise: Promise<void> };
@@ -74,14 +74,14 @@ export function createListener(
 		stop: () => stopListener(listener, dom),
 		remove: () => removeListener(listener, dom)
 	});
-	const status: ListenerStatusHandle = Object.freeze({
+	const statusHandle: ListenerStatusHandle = Object.freeze({
 		getSnapshot: () => listener.state.view.getSnapshot(),
 		subscribe: (notify: () => void) => listener.state.view.subscribe(notify),
 		get lastError() {
 			return listener.lastError;
 		}
 	});
-	return { kind: 'listener', command, status };
+	return { kind: 'listener', command, statusHandle };
 }
 
 export function startListener(listener: Listener | AttachListener, dom: DOMObserver): void {
@@ -136,10 +136,10 @@ function startExecution(listener: Listener | AttachListener, dom: DOMObserver): 
 		}
 	};
 	awaitListenerTarget(execution, dom, {
-		status(status) {
+		setStatus(nextStatus) {
 			const currentSlot = listener.executionSlot;
 			if (currentSlot.kind === 'active' && currentSlot.execution === execution)
-				listener.state.set(status);
+				listener.state.set(nextStatus);
 		},
 		ended(reason, error) {
 			const currentSlot = listener.executionSlot;

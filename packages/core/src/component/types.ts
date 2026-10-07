@@ -29,7 +29,7 @@ export interface ComponentCommand {
 	remove(): Promise<void>;
 }
 
-/** Component status entry: own stage plus attached listener status views. */
+/** Component status handle: own stage plus attached listener status views. */
 export interface ComponentStatusHandle extends StateView<ComponentStatus> {
 	readonly lastError: MakooError | undefined;
 	readonly attachedListenerNames: readonly string[];
@@ -39,5 +39,5 @@ export interface ComponentStatusHandle extends StateView<ComponentStatus> {
 export type ComponentInjection = {
 	readonly kind: 'component';
 	readonly command: ComponentCommand;
-	readonly status: ComponentStatusHandle;
+	readonly statusHandle: ComponentStatusHandle;
 };

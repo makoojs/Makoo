@@ -15,7 +15,7 @@ export type ListenerExecution = {
 };
 
 type ExecutionCallbacks = {
-	status(status: 'waiting' | 'bound'): void;
+	setStatus(nextStatus: 'waiting' | 'bound'): void;
 	ended(reason: 'detached' | 'failed', error: MakooError): void;
 };
 
@@ -61,7 +61,8 @@ export function awaitListenerTarget(
 					callbacks.ended('failed', bindingError(config.name, cause));
 			}
 		);
-		if (execution.phase === 'active' && !execution.listenerTarget) callbacks.status('waiting');
+		if (execution.phase === 'active' && !execution.listenerTarget)
+			callbacks.setStatus('waiting');
 	} catch (cause) {
 		if (execution.phase === 'active')
 			callbacks.ended('failed', bindingError(config.name, cause));
@@ -92,7 +93,7 @@ function bindListener(
 			callbacks.ended('failed', bindingError(config.name, cause));
 		return;
 	}
-	if (execution.phase === 'active') callbacks.status('bound');
+	if (execution.phase === 'active') callbacks.setStatus('bound');
 }
 
 export function cleanupExecution(execution: ListenerExecution): void {

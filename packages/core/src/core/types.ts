@@ -24,6 +24,6 @@ export interface MakooRuntime {
 	useAdapter(adapter: MountAdapter): void;
 	apply(declarations: readonly MakooInjectionDeclaration[]): void;
 	command(name: string): InjectionCommand;
-	status(name: string): InjectionStatusHandle;
+	statusHandle(name: string): InjectionStatusHandle;
 	dispose(): Promise<void>;
 }

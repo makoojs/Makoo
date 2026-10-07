@@ -30,10 +30,10 @@ describe('attached host listeners', () => {
 		const mount = vi.fn(
 			({
 				command,
-				status: mountStatus
+				statusHandle: mountStatus
 			}: {
 				command: ComponentCommand;
-				status: ComponentStatusHandle;
+				statusHandle: ComponentStatusHandle;
 			}) => {
 				panel = command;
 				status = mountStatus;
@@ -81,7 +81,7 @@ describe('attached host listeners', () => {
 		]);
 		const replacement = core.command('panel');
 		controls.push(replacement);
-		const replacementStatus = core.status('panel');
+		const replacementStatus = core.statusHandle('panel');
 		if (!('attachedListener' in replacementStatus)) throw new Error('Expected a component');
 		const newState = replacementStatus.attachedListener('play');
 		const snapshot = newState.getSnapshot();
@@ -95,7 +95,7 @@ describe('attached host listeners', () => {
 		expect(replacementCallback).toHaveBeenCalledOnce();
 		expect(newState.getSnapshot()).toBe(snapshot);
 		expect(oldState.getSnapshot()).toBe('idle');
-		expect(core.status('panel').lastError).toBeUndefined();
+		expect(core.statusHandle('panel').lastError).toBeUndefined();
 		expect(console.error).toHaveBeenCalledWith(expect.objectContaining({ cause }));
 	});
 	it('stops local recovery immediately when a waiting subscriber stops the parent', async () => {
@@ -219,7 +219,7 @@ describe('attached host listeners', () => {
 		let status!: ComponentStatusHandle;
 		core.useAdapter({
 			name: 'plain',
-			mount({ command, status: mountStatus }) {
+			mount({ command, statusHandle: mountStatus }) {
 				panel = command;
 				status = mountStatus;
 				if (action === 'throw') throw new Error('mount failed');
@@ -256,7 +256,7 @@ describe('attached host listeners', () => {
 			})
 		]);
 		controls.push(core.command('play'), core.command('other'));
-		expect(listenerOf(status, 'play')).not.toBe(core.status('play'));
+		expect(listenerOf(status, 'play')).not.toBe(core.statusHandle('play'));
 		element('#play').click();
 		expect(callback).toHaveBeenCalledTimes(3);
 	});
@@ -302,7 +302,7 @@ describe('attached host listeners', () => {
 		let status!: ComponentStatusHandle;
 		core.useAdapter({
 			name: 'plain',
-			mount({ command, status: mountStatus }) {
+			mount({ command, statusHandle: mountStatus }) {
 				panel = command;
 				status = mountStatus;
 				const playStatus = mountStatus.attachedListener('play');
@@ -335,7 +335,7 @@ describe('attached host listeners', () => {
 		let status!: ComponentStatusHandle;
 		core.useAdapter({
 			name: 'plain',
-			mount({ command, status: mountStatus }) {
+			mount({ command, statusHandle: mountStatus }) {
 				panel = command;
 				status = mountStatus;
 				const playStatus = mountStatus.attachedListener('play');
@@ -638,9 +638,9 @@ describe('attached host listeners', () => {
 		let state!: StateView<ListenerStatus>;
 		core.useAdapter({
 			name: 'plain',
-			mount({ command, status }) {
+			mount({ command, statusHandle }) {
 				panel = command;
-				state = status.attachedListener('play');
+				state = statusHandle.attachedListener('play');
 				expect(state.getSnapshot()).toBe('idle');
 				button.click();
 				expect(callback).not.toHaveBeenCalled();
@@ -657,7 +657,7 @@ describe('attached host listeners', () => {
 			})
 		]);
 		controls.push(core.command('panel'));
-		const status = core.status('panel');
+		const status = core.statusHandle('panel');
 		if (!('attachedListener' in status)) throw new Error('Expected a component');
 		expect(status.getSnapshot()).toBe('mounted');
 		expect(status.attachedListenerNames).toEqual(['play']);

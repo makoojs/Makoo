@@ -7,7 +7,7 @@ import type { ListenerStatus } from '../listener/types';
 import { createState } from '../state/createState';
 import type { StateView } from '../state/types';
 import {
-	type ComponentExecution,
+	type ComponentExecutionControl,
 	type ComponentMounter,
 	createComponentExecution
 } from './execution';
@@ -43,7 +43,7 @@ type ExecutionSlot =
 	| { kind: 'empty' | 'removed' | 'cleanup-failed'; cleanupPromise: Promise<void> }
 	| {
 			kind: 'active' | 'cancelling' | 'closing';
-			execution: ComponentExecution;
+			execution: ComponentExecutionControl;
 			cleanupCompletion: CleanupCompletion;
 	  };
 
@@ -79,7 +79,7 @@ export function createComponent(
 		stop: () => stopComponent(component),
 		remove: () => removeComponent(component)
 	});
-	const status: ComponentStatusHandle = Object.freeze({
+	const statusHandle: ComponentStatusHandle = Object.freeze({
 		getSnapshot: () => component.state.view.getSnapshot(),
 		subscribe: (notify: () => void) => component.state.view.subscribe(notify),
 		get lastError() {
@@ -100,12 +100,12 @@ export function createComponent(
 					props: config.props,
 					container,
 					command,
-					status,
+					statusHandle,
 					globalListener
 				});
 			},
-			unmount(handle) {
-				adapter.unmount(handle);
+			unmount(mountHandle) {
+				adapter.unmount(mountHandle);
 			}
 		},
 		state: createState<ComponentStatus>('idle', (cause) => {
@@ -133,7 +133,7 @@ export function createComponent(
 			)
 		);
 	}
-	return { kind: 'component', command, status };
+	return { kind: 'component', command, statusHandle };
 }
 
 function getAttachListenerStatus(component: Component, name: string): StateView<ListenerStatus> {
@@ -196,7 +196,7 @@ function startExecution(component: Component): void {
 		component.attachListeners,
 		// The execution only stops its own work; stale callbacks are filtered here.
 		{
-			status(nextStatus) {
+			setStatus(nextStatus) {
 				const currentSlot = component.executionSlot;
 				if (currentSlot.kind === 'active' && currentSlot.execution === execution) {
 					component.state.set(nextStatus);

@@ -57,25 +57,25 @@ describe('single component injection', () => {
 		expect(params?.component).toBe(component);
 		expect(params?.props).toBe(props);
 		expect(params?.command).toBe(panel);
-		expect(params?.status).toBe(core.status('panel'));
+		expect(params?.statusHandle).toBe(core.statusHandle('panel'));
 		expect(Object.keys(params?.command ?? {}).sort()).toEqual([
 			'name',
 			'remove',
 			'start',
 			'stop'
 		]);
-		expect(Object.keys(params?.status ?? {}).sort()).toEqual([
+		expect(Object.keys(params?.statusHandle ?? {}).sort()).toEqual([
 			'attachedListener',
 			'attachedListenerNames',
 			'getSnapshot',
 			'lastError',
 			'subscribe'
 		]);
-		expect(params?.status.attachedListenerNames).toEqual([]);
+		expect(params?.statusHandle.attachedListenerNames).toEqual([]);
 		expect(params?.container.parentElement).toBe(host);
 		expect(extra.querySelector('div')).toBeNull();
 		expect(host.firstChild?.textContent).toBe('keep');
-		expect(core.status('panel').getSnapshot()).toBe('mounted');
+		expect(core.statusHandle('panel').getSnapshot()).toBe('mounted');
 		expect(Object.isFrozen(props)).toBe(false);
 		expect(Object.isFrozen(props.nested)).toBe(false);
 		expect(vi.getTimerCount()).toBe(0);
@@ -107,7 +107,7 @@ describe('single component injection', () => {
 		handles.push(core.command('panel'), core.command('save'));
 		const found = params?.globalListener('save');
 		expect(found?.command).toBe(core.command('save'));
-		expect(found?.status).toBe(core.status('save'));
+		expect(found?.statusHandle).toBe(core.statusHandle('save'));
 		for (const name of ['panel', 'play', 'missing']) {
 			expect(() => params?.globalListener(name)).toThrow(
 				expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
@@ -119,9 +119,9 @@ describe('single component injection', () => {
 		handles.push(core.command('save'));
 		const replacement = params?.globalListener('save');
 		expect(replacement?.command).toBe(core.command('save'));
-		expect(replacement?.status).toBe(core.status('save'));
+		expect(replacement?.statusHandle).toBe(core.statusHandle('save'));
 		expect(replacement?.command).not.toBe(found?.command);
-		expect(replacement?.status).not.toBe(found?.status);
+		expect(replacement?.statusHandle).not.toBe(found?.statusHandle);
 	});
 
 	it.each([0, false, null, undefined])('unmounts a falsy handle %s', async (handle) => {
@@ -138,7 +138,7 @@ describe('single component injection', () => {
 		await panel.stop();
 		expect(unmount).toHaveBeenCalledWith(handle);
 		expect(container?.isConnected).toBe(false);
-		expect(core.status('panel').getSnapshot()).toBe('idle');
+		expect(core.statusHandle('panel').getSnapshot()).toBe('idle');
 	});
 
 	it('unregisters a stopped component as soon as it is removed and settles later controls with that removal', async () => {
@@ -165,7 +165,7 @@ describe('single component injection', () => {
 		await removal;
 		core.apply([declaration]);
 		handles.push(core.command('panel'));
-		expect(core.status('panel').getSnapshot()).toBe('mounted');
+		expect(core.statusHandle('panel').getSnapshot()).toBe('mounted');
 	});
 
 	it('unmounts synchronously before removing the container, then starts a new execution', async () => {
@@ -200,7 +200,7 @@ describe('single component injection', () => {
 		expect(containers).toHaveLength(2);
 		expect(containers[0]).not.toBe(containers[1]);
 		expect(containers[1]?.parentElement).toBe(host);
-		expect(core.status('panel').getSnapshot()).toBe('mounted');
+		expect(core.statusHandle('panel').getSnapshot()).toBe('mounted');
 		await panel.remove();
 		expect(containers[1]?.isConnected).toBe(false);
 		expect(() => core.command('panel')).toThrow(
@@ -223,16 +223,16 @@ describe('single component injection', () => {
 		]);
 		const panel = core.command('panel');
 		handles.push(panel);
-		expect(core.status('panel').getSnapshot()).toBe('waiting');
+		expect(core.statusHandle('panel').getSnapshot()).toBe('waiting');
 		expect(mount).not.toHaveBeenCalled();
 		const budget = timeout ?? 15000;
 		vi.advanceTimersByTime(budget - 1);
 		document.body.append(document.createElement('div'));
 		await Promise.resolve();
-		expect(core.status('panel').getSnapshot()).toBe('waiting');
+		expect(core.statusHandle('panel').getSnapshot()).toBe('waiting');
 		await vi.advanceTimersByTimeAsync(1);
-		expect(core.status('panel').getSnapshot()).toBe('failed');
-		expect(core.status('panel').lastError).toMatchObject({
+		expect(core.statusHandle('panel').getSnapshot()).toBe('failed');
+		expect(core.statusHandle('panel').lastError).toMatchObject({
 			code: 'MAKOO_TARGET_WAIT_TIMEOUT',
 			message: expect.stringContaining('panel')
 		});
@@ -243,7 +243,7 @@ describe('single component injection', () => {
 		expect(mount).not.toHaveBeenCalled();
 		panel.start();
 		expect(mount).toHaveBeenCalledOnce();
-		expect(core.status('panel').lastError).toBeUndefined();
+		expect(core.statusHandle('panel').lastError).toBeUndefined();
 		expect(host.querySelector('div')).toBeInstanceOf(HTMLElement);
 	});
 
@@ -261,7 +261,7 @@ describe('single component injection', () => {
 		await Promise.resolve();
 		await completion;
 		expect(mount).not.toHaveBeenCalled();
-		expect(core.status('panel').getSnapshot()).toBe('idle');
+		expect(core.statusHandle('panel').getSnapshot()).toBe('idle');
 		expect(vi.getTimerCount()).toBe(0);
 	});
 
@@ -275,7 +275,7 @@ describe('single component injection', () => {
 		core.useAdapter(adapter(mount, unmount));
 		core.apply([inject({ name: 'panel', injectAt: '#host', adapter: 'plain', component: {} })]);
 		const panel = core.command('panel');
-		const status = core.status('panel');
+		const status = core.statusHandle('panel');
 		handles.push(panel);
 		await panel.stop();
 		mount.mockClear();
@@ -301,7 +301,7 @@ describe('single component injection', () => {
 		core.useAdapter(adapter(mount, unmount));
 		core.apply([inject({ name: 'panel', injectAt: '#host', adapter: 'plain', component: {} })]);
 		const panel = core.command('panel');
-		const status = core.status('panel');
+		const status = core.statusHandle('panel');
 		handles.push(panel);
 		await panel.stop();
 		mount.mockClear();
@@ -318,7 +318,7 @@ describe('single component injection', () => {
 		});
 		expect(host.children).toHaveLength(0);
 		expect(status.getSnapshot()).toBe('failed');
-		expect(core.status('panel').lastError?.code).toBe('MAKOO_MOUNT_TARGET_DETACHED');
+		expect(core.statusHandle('panel').lastError?.code).toBe('MAKOO_MOUNT_TARGET_DETACHED');
 		expect(vi.getTimerCount()).toBe(0);
 	});
 
@@ -368,10 +368,10 @@ describe('single component injection', () => {
 		).not.toThrow();
 		handles.push(core.command('first'), core.command('third'));
 		expect(() => removed?.start()).toThrow(/was removed/);
-		expect(core.status('third').getSnapshot()).toBe('bound');
+		expect(core.statusHandle('third').getSnapshot()).toBe('bound');
 		if (replace) {
 			expect(core.command('second')).not.toBe(removed);
-			expect(core.status('second').getSnapshot()).toBe('idle');
+			expect(core.statusHandle('second').getSnapshot()).toBe('idle');
 		} else {
 			expect(() => core.command('second')).toThrow(
 				expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
@@ -522,19 +522,19 @@ describe('single component injection', () => {
 		handles.push(core.command('play'), core.command('panel'));
 		button.click();
 		expect(callback).toHaveBeenCalledOnce();
-		await vi.waitFor(() => expect(core.status('panel').getSnapshot()).toBe('failed'), {
+		await vi.waitFor(() => expect(core.statusHandle('panel').getSnapshot()).toBe('failed'), {
 			interval: 1
 		});
-		expect(core.status('panel').lastError).toMatchObject({
+		expect(core.statusHandle('panel').lastError).toMatchObject({
 			code: MakooErrorCode.MOUNT_FAILED,
 			cause: expect.objectContaining({ message: 'mount failed' })
 		});
-		expect(console.error).toHaveBeenCalledWith(core.status('panel').lastError);
+		expect(console.error).toHaveBeenCalledWith(core.statusHandle('panel').lastError);
 		expect(host.querySelector('div')).toBeNull();
 		expect(() =>
 			core.apply([listen({ name: 'panel', listenAt: '.play', type: 'click', callback() {} })])
 		).toThrow(expect.objectContaining({ code: MakooErrorCode.INJECTION_NAME_CONFLICT }));
-		expect(core.status('panel').getSnapshot()).toBe('failed');
+		expect(core.statusHandle('panel').getSnapshot()).toBe('failed');
 	});
 
 	it('reports a state subscriber failure without hiding the injection failure', async () => {
@@ -555,7 +555,7 @@ describe('single component injection', () => {
 		core.apply([inject({ name: 'panel', injectAt: '#host', adapter: 'plain', component: {} })]);
 		const panel = core.command('panel');
 		handles.push(panel);
-		const status = core.status('panel');
+		const status = core.statusHandle('panel');
 		status.subscribe(() => {
 			throw subscriberError;
 		});

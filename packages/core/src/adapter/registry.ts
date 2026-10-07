@@ -12,7 +12,7 @@ const adapterSchema = z.object(
 			(value) => typeof value === 'function',
 			'Expected a mount function'
 		),
-		unmount: z.custom<(handle: unknown) => void>(
+		unmount: z.custom<(mountHandle: unknown) => void>(
 			(value) => typeof value === 'function',
 			'Expected an unmount function'
 		)

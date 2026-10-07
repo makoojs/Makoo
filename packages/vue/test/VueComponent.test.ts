@@ -40,7 +40,7 @@ describe('Vue components mounted by core', () => {
 	}
 
 	function panelStatus(): ComponentStatusHandle {
-		const status = core.status('panel');
+		const status = core.statusHandle('panel');
 		if (!('attachedListener' in status)) throw new Error('Expected a component');
 		return status;
 	}
@@ -318,13 +318,13 @@ describe('Vue components mounted by core', () => {
 		await save?.stop();
 		await nextTick();
 		expect(save?.status.value).toBe('idle');
-		expect(core.status('save').getSnapshot()).toBe('idle');
+		expect(core.statusHandle('save').getSnapshot()).toBe('idle');
 		save?.start();
 		await flush();
-		expect(core.status('save').getSnapshot()).toBe('waiting');
+		expect(core.statusHandle('save').getSnapshot()).toBe('waiting');
 
 		await panelCommand().stop();
-		expect(core.status('save').getSnapshot()).toBe('waiting');
+		expect(core.statusHandle('save').getSnapshot()).toBe('waiting');
 	});
 
 	it('keeps one status ref when a standalone listener is replaced', async () => {

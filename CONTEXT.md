@@ -80,9 +80,13 @@ _Avoid_: reinjection, component rebuild
 A stable action entry (start / stop / remove) bound to one injection identity; an old injection's entry is not the entry of a later same-named injection.
 _Avoid_: declaration, framework component instance, internal execution object, state subscription, latest diagnostic
 
-**Status** (状态入口):
-A read-only entry for an injection's current run phase; a component's status entry can also return the status view of an attached listener by name. It also provides a `lastError` read that does not subscribe.
-_Avoid_: control action, business store, event bus
+**Status Handle** (状态入口):
+A read-only entry for an injection's current status; a component's status handle can also return the status view of an attached listener by name. It also provides a `lastError` read that does not subscribe.
+_Avoid_: the status string itself, control action, business store, event bus
+
+**Status** (状态):
+The current run phase of a component: not yet run or stopped, waiting for a target, mounted, or failed.
+_Avoid_: status handle, listener status, business store
 
 **Listener Status** (监听状态):
 The current availability of a host listener: not yet run or stopped, waiting for a target, bound, or failed.

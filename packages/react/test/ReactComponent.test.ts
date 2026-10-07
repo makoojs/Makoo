@@ -47,7 +47,7 @@ describe('React components mounted by core', () => {
 	}
 
 	function panelStatus(): ComponentStatusHandle {
-		const status = core.status('panel');
+		const status = core.statusHandle('panel');
 		if (!('attachedListener' in status)) throw new Error('Expected a component');
 		return status;
 	}
@@ -254,10 +254,10 @@ describe('React components mounted by core', () => {
 			mount(params) {
 				return adapter.mount({
 					...params,
-					status: {
-						...params.status,
+					statusHandle: {
+						...params.statusHandle,
 						attachedListener: (name) =>
-							countSubscriptions(params.status.attachedListener(name))
+							countSubscriptions(params.statusHandle.attachedListener(name))
 					}
 				});
 			}
@@ -339,12 +339,12 @@ describe('React components mounted by core', () => {
 			await saveCommand?.stop();
 		});
 		expect(element('#host').textContent).toBe('idle');
-		expect(core.status('save').getSnapshot()).toBe('idle');
+		expect(core.statusHandle('save').getSnapshot()).toBe('idle');
 		await act(async () => saveCommand?.start());
-		expect(core.status('save').getSnapshot()).toBe('waiting');
+		expect(core.statusHandle('save').getSnapshot()).toBe('waiting');
 
 		await act(async () => panelCommand().stop());
-		expect(core.status('save').getSnapshot()).toBe('waiting');
+		expect(core.statusHandle('save').getSnapshot()).toBe('waiting');
 	});
 
 	it('reads the replacement standalone listener on the next render', async () => {

@@ -23,7 +23,7 @@ import { VueErrorCode } from './error';
 
 export type VueComponentContext = {
 	readonly command: ComponentCommand;
-	readonly status: ComponentStatusHandle;
+	readonly statusHandle: ComponentStatusHandle;
 	readonly globalListener: AdapterMountParams['globalListener'];
 	/** Releases of subscriptions still held by this app; drained if mount fails. */
 	readonly subscriptions: Set<() => void>;
@@ -44,8 +44,8 @@ type VueStandaloneListener = ListenerCommand & {
 };
 
 type StandaloneSubscription = {
-	status: ListenerStatusHandle;
-	snapshot: Ref<ListenerStatus>;
+	statusHandle: ListenerStatusHandle;
+	snapshotRef: Ref<ListenerStatus>;
 	statusRef: Readonly<Ref<ListenerStatus>>;
 	release: () => void;
 };
@@ -64,12 +64,12 @@ export function useMakooComponent(): VueMakooComponent {
 			{ code: VueErrorCode.VUE_HOOK_OUTSIDE_SCOPE }
 		);
 	}
-	const { command, status } = context;
-	const componentStatus = subscribeState(status, context.subscriptions);
+	const { command, statusHandle } = context;
+	const componentStatus = subscribeState(statusHandle, context.subscriptions);
 	const listeners = new Map(
-		status.attachedListenerNames.map((name) => [
+		statusHandle.attachedListenerNames.map((name) => [
 			name,
-			subscribeState(status.attachedListener(name), context.subscriptions)
+			subscribeState(statusHandle.attachedListener(name), context.subscriptions)
 		])
 	);
 	const standaloneListeners = new Map<string, StandaloneSubscription>();
@@ -80,7 +80,7 @@ export function useMakooComponent(): VueMakooComponent {
 		name: command.name,
 		status: componentStatus,
 		get lastError() {
-			return status.lastError;
+			return statusHandle.lastError;
 		},
 		start: command.start,
 		stop: command.stop,
@@ -102,12 +102,12 @@ export function useMakooComponent(): VueMakooComponent {
 				remove: found.command.remove,
 				status: subscribeStandalone(
 					name,
-					found.status,
+					found.statusHandle,
 					standaloneListeners,
 					context.subscriptions
 				),
 				get lastError() {
-					return found.status.lastError;
+					return found.statusHandle.lastError;
 				}
 			};
 		}
@@ -116,28 +116,28 @@ export function useMakooComponent(): VueMakooComponent {
 
 function subscribeStandalone(
 	name: string,
-	status: ListenerStatusHandle,
+	statusHandle: ListenerStatusHandle,
 	standaloneListeners: Map<string, StandaloneSubscription>,
 	subscriptions: Set<() => void>
 ): Readonly<Ref<ListenerStatus>> {
 	const current = standaloneListeners.get(name);
-	if (current && current.status === status) return current.statusRef;
+	if (current && current.statusHandle === statusHandle) return current.statusRef;
 
-	let snapshot: Ref<ListenerStatus>;
+	let snapshotRef: Ref<ListenerStatus>;
 	let statusRef: Readonly<Ref<ListenerStatus>>;
 	if (current) {
 		current.release();
-		snapshot = current.snapshot;
+		snapshotRef = current.snapshotRef;
 		statusRef = current.statusRef;
-		snapshot.value = status.getSnapshot();
+		snapshotRef.value = statusHandle.getSnapshot();
 	} else {
-		snapshot = shallowRef(status.getSnapshot());
-		statusRef = computed(() => snapshot.value);
+		snapshotRef = shallowRef(statusHandle.getSnapshot());
+		statusRef = computed(() => snapshotRef.value);
 	}
 
 	let released = false;
-	const unsubscribe = status.subscribe(() => {
-		if (!released) snapshot.value = status.getSnapshot();
+	const unsubscribe = statusHandle.subscribe(() => {
+		if (!released) snapshotRef.value = statusHandle.getSnapshot();
 	});
 	const release = () => {
 		if (released) return;
@@ -149,7 +149,7 @@ function subscribeStandalone(
 		if (active && active.release === release) standaloneListeners.delete(name);
 	};
 	subscriptions.add(release);
-	standaloneListeners.set(name, { status, snapshot, statusRef, release });
+	standaloneListeners.set(name, { statusHandle, snapshotRef, statusRef, release });
 	return statusRef;
 }
 
@@ -158,10 +158,10 @@ function subscribeState<T>(
 	view: StateView<T>,
 	subscriptions: Set<() => void>
 ): Readonly<Ref<Readonly<T>>> {
-	const snapshot = shallowRef(view.getSnapshot());
+	const snapshotRef = shallowRef(view.getSnapshot());
 	let released = false;
 	const unsubscribe = view.subscribe(() => {
-		if (!released) snapshot.value = view.getSnapshot();
+		if (!released) snapshotRef.value = view.getSnapshot();
 	});
 	const release = () => {
 		if (released) return;
@@ -171,5 +171,5 @@ function subscribeState<T>(
 	};
 	subscriptions.add(release);
 	onScopeDispose(release);
-	return computed(() => snapshot.value);
+	return computed(() => snapshotRef.value);
 }

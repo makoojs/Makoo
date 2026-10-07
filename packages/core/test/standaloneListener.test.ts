@@ -100,7 +100,7 @@ describe('standalone host listeners', () => {
 		const core = createMakoo();
 		core.apply([listen({ name: 'play', listenAt: '.host', type: 'click', callback() {} })]);
 		const handle = core.command('play');
-		const view = core.status('play');
+		const view = core.statusHandle('play');
 		const bound = view.getSnapshot();
 		const changes: string[] = [];
 		const unsubscribe = view.subscribe(() => {
@@ -117,7 +117,7 @@ describe('standalone host listeners', () => {
 		await handle.stop();
 		expect(view.getSnapshot()).toBe(idle);
 		handle.start();
-		expect(core.status('play')).toBe(view);
+		expect(core.statusHandle('play')).toBe(view);
 		expect(changes).toEqual(['idle', 'bound']);
 		unsubscribe();
 		await handle.remove();
@@ -137,23 +137,23 @@ describe('standalone host listeners', () => {
 		const core = createMakoo();
 		core.apply([listen({ name: 'play', listenAt: '.host', type: 'click', callback })]);
 		const handle = core.command('play');
-		const snapshot = core.status('play').getSnapshot();
+		const snapshot = core.statusHandle('play').getSnapshot();
 		const button = document.querySelector<HTMLButtonElement>('.host');
 		button?.click();
 		await Promise.resolve();
-		expect(core.status('play').lastError).toMatchObject({
+		expect(core.statusHandle('play').lastError).toMatchObject({
 			code: 'MAKOO_LISTENER_CALLBACK_FAILED',
 			cause,
 			message: expect.stringContaining('play')
 		});
-		expect(reported).toHaveBeenCalledWith(core.status('play').lastError);
-		expect(core.status('play').getSnapshot()).toBe(snapshot);
+		expect(reported).toHaveBeenCalledWith(core.statusHandle('play').lastError);
+		expect(core.statusHandle('play').getSnapshot()).toBe(snapshot);
 		button?.click();
 		await Promise.resolve();
 		expect(callback).toHaveBeenCalledTimes(2);
 		await handle.stop();
 		handle.start();
-		expect(core.status('play').lastError).toBeUndefined();
+		expect(core.statusHandle('play').lastError).toBeUndefined();
 		await handle.remove();
 	});
 
@@ -171,7 +171,7 @@ describe('standalone host listeners', () => {
 			})
 		]);
 		document.querySelector<HTMLButtonElement>('.host')?.click();
-		expect(core.status('play').lastError?.cause).toBe('raw');
+		expect(core.statusHandle('play').lastError?.cause).toBe('raw');
 		await core.command('play').remove();
 	});
 
@@ -184,7 +184,7 @@ describe('standalone host listeners', () => {
 		const cause = new Error('binding denied');
 		let healthyBeforeStart: string | undefined;
 		vi.spyOn(first, 'addEventListener').mockImplementation(() => {
-			healthyBeforeStart = core.status('healthy').getSnapshot();
+			healthyBeforeStart = core.statusHandle('healthy').getSnapshot();
 			throw cause;
 		});
 		const callback = vi.fn();
@@ -193,13 +193,13 @@ describe('standalone host listeners', () => {
 			listen({ name: 'healthy', listenAt: '#healthy', type: 'click', callback })
 		]);
 		expect(healthyBeforeStart).toBe('idle');
-		expect(core.status('broken').getSnapshot()).toBe('failed');
-		expect(core.status('broken').lastError).toMatchObject({
+		expect(core.statusHandle('broken').getSnapshot()).toBe('failed');
+		expect(core.statusHandle('broken').lastError).toMatchObject({
 			code: 'MAKOO_LISTENER_BIND_FAILED',
 			cause,
 			message: expect.stringContaining('broken')
 		});
-		expect(reported).toHaveBeenCalledWith(core.status('broken').lastError);
+		expect(reported).toHaveBeenCalledWith(core.statusHandle('broken').lastError);
 		second.click();
 		expect(callback).toHaveBeenCalledOnce();
 		await core.command('broken').stop();
@@ -259,8 +259,8 @@ describe('standalone host listeners', () => {
 		core.apply([listen({ name: 'play', listenAt: '.host', type: 'click', callback })]);
 		target.click();
 		expect(callback).not.toHaveBeenCalled();
-		expect(core.status('play').getSnapshot()).toBe('waiting');
-		expect(core.status('play').lastError).toBeUndefined();
+		expect(core.statusHandle('play').getSnapshot()).toBe('waiting');
+		expect(core.statusHandle('play').lastError).toBeUndefined();
 		await core.command('play').remove();
 	});
 
@@ -275,14 +275,14 @@ describe('standalone host listeners', () => {
 			listen({ name: 'play', listenAt: '.host', type: 'click', callback: () => pending })
 		]);
 		const old = core.command('play');
-		const oldStatus = core.status('play');
+		const oldStatus = core.statusHandle('play');
 		document.querySelector<HTMLButtonElement>('.host')?.click();
 		await old.remove();
 		const callback = vi.fn();
 		core.apply([listen({ name: 'play', listenAt: '.host', type: 'click', callback })]);
 		const replacement = core.command('play');
 		expect(replacement).not.toBe(old);
-		expect(core.status('play')).not.toBe(oldStatus);
+		expect(core.statusHandle('play')).not.toBe(oldStatus);
 		expect(() => old.start()).toThrow(
 			expect.objectContaining({ code: MakooErrorCode.INJECTION_REMOVED })
 		);
@@ -291,7 +291,7 @@ describe('standalone host listeners', () => {
 		reject(new Error('late failure'));
 		await Promise.resolve();
 		expect(core.command('play')).toBe(replacement);
-		expect(core.status('play').lastError).toBeUndefined();
+		expect(core.statusHandle('play').lastError).toBeUndefined();
 		document.querySelector<HTMLButtonElement>('.host')?.click();
 		expect(callback).toHaveBeenCalledOnce();
 		await replacement.remove();
@@ -303,7 +303,7 @@ describe('standalone host listeners', () => {
 		const callback = vi.fn();
 		core.apply([listen({ name: 'play', listenAt: '.host', type: 'click', callback })]);
 		const handle = core.command('play');
-		const status = core.status('play');
+		const status = core.statusHandle('play');
 		const cause = new Error('subscriber failed');
 		const unsubscribe = status.subscribe(() => {
 			throw cause;
@@ -339,14 +339,14 @@ describe('standalone host listeners', () => {
 		expect(core.apply([declaration])).toBeUndefined();
 		const handle = core.command('play');
 		expect(core.command('play')).toBe(handle);
-		expect(core.status('play').getSnapshot()).toBe('bound');
+		expect(core.statusHandle('play').getSnapshot()).toBe('bound');
 		handle.start();
 		handle.start();
 		first.click();
 		second.click();
 		expect(callback).toHaveBeenCalledTimes(1);
 		await handle.stop();
-		expect(core.status('play').getSnapshot()).toBe('idle');
+		expect(core.statusHandle('play').getSnapshot()).toBe('idle');
 		first.click();
 		expect(callback).toHaveBeenCalledTimes(1);
 		handle.start();

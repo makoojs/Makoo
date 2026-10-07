@@ -31,5 +31,5 @@ export interface ListenerStatusHandle extends StateView<ListenerStatus> {
 export type ListenerInjection = {
 	readonly kind: 'listener';
 	readonly command: ListenerCommand;
-	readonly status: ListenerStatusHandle;
+	readonly statusHandle: ListenerStatusHandle;
 };

@@ -58,7 +58,7 @@ describe('core disposal', () => {
 		expect(() => core.command('panel')).toThrow(
 			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 		);
-		expect(() => core.status('panel')).toThrow(
+		expect(() => core.statusHandle('panel')).toThrow(
 			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 		);
 	});
@@ -135,7 +135,7 @@ describe('core disposal', () => {
 		await expect(repeated).rejects.toBeInstanceOf(MakooError);
 		expect(unmount).toHaveBeenCalledOnce();
 		expect(core.command('panel')).toBe(panel);
-		const diagnostic = core.status('panel').lastError;
+		const diagnostic = core.statusHandle('panel').lastError;
 		expect(diagnostic?.code).toBe(MakooErrorCode.INJECTION_CLEANUP_FAILED);
 		expect(() => panel.start()).toThrow(
 			expect.objectContaining({ code: MakooErrorCode.INSTANCE_DISPOSED })
@@ -144,7 +144,7 @@ describe('core disposal', () => {
 			code: MakooErrorCode.INSTANCE_CLEANUP_FAILED
 		});
 		expect(unmount).toHaveBeenCalledOnce();
-		expect(core.status('panel').lastError).toBe(diagnostic);
+		expect(core.statusHandle('panel').lastError).toBe(diagnostic);
 	});
 
 	it('preserves an earlier execution error when disposal cleanup also fails', async () => {
@@ -162,8 +162,8 @@ describe('core disposal', () => {
 		);
 		core.apply([inject({ name: 'panel', injectAt: '#host', adapter: 'plain', component: {} })]);
 		const panel = core.command('panel');
-		await vi.waitFor(() => expect(core.status('panel').getSnapshot()).toBe('failed'));
-		const diagnostic = core.status('panel').lastError;
+		await vi.waitFor(() => expect(core.statusHandle('panel').getSnapshot()).toBe('failed'));
+		const diagnostic = core.statusHandle('panel').lastError;
 		expect(diagnostic).toMatchObject({
 			code: MakooErrorCode.INJECTION_CLEANUP_FAILED,
 			errors: [
@@ -181,7 +181,7 @@ describe('core disposal', () => {
 			code: MakooErrorCode.INSTANCE_CLEANUP_FAILED,
 			errors: [diagnostic]
 		});
-		expect(core.status('panel').lastError).toBe(diagnostic);
+		expect(core.statusHandle('panel').lastError).toBe(diagnostic);
 		expect(core.command('panel')).toBe(panel);
 	});
 
@@ -223,7 +223,7 @@ describe('core disposal', () => {
 		expect(() => core.command('other')).toThrow(
 			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 		);
-		expect(core.status('panel').getSnapshot()).toBe('failed');
+		expect(core.statusHandle('panel').getSnapshot()).toBe('failed');
 	});
 
 	it('leaves another core instance running', async () => {
@@ -247,7 +247,7 @@ describe('core disposal', () => {
 		expect(() => first.command('play')).toThrow(
 			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 		);
-		expect(second.status('play').getSnapshot()).toBe('bound');
+		expect(second.statusHandle('play').getSnapshot()).toBe('bound');
 		await second.command('play').remove();
 	});
 });

@@ -81,7 +81,7 @@ describe('VueAdapter', () => {
 				container: document.createElement('div'),
 				command: createCommand(),
 				globalListener,
-				status: createStatus(createView(() => {}))
+				statusHandle: createStatus(createView(() => {}))
 			})
 		).toThrow(expect.objectContaining({ code: VueErrorCode.VUE_HOOK_OUTSIDE_SCOPE }));
 	});
@@ -101,7 +101,7 @@ describe('VueAdapter', () => {
 				container: document.createElement('div'),
 				command: createCommand(),
 				globalListener,
-				status: createStatus(createView(() => {}))
+				statusHandle: createStatus(createView(() => {}))
 			})
 		).toThrow(cause);
 	});
@@ -118,7 +118,7 @@ describe('VueAdapter', () => {
 				container: document.createElement('div'),
 				command: createCommand(),
 				globalListener,
-				status: createStatus(view)
+				statusHandle: createStatus(view)
 			})
 		).toThrow(
 			expect.objectContaining({
@@ -145,7 +145,7 @@ describe('VueAdapter', () => {
 				container: document.createElement('div'),
 				command: createCommand(),
 				globalListener,
-				status: createStatus(
+				statusHandle: createStatus(
 					createView(() => {
 						throw releaseCause;
 					})

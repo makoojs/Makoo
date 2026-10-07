@@ -13,7 +13,7 @@ import { ReactErrorCode } from './error';
 
 type MakooComponentContextValue = {
 	command: ComponentCommand;
-	status: ComponentStatusHandle;
+	statusHandle: ComponentStatusHandle;
 	globalListener: AdapterMountParams['globalListener'];
 };
 
@@ -31,15 +31,15 @@ export function useComponentCommand(): ComponentCommand {
 
 /** Returns the raw status handle for this mount; reading it, including lastError, does not subscribe. */
 export function useComponentStatusHandle(): ComponentStatusHandle {
-	return useComponentContext().status;
+	return useComponentContext().statusHandle;
 }
 
 /** Subscribes to the component status, or to a selector result compared with Object.is. */
 export function useComponentStatus(): ComponentStatus;
 export function useComponentStatus<T>(select: (status: ComponentStatus) => T): T;
 export function useComponentStatus<T>(select?: (status: ComponentStatus) => T) {
-	const { status } = useComponentContext();
-	return useSelectedState(status, select);
+	const { statusHandle } = useComponentContext();
+	return useSelectedSnapshot(statusHandle, select);
 }
 
 /** Subscribes only to the named attached listener; selector results use Object.is. */
@@ -49,15 +49,15 @@ export function useAttachedListenerStatus<T>(
 	select: (status: ListenerStatus) => T
 ): T;
 export function useAttachedListenerStatus<T>(name: string, select?: (status: ListenerStatus) => T) {
-	const { status } = useComponentContext();
-	return useSelectedState(status.attachedListener(name), select);
+	const { statusHandle } = useComponentContext();
+	return useSelectedSnapshot(statusHandle.attachedListener(name), select);
 }
 
 /** Looks up a standalone listener in this Core Instance and subscribes to its status. */
 export function useGlobalListener(name: string): ReactStandaloneListener {
 	const { globalListener } = useComponentContext();
 	const found = globalListener(name);
-	const status = useSelectedState(found.status);
+	const status = useSelectedSnapshot(found.statusHandle);
 	return {
 		name: found.command.name,
 		start: found.command.start,
@@ -65,7 +65,7 @@ export function useGlobalListener(name: string): ReactStandaloneListener {
 		remove: found.command.remove,
 		status,
 		get lastError() {
-			return found.status.lastError;
+			return found.statusHandle.lastError;
 		}
 	};
 }
@@ -81,9 +81,9 @@ function useComponentContext(): MakooComponentContextValue {
 	return context;
 }
 
-function useSelectedState<Snapshot, Selection = Snapshot>(
+function useSelectedSnapshot<Snapshot, Selection = Snapshot>(
 	view: StateView<Snapshot>,
-	select?: (state: Readonly<Snapshot>) => Selection
+	select?: (snapshot: Readonly<Snapshot>) => Selection
 ) {
 	const getSnapshot = useMemo(() => {
 		let snapshot = view.getSnapshot();

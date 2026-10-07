@@ -24,13 +24,13 @@ function componentStatus(
 	core: ReturnType<typeof createMakoo>,
 	name: string
 ): ComponentStatusHandle {
-	const status = core.status(name);
+	const status = core.statusHandle(name);
 	if (!('attachedListener' in status)) throw new Error(`Expected a component: ${name}`);
 	return status;
 }
 
 function listenerStatus(core: ReturnType<typeof createMakoo>, name: string): ListenerStatusHandle {
-	const status = core.status(name);
+	const status = core.statusHandle(name);
 	if ('attachedListener' in status) throw new Error(`Expected a listener: ${name}`);
 	return status;
 }
@@ -224,7 +224,7 @@ describe('mixed Vue, React, and listener runtime', () => {
 		expect(() => core.command('standalone')).toThrow(
 			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 		);
-		expect(() => core.status('react-panel')).toThrow(
+		expect(() => core.statusHandle('react-panel')).toThrow(
 			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 		);
 	});
