@@ -1,4 +1,5 @@
 import {
+	type AdapterMountParams,
 	type ComponentCommand,
 	type ComponentStatusHandle,
 	createMakoo,
@@ -80,7 +81,8 @@ describe('ReactAdapter', () => {
 				props: undefined,
 				container: document.createElement('div'),
 				command: {} as ComponentCommand,
-				status: {} as ComponentStatusHandle
+				status: {} as ComponentStatusHandle,
+				globalListener: () => ({}) as ReturnType<AdapterMountParams['globalListener']>
 			})
 		).toThrow('boom');
 	});
@@ -102,7 +104,8 @@ describe('ReactAdapter', () => {
 				props: undefined,
 				container: document.createElement('div'),
 				command: {} as ComponentCommand,
-				status: {} as ComponentStatusHandle
+				status: {} as ComponentStatusHandle,
+				globalListener: () => ({}) as ReturnType<AdapterMountParams['globalListener']>
 			});
 		} catch (error) {
 			thrown = error;

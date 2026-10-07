@@ -108,7 +108,8 @@ function registerInjection(
 					declaration.adapter,
 					dom,
 					() => unregisterInjection(injections, injection),
-					isDisposed
+					isDisposed,
+					(name) => standaloneListener(injections, name)
 				);
 	injections.set(declaration.config.name, injection);
 	return injection;
@@ -154,6 +155,16 @@ function disposeInstance(makooInstance: MakooInstance): Promise<void> {
 		);
 	});
 	return disposal;
+}
+
+function standaloneListener(injections: ReadonlyMap<string, Injection>, name: string) {
+	const injection = getInjection(injections, name);
+	if (injection.kind !== 'listener') {
+		throw new MakooError(`Unknown injection "${name}"`, {
+			code: MakooErrorCode.INJECTION_NOT_FOUND
+		});
+	}
+	return { command: injection.command, status: injection.status };
 }
 
 function getInjection(injections: ReadonlyMap<string, Injection>, name: string): Injection {

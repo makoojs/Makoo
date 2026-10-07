@@ -21,7 +21,7 @@ A component or standalone listener that belongs directly to a Core Instance and 
 _Avoid_: generic Task, new product feature, framework component instance
 
 **Component** (组件):
-An injection made of one framework component together with its attached listeners; one unmount of the framework component does not mean the injection was removed.
+An injection made of one framework component together with its attached listeners. It may use a standalone listener in the same Core Instance without owning that listener.
 _Avoid_: single mount, framework component instance
 
 **Host Listener** (宿主监听):
@@ -29,7 +29,7 @@ An event listener on host page elements, covering both standalone and attached l
 _Avoid_: component-internal event, state subscription, DOM observation
 
 **Standalone Listener** (独立监听):
-A host listener that belongs directly to a Core Instance and can exist without any framework component.
+A host listener that belongs directly to a Core Instance, with its own command and status, and is not part of any component.
 _Avoid_: attached listener, component listener
 
 **Attached Listener** (附属监听):

@@ -1,4 +1,5 @@
 import type {
+	AdapterMountParams,
 	ComponentCommand,
 	ComponentStatus,
 	ComponentStatusHandle,
@@ -22,10 +23,10 @@ import {
 	createReactAdapter,
 	ReactErrorCode,
 	type ReactMountRoot,
+	useAttachedListenerStatus,
 	useComponentCommand,
 	useComponentStatus,
-	useComponentStatusHandle,
-	useListenerStatus
+	useComponentStatusHandle
 } from '../src';
 
 function stateSource<T>(initial: Readonly<T>) {
@@ -70,7 +71,8 @@ describe('React hook subscriptions at the adapter boundary', () => {
 					props: undefined,
 					container,
 					command,
-					status
+					status,
+					globalListener: () => ({}) as ReturnType<AdapterMountParams['globalListener']>
 				})
 			);
 		});
@@ -102,8 +104,8 @@ describe('React hook subscriptions at the adapter boundary', () => {
 			getSnapshot: componentState.view.getSnapshot,
 			subscribe: componentState.view.subscribe,
 			lastError: undefined,
-			listenerNames: ['play', 'mute'],
-			listener(name) {
+			attachedListenerNames: ['play', 'mute'],
+			attachedListener(name) {
 				if (name === 'play') return playState.view;
 				if (name === 'mute') return muteState.view;
 				throw new Error(`Unknown listener: ${name}`);
@@ -197,12 +199,12 @@ describe('React hook subscriptions at the adapter boundary', () => {
 			return createElement('p', { id: 'component-status' }, componentStatus);
 		}
 		function Play() {
-			const listenerStatus = useListenerStatus('play');
+			const listenerStatus = useAttachedListenerStatus('play');
 			renders.play += 1;
 			return createElement('p', { id: 'play-status' }, listenerStatus);
 		}
 		function Mute() {
-			const listenerStatus = useListenerStatus('mute');
+			const listenerStatus = useAttachedListenerStatus('mute');
 			renders.mute += 1;
 			return createElement('p', { id: 'mute-status' }, listenerStatus);
 		}
@@ -231,7 +233,7 @@ describe('React hook subscriptions at the adapter boundary', () => {
 	it('releases the previous listener when the name changes', async () => {
 		function Panel() {
 			const [name, setName] = useState('play');
-			const listenerStatus = useListenerStatus(name);
+			const listenerStatus = useAttachedListenerStatus(name);
 			return createElement(
 				'button',
 				{ type: 'button', onClick: () => setName('mute') },
@@ -253,7 +255,10 @@ describe('React hook subscriptions at the adapter boundary', () => {
 	it('renders a listener selection only when its result changes', async () => {
 		let renders = 0;
 		function Panel() {
-			const ready = useListenerStatus('play', (listenerStatus) => listenerStatus === 'bound');
+			const ready = useAttachedListenerStatus(
+				'play',
+				(listenerStatus) => listenerStatus === 'bound'
+			);
 			renders += 1;
 			return createElement('p', null, String(ready));
 		}
@@ -291,7 +296,7 @@ describe('React hook subscriptions at the adapter boundary', () => {
 		const subscribe = vi.spyOn(playState.view, 'subscribe');
 		function Panel() {
 			const [expected, setExpected] = useState('bound');
-			const matches = useListenerStatus(
+			const matches = useAttachedListenerStatus(
 				'play',
 				(listenerStatus) => listenerStatus === expected
 			);
@@ -314,7 +319,7 @@ describe('React hook subscriptions at the adapter boundary', () => {
 	it('caches object selection results for repeated reads of the same snapshot', async () => {
 		let renders = 0;
 		function Panel() {
-			const selected = useListenerStatus('play', (listenerStatus) => ({
+			const selected = useAttachedListenerStatus('play', (listenerStatus) => ({
 				ready: listenerStatus === 'bound'
 			}));
 			renders += 1;
@@ -331,7 +336,7 @@ describe('React hook subscriptions at the adapter boundary', () => {
 
 	it('catches a state change between rendering and subscription', async () => {
 		function Panel() {
-			const listenerStatus = useListenerStatus('play');
+			const listenerStatus = useAttachedListenerStatus('play');
 			useLayoutEffect(() => {
 				playState.publish('bound');
 			}, []);
@@ -349,7 +354,7 @@ describe('React hook subscriptions at the adapter boundary', () => {
 			resume = resolve;
 		});
 		function Panel() {
-			const listenerStatus = useListenerStatus('play');
+			const listenerStatus = useAttachedListenerStatus('play');
 			if (pending) throw ready;
 			return createElement('p', null, listenerStatus);
 		}
@@ -374,7 +379,7 @@ describe('React hook subscriptions at the adapter boundary', () => {
 		});
 		playState.publish('bound');
 		function Panel({ expected }: { expected: string }) {
-			const matches = useListenerStatus(
+			const matches = useAttachedListenerStatus(
 				'play',
 				(listenerStatus) => listenerStatus === expected
 			);
@@ -416,7 +421,7 @@ describe('React hook subscriptions at the adapter boundary', () => {
 		['useComponentCommand', () => useComponentCommand()],
 		['useComponentStatus', () => useComponentStatus()],
 		['useComponentStatusHandle', () => useComponentStatusHandle()],
-		['useListenerStatus', () => useListenerStatus('play')]
+		['useAttachedListenerStatus', () => useAttachedListenerStatus('play')]
 	] as const)('rejects %s outside an adapter-mounted component', async (_name, useHook) => {
 		function Panel() {
 			useHook();

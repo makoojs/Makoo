@@ -1,9 +1,10 @@
 export { ReactErrorCode } from './error';
 export {
+	useAttachedListenerStatus,
 	useComponentCommand,
 	useComponentStatus,
 	useComponentStatusHandle,
-	useListenerStatus
+	useGlobalListener
 } from './hooks';
 export type {
 	ReactMountAdapter,

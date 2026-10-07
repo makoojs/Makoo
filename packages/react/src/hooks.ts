@@ -1,7 +1,9 @@
 import type {
+	AdapterMountParams,
 	ComponentCommand,
 	ComponentStatus,
 	ComponentStatusHandle,
+	ListenerCommand,
 	ListenerStatus,
 	StateView
 } from '@makoojs/core';
@@ -12,6 +14,12 @@ import { ReactErrorCode } from './error';
 type MakooComponentContextValue = {
 	command: ComponentCommand;
 	status: ComponentStatusHandle;
+	globalListener: AdapterMountParams['globalListener'];
+};
+
+type ReactStandaloneListener = ListenerCommand & {
+	readonly status: ListenerStatus;
+	readonly lastError: MakooError | undefined;
 };
 
 export const MakooComponentContext = createContext<MakooComponentContextValue | null>(null);
@@ -35,11 +43,31 @@ export function useComponentStatus<T>(select?: (status: ComponentStatus) => T) {
 }
 
 /** Subscribes only to the named attached listener; selector results use Object.is. */
-export function useListenerStatus(name: string): ListenerStatus;
-export function useListenerStatus<T>(name: string, select: (status: ListenerStatus) => T): T;
-export function useListenerStatus<T>(name: string, select?: (status: ListenerStatus) => T) {
+export function useAttachedListenerStatus(name: string): ListenerStatus;
+export function useAttachedListenerStatus<T>(
+	name: string,
+	select: (status: ListenerStatus) => T
+): T;
+export function useAttachedListenerStatus<T>(name: string, select?: (status: ListenerStatus) => T) {
 	const { status } = useComponentContext();
-	return useSelectedState(status.listener(name), select);
+	return useSelectedState(status.attachedListener(name), select);
+}
+
+/** Looks up a standalone listener in this Core Instance and subscribes to its status. */
+export function useGlobalListener(name: string): ReactStandaloneListener {
+	const { globalListener } = useComponentContext();
+	const found = globalListener(name);
+	const status = useSelectedState(found.status);
+	return {
+		name: found.command.name,
+		start: found.command.start,
+		stop: found.command.stop,
+		remove: found.command.remove,
+		status,
+		get lastError() {
+			return found.status.lastError;
+		}
+	};
 }
 
 function useComponentContext(): MakooComponentContextValue {
@@ -53,7 +81,7 @@ function useComponentContext(): MakooComponentContextValue {
 	return context;
 }
 
-function useSelectedState<Snapshot, Selection>(
+function useSelectedState<Snapshot, Selection = Snapshot>(
 	view: StateView<Snapshot>,
 	select?: (state: Readonly<Snapshot>) => Selection
 ) {

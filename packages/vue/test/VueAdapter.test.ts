@@ -1,4 +1,5 @@
 import {
+	type AdapterMountParams,
 	type ComponentCommand,
 	type ComponentStatusHandle,
 	type ListenerStatus,
@@ -26,10 +27,12 @@ function createStatus(view: StateView<ListenerStatus>): ComponentStatusHandle {
 		getSnapshot: () => 'mounted',
 		subscribe: () => () => {},
 		lastError: undefined,
-		listenerNames: ['play'],
-		listener: () => view
+		attachedListenerNames: ['play'],
+		attachedListener: () => view
 	};
 }
+
+const globalListener = () => ({}) as ReturnType<AdapterMountParams['globalListener']>;
 
 function createView(unsubscribe: () => void): StateView<ListenerStatus> {
 	return {
@@ -46,7 +49,7 @@ const FailingChild = defineComponent({
 
 const SubscribingParent = defineComponent({
 	setup() {
-		const play = useMakooComponent().listener('play');
+		const play = useMakooComponent().attachedListener('play');
 		return () => h('div', [play.value, h(FailingChild)]);
 	}
 });
@@ -77,6 +80,7 @@ describe('VueAdapter', () => {
 				props: undefined,
 				container: document.createElement('div'),
 				command: createCommand(),
+				globalListener,
 				status: createStatus(createView(() => {}))
 			})
 		).toThrow(expect.objectContaining({ code: VueErrorCode.VUE_HOOK_OUTSIDE_SCOPE }));
@@ -96,6 +100,7 @@ describe('VueAdapter', () => {
 				props: undefined,
 				container: document.createElement('div'),
 				command: createCommand(),
+				globalListener,
 				status: createStatus(createView(() => {}))
 			})
 		).toThrow(cause);
@@ -112,6 +117,7 @@ describe('VueAdapter', () => {
 				props: undefined,
 				container: document.createElement('div'),
 				command: createCommand(),
+				globalListener,
 				status: createStatus(view)
 			})
 		).toThrow(
@@ -138,6 +144,7 @@ describe('VueAdapter', () => {
 				props: undefined,
 				container: document.createElement('div'),
 				command: createCommand(),
+				globalListener,
 				status: createStatus(
 					createView(() => {
 						throw releaseCause;

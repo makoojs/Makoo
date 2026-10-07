@@ -65,13 +65,13 @@ describe('single component injection', () => {
 			'stop'
 		]);
 		expect(Object.keys(params?.status ?? {}).sort()).toEqual([
+			'attachedListener',
+			'attachedListenerNames',
 			'getSnapshot',
 			'lastError',
-			'listener',
-			'listenerNames',
 			'subscribe'
 		]);
-		expect(params?.status.listenerNames).toEqual([]);
+		expect(params?.status.attachedListenerNames).toEqual([]);
 		expect(params?.container.parentElement).toBe(host);
 		expect(extra.querySelector('div')).toBeNull();
 		expect(host.firstChild?.textContent).toBe('keep');
@@ -79,6 +79,49 @@ describe('single component injection', () => {
 		expect(Object.isFrozen(props)).toBe(false);
 		expect(Object.isFrozen(props.nested)).toBe(false);
 		expect(vi.getTimerCount()).toBe(0);
+	});
+
+	it('looks up a standalone listener from the component mount and rejects anything else', async () => {
+		document.body.innerHTML = '<section id="host"></section>';
+		let params: AdapterMountParams | undefined;
+		const core = createMakoo();
+		core.useAdapter(
+			adapter((input) => {
+				params = input;
+				return { mounted: true };
+			})
+		);
+		const save = listen({ name: 'save', listenAt: '#host', type: 'click', callback() {} });
+		core.apply([
+			save,
+			inject({
+				name: 'panel',
+				injectAt: '#host',
+				adapter: 'plain',
+				component: {},
+				listeners: [
+					listen({ name: 'play', listenAt: '#missing', type: 'click', callback() {} })
+				]
+			})
+		]);
+		handles.push(core.command('panel'), core.command('save'));
+		const found = params?.globalListener('save');
+		expect(found?.command).toBe(core.command('save'));
+		expect(found?.status).toBe(core.status('save'));
+		for (const name of ['panel', 'play', 'missing']) {
+			expect(() => params?.globalListener(name)).toThrow(
+				expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
+			);
+		}
+
+		await found?.command.remove();
+		core.apply([save]);
+		handles.push(core.command('save'));
+		const replacement = params?.globalListener('save');
+		expect(replacement?.command).toBe(core.command('save'));
+		expect(replacement?.status).toBe(core.status('save'));
+		expect(replacement?.command).not.toBe(found?.command);
+		expect(replacement?.status).not.toBe(found?.status);
 	});
 
 	it.each([0, false, null, undefined])('unmounts a falsy handle %s', async (handle) => {

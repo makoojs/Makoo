@@ -1,4 +1,4 @@
-import type { MountAdapter } from '../adapter/types';
+import type { AdapterMountParams, MountAdapter } from '../adapter/types';
 import type { DOMObserver } from '../dom/observer';
 import { MakooErrorCode } from '../error/ErrorCode';
 import { injectionCleanupFailed, MakooError, stateSubscriberFailed } from '../error/MakooError';
@@ -66,10 +66,13 @@ export function createComponent(
 	adapter: MountAdapter,
 	dom: DOMObserver,
 	onRemoved: () => void,
-	isDisposed: () => boolean
+	isDisposed: () => boolean,
+	globalListener: AdapterMountParams['globalListener']
 ): ComponentInjection {
 	let component: Component;
-	const listenerNames = Object.freeze((config.listeners ?? []).map((listener) => listener.name));
+	const attachedListenerNames = Object.freeze(
+		(config.listeners ?? []).map((listener) => listener.name)
+	);
 	const command: ComponentCommand = Object.freeze({
 		name: config.name,
 		start: () => startComponent(component),
@@ -82,8 +85,8 @@ export function createComponent(
 		get lastError() {
 			return component.lastError;
 		},
-		listenerNames,
-		listener: (listenerName: string) => getAttachListenerStatus(component, listenerName)
+		attachedListenerNames,
+		attachedListener: (listenerName: string) => getAttachListenerStatus(component, listenerName)
 	});
 	component = {
 		config,
@@ -97,7 +100,8 @@ export function createComponent(
 					props: config.props,
 					container,
 					command,
-					status
+					status,
+					globalListener
 				});
 			},
 			unmount(handle) {

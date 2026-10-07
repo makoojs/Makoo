@@ -32,8 +32,8 @@ export interface ComponentCommand {
 /** Component status entry: own stage plus attached listener status views. */
 export interface ComponentStatusHandle extends StateView<ComponentStatus> {
 	readonly lastError: MakooError | undefined;
-	readonly listenerNames: readonly string[];
-	listener(name: string): StateView<ListenerStatus>;
+	readonly attachedListenerNames: readonly string[];
+	attachedListener(name: string): StateView<ListenerStatus>;
 }
 
 export type ComponentInjection = {

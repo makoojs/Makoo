@@ -20,8 +20,8 @@ describe('attached host listeners', () => {
 		return target;
 	}
 	function listenerOf(status: ComponentStatusHandle, name: string): StateView<ListenerStatus> {
-		if (!('listener' in status)) throw new Error('Expected a component');
-		return status.listener(name);
+		if (!('attachedListener' in status)) throw new Error('Expected a component');
+		return status.attachedListener(name);
 	}
 	function setup(listeners: readonly MakooListenerDeclaration[], reinject = false) {
 		const core = createMakoo();
@@ -82,8 +82,8 @@ describe('attached host listeners', () => {
 		const replacement = core.command('panel');
 		controls.push(replacement);
 		const replacementStatus = core.status('panel');
-		if (!('listener' in replacementStatus)) throw new Error('Expected a component');
-		const newState = replacementStatus.listener('play');
+		if (!('attachedListener' in replacementStatus)) throw new Error('Expected a component');
+		const newState = replacementStatus.attachedListener('play');
 		const snapshot = newState.getSnapshot();
 		expect(newState).not.toBe(oldState);
 		const cause = new Error('late business failure');
@@ -305,7 +305,7 @@ describe('attached host listeners', () => {
 			mount({ command, status: mountStatus }) {
 				panel = command;
 				status = mountStatus;
-				const playStatus = mountStatus.listener('play');
+				const playStatus = mountStatus.attachedListener('play');
 				playStatus.subscribe(() => {
 					if (playStatus.getSnapshot() === 'bound') host.remove();
 				});
@@ -338,7 +338,7 @@ describe('attached host listeners', () => {
 			mount({ command, status: mountStatus }) {
 				panel = command;
 				status = mountStatus;
-				const playStatus = mountStatus.listener('play');
+				const playStatus = mountStatus.attachedListener('play');
 				playStatus.subscribe(() => {
 					if (playStatus.getSnapshot() === 'bound') void panel.stop();
 				});
@@ -640,7 +640,7 @@ describe('attached host listeners', () => {
 			name: 'plain',
 			mount({ command, status }) {
 				panel = command;
-				state = status.listener('play');
+				state = status.attachedListener('play');
 				expect(state.getSnapshot()).toBe('idle');
 				button.click();
 				expect(callback).not.toHaveBeenCalled();
@@ -658,13 +658,13 @@ describe('attached host listeners', () => {
 		]);
 		controls.push(core.command('panel'));
 		const status = core.status('panel');
-		if (!('listener' in status)) throw new Error('Expected a component');
+		if (!('attachedListener' in status)) throw new Error('Expected a component');
 		expect(status.getSnapshot()).toBe('mounted');
-		expect(status.listenerNames).toEqual(['play']);
+		expect(status.attachedListenerNames).toEqual(['play']);
 		expect(state.getSnapshot()).toBe('bound');
 		expect(Object.keys(state).sort()).toEqual(['getSnapshot', 'subscribe']);
-		expect(status.listener('play')).toBe(state);
-		expect(() => status.listener('missing')).toThrow(
+		expect(status.attachedListener('play')).toBe(state);
+		expect(() => status.attachedListener('missing')).toThrow(
 			expect.objectContaining({ code: MakooErrorCode.LISTENER_NOT_FOUND })
 		);
 		expect(() => core.command('play')).toThrow(

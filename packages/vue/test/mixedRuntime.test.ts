@@ -6,7 +6,7 @@ import {
 	listen,
 	MakooErrorCode
 } from '@makoojs/core';
-import { createReactAdapter, useComponentStatus, useListenerStatus } from '@makoojs/react';
+import { createReactAdapter, useAttachedListenerStatus, useComponentStatus } from '@makoojs/react';
 import { act, createElement } from 'react';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, nextTick } from 'vue';
@@ -25,27 +25,27 @@ function componentStatus(
 	name: string
 ): ComponentStatusHandle {
 	const status = core.status(name);
-	if (!('listener' in status)) throw new Error(`Expected a component: ${name}`);
+	if (!('attachedListener' in status)) throw new Error(`Expected a component: ${name}`);
 	return status;
 }
 
 function listenerStatus(core: ReturnType<typeof createMakoo>, name: string): ListenerStatusHandle {
 	const status = core.status(name);
-	if ('listener' in status) throw new Error(`Expected a listener: ${name}`);
+	if ('attachedListener' in status) throw new Error(`Expected a listener: ${name}`);
 	return status;
 }
 
 const VuePanel = defineComponent({
 	setup() {
 		const panel = useMakooComponent();
-		const play = panel.listener('play');
+		const play = panel.attachedListener('play');
 		return () => h('p', { class: 'vue-panel' }, `${panel.status.value}:${play.value}`);
 	}
 });
 
 function ReactPanel() {
 	const status = useComponentStatus();
-	const play = useListenerStatus('play');
+	const play = useAttachedListenerStatus('play');
 	return createElement('p', { className: 'react-panel' }, `${status}:${play}`);
 }
 
@@ -164,12 +164,12 @@ describe('mixed Vue, React, and listener runtime', () => {
 
 		expect(element('#vue-host').textContent).toBe('mounted:bound');
 		expect(element('#react-host').textContent).toBe('mounted:bound');
-		expect(componentStatus(core, 'vue-panel').listener('play')).toBe(
-			componentStatus(core, 'vue-panel').listener('play')
+		expect(componentStatus(core, 'vue-panel').attachedListener('play')).toBe(
+			componentStatus(core, 'vue-panel').attachedListener('play')
 		);
-		expect(componentStatus(core, 'vue-panel').listenerNames).toEqual(['play']);
-		expect(componentStatus(core, 'react-panel').listener('play')).not.toBe(
-			componentStatus(core, 'vue-panel').listener('play')
+		expect(componentStatus(core, 'vue-panel').attachedListenerNames).toEqual(['play']);
+		expect(componentStatus(core, 'react-panel').attachedListener('play')).not.toBe(
+			componentStatus(core, 'vue-panel').attachedListener('play')
 		);
 		element('#standalone').click();
 		expect(standalone).toHaveBeenCalledOnce();
@@ -178,7 +178,7 @@ describe('mixed Vue, React, and listener runtime', () => {
 
 		element('#vue-play').remove();
 		await vi.waitFor(() =>
-			expect(componentStatus(core, 'vue-panel').listener('play').getSnapshot()).toBe(
+			expect(componentStatus(core, 'vue-panel').attachedListener('play').getSnapshot()).toBe(
 				'waiting'
 			)
 		);

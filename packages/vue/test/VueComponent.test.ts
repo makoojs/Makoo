@@ -41,7 +41,7 @@ describe('Vue components mounted by core', () => {
 
 	function panelStatus(): ComponentStatusHandle {
 		const status = core.status('panel');
-		if (!('listener' in status)) throw new Error('Expected a component');
+		if (!('attachedListener' in status)) throw new Error('Expected a component');
 		return status;
 	}
 
@@ -107,7 +107,7 @@ describe('Vue components mounted by core', () => {
 			setup() {
 				setups += 1;
 				const control = useMakooComponent();
-				const play = control.listener('play');
+				const play = control.attachedListener('play');
 				const component = control.status;
 				return () => h('p', `${component.value}/${play.value}`);
 			}
@@ -151,7 +151,10 @@ describe('Vue components mounted by core', () => {
 				const control = useMakooComponent();
 				received = control;
 				return () =>
-					h('p', `${control.listener('play').value}/${control.listener('mute').value}`);
+					h(
+						'p',
+						`${control.attachedListener('play').value}/${control.attachedListener('mute').value}`
+					);
 			}
 		});
 		core.apply([
@@ -175,8 +178,8 @@ describe('Vue components mounted by core', () => {
 		addButton('play');
 		await flush();
 		expect(element('#host').textContent).toBe('bound/bound');
-		expect(received?.listener('play')).toBe(received?.listener('play'));
-		expect(() => received?.listener('external')).toThrow(
+		expect(received?.attachedListener('play')).toBe(received?.attachedListener('play'));
+		expect(() => received?.attachedListener('external')).toThrow(
 			expect.objectContaining({ code: MakooErrorCode.LISTENER_NOT_FOUND })
 		);
 	});
@@ -186,7 +189,7 @@ describe('Vue components mounted by core', () => {
 		const Panel = defineComponent({
 			setup() {
 				const control = useMakooComponent();
-				const play = control.listener('play');
+				const play = control.attachedListener('play');
 				snapshots.push(play);
 				return () =>
 					h('button', { class: 'close', onClick: () => control.stop() }, play.value);
@@ -208,7 +211,7 @@ describe('Vue components mounted by core', () => {
 		controls.push(core.command('panel'));
 		const panel = panelCommand();
 		const status = panelStatus();
-		const view = status.listener('play');
+		const view = status.attachedListener('play');
 		await nextTick();
 		expect(element('#host .close').textContent).toBe('bound');
 
@@ -220,7 +223,7 @@ describe('Vue components mounted by core', () => {
 		panel.start();
 		await nextTick();
 		expect(snapshots).toHaveLength(2);
-		expect(status.listener('play')).toBe(view);
+		expect(status.attachedListener('play')).toBe(view);
 		expect(element('#host .close').textContent).toBe('bound');
 		expect(snapshots[1]?.value).toBe(view.getSnapshot());
 
@@ -276,6 +279,92 @@ describe('Vue components mounted by core', () => {
 			// Vue did not complete the mount, so the test must release its own effects.
 			for (const stop of watchers) stop();
 		}
+	});
+
+	it('controls a standalone listener and leaves it running when the component stops', async () => {
+		let received: VueMakooComponent | undefined;
+		const Panel = defineComponent({
+			setup() {
+				const control = useMakooComponent();
+				received = control;
+				const save = control.globalListener('save');
+				return () => h('p', save.status.value);
+			}
+		});
+		core.apply([
+			listen({ name: 'save', listenAt: '#save', type: 'click', callback: vi.fn() }),
+			inject({
+				name: 'panel',
+				injectAt: '#host',
+				adapter: 'vue',
+				component: Panel,
+				listeners: [
+					listen({ name: 'play', listenAt: '#play', type: 'click', callback: vi.fn() })
+				]
+			})
+		]);
+		controls.push(core.command('panel'), core.command('save'));
+		await nextTick();
+		const save = received?.globalListener('save');
+		expect(save?.stop).toBe(core.command('save').stop);
+		expect(save?.status).toBe(received?.globalListener('save').status);
+		expect(element('#host').textContent).toBe('waiting');
+		for (const name of ['panel', 'play', 'missing']) {
+			expect(() => received?.globalListener(name)).toThrow(
+				expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
+			);
+		}
+
+		await save?.stop();
+		await nextTick();
+		expect(save?.status.value).toBe('idle');
+		expect(core.status('save').getSnapshot()).toBe('idle');
+		save?.start();
+		await flush();
+		expect(core.status('save').getSnapshot()).toBe('waiting');
+
+		await panelCommand().stop();
+		expect(core.status('save').getSnapshot()).toBe('waiting');
+	});
+
+	it('keeps one status ref when a standalone listener is replaced', async () => {
+		let received: VueMakooComponent | undefined;
+		const Panel = defineComponent({
+			setup() {
+				const control = useMakooComponent();
+				received = control;
+				const save = control.globalListener('save');
+				return () => h('p', save.status.value);
+			}
+		});
+		const declaration = listen({
+			name: 'save',
+			listenAt: '#save',
+			type: 'click',
+			callback: vi.fn()
+		});
+		core.apply([
+			declaration,
+			inject({ name: 'panel', injectAt: '#host', adapter: 'vue', component: Panel })
+		]);
+		controls.push(core.command('panel'), core.command('save'));
+		await nextTick();
+		const status = received?.globalListener('save').status;
+		const previous = received?.globalListener('save');
+		addButton('save');
+		await flush();
+		expect(status?.value).toBe('bound');
+
+		await previous?.remove();
+		await nextTick();
+		expect(status?.value).toBe('idle');
+		core.apply([declaration]);
+		controls.push(core.command('save'));
+		const replacement = received?.globalListener('save');
+		expect(replacement?.stop).toBe(core.command('save').stop);
+		expect(replacement?.stop).not.toBe(previous?.stop);
+		expect(replacement?.status).toBe(status);
+		expect(status?.value).toBe('bound');
 	});
 
 	it('reports a throwing Vue unmount as cleanup failure', async () => {

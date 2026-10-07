@@ -15,9 +15,10 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import {
 	createReactAdapter,
 	type ReactMountAdapter,
+	useAttachedListenerStatus,
 	useComponentCommand,
 	useComponentStatus,
-	useListenerStatus
+	useGlobalListener
 } from '../src';
 
 type ActEnvironment = typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean };
@@ -47,7 +48,7 @@ describe('React components mounted by core', () => {
 
 	function panelStatus(): ComponentStatusHandle {
 		const status = core.status('panel');
-		if (!('listener' in status)) throw new Error('Expected a component');
+		if (!('attachedListener' in status)) throw new Error('Expected a component');
 		return status;
 	}
 
@@ -119,21 +120,21 @@ describe('React components mounted by core', () => {
 		const received: ComponentCommand[] = [];
 		function Panel() {
 			const control = useComponentCommand();
-			const play = useListenerStatus('play');
+			const play = useAttachedListenerStatus('play');
 			received.push(control);
 			return createElement('p', null, play);
 		}
 		addButton('play');
 		await applyPanel(Panel);
 		const oldCommand = panelCommand();
-		const oldView = panelStatus().listener('play');
+		const oldView = panelStatus().attachedListener('play');
 		await act(async () => oldCommand.remove());
 
 		await applyPanel(Panel);
 		const replacement = panelCommand();
 		const replacementStatus = panelStatus();
 		expect(replacement).not.toBe(oldCommand);
-		expect(replacementStatus.listener('play')).not.toBe(oldView);
+		expect(replacementStatus.attachedListener('play')).not.toBe(oldView);
 		expect(received.at(-1)?.stop).toBe(replacement.stop);
 		expect(element('#host').textContent).toBe('bound');
 
@@ -149,7 +150,7 @@ describe('React components mounted by core', () => {
 		let mounts = 0;
 		const seen: ListenerStatus[] = [];
 		function Panel() {
-			const play = useListenerStatus('play');
+			const play = useAttachedListenerStatus('play');
 			const component = useComponentStatus();
 			seen.push(play);
 			useEffect(() => {
@@ -163,7 +164,7 @@ describe('React components mounted by core', () => {
 
 		await act(async () => addButton('play'));
 		expect(text()).toBe('mounted/bound');
-		const bound = panelStatus().listener('play').getSnapshot();
+		const bound = panelStatus().attachedListener('play').getSnapshot();
 		expect(seen.at(-1)).toBe(bound);
 
 		await act(async () => element('#play').remove());
@@ -178,7 +179,7 @@ describe('React components mounted by core', () => {
 		let renders = 0;
 		function Panel() {
 			const [selected, select] = useState('play');
-			const listener = useListenerStatus(selected);
+			const listener = useAttachedListenerStatus(selected);
 			renders += 1;
 			return createElement(
 				'button',
@@ -212,13 +213,13 @@ describe('React components mounted by core', () => {
 		expect(renders).toBe(muteRenders);
 	});
 
-	it('does not resolve a global listener through the attached listener hook', async () => {
+	it('does not resolve a standalone listener through the attached listener hook', async () => {
 		core.apply([
 			listen({ name: 'external', listenAt: '#host', type: 'click', callback: vi.fn() })
 		]);
 		controls.push(core.command('external'));
 		function Panel() {
-			const listener = useListenerStatus('external');
+			const listener = useAttachedListenerStatus('external');
 			return createElement('p', null, listener);
 		}
 		await expect(applyPanel(Panel)).rejects.toThrow(/Unknown listener/);
@@ -255,14 +256,15 @@ describe('React components mounted by core', () => {
 					...params,
 					status: {
 						...params.status,
-						listener: (name) => countSubscriptions(params.status.listener(name))
+						attachedListener: (name) =>
+							countSubscriptions(params.status.attachedListener(name))
 					}
 				});
 			}
 		} satisfies ReactMountAdapter);
 		function Panel() {
 			const control = useComponentCommand();
-			const play = useListenerStatus('play');
+			const play = useAttachedListenerStatus('play');
 			renders.push(play);
 			return createElement(
 				'button',
@@ -274,13 +276,13 @@ describe('React components mounted by core', () => {
 		await applyPanel(Panel, true);
 		const panel = panelCommand();
 		const status = panelStatus();
-		const view = status.listener('play');
+		const view = status.attachedListener('play');
 		expect(element('#host .close').textContent).toBe('bound');
 		expect(subscriptions).toBe(1);
 
 		await act(async () => element('#host').replaceChildren());
 		await vi.waitFor(() => expect(element('#host .close').textContent).toBe('bound'));
-		expect(status.listener('play')).toBe(view);
+		expect(status.attachedListener('play')).toBe(view);
 		expect(subscriptions).toBe(1);
 
 		await act(async () => {
@@ -301,5 +303,120 @@ describe('React components mounted by core', () => {
 		await act(async () => panel.start());
 		expect(element('#host .close').textContent).toBe('bound');
 		expect(subscriptions).toBe(1);
+	});
+
+	it('controls a standalone listener and leaves it running when the component stops', async () => {
+		let saveCommand: { stop: () => Promise<void>; start: () => void } | undefined;
+		function Panel() {
+			const save = useGlobalListener('save');
+			saveCommand = save;
+			return createElement('p', null, save.status);
+		}
+		await act(async () => {
+			core.apply([
+				listen({ name: 'save', listenAt: '#save', type: 'click', callback: vi.fn() }),
+				inject({
+					name: 'panel',
+					injectAt: '#host',
+					adapter: 'react',
+					component: Panel,
+					listeners: [
+						listen({
+							name: 'play',
+							listenAt: '#play',
+							type: 'click',
+							callback: vi.fn()
+						})
+					]
+				})
+			]);
+		});
+		controls.push(core.command('panel'), core.command('save'));
+		expect(saveCommand?.stop).toBe(core.command('save').stop);
+		expect(element('#host').textContent).toBe('waiting');
+
+		await act(async () => {
+			await saveCommand?.stop();
+		});
+		expect(element('#host').textContent).toBe('idle');
+		expect(core.status('save').getSnapshot()).toBe('idle');
+		await act(async () => saveCommand?.start());
+		expect(core.status('save').getSnapshot()).toBe('waiting');
+
+		await act(async () => panelCommand().stop());
+		expect(core.status('save').getSnapshot()).toBe('waiting');
+	});
+
+	it('reads the replacement standalone listener on the next render', async () => {
+		let saveStop: (() => Promise<void>) | undefined;
+		function Panel() {
+			const [, render] = useState(0);
+			const save = useGlobalListener('save');
+			saveStop = save.stop;
+			return createElement(
+				'button',
+				{ type: 'button', onClick: () => render((count) => count + 1) },
+				save.status
+			);
+		}
+		const declaration = listen({
+			name: 'save',
+			listenAt: '#save',
+			type: 'click',
+			callback: vi.fn()
+		});
+		await act(async () => {
+			core.apply([
+				declaration,
+				inject({ name: 'panel', injectAt: '#host', adapter: 'react', component: Panel })
+			]);
+		});
+		controls.push(core.command('panel'), core.command('save'));
+		await act(async () => addButton('save'));
+		expect(element('#host').textContent).toBe('bound');
+		const previousStop = saveStop;
+		await act(async () => {
+			const removal = core.command('save').remove();
+			core.apply([declaration]);
+			controls.push(core.command('save'));
+			await removal;
+		});
+		await act(async () => element('#host button')?.click());
+		expect(saveStop).toBe(core.command('save').stop);
+		expect(saveStop).not.toBe(previousStop);
+		expect(element('#host').textContent).toBe('bound');
+	});
+
+	it.each([
+		'panel',
+		'play',
+		'missing'
+	])('does not resolve %s through the standalone listener hook', async (name) => {
+		function Panel() {
+			const save = useGlobalListener(name);
+			return createElement('p', null, save.status);
+		}
+		await expect(
+			act(async () => {
+				core.apply([
+					listen({ name: 'save', listenAt: '#save', type: 'click', callback: vi.fn() }),
+					inject({
+						name: 'panel',
+						injectAt: '#host',
+						adapter: 'react',
+						component: Panel,
+						listeners: [
+							listen({
+								name: 'play',
+								listenAt: '#play',
+								type: 'click',
+								callback: vi.fn()
+							})
+						]
+					})
+				]);
+			})
+		).rejects.toThrow(expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND }));
+		controls.push(core.command('save'), core.command('panel'));
 	});
 });
