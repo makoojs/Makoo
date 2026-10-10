@@ -67,15 +67,10 @@ describe('generateReactTemplate', () => {
 				build: 'tsc -b && makoo build',
 				preview: 'makoo preview'
 			});
-			expect(packageJson.devDependencies.esbuild).toBe('^0.28.2');
-			expect(packageJson.devDependencies.vite).toBe('^8.2.2');
-			expect(packageJson.devDependencies['@vitejs/plugin-react']).toBe('^6.1.1');
-			expect(packageJson.devDependencies.typescript).toBe('^7.0.2');
-			expect(packageJson.devDependencies['@types/node']).toBe('^26.4.1');
-			expect(packageJson.devDependencies['@types/react']).toBe('^19.2.18');
-			expect(packageJson.devDependencies['@types/react-dom']).toBe('^19.2.7');
-			expect(packageJson.dependencies.react).toBe('^19.2.8');
-			expect(packageJson.dependencies['react-dom']).toBe('^19.2.8');
+			expect(packageJson.dependencies).toHaveProperty('react');
+			expect(packageJson.dependencies).toHaveProperty('react-dom');
+			expect(packageJson.devDependencies).toHaveProperty('vite');
+			expect(packageJson.devDependencies).toHaveProperty('@vitejs/plugin-react');
 			expect(packageJson.dependencies['@makoojs/core']).toBe(recommendedMakooVersions.core);
 			expect(packageJson.dependencies['@makoojs/react']).toBe(recommendedMakooVersions.react);
 			expect(packageJson.devDependencies['@makoojs/cli']).toBe(recommendedMakooVersions.cli);

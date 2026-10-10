@@ -1,42 +1,68 @@
-import { ErrorCode } from './ErrorCode';
+import type { ZodError } from 'zod';
+import { MakooErrorCode } from './ErrorCode';
 
-export type MakooIssue = {
-	path: string;
-	message: string;
+type MakooErrorOptions = {
+	readonly code: string;
+	readonly cause?: unknown;
 };
-
-export type MakooErrorContextValue = string | number | boolean | null;
-export type MakooErrorContext = Record<string, MakooErrorContextValue>;
 
 export class MakooError extends Error {
 	readonly code: string;
-	readonly issues: MakooIssue[];
-	readonly summary: string;
-	readonly context: MakooErrorContext = {};
-	override readonly cause?: Error;
 
-	constructor(
-		message: string,
-		issues?: MakooIssue[],
-		code: string = ErrorCode.UNKNOWN,
-		cause?: Error
-	) {
-		const parts: string[] = [`[makoo] ${message}`];
-		if (issues?.length) {
-			for (const i of issues) {
-				parts.push(`  - ${i.path}: ${i.message}`);
-			}
-		}
-		super(parts.join('\n'));
+	constructor(message: string, options: MakooErrorOptions) {
+		super(message);
 		this.name = 'MakooError';
-		this.code = code;
-		this.issues = issues ?? [];
-		this.summary = message;
-		if (cause) this.cause = cause;
+		this.code = options.code;
+		if (options.cause !== undefined) this.cause = options.cause;
 	}
+}
 
-	withContext(context: MakooErrorContext): this {
-		Object.assign(this.context, context);
-		return this;
+export class MakooAggregateError extends MakooError {
+	readonly errors: readonly unknown[];
+
+	constructor(errors: readonly unknown[], message: string, options: MakooErrorOptions) {
+		super(aggregateMessage(message, errors), options);
+		this.name = 'MakooAggregateError';
+		this.errors = errors;
 	}
+}
+
+export function declaredName(input: unknown): string | undefined {
+	if (typeof input !== 'object' || input === null || !('name' in input)) return undefined;
+	const { name } = input;
+	return typeof name === 'string' && name.trim().length > 0 ? name : undefined;
+}
+
+export function validationError(summary: string, code: string, error: ZodError): MakooError {
+	const lines = error.issues.map((issue) => {
+		const path = issue.path.map(String).join('.');
+		return `${path || '(root)'}: ${issue.message}`;
+	});
+	return new MakooError([summary, ...lines].join('\n'), { code, cause: error });
+}
+
+export function stateSubscriberFailed(owner: string, cause: unknown): MakooError {
+	return new MakooError(`State subscriber of ${owner} failed`, {
+		code: MakooErrorCode.STATE_SUBSCRIBER_FAILED,
+		cause
+	});
+}
+
+export function injectionCleanupFailed(
+	name: string,
+	errors: readonly unknown[]
+): MakooAggregateError {
+	return new MakooAggregateError(errors, `Cleanup failed for "${name}"`, {
+		code: MakooErrorCode.INJECTION_CLEANUP_FAILED
+	});
+}
+
+function aggregateMessage(message: string, errors: readonly unknown[]): string {
+	// A child may itself list further errors. The parent keeps one line per direct child.
+	const lines = errors.map((error) => {
+		const text = error instanceof Error ? error.message : String(error);
+		const newline = text.indexOf('\n');
+		return newline === -1 ? text : text.slice(0, newline);
+	});
+	return [message, ...lines].join('\n');
 }

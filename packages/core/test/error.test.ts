@@ -1,150 +1,93 @@
 import { describe, expect, it } from 'vitest';
-import { AdapterError } from '../src/error/AdapterError';
-import { ErrorCode } from '../src/error/ErrorCode';
-import { formatMakooError } from '../src/error/formatMakooError';
-import { MakooError } from '../src/error/MakooError';
-import { SignalError } from '../src/error/SignalError';
-import { TaskError } from '../src/error/TaskError';
+import { MakooAggregateError, MakooError, MakooErrorCode } from '../src';
 
 describe('MakooError', () => {
-	it('defaults code to UNKNOWN when no code is provided', () => {
-		const err = new MakooError('something failed');
-		expect(err.code).toBe(ErrorCode.UNKNOWN);
+	it('keeps the message unchanged and requires a code', () => {
+		const error = new MakooError('something failed', {
+			code: MakooErrorCode.ADAPTER_NOT_FOUND
+		});
+
+		expect(error).toBeInstanceOf(Error);
+		expect(error).toBeInstanceOf(MakooError);
+		expect(error.name).toBe('MakooError');
+		expect(error.message).toBe('something failed');
+		expect(error.code).toBe('MAKOO_ADAPTER_NOT_FOUND');
+		expect(Object.hasOwn(error, 'cause')).toBe(false);
 	});
 
-	it('uses provided code when explicitly specified', () => {
-		const err = new MakooError('something failed', undefined, ErrorCode.ADAPTER_NOT_FOUND);
-		expect(err.code).toBe(ErrorCode.ADAPTER_NOT_FOUND);
-	});
-
-	it('retains cause without appending it to the message', () => {
+	it('keeps an error or a non-error cause without adding it to the message', () => {
 		const root = new Error('root problem');
-		const err = new MakooError('outer error', undefined, undefined, root);
-		expect(err.message).toBe('[makoo] outer error');
-		expect(err.cause).toBe(root);
+		const withError = new MakooError('outer error', {
+			code: MakooErrorCode.MOUNT_FAILED,
+			cause: root
+		});
+		const withValue = new MakooError('outer error', {
+			code: MakooErrorCode.MOUNT_FAILED,
+			cause: 'raw'
+		});
+
+		expect(withError.message).toBe('outer error');
+		expect(withError.cause).toBe(root);
+		expect(withValue.cause).toBe('raw');
 	});
+});
 
-	it('formats message with issues', () => {
-		const err = new MakooError('Something went wrong', [
-			{ path: 'foo.bar', message: 'is required' },
-			{ path: 'baz', message: 'must be one of "a", "b"' }
-		]);
-		expect(err.message).toContain('[makoo] Something went wrong');
-		expect(err.message).toContain('- foo.bar: is required');
-		expect(err.message).toContain('- baz: must be one of "a", "b"');
-		expect(err).toBeInstanceOf(Error);
-	});
-
-	it('formats message without issues', () => {
-		const err = new MakooError('Something went wrong');
-		expect(err.message).toBe('[makoo] Something went wrong');
-	});
-
-	it('exposes issues for programmatic access', () => {
-		const issues = [{ path: 'x', message: 'bad' }];
-		const err = new MakooError('msg', issues);
-		expect(err.issues).toBe(issues);
-	});
-
-	it('merges structured context without replacing the error', () => {
-		const err = new MakooError('msg');
-
-		expect(
-			err.withContext({
-				taskId: 'main-panel',
-				artifact: 'Panel',
-				injectAt: 'body',
-				adapter: 'vue'
-			})
-		).toBe(err);
-		expect(err.context).toEqual({
-			taskId: 'main-panel',
-			artifact: 'Panel',
-			injectAt: 'body',
-			adapter: 'vue'
+describe('MakooErrorCode', () => {
+	it('publishes the core codes from the error spec', () => {
+		expect(MakooErrorCode).toEqual({
+			DECLARATION_INVALID: 'MAKOO_DECLARATION_INVALID',
+			INJECTION_NAME_CONFLICT: 'MAKOO_INJECTION_NAME_CONFLICT',
+			ADAPTER_INVALID: 'MAKOO_ADAPTER_INVALID',
+			ADAPTER_NAME_CONFLICT: 'MAKOO_ADAPTER_NAME_CONFLICT',
+			ADAPTER_NOT_FOUND: 'MAKOO_ADAPTER_NOT_FOUND',
+			INJECTION_NOT_FOUND: 'MAKOO_INJECTION_NOT_FOUND',
+			LISTENER_NOT_FOUND: 'MAKOO_LISTENER_NOT_FOUND',
+			INJECTION_REMOVED: 'MAKOO_INJECTION_REMOVED',
+			INJECTION_CLOSED: 'MAKOO_INJECTION_CLOSED',
+			INSTANCE_DISPOSED: 'MAKOO_INSTANCE_DISPOSED',
+			TARGET_WAIT_TIMEOUT: 'MAKOO_TARGET_WAIT_TIMEOUT',
+			MOUNT_TARGET_DETACHED: 'MAKOO_MOUNT_TARGET_DETACHED',
+			MOUNT_FAILED: 'MAKOO_MOUNT_FAILED',
+			LISTENER_TARGET_DETACHED: 'MAKOO_LISTENER_TARGET_DETACHED',
+			LISTENER_BIND_FAILED: 'MAKOO_LISTENER_BIND_FAILED',
+			ATTACHED_LISTENER_FAILED: 'MAKOO_ATTACHED_LISTENER_FAILED',
+			UNMOUNT_FAILED: 'MAKOO_UNMOUNT_FAILED',
+			CONTAINER_REMOVE_FAILED: 'MAKOO_CONTAINER_REMOVE_FAILED',
+			LISTENER_UNBIND_FAILED: 'MAKOO_LISTENER_UNBIND_FAILED',
+			MOUNT_CLEANUP_FAILED: 'MAKOO_MOUNT_CLEANUP_FAILED',
+			INJECTION_CLEANUP_FAILED: 'MAKOO_INJECTION_CLEANUP_FAILED',
+			INSTANCE_CLEANUP_FAILED: 'MAKOO_INSTANCE_CLEANUP_FAILED',
+			LISTENER_CALLBACK_FAILED: 'MAKOO_LISTENER_CALLBACK_FAILED',
+			STATE_SUBSCRIBER_FAILED: 'MAKOO_STATE_SUBSCRIBER_FAILED'
 		});
 	});
 });
 
-describe('formatMakooError', () => {
-	it('formats the error, context and original cause as one readable message', () => {
-		const cause = new TypeError("Cannot read properties of null (reading 'toString')");
-		cause.stack = [
-			"TypeError: Cannot read properties of null (reading 'toString')",
-			'    at Object.mount (@makoojs_vue.js:47:15)',
-			'    at injectArtifact (TaskRunner.ts:479:25)'
-		].join('\n');
-		const error = new AdapterError(
-			'Failed to mount Vue component at "body"',
-			undefined,
-			ErrorCode.ADAPTER_MOUNT_FAIL,
-			cause
-		).withContext({
-			taskId: 'main-panel',
-			artifact: 'Panel',
-			injectAt: 'body',
-			adapter: 'vue'
+describe('MakooAggregateError', () => {
+	it('is a Makoo error that keeps every given error and lists each on its own line', () => {
+		const child = new MakooError('Failed to bind listener "save"', {
+			code: MakooErrorCode.LISTENER_BIND_FAILED
+		});
+		const nested = new MakooAggregateError([child], 'Cleanup failed for listener "save"', {
+			code: MakooErrorCode.INJECTION_CLEANUP_FAILED
+		});
+		const given = [nested, 'plain'];
+		const error = new MakooAggregateError(given, 'Cleanup failed for "toolbar"', {
+			code: MakooErrorCode.INJECTION_CLEANUP_FAILED,
+			cause: child
 		});
 
-		expect(formatMakooError(error)).toBe(
-			[
-				'AdapterError [MAKOO_ADAPTER_MOUNT_FAIL]:',
-				'Failed to mount Vue component at "body"',
-				'(taskId: "main-panel", artifact: "Panel", injectAt: "body", adapter: "vue")',
-				'',
-				"  TypeError: Cannot read properties of null (reading 'toString')",
-				'      at Object.mount (@makoojs_vue.js:47:15)',
-				'      at injectArtifact (TaskRunner.ts:479:25)'
-			].join('\n')
+		expect(error).toBeInstanceOf(Error);
+		expect(error).toBeInstanceOf(MakooError);
+		expect(error).toBeInstanceOf(MakooAggregateError);
+		expect(error.name).toBe('MakooAggregateError');
+		expect(error.code).toBe(MakooErrorCode.INJECTION_CLEANUP_FAILED);
+		expect(error.cause).toBe(child);
+		expect(error.errors).toBe(given);
+		expect(error.message).toBe(
+			['Cleanup failed for "toolbar"', 'Cleanup failed for listener "save"', 'plain'].join(
+				'\n'
+			)
 		);
-	});
-});
-
-describe('AdapterError', () => {
-	it('defaults code to ADAPTER_NOT_FOUND when no code is provided', () => {
-		const err = new AdapterError('adapter failed');
-		expect(err.code).toBe(ErrorCode.ADAPTER_NOT_FOUND);
-	});
-
-	it('uses provided code when explicitly specified', () => {
-		const err = new AdapterError('not found', undefined, ErrorCode.ADAPTER_NOT_FOUND);
-		expect(err.code).toBe(ErrorCode.ADAPTER_NOT_FOUND);
-	});
-
-	it('is an instance of MakooError and Error', () => {
-		const err = new AdapterError('msg', undefined, ErrorCode.ADAPTER_NOT_FOUND);
-		expect(err).toBeInstanceOf(MakooError);
-		expect(err).toBeInstanceOf(Error);
-	});
-});
-
-describe('TaskError', () => {
-	it('defaults code to TASK_NO_REGISTERED when no code is provided', () => {
-		const err = new TaskError('task failed');
-		expect(err.code).toBe(ErrorCode.TASK_NO_REGISTERED);
-	});
-
-	it('uses provided code when explicitly specified', () => {
-		const err = new TaskError('no tasks', undefined, ErrorCode.TASK_NO_REGISTERED);
-		expect(err.code).toBe(ErrorCode.TASK_NO_REGISTERED);
-	});
-
-	it('is an instance of MakooError and Error', () => {
-		const err = new TaskError('msg', undefined, ErrorCode.TASK_NO_REGISTERED);
-		expect(err).toBeInstanceOf(MakooError);
-		expect(err).toBeInstanceOf(Error);
-	});
-});
-
-describe('SignalError', () => {
-	it('defaults code to TASK_SIGNAL_INVALID when no code is provided', () => {
-		const err = new SignalError('signal failed');
-		expect(err.code).toBe(ErrorCode.TASK_SIGNAL_INVALID);
-	});
-
-	it('is an instance of MakooError and Error', () => {
-		const err = new SignalError('msg');
-		expect(err).toBeInstanceOf(MakooError);
-		expect(err).toBeInstanceOf(Error);
 	});
 });

@@ -1,27 +1,58 @@
-import type { MakooContext } from '@makoojs/core';
+import {
+	type AdapterMountParams,
+	type ComponentCommand,
+	type ComponentStatusHandle,
+	type ListenerStatus,
+	MakooAggregateError,
+	MakooErrorCode,
+	type StateView
+} from '@makoojs/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h } from 'vue';
-import { VueAdapterError } from '../src/error';
+import { type App, defineComponent, h } from 'vue';
+import { useMakooComponent, VueErrorCode } from '../src';
 import { createVueAdapter } from '../src/VueAdapter';
 import { VuePlugin } from '../src/VuePlugin';
 
-function createMakooApi(): MakooContext {
+function createCommand(): ComponentCommand {
 	return {
-		taskId: 'vue-task',
-		injectAt: '#vue-adapter',
-		enableAlive: vi.fn(),
-		disableAlive: vi.fn(),
-		reset: vi.fn(),
-		destroy: vi.fn(),
-		on: vi.fn(() => vi.fn()),
-		onTask: vi.fn(() => vi.fn()),
-		off: vi.fn(),
-		offTask: vi.fn(),
-		getLogger: vi.fn(),
-		bindListenerSignal: vi.fn(() => false),
-		controlListener: vi.fn(() => false)
+		name: 'panel',
+		start: vi.fn(),
+		stop: vi.fn(async () => {}),
+		remove: vi.fn(async () => {})
 	};
 }
+
+function createStatus(view: StateView<ListenerStatus>): ComponentStatusHandle {
+	return {
+		getSnapshot: () => 'mounted',
+		subscribe: () => () => {},
+		lastError: undefined,
+		attachedListenerNames: ['play'],
+		attachedListener: () => view
+	};
+}
+
+const globalListener = () => ({}) as ReturnType<AdapterMountParams['globalListener']>;
+
+function createView(unsubscribe: () => void): StateView<ListenerStatus> {
+	return {
+		getSnapshot: () => 'waiting',
+		subscribe: vi.fn(() => unsubscribe)
+	};
+}
+
+const FailingChild = defineComponent({
+	setup() {
+		throw new Error('child setup failed');
+	}
+});
+
+const SubscribingParent = defineComponent({
+	setup() {
+		const play = useMakooComponent().attachedListener('play');
+		return () => h('div', [play.value, h(FailingChild)]);
+	}
+});
 
 describe('VueAdapter', () => {
 	afterEach(() => {
@@ -30,42 +61,32 @@ describe('VueAdapter', () => {
 		VuePlugin.clear();
 	});
 
-	it('should mount Vue component with makoo root prop', () => {
-		const mountPoint = document.createElement('div');
-		document.body.appendChild(mountPoint);
-		const makoo = createMakooApi();
-		let receivedMakoo: MakooContext | undefined;
+	it('is registered under the explicit name "vue"', () => {
+		expect(createVueAdapter().name).toBe('vue');
+	});
 
-		const artifact = defineComponent({
-			name: 'VueMakooBadge',
-			props: {
-				makoo: {
-					type: Object,
-					required: true
-				}
-			},
-			setup(props) {
-				receivedMakoo = props.makoo as MakooContext;
-				return () => h('div', 'badge');
+	it('rejects useMakooComponent from a plugin outside an effect scope', () => {
+		VuePlugin.usePlugins({
+			install(app) {
+				app.runWithContext(() => {
+					useMakooComponent();
+				});
 			}
 		});
 
-		const result = createVueAdapter().mount({
-			host: mountPoint,
-			mountPoint,
-			artifact,
-			taskId: makoo.taskId,
-			injectAt: makoo.injectAt,
-			makoo
-		});
-
-		expect(result.handle).toBeDefined();
-		expect(receivedMakoo).toBe(makoo);
+		expect(() =>
+			createVueAdapter().mount({
+				component: defineComponent({ render: () => h('div') }),
+				props: undefined,
+				container: document.createElement('div'),
+				command: createCommand(),
+				globalListener,
+				statusHandle: createStatus(createView(() => {}))
+			})
+		).toThrow(expect.objectContaining({ code: VueErrorCode.VUE_HOOK_OUTSIDE_SCOPE }));
 	});
 
-	it('uses injectAt in mount errors and preserves the original cause', () => {
-		const mountPoint = document.createElement('div');
-		const makoo = { ...createMakooApi(), injectAt: 'body' };
+	it('rethrows a mount failure when cleanup has nothing to report', () => {
 		const cause = new TypeError('plugin install failed');
 		VuePlugin.usePlugins({
 			install() {
@@ -73,23 +94,90 @@ describe('VueAdapter', () => {
 			}
 		});
 
+		expect(() =>
+			createVueAdapter().mount({
+				component: defineComponent({ render: () => h('div') }),
+				props: undefined,
+				container: document.createElement('div'),
+				command: createCommand(),
+				globalListener,
+				statusHandle: createStatus(createView(() => {}))
+			})
+		).toThrow(cause);
+	});
+
+	it('releases state subscriptions created before a mount fails', () => {
+		vi.spyOn(console, 'warn').mockImplementation(() => {});
+		const unsubscribe = vi.fn();
+		const view = createView(unsubscribe);
+
+		expect(() =>
+			createVueAdapter().mount({
+				component: SubscribingParent,
+				props: undefined,
+				container: document.createElement('div'),
+				command: createCommand(),
+				globalListener,
+				statusHandle: createStatus(view)
+			})
+		).toThrow(
+			expect.objectContaining({
+				code: MakooErrorCode.MOUNT_CLEANUP_FAILED,
+				cause: expect.objectContaining({ message: 'child setup failed' }),
+				errors: [
+					expect.objectContaining({ code: VueErrorCode.VUE_PARTIAL_MOUNT_UNCONFIRMED })
+				]
+			})
+		);
+		expect(view.subscribe).toHaveBeenCalledOnce();
+		expect(unsubscribe).toHaveBeenCalledOnce();
+	});
+
+	it('reports subscription release failures after a failed mount', () => {
+		vi.spyOn(console, 'warn').mockImplementation(() => {});
+		const releaseCause = new Error('release failed');
+
 		let thrown: unknown;
 		try {
 			createVueAdapter().mount({
-				host: mountPoint,
-				mountPoint,
-				artifact: defineComponent({ render: () => h('div') }),
-				taskId: makoo.taskId,
-				injectAt: makoo.injectAt,
-				makoo
+				component: SubscribingParent,
+				props: undefined,
+				container: document.createElement('div'),
+				command: createCommand(),
+				globalListener,
+				statusHandle: createStatus(
+					createView(() => {
+						throw releaseCause;
+					})
+				)
 			});
 		} catch (error) {
 			thrown = error;
 		}
 
-		expect(thrown).toBeInstanceOf(VueAdapterError);
-		expect((thrown as VueAdapterError).summary).toBe('Failed to mount Vue component at "body"');
-		expect((thrown as VueAdapterError).message).not.toContain('[object HTMLDivElement]');
-		expect((thrown as VueAdapterError).cause).toBe(cause);
+		expect(thrown).toBeInstanceOf(MakooAggregateError);
+		const aggregate = thrown as MakooAggregateError;
+		expect(aggregate).toMatchObject({
+			code: MakooErrorCode.MOUNT_CLEANUP_FAILED,
+			cause: expect.objectContaining({ message: 'child setup failed' })
+		});
+		expect(aggregate.errors).toHaveLength(2);
+		expect(aggregate.errors).toEqual(
+			expect.arrayContaining([
+				releaseCause,
+				expect.objectContaining({ code: VueErrorCode.VUE_PARTIAL_MOUNT_UNCONFIRMED })
+			])
+		);
+	});
+
+	it('rethrows an unmount failure unchanged', () => {
+		const cause = new Error('unmount failed');
+		const app = {
+			unmount() {
+				throw cause;
+			}
+		} as unknown as App;
+
+		expect(() => createVueAdapter().unmount(app)).toThrow(cause);
 	});
 });

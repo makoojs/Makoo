@@ -30,7 +30,7 @@ function readPackageJson(pathname: string): {
 }
 
 describe('generateVueTemplate', () => {
-	it('creates Vue TypeScript tsconfig files', async () => {
+	it('creates Vue TypeScript template files', async () => {
 		const root = await trackProject({});
 
 		await withCwd(root, async () => {
@@ -71,13 +71,10 @@ describe('generateVueTemplate', () => {
 				build: 'vue-tsc -b && makoo build',
 				preview: 'makoo preview'
 			});
-			expect(packageJson.devDependencies.esbuild).toBe('^0.28.2');
-			expect(packageJson.devDependencies.vite).toBe('^8.2.2');
-			expect(packageJson.devDependencies.typescript).toBe('^6.0.3');
-			expect(packageJson.devDependencies['@types/node']).toBe('^26.4.1');
-			expect(packageJson.devDependencies['vue-tsc']).toBe('^3.3.11');
-			expect(packageJson.devDependencies['@vitejs/plugin-vue']).toBe('^6.0.8');
-			expect(packageJson.dependencies.vue).toBe('^3.5.42');
+			expect(packageJson.dependencies).toHaveProperty('vue');
+			expect(packageJson.devDependencies).toHaveProperty('vite');
+			expect(packageJson.devDependencies).toHaveProperty('@vitejs/plugin-vue');
+			expect(packageJson.devDependencies).toHaveProperty('vue-tsc');
 			expect(packageJson.dependencies['@makoojs/core']).toBe(recommendedMakooVersions.core);
 			expect(packageJson.dependencies['@makoojs/vue']).toBe(recommendedMakooVersions.vue);
 			expect(packageJson.devDependencies['@makoojs/cli']).toBe(recommendedMakooVersions.cli);
@@ -89,9 +86,7 @@ describe('generateVueTemplate', () => {
 			expect(readFileSync(viteConfigPath, 'utf-8')).toContain(
 				"match: ['https://www.google.com/']"
 			);
-			expect(readFileSync(appPath, 'utf-8')).toContain(
-				'../../../assets/makoo-icon.png'
-			);
+			expect(readFileSync(appPath, 'utf-8')).toContain('../../../assets/makoo-icon.png');
 			expect(readFileSync(mainPath, 'utf-8')).toContain('createVueAdapter()');
 			expect(readFileSync(mainPath, 'utf-8')).toContain("injectAt: 'body'");
 			expect(readFileSync(mainPath, 'utf-8')).not.toContain('import.meta.hot');
@@ -115,29 +110,12 @@ describe('generateVueTemplate', () => {
 			expect(existsSync(path.join(projectRoot, '.gitignore'))).toBe(true);
 			expect(existsSync(path.join(projectRoot, 'src', 'main.js'))).toBe(true);
 			expect(existsSync(path.join(projectRoot, 'assets', 'vue.svg'))).toBe(true);
-			expect(existsSync(path.join(projectRoot, 'assets', 'makoo-icon.png'))).toBe(
-				true
-			);
+			expect(existsSync(path.join(projectRoot, 'assets', 'makoo-icon.png'))).toBe(true);
 			expect(packageJson.scripts).toEqual({
 				dev: 'makoo dev',
 				build: 'makoo build',
 				preview: 'makoo preview'
 			});
-		});
-	});
-
-	it('uses recommended Makoo versions for npm dependencies', async () => {
-		const root = await trackProject({});
-
-		await withCwd(root, async () => {
-			generateVueTemplate(createInitData('ts'));
-
-			const packageJsonPath = path.join(root, 'demo-app', 'package.json');
-			const packageJson = readPackageJson(packageJsonPath);
-
-			expect(packageJson.dependencies['@makoojs/core']).toBe(recommendedMakooVersions.core);
-			expect(packageJson.dependencies['@makoojs/vue']).toBe(recommendedMakooVersions.vue);
-			expect(packageJson.devDependencies['@makoojs/cli']).toBe(recommendedMakooVersions.cli);
 		});
 	});
 

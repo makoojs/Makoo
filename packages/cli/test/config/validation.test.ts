@@ -1,5 +1,7 @@
+import { MakooError } from '@makoojs/core';
 import { describe, expect, it } from 'vitest';
-import { ConfigValidationError } from '../../src/config/errors';
+import { ZodError } from 'zod';
+import { CliErrorCode } from '../../src/config/errors';
 import { validateCliConfig } from '../../src/config/validation';
 
 const valid = { entry: './src/main.ts', app: { name: 'demo', version: '1.0.0' }, monkey: {} };
@@ -13,6 +15,10 @@ describe('validateCliConfig', () => {
 		const original = structuredClone(config);
 		validateCliConfig(config);
 		expect(config).toEqual(original);
+	});
+
+	it('publishes the CLI config error code', () => {
+		expect(CliErrorCode.CLI_CONFIG_INVALID).toBe('MAKOO_CLI_CONFIG_INVALID');
 	});
 
 	it.each([
@@ -36,14 +42,17 @@ describe('validateCliConfig', () => {
 			path: 'app'
 		}
 	])('reports the offending field for $name', ({ config, path }) => {
-		expect(() => validateCliConfig(config)).toThrow(ConfigValidationError);
-		expect(() => validateCliConfig(config)).toThrow(
-			expect.objectContaining({
-				code: 'MAKOO_CLI_CONFIG_INVALID',
-				issues: expect.arrayContaining([
-					expect.objectContaining({ path, message: expect.any(String) })
-				])
-			})
-		);
+		let thrown: unknown;
+		try {
+			validateCliConfig(config);
+		} catch (error) {
+			thrown = error;
+		}
+		expect(thrown).toBeInstanceOf(MakooError);
+		expect(thrown).toMatchObject({
+			code: CliErrorCode.CLI_CONFIG_INVALID,
+			message: expect.stringContaining(`${path}:`)
+		});
+		expect((thrown as MakooError).cause).toBeInstanceOf(ZodError);
 	});
 });
