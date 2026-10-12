@@ -12,7 +12,8 @@ import { generateVueTemplate } from './template/vue-template';
 
 function commandExists(cmd: string): boolean {
 	try {
-		execSync(`which ${cmd}`, { stdio: 'ignore' });
+		const checkCmd = process.platform === 'win32' ? `where ${cmd}` : `which ${cmd}`;
+		execSync(checkCmd, { stdio: 'ignore' });
 		return true;
 	} catch {
 		return false;
@@ -22,12 +23,14 @@ function commandExists(cmd: string): boolean {
 function detectPackageManager(): string | null {
 	const agent = process.env.npm_config_user_agent;
 	if (agent) {
-		if (agent.startsWith('npm')) return 'npm';
 		if (agent.startsWith('pnpm')) return 'pnpm';
 		if (agent.startsWith('yarn')) return 'yarn';
+		if (agent.startsWith('bun')) return 'bun';
+		if (agent.startsWith('npm')) return 'npm';
 	}
 	if (commandExists('pnpm')) return 'pnpm';
 	if (commandExists('yarn')) return 'yarn';
+	if (commandExists('bun')) return 'bun';
 	if (commandExists('npm')) return 'npm';
 	return null;
 }
@@ -153,6 +156,19 @@ export async function createMakoo() {
 				throw new Error(colorize(`Unsupported framework: ${framework}`, ansi.red));
 		}
 
+		if (!pkgManager) {
+			pkgManager = await select({
+				message: '📦 Select a package manager:',
+				choices: [
+					{ name: 'pnpm', value: 'pnpm' },
+					{ name: 'yarn', value: 'yarn' },
+					{ name: 'npm', value: 'npm' },
+					{ name: 'bun', value: 'bun' }
+				],
+				theme
+			});
+		}
+
 		const installNow: boolean = await confirm({
 			message: `📥  Install with ${pkgManager} and start now?`,
 			default: true,
@@ -160,18 +176,6 @@ export async function createMakoo() {
 		});
 
 		if (installNow) {
-			if (!pkgManager) {
-				pkgManager = await select({
-					message: '📦 Select a package manager',
-					choices: [
-						{ name: 'pnpm', value: 'pnpm' },
-						{ name: 'yarn', value: 'yarn' },
-						{ name: 'npm', value: 'npm' }
-					],
-					theme
-				});
-			}
-
 			console.log(`\n📦  Running ${pkgManager} install...\n`);
 			execSync(`${pkgManager} install`, {
 				stdio: 'inherit',
