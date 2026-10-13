@@ -12,7 +12,9 @@ export type {
 	InjectionCommand,
 	InjectionStatusHandle,
 	MakooInjectionDeclaration,
-	MakooRuntime
+	MakooRuntime,
+	ObservationHandler,
+	ObservationNotice
 } from './core/types';
 export { MakooErrorCode } from './error/ErrorCode';
 export { MakooAggregateError, MakooError } from './error/MakooError';

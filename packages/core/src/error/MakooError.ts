@@ -48,6 +48,13 @@ export function stateSubscriberFailed(owner: string, cause: unknown): MakooError
 	});
 }
 
+export function instanceObserverFailed(cause: unknown): MakooError {
+	return new MakooError('Instance observe handler failed', {
+		code: MakooErrorCode.INSTANCE_OBSERVER_FAILED,
+		cause
+	});
+}
+
 export function injectionCleanupFailed(
 	name: string,
 	errors: readonly unknown[]

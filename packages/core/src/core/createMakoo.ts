@@ -5,16 +5,23 @@ import { validateComponent } from '../component/declaration';
 import type { MakooComponentDeclaration } from '../component/types';
 import { createDOMObserver, type DOMObserver } from '../dom/observer';
 import { MakooErrorCode } from '../error/ErrorCode';
-import { MakooAggregateError, MakooError } from '../error/MakooError';
+import { instanceObserverFailed, MakooAggregateError, MakooError } from '../error/MakooError';
 import { validateListener } from '../listener/declaration';
 import { createListener } from '../listener/listener';
 import type { MakooListenerDeclaration } from '../listener/types';
-import type { Injection, MakooInjectionDeclaration, MakooRuntime } from './types';
+import type {
+	Injection,
+	MakooInjectionDeclaration,
+	MakooRuntime,
+	ObservationHandler,
+	ObservationNotice
+} from './types';
 
 type MakooInstance = {
 	readonly injections: Map<string, Injection>;
 	readonly adapters: ReturnType<typeof createAdapterRegistry>;
 	readonly dom: DOMObserver;
+	readonly observers: Set<ObservationHandler>;
 	disposed: boolean;
 	disposal: Promise<void> | undefined;
 };
@@ -28,6 +35,7 @@ export function createMakoo(): MakooRuntime {
 		injections: new Map(),
 		adapters: createAdapterRegistry(),
 		dom: createDOMObserver(),
+		observers: new Set(),
 		disposed: false,
 		disposal: undefined
 	};
@@ -42,6 +50,13 @@ export function createMakoo(): MakooRuntime {
 		},
 		command: (name) => getInjection(makooInstance.injections, name).command,
 		statusHandle: (name) => getInjection(makooInstance.injections, name).statusHandle,
+		observe: (handler) => {
+			assertOpen(makooInstance);
+			makooInstance.observers.add(handler);
+			return () => {
+				makooInstance.observers.delete(handler);
+			};
+		},
 		dispose: () => disposeInstance(makooInstance)
 	};
 }
@@ -50,10 +65,10 @@ function applyDeclarations(
 	makooInstance: MakooInstance,
 	declarations: readonly MakooInjectionDeclaration[]
 ): void {
-	const { injections, adapters, dom } = makooInstance;
+	const { injections, adapters } = makooInstance;
 	const preparedDeclarations = prepareDeclarations(declarations, injections, adapters);
 	const newInjections = preparedDeclarations.map((declaration) =>
-		registerInjection(injections, dom, declaration, () => makooInstance.disposed)
+		registerInjection(makooInstance, declaration, () => makooInstance.disposed)
 	);
 	for (const injection of newInjections) {
 		// An earlier mount may have removed or replaced a later injection in this batch.
@@ -90,35 +105,57 @@ function prepareDeclarations(
 }
 
 function registerInjection(
-	injections: Map<string, Injection>,
-	dom: DOMObserver,
+	makooInstance: MakooInstance,
 	declaration: PreparedDeclaration,
 	isDisposed: () => boolean
 ): Injection {
+	const { injections, dom } = makooInstance;
+	const onDiagnostic = (name: string, error: MakooError) => {
+		notifyObservers(makooInstance, { type: 'diagnostic', name, error });
+	};
 	const injection: Injection =
 		declaration.kind === 'listener'
 			? createListener(
 					declaration.config,
 					dom,
-					() => unregisterInjection(injections, injection),
-					isDisposed
+					() => unregisterInjection(makooInstance, injection),
+					isDisposed,
+					onDiagnostic
 				)
 			: createComponent(
 					declaration.config,
 					declaration.adapter,
 					dom,
-					() => unregisterInjection(injections, injection),
+					() => unregisterInjection(makooInstance, injection),
 					isDisposed,
-					(name) => standaloneListener(injections, name)
+					(name) => standaloneListener(injections, name),
+					onDiagnostic
 				);
 	injections.set(declaration.config.name, injection);
 	return injection;
 }
 
-function unregisterInjection(injections: Map<string, Injection>, injection: Injection): void {
+function unregisterInjection(makooInstance: MakooInstance, injection: Injection): void {
 	// A completed removal must never unregister a replacement with the same name.
 	const name = injection.command.name;
-	if (injections.get(name) === injection) injections.delete(name);
+	if (makooInstance.injections.get(name) !== injection) return;
+	makooInstance.injections.delete(name);
+	notifyObservers(makooInstance, { type: 'injection-removed', name });
+}
+
+function notifyObservers(makooInstance: MakooInstance, notice: ObservationNotice): void {
+	const allowDiagnosticOnFailure = notice.type !== 'diagnostic';
+	for (const handler of [...makooInstance.observers]) {
+		try {
+			handler(notice);
+		} catch (cause) {
+			const error = instanceObserverFailed(cause);
+			console.error(error);
+			if (allowDiagnosticOnFailure) {
+				notifyObservers(makooInstance, { type: 'diagnostic', error });
+			}
+		}
+	}
 }
 
 function assertOpen(makooInstance: MakooInstance): void {
@@ -136,14 +173,18 @@ function disposeInstance(makooInstance: MakooInstance): Promise<void> {
 		rejectDisposal = reject;
 	});
 	makooInstance.disposal = disposal;
-	const removals = [...makooInstance.injections.values()].map((injection) =>
-		injection.command.remove().then(
-			() => undefined,
-			(error: unknown) => error
-		)
-	);
-	void Promise.all(removals).then((results) => {
-		const cleanupErrors = results.filter((result) => result !== undefined);
+	void (async () => {
+		const cleanupErrors: unknown[] = [];
+		// Tear down in registration order so injection-removed notices stay deterministic.
+		for (const injection of [...makooInstance.injections.values()]) {
+			try {
+				await injection.command.remove();
+			} catch (error) {
+				cleanupErrors.push(error);
+			}
+		}
+		notifyObservers(makooInstance, { type: 'instance-disposed' });
+		makooInstance.observers.clear();
 		if (cleanupErrors.length === 0) {
 			resolveDisposal();
 			return;
@@ -153,7 +194,7 @@ function disposeInstance(makooInstance: MakooInstance): Promise<void> {
 				code: MakooErrorCode.INSTANCE_CLEANUP_FAILED
 			})
 		);
-	});
+	})();
 	return disposal;
 }
 

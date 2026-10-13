@@ -14,12 +14,12 @@ export type AttachListener = HostListener & {
 export function createAttachListener(
 	config: MakooListenerDeclaration,
 	onFailed: (error: MakooError) => void,
-	reportSubscriber: (cause: unknown) => void
+	onSubscriberError: (cause: unknown) => void
 ): AttachListener {
 	return {
 		kind: 'attach',
 		config,
-		state: createState<ListenerStatus>('idle', reportSubscriber),
+		state: createState<ListenerStatus>('idle', onSubscriberError),
 		intent: 'stopped',
 		executionSlot: { kind: 'empty', cleanupPromise: Promise.resolve() },
 		lastError: undefined,

@@ -67,7 +67,8 @@ export function createComponent(
 	dom: DOMObserver,
 	onRemoved: () => void,
 	isDisposed: () => boolean,
-	globalListener: AdapterMountParams['globalListener']
+	globalListener: AdapterMountParams['globalListener'],
+	onDiagnostic: (name: string, error: MakooError) => void
 ): ComponentInjection {
 	let component: Component;
 	const attachedListenerNames = Object.freeze(
@@ -109,7 +110,9 @@ export function createComponent(
 			}
 		},
 		state: createState<ComponentStatus>('idle', (cause) => {
-			console.error(stateSubscriberFailed(`"${config.name}"`, cause));
+			const error = stateSubscriberFailed(`"${config.name}"`, cause);
+			console.error(error);
+			onDiagnostic(config.name, error);
 		}),
 		attachListeners: new Map(),
 		intent: 'stopped',
@@ -123,12 +126,12 @@ export function createComponent(
 				{ ...attachListenerConfig, reinject: config.reinject },
 				(error) => failComponent(component, attachListenerConfig.name, error),
 				(cause) => {
-					console.error(
-						stateSubscriberFailed(
-							`"${config.name}" listener "${attachListenerConfig.name}"`,
-							cause
-						)
+					const error = stateSubscriberFailed(
+						`"${config.name}" listener "${attachListenerConfig.name}"`,
+						cause
 					);
+					console.error(error);
+					onDiagnostic(config.name, error);
 				}
 			)
 		);

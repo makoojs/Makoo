@@ -100,6 +100,14 @@ _Avoid_: ReadableState, event bus, command
 A business event such as a click or play that happens on a listener target; an event occurring does not mean the listener's availability changed.
 _Avoid_: listener status change, lifecycle notification
 
+**Instance Observation** (实例观察):
+A read-only subscription on a Core Instance for a closed set of instance-level notices that a single injection's Status Handle cannot express; it does not emit, does not schedule work, and is not available inside mounted components.
+_Avoid_: ObserverHub, event bus, user lifecycle hook, StateView, DOM observer
+
+**Observation Notice** (观察通知):
+One of the closed notice kinds delivered by instance observation after the corresponding fact is committed: injection removed, instance disposed, or a diagnostic that does not change status.
+_Avoid_: ObserveEvent, task event, lifecycle hook payload, status snapshot
+
 ### Errors
 
 Errors are grouped by where they surface and who must act on them, not by what went wrong.

@@ -130,24 +130,18 @@ function invokeEventHandler(
 		const result = config.callback.call(listenerTarget, event);
 		if (result !== undefined)
 			void Promise.resolve(result).catch((cause) =>
-				reportHandlerError(config.name, onDiagnostic, cause)
+				onDiagnostic(callbackError(config.name, cause))
 			);
 	} catch (cause) {
-		reportHandlerError(config.name, onDiagnostic, cause);
+		onDiagnostic(callbackError(config.name, cause));
 	}
 }
 
-function reportHandlerError(
-	injectionName: string,
-	onDiagnostic: (error: MakooError) => void,
-	cause: unknown
-): void {
-	onDiagnostic(
-		new MakooError(`Callback of listener "${injectionName}" failed`, {
-			code: MakooErrorCode.LISTENER_CALLBACK_FAILED,
-			cause
-		})
-	);
+function callbackError(name: string, cause: unknown): MakooError {
+	return new MakooError(`Callback of listener "${name}" failed`, {
+		code: MakooErrorCode.LISTENER_CALLBACK_FAILED,
+		cause
+	});
 }
 
 function targetDetachedError(name: string): MakooError {

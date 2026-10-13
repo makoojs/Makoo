@@ -54,13 +54,16 @@ export function createListener(
 	config: MakooListenerDeclaration,
 	dom: DOMObserver,
 	onRemoved: () => void,
-	isDisposed: () => boolean
+	isDisposed: () => boolean,
+	onDiagnostic: (name: string, error: MakooError) => void
 ): ListenerInjection {
 	const listener: Listener = {
 		kind: 'listener',
 		config,
 		state: createState<ListenerStatus>('idle', (cause) => {
-			console.error(stateSubscriberFailed(`"${config.name}"`, cause));
+			const error = stateSubscriberFailed(`"${config.name}"`, cause);
+			console.error(error);
+			onDiagnostic(config.name, error);
 		}),
 		intent: 'stopped',
 		executionSlot: { kind: 'empty', cleanupPromise: Promise.resolve() },
