@@ -1,111 +1,107 @@
 import path from 'node:path';
+import type { MakooRuntime } from '@makoojs/core';
 import { createServer, createServerModuleRunner, type ViteDevServer } from 'vite';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DevTerminal } from '../../src/cli/commands/dev/DevTerminal';
 import { devCommand } from '../../src/cli/commands/dev/dev';
+import type { RuntimeInjection, RuntimeNotice, RuntimeOpen } from '../../src/session/types';
 import { makooDev } from '../../src/vite/makooDev';
 import { cleanupTempProjects, trackProject } from '../utils/tempProject';
 
 const repoRoot = path.resolve(__dirname, '../../../..');
 const coreEntry = path.join(repoRoot, 'packages/core/src/index.ts');
 
-type SessionOpenMessage = {
-	runtimeId: number;
-};
-
-type MakooEventMessage = {
-	runtimeId: number;
-	event: {
-		name: string;
-		error?: {
-			name: string;
-			message: string;
-			code?: string;
-			summary?: string;
-			issues?: Array<{ path: string; message: string }>;
-			context?: Record<string, string | number | boolean | null>;
-		};
-	};
-};
+type WireMessage =
+	| ({ type: 'open' } & RuntimeOpen)
+	| ({ type: 'injection' } & RuntimeInjection)
+	| ({ type: 'notice' } & RuntimeNotice);
 
 let server: Awaited<ReturnType<typeof createServer>>;
 let runner: ReturnType<typeof createServerModuleRunner>;
 let entry: {
-	run(): string[];
-	runStoppedPropagation(): { scoped: number; any: number };
-	failCreate(): void;
+	applyPanelAndListener(): MakooRuntime;
+	applyBrokenPanel(): void;
+	applyPanelRemovingLaterListener(): void;
+	applyWithThrowingSubscriber(): MakooRuntime;
 };
-let opens: SessionOpenMessage[];
-let events: MakooEventMessage[];
+let messages: WireMessage[];
 
 describe('makooDev serve integration', () => {
 	beforeEach(async () => {
 		const root = await trackProject({
 			'src/main.ts': `
-				import { createMakoo, createObserverHub, inject } from '@makoojs/core';
+				import { createMakoo, inject, listen } from '@makoojs/core';
 
-				export function run() {
-					const target = document.createElement('div');
-					target.id = 'makoo-dev-target';
-					document.body.appendChild(target);
+				function host(id, tag = 'div') {
+					const element = document.createElement(tag);
+					element.id = id;
+					document.body.append(element);
+					return element;
+				}
 
-					const observed = [];
-					const observer = createObserverHub();
-					observer.onAny((event) => observed.push(event.name));
+				const plainAdapter = { name: 'plain', mount: () => 'handle', unmount: () => {} };
 
-					const tasks = createMakoo({
-						observer,
-						adapters: [{
-							name: 'failing-adapter',
-							matches: () => true,
-							mount: () => {
-								throw new Error('adapter exploded');
-							}
-						}]
-					}).start([
+				export function applyPanelAndListener() {
+					host('panel-host');
+					host('play', 'button');
+					const core = createMakoo();
+					core.useAdapter(plainAdapter);
+					core.apply([
 						inject({
-							id: 'broken-task',
-							injectAt: '#makoo-dev-target',
-							artifact: function BrokenArtifact() {}
-						})
+							name: 'panel',
+							injectAt: '#panel-host',
+							adapter: 'plain',
+							component: {},
+							listeners: [
+								listen({ name: 'hover', listenAt: '#panel-host', type: 'mouseenter', callback() {} })
+							]
+						}),
+						listen({ name: 'play-click', listenAt: '#play', type: 'click', callback() {} })
 					]);
-
-					tasks.destroyAll();
-					target.remove();
-					return observed;
+					return core;
 				}
 
-				export function runStoppedPropagation() {
-					let scoped = 0;
-					let any = 0;
-					const observer = createObserverHub();
-					observer.on('start:requested', (_event, ctrl) => {
-						scoped += 1;
-						ctrl.stopPropagation();
+				export function applyPanelRemovingLaterListener() {
+					host('panel-host');
+					host('play', 'button');
+					const core = createMakoo();
+					core.useAdapter({
+						name: 'remover',
+						mount: () => {
+							void core.command('play-click').remove();
+							return 'handle';
+						},
+						unmount: () => {}
 					});
-					observer.onAny(() => {
-						any += 1;
-					});
-
-					try {
-						createMakoo({ observer }).start([]);
-					} catch {}
-
-					return { scoped, any };
+					core.apply([
+						inject({ name: 'panel', injectAt: '#panel-host', adapter: 'remover', component: {} }),
+						listen({ name: 'play-click', listenAt: '#play', type: 'click', callback() {} })
+					]);
 				}
 
-				export function failCreate() {
-					const observer = createObserverHub();
-					observer.on = () => {
-						throw new Error('custom observer failed');
-					};
+				export function applyWithThrowingSubscriber() {
+					host('play', 'button');
+					const core = createMakoo();
+					core.apply([listen({ name: 'play-click', listenAt: '#play', type: 'click', callback() {} })]);
+					core.statusHandle('play-click').subscribe(() => {
+						throw new Error('subscriber exploded');
+					});
+					return core;
+				}
 
-					try {
-						createMakoo({
-							observer,
-							hooks: { 'start:requested': () => {} }
-						});
-					} catch {}
+				export function applyBrokenPanel() {
+					host('panel-host');
+					const core = createMakoo();
+					core.useAdapter({
+						name: 'exploding',
+						mount: () => {
+							throw new Error('adapter exploded');
+						},
+						unmount: () => {}
+					});
+					core.apply([
+						inject({ name: 'broken', injectAt: '#panel-host', adapter: 'exploding', component: {} })
+					]);
 				}
 			`
 		});
@@ -130,13 +126,16 @@ describe('makooDev serve integration', () => {
 		});
 		runner = createServerModuleRunner(server.environments.ssr);
 
-		opens = [];
-		events = [];
-		server.environments.ssr.hot.on('makoo:runtime:open', (data) =>
-			opens.push(data as SessionOpenMessage)
+		messages = [];
+		const hot = server.environments.ssr.hot;
+		hot.on('makoo:runtime:open', (data) =>
+			messages.push({ type: 'open', ...(data as RuntimeOpen) })
 		);
-		server.environments.ssr.hot.on('makoo:runtime:event', (data) =>
-			events.push(data as MakooEventMessage)
+		hot.on('makoo:runtime:injection', (data) =>
+			messages.push({ type: 'injection', ...(data as RuntimeInjection) })
+		);
+		hot.on('makoo:runtime:notice', (data) =>
+			messages.push({ type: 'notice', ...(data as RuntimeNotice) })
 		);
 		entry = await runner.import('/src/main.ts');
 	});
@@ -145,40 +144,143 @@ describe('makooDev serve integration', () => {
 		await runner?.close();
 		await server?.close();
 		vi.restoreAllMocks();
+		document.body.replaceChildren();
 		await cleanupTempProjects();
 	});
 
-	it('forwards observed events and serializes Makoo errors', () => {
-		const observed = entry.run();
-		expect(opens).toEqual([{ runtimeId: 1 }]);
-		expect(observed).toContain('artifact:mountFail');
-		expect(events.map(({ event }) => event.name)).toEqual(observed);
-		const failure = events.find(({ event }) => event.name === 'artifact:mountFail');
-		expect(failure?.event.error).toMatchObject({
-			name: 'AdapterError',
-			code: 'MAKOO_ADAPTER_MOUNT_FAIL',
-			summary: 'Failed to mount artifact at "#makoo-dev-target"',
-			context: {
-				taskId: 'broken-task',
-				artifact: 'BrokenArtifact',
-				injectAt: '#makoo-dev-target',
-				adapter: 'failing-adapter'
+	it('opens the runtime and pushes each applied Injection with its real phase', () => {
+		entry.applyPanelAndListener();
+		expect(messages).toEqual([
+			{ type: 'open', runtimeId: 1 },
+			{
+				type: 'injection',
+				runtimeId: 1,
+				injection: {
+					name: 'panel',
+					kind: 'component',
+					status: 'mounted',
+					attachedListeners: [{ name: 'hover', status: 'bound' }]
+				}
+			},
+			{
+				type: 'injection',
+				runtimeId: 1,
+				injection: { name: 'play-click', kind: 'standalone-listener', status: 'bound' }
 			}
-		});
-	});
-
-	it('reports events even when the user observer stops propagation', () => {
-		expect(entry.runStoppedPropagation()).toEqual({ scoped: 1, any: 0 });
-		expect(opens).toEqual([{ runtimeId: 1 }]);
-		expect(events).toEqual([
-			{ runtimeId: 1, event: expect.objectContaining({ name: 'start:requested' }) }
 		]);
 	});
 
-	it('does not announce a runtime when creation fails', () => {
-		entry.failCreate();
-		expect(opens).toEqual([]);
-		expect(events).toEqual([]);
+	it('streams a later failure with its lastError code and message', async () => {
+		entry.applyBrokenPanel();
+		await vi.waitFor(() => expect(messages).toHaveLength(3));
+		expect(messages).toEqual([
+			{ type: 'open', runtimeId: 1 },
+			{
+				type: 'injection',
+				runtimeId: 1,
+				injection: {
+					name: 'broken',
+					kind: 'component',
+					status: 'waiting',
+					attachedListeners: []
+				}
+			},
+			{
+				type: 'injection',
+				runtimeId: 1,
+				injection: {
+					name: 'broken',
+					kind: 'component',
+					status: 'failed',
+					lastError: { code: 'MAKOO_MOUNT_FAILED', message: 'Failed to mount "broken"' },
+					attachedListeners: []
+				}
+			}
+		]);
+	});
+
+	it('forwards injection-removed and instance-disposed after the phase reaches idle', async () => {
+		const core = entry.applyPanelAndListener();
+		messages = [];
+		await core.command('play-click').remove();
+		expect(messages).toEqual([
+			{
+				type: 'injection',
+				runtimeId: 1,
+				injection: { name: 'play-click', kind: 'standalone-listener', status: 'idle' }
+			},
+			{
+				type: 'notice',
+				runtimeId: 1,
+				notice: { type: 'injection-removed', name: 'play-click' }
+			}
+		]);
+		messages = [];
+		await core.dispose();
+		const panel = (status: string, hover: string) => ({
+			type: 'injection',
+			runtimeId: 1,
+			injection: {
+				name: 'panel',
+				kind: 'component',
+				status,
+				attachedListeners: [{ name: 'hover', status: hover }]
+			}
+		});
+		expect(messages).toEqual([
+			panel('mounted', 'idle'),
+			panel('idle', 'idle'),
+			{ type: 'notice', runtimeId: 1, notice: { type: 'injection-removed', name: 'panel' } },
+			{ type: 'notice', runtimeId: 1, notice: { type: 'instance-disposed' } }
+		]);
+	});
+
+	it('skips an Injection that an earlier mount in the same batch already removed', () => {
+		entry.applyPanelRemovingLaterListener();
+		expect(messages).toEqual([
+			{ type: 'open', runtimeId: 1 },
+			{
+				type: 'notice',
+				runtimeId: 1,
+				notice: { type: 'injection-removed', name: 'play-click' }
+			},
+			{
+				type: 'injection',
+				runtimeId: 1,
+				injection: {
+					name: 'panel',
+					kind: 'component',
+					status: 'mounted',
+					attachedListeners: []
+				}
+			}
+		]);
+	});
+
+	it('forwards a diagnostic as a notice beside the real phase change', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		const core = entry.applyWithThrowingSubscriber();
+		messages = [];
+		await core.command('play-click').stop();
+		expect(messages).toEqual([
+			{
+				type: 'injection',
+				runtimeId: 1,
+				injection: { name: 'play-click', kind: 'standalone-listener', status: 'idle' }
+			},
+			{
+				type: 'notice',
+				runtimeId: 1,
+				notice: {
+					type: 'diagnostic',
+					name: 'play-click',
+					error: {
+						code: 'MAKOO_STATE_SUBSCRIBER_FAILED',
+						message: 'State subscriber of "play-click" failed'
+					}
+				}
+			}
+		]);
 	});
 });
 

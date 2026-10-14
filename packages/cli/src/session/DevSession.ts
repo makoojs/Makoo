@@ -1,5 +1,5 @@
 import type { NormalizedHotChannelClient } from 'vite';
-import type { RuntimeEvent, RuntimeOpen, RuntimeSnapshot, TaskSnapshot } from './types';
+import type { RuntimeOpen, RuntimeSnapshot, TaskSnapshot } from './types';
 
 type RuntimeState = {
 	tasks: Map<string, TaskSnapshot>;
@@ -33,43 +33,6 @@ export class DevSession {
 		clientState.runtimes.set(payload.runtimeId, {
 			tasks: new Map()
 		});
-		this.onChange?.();
-	}
-
-	public record(client: NormalizedHotChannelClient, payload: RuntimeEvent): void {
-		const clientState = this.clients.get(client);
-		if (!clientState) return;
-
-		const runtimeState = clientState.runtimes.get(payload.runtimeId);
-		if (!runtimeState) return;
-
-		const { event } = payload;
-
-		switch (event.name) {
-			case 'task:afterDestroy':
-				if (event.taskId) runtimeState.tasks.delete(event.taskId);
-				break;
-			case 'register:success':
-				if (event.taskId && event.kind && event.status && event.injectAt) {
-					runtimeState.tasks.set(event.taskId, {
-						taskId: event.taskId,
-						kind: event.kind,
-						status: event.status,
-						injectAt: event.injectAt
-					});
-				}
-				break;
-			// update task snapshot
-			default: {
-				if (!event.taskId) break;
-				const task = runtimeState.tasks.get(event.taskId);
-				if (!task) break;
-				if (event.status) task.status = event.status;
-				if (event.injectAt) task.injectAt = event.injectAt;
-				break;
-			}
-		}
-		// refresh the terminal when have a new update
 		this.onChange?.();
 	}
 

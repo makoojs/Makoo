@@ -97,48 +97,8 @@ describe('makooDev', () => {
 
 		const client = {};
 		getListener('makoo:runtime:open')({ runtimeId: 1 }, client);
-		getListener('makoo:runtime:event')(
-			{
-				runtimeId: 1,
-				event: {
-					name: 'register:success',
-					ts: 1,
-					taskId: 'task-1',
-					kind: 'component',
-					status: 'idle',
-					injectAt: '#app',
-					meta: { artifactName: 'Demo' }
-				}
-			},
-			client
-		);
-
-		expect(session.getTasks()).toMatchObject([
-			{
-				clientId: 1,
-				runtimeId: 1,
-				tasks: [{ taskId: 'task-1', status: 'idle' }]
-			}
-		]);
-		expect(onChange).toHaveBeenCalledTimes(2);
-
-		getListener('makoo:runtime:event')(
-			{
-				runtimeId: 1,
-				event: {
-					name: 'task:statusChange',
-					ts: 2,
-					taskId: 'task-1',
-					status: 'active'
-				}
-			},
-			client
-		);
-		expect(session.getTasks()).toMatchObject([
-			{
-				tasks: [{ taskId: 'task-1', status: 'active' }]
-			}
-		]);
+		expect(session.getTasks()).toEqual([{ clientId: 1, runtimeId: 1, tasks: [] }]);
+		expect(onChange).toHaveBeenCalledOnce();
 
 		getListener('vite:client:disconnect')(undefined, client);
 		expect(session.isEmpty()).toBe(true);

@@ -1,6 +1,6 @@
 import type { InlineConfig, Plugin } from 'vite';
 import { DevSession } from '../session/DevSession';
-import type { RuntimeEvent, RuntimeOpen } from '../session/types';
+import type { RuntimeOpen } from '../session/types';
 
 const VIRTUAL_CORE_ID = '\0virtual:makoo-dev';
 const CORE_PACKAGE = '@makoojs/core';
@@ -11,58 +11,13 @@ export type InlineConfigWithSession = InlineConfig & {
 	[bindDevSession]?: (session: DevSession) => void;
 };
 
-// Explicit delegation keeps event forwarding isolated for each runtime without replacing the user observer.
+// The wrapper only reads public Status Handles and Instance Observation; it never starts, stops, or removes injections.
 function buildVirtualModuleSource(resolvedCoreId: string): string {
 	const coreId = JSON.stringify(resolvedCoreId);
 
 	return `
 export * from ${coreId};
-import {
-	createMakoo as __makooCreateMakoo,
-	createObserverHub as __makooCreateObserverHub,
-	MakooError as __MakooError
-} from ${coreId};
-
-function __makooSerializeObserveEvent(event) {
-	const { error, ...rest } = event;
-
-	if (error === undefined) {
-		return rest;
-	}
-
-	if (error instanceof __MakooError) {
-		return {
-			...rest,
-			error: {
-				name: error.name,
-				message: error.message,
-				stack: error.stack,
-				code: error.code,
-				summary: error.summary,
-				issues: error.issues,
-				context: error.context
-			}
-		};
-	}
-
-	if (error instanceof Error) {
-		return {
-			...rest,
-			error: {
-				name: error.name,
-				message: error.message,
-				stack: error.stack
-			}
-		};
-	}
-
-	return {
-		...rest,
-		error: {
-			message: String(error)
-		}
-	};
-}
+import { createMakoo as __makooCreateMakoo } from ${coreId};
 
 function __makooSend(event, payload) {
 	try {
@@ -72,65 +27,73 @@ function __makooSend(event, payload) {
 	}
 }
 
-function __makooCreateSessionObserver(observer, runtimeId) {
-	const sendEvent = (event) => {
-		__makooSend('makoo:runtime:event', {
+function __makooSerializeError(error) {
+	return { code: error.code, message: error.message };
+}
+
+function __makooSnapshotInjection(declaration, statusHandle) {
+	const isComponent = declaration.kind === 'component';
+	const snapshot = {
+		name: declaration.name,
+		kind: isComponent ? 'component' : 'standalone-listener',
+		status: statusHandle.getSnapshot()
+	};
+	if (statusHandle.lastError) snapshot.lastError = __makooSerializeError(statusHandle.lastError);
+	if (isComponent) {
+		snapshot.attachedListeners = statusHandle.attachedListenerNames.map((listenerName) => ({
+			name: listenerName,
+			status: statusHandle.attachedListener(listenerName).getSnapshot()
+		}));
+	}
+	return snapshot;
+}
+
+function __makooSerializeNotice(notice) {
+	if (notice.type !== 'diagnostic') return notice;
+	return { ...notice, error: __makooSerializeError(notice.error) };
+}
+
+function __makooWatchInjection(runtime, runtimeId, declaration) {
+	let statusHandle;
+	try {
+		statusHandle = runtime.statusHandle(declaration.name);
+	} catch {
+		// An earlier mount in the same batch already removed this injection.
+		return;
+	}
+	const push = () => {
+		__makooSend('makoo:runtime:injection', {
 			runtimeId,
-			event: __makooSerializeObserveEvent(event)
+			injection: __makooSnapshotInjection(declaration, statusHandle)
 		});
 	};
-
-	return {
-		on(event, hook) {
-			return observer.on(event, hook);
-		},
-		onTask(taskId, event, hook) {
-			return observer.onTask(taskId, event, hook);
-		},
-		onAny(hook) {
-			return observer.onAny(hook);
-		},
-		off(event, hook) {
-			observer.off(event, hook);
-		},
-		offTask(taskId, event, hook) {
-			observer.offTask(taskId, event, hook);
-		},
-		offAny(hook) {
-			observer.offAny(hook);
-		},
-		clear() {
-			observer.clear();
-		},
-		hasHooks(event) {
-			return observer.hasHooks(event);
-		},
-		emit(event) {
-			sendEvent(event);
-			observer.emit(event);
-		},
-		emitOnTask(taskId, event) {
-			let normalized = event;
-			if (event.taskId !== taskId) normalized = { ...event, taskId };
-			sendEvent(normalized);
-			observer.emitOnTask(taskId, event);
+	push();
+	statusHandle.subscribe(push);
+	if (declaration.kind === 'component') {
+		for (const listenerName of statusHandle.attachedListenerNames) {
+			statusHandle.attachedListener(listenerName).subscribe(push);
 		}
-	};
+	}
 }
 
 let __makooNextRuntimeId = 1;
 
-export function createMakoo(options = {}) {
+export function createMakoo() {
+	const runtime = __makooCreateMakoo();
 	const runtimeId = __makooNextRuntimeId++;
-	const baseObserver = options.observer ?? __makooCreateObserverHub(options.logger);
-	const observer = __makooCreateSessionObserver(baseObserver, runtimeId);
-	const makoo = __makooCreateMakoo({
-		...options,
-		observer
-	});
-
 	__makooSend('makoo:runtime:open', { runtimeId });
-	return makoo;
+	runtime.observe((notice) => {
+		__makooSend('makoo:runtime:notice', { runtimeId, notice: __makooSerializeNotice(notice) });
+	});
+	return {
+		...runtime,
+		apply(declarations) {
+			runtime.apply(declarations);
+			for (const declaration of declarations) {
+				__makooWatchInjection(runtime, runtimeId, declaration);
+			}
+		}
+	};
 }
 `;
 }
@@ -175,9 +138,6 @@ export function makooDev(): Plugin {
 
 			server.hot.on('makoo:runtime:open', (payload, client) => {
 				session.open(client, payload as RuntimeOpen);
-			});
-			server.hot.on('makoo:runtime:event', (payload, client) => {
-				session.record(client, payload as RuntimeEvent);
 			});
 			server.hot.on('vite:client:disconnect', (_payload, client) => {
 				session.disconnect(client);
