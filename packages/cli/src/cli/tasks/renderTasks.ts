@@ -5,11 +5,16 @@ import { ansi, colorize } from '../terminalColor';
 function renderTaskStatus(status: TaskSnapshot['status']): string {
 	switch (status) {
 		case 'active':
-			return colorize('● active', ansi.green);
+		case 'mounted':
+		case 'bound':
+			return colorize(`● ${status}`, ansi.green);
 		case 'pending':
-			return colorize('● pending', ansi.yellow);
-		case 'idle':
-			return colorize('● idle', ansi.dim);
+		case 'waiting':
+			return colorize(`● ${status}`, ansi.yellow);
+		case 'failed':
+			return colorize('● failed', ansi.red);
+		default:
+			return colorize(`● ${status}`, ansi.dim);
 	}
 }
 
@@ -58,8 +63,12 @@ export function renderTasksTable(sanpshots: RuntimeSnapshot[]): string {
 		if (index < sanpshots.length - 1) lines.push('');
 	}
 
-	const active = tasks.filter((task) => task.status === 'active').length;
-	const pending = tasks.filter((task) => task.status === 'pending').length;
+	const active = tasks.filter(
+		(task) => task.status === 'active' || task.status === 'mounted' || task.status === 'bound'
+	).length;
+	const pending = tasks.filter(
+		(task) => task.status === 'pending' || task.status === 'waiting'
+	).length;
 	const idle = tasks.filter((task) => task.status === 'idle').length;
 	let total = `${tasks.length} tasks`;
 	if (tasks.length === 1) total = '1 task';

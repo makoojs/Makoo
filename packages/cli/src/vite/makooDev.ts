@@ -19,48 +19,35 @@ function buildVirtualModuleSource(resolvedCoreId: string): string {
 export * from ${coreId};
 import {
 	createMakoo as __makooCreateMakoo,
-	createObserverHub as __makooCreateObserverHub,
 	MakooError as __MakooError
 } from ${coreId};
 
-function __makooSerializeObserveEvent(event) {
-	const { error, ...rest } = event;
-
-	if (error === undefined) {
-		return rest;
+function __makooSerializeError(error) {
+	if (error === undefined || error === null) {
+		return undefined;
 	}
 
 	if (error instanceof __MakooError) {
 		return {
-			...rest,
-			error: {
-				name: error.name,
-				message: error.message,
-				stack: error.stack,
-				code: error.code,
-				summary: error.summary,
-				issues: error.issues,
-				context: error.context
-			}
+			name: error.name,
+			message: error.message,
+			stack: error.stack,
+			code: error.code,
+			summary: error.message,
+			cause: error.cause instanceof Error ? { name: error.cause.name, message: error.cause.message } : error.cause
 		};
 	}
 
 	if (error instanceof Error) {
 		return {
-			...rest,
-			error: {
-				name: error.name,
-				message: error.message,
-				stack: error.stack
-			}
+			name: error.name,
+			message: error.message,
+			stack: error.stack
 		};
 	}
 
 	return {
-		...rest,
-		error: {
-			message: String(error)
-		}
+		message: String(error)
 	};
 }
 
@@ -72,64 +59,104 @@ function __makooSend(event, payload) {
 	}
 }
 
-function __makooCreateSessionObserver(observer, runtimeId) {
-	const sendEvent = (event) => {
-		__makooSend('makoo:runtime:event', {
-			runtimeId,
-			event: __makooSerializeObserveEvent(event)
-		});
-	};
-
-	return {
-		on(event, hook) {
-			return observer.on(event, hook);
-		},
-		onTask(taskId, event, hook) {
-			return observer.onTask(taskId, event, hook);
-		},
-		onAny(hook) {
-			return observer.onAny(hook);
-		},
-		off(event, hook) {
-			observer.off(event, hook);
-		},
-		offTask(taskId, event, hook) {
-			observer.offTask(taskId, event, hook);
-		},
-		offAny(hook) {
-			observer.offAny(hook);
-		},
-		clear() {
-			observer.clear();
-		},
-		hasHooks(event) {
-			return observer.hasHooks(event);
-		},
-		emit(event) {
-			sendEvent(event);
-			observer.emit(event);
-		},
-		emitOnTask(taskId, event) {
-			let normalized = event;
-			if (event.taskId !== taskId) normalized = { ...event, taskId };
-			sendEvent(normalized);
-			observer.emitOnTask(taskId, event);
-		}
-	};
-}
-
 let __makooNextRuntimeId = 1;
 
-export function createMakoo(options = {}) {
+export function createMakoo(...args) {
+	const makoo = __makooCreateMakoo(...args);
 	const runtimeId = __makooNextRuntimeId++;
-	const baseObserver = options.observer ?? __makooCreateObserverHub(options.logger);
-	const observer = __makooCreateSessionObserver(baseObserver, runtimeId);
-	const makoo = __makooCreateMakoo({
-		...options,
-		observer
-	});
 
 	__makooSend('makoo:runtime:open', { runtimeId });
+
+	makoo.observe((notice) => {
+		if (notice.type === 'injection-removed') {
+			__makooSend('makoo:runtime:event', {
+				runtimeId,
+				event: {
+					name: 'injection-removed',
+					taskId: notice.name
+				}
+			});
+		} else if (notice.type === 'instance-disposed') {
+			__makooSend('makoo:runtime:event', {
+				runtimeId,
+				event: {
+					name: 'instance-disposed'
+				}
+			});
+		} else if (notice.type === 'diagnostic') {
+			__makooSend('makoo:runtime:event', {
+				runtimeId,
+				event: {
+					name: 'diagnostic',
+					taskId: notice.name,
+					error: __makooSerializeError(notice.error)
+				}
+			});
+		}
+	});
+
+	const originalApply = makoo.apply.bind(makoo);
+	makoo.apply = function(declarations) {
+		originalApply(declarations);
+		if (Array.isArray(declarations)) {
+			for (const decl of declarations) {
+				if (!decl || !decl.name) continue;
+				const taskId = decl.name;
+				const kind = decl.kind;
+				const injectAt = decl.kind === 'component' ? decl.injectAt : decl.listenAt;
+				try {
+					const handle = makoo.statusHandle(taskId);
+					const status = handle.getSnapshot();
+					const regEvent = {
+						name: 'register:success',
+						taskId,
+						kind,
+						status,
+						injectAt
+					};
+					if (status === 'failed' && handle.lastError) {
+						regEvent.error = __makooSerializeError(handle.lastError);
+					}
+					__makooSend('makoo:runtime:event', {
+						runtimeId,
+						event: regEvent
+					});
+					if (status !== 'idle') {
+						const changeEvent = {
+							name: 'task:statusChange',
+							taskId,
+							status
+						};
+						if (status === 'failed' && handle.lastError) {
+							changeEvent.error = __makooSerializeError(handle.lastError);
+						}
+						__makooSend('makoo:runtime:event', {
+							runtimeId,
+							event: changeEvent
+						});
+					}
+					handle.subscribe(() => {
+						try {
+							const nextStatus = handle.getSnapshot();
+							const payload = {
+								name: 'task:statusChange',
+								taskId,
+								status: nextStatus
+							};
+							if (nextStatus === 'failed' && handle.lastError) {
+								payload.error = __makooSerializeError(handle.lastError);
+							}
+							__makooSend('makoo:runtime:event', {
+								runtimeId,
+								event: payload
+							});
+						} catch {}
+					});
+				} catch {}
+			}
+		}
+	};
+
 	return makoo;
 }
 `;

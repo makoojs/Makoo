@@ -17,8 +17,10 @@ type MakooEventMessage = {
 	runtimeId: number;
 	event: {
 		name: string;
+		status?: string;
+		taskId?: string;
 		error?: {
-			name: string;
+			name?: string;
 			message: string;
 			code?: string;
 			summary?: string;
@@ -31,8 +33,8 @@ type MakooEventMessage = {
 let server: Awaited<ReturnType<typeof createServer>>;
 let runner: ReturnType<typeof createServerModuleRunner>;
 let entry: {
-	run(): string[];
-	runStoppedPropagation(): { scoped: number; any: number };
+	run(): Promise<string[]> | string[];
+	runFailingObserver(): Promise<{ observed: number }> | { observed: number };
 	failCreate(): void;
 };
 let opens: SessionOpenMessage[];
@@ -42,70 +44,91 @@ describe('makooDev serve integration', () => {
 	beforeEach(async () => {
 		const root = await trackProject({
 			'src/main.ts': `
-				import { createMakoo, createObserverHub, inject } from '@makoojs/core';
+				import { createMakoo, inject } from '@makoojs/core';
 
-				export function run() {
+				export async function run() {
 					const target = document.createElement('div');
 					target.id = 'makoo-dev-target';
 					document.body.appendChild(target);
 
 					const observed = [];
-					const observer = createObserverHub();
-					observer.onAny((event) => observed.push(event.name));
+					const makoo = createMakoo();
+					makoo.observe((notice) => observed.push(notice.type));
 
-					const tasks = createMakoo({
-						observer,
-						adapters: [{
-							name: 'failing-adapter',
-							matches: () => true,
-							mount: () => {
-								throw new Error('adapter exploded');
-							}
-						}]
-					}).start([
+					makoo.useAdapter({
+						name: 'failing-adapter',
+						mount: () => {
+							throw new Error('adapter exploded');
+						},
+						unmount: () => {}
+					});
+
+					makoo.apply([
 						inject({
-							id: 'broken-task',
+							name: 'broken-task',
 							injectAt: '#makoo-dev-target',
-							artifact: function BrokenArtifact() {}
+							adapter: 'failing-adapter',
+							component: function BrokenArtifact() {}
 						})
 					]);
 
-					tasks.destroyAll();
+					const handle = makoo.statusHandle('broken-task');
+					if (handle.getSnapshot() !== 'failed') {
+						await new Promise((resolve) => {
+							const stop = handle.subscribe(() => {
+								if (handle.getSnapshot() === 'failed') {
+									stop();
+									resolve(undefined);
+								}
+							});
+						});
+					}
+
+					await makoo.dispose();
 					target.remove();
 					return observed;
 				}
 
-				export function runStoppedPropagation() {
-					let scoped = 0;
-					let any = 0;
-					const observer = createObserverHub();
-					observer.on('start:requested', (_event, ctrl) => {
-						scoped += 1;
-						ctrl.stopPropagation();
-					});
-					observer.onAny(() => {
-						any += 1;
+				export async function runFailingObserver() {
+					let observed = 0;
+					const makoo = createMakoo();
+					makoo.observe(() => {
+						observed += 1;
+						throw new Error('user observer failed');
 					});
 
-					try {
-						createMakoo({ observer }).start([]);
-					} catch {}
+					makoo.useAdapter({
+						name: 'plain',
+						mount: () => 'handle',
+						unmount: () => {}
+					});
 
-					return { scoped, any };
+					makoo.apply([
+						inject({
+							name: 'normal-task',
+							injectAt: '#makoo-dev-target',
+							adapter: 'plain',
+							component: function Dummy() {}
+						})
+					]);
+
+					await makoo.dispose();
+					return { observed };
 				}
 
 				export function failCreate() {
-					const observer = createObserverHub();
-					observer.on = () => {
-						throw new Error('custom observer failed');
-					};
-
+					const originalMap = globalThis.Map;
 					try {
-						createMakoo({
-							observer,
-							hooks: { 'start:requested': () => {} }
-						});
-					} catch {}
+						globalThis.Map = class extends originalMap {
+							constructor(entries) {
+								super(entries);
+								throw new Error('runtime map allocation failed');
+							}
+						};
+						createMakoo();
+					} catch {} finally {
+						globalThis.Map = originalMap;
+					}
 				}
 			`
 		});
@@ -148,31 +171,32 @@ describe('makooDev serve integration', () => {
 		await cleanupTempProjects();
 	});
 
-	it('forwards observed events and serializes Makoo errors', () => {
-		const observed = entry.run();
+	it('forwards observed events and serializes Makoo errors', async () => {
+		const observed = await entry.run();
 		expect(opens).toEqual([{ runtimeId: 1 }]);
-		expect(observed).toContain('artifact:mountFail');
-		expect(events.map(({ event }) => event.name)).toEqual(observed);
-		const failure = events.find(({ event }) => event.name === 'artifact:mountFail');
+		expect(observed).toContain('instance-disposed');
+		const failure = events.find(
+			({ event }) => event.name === 'task:statusChange' && event.status === 'failed'
+		);
 		expect(failure?.event.error).toMatchObject({
-			name: 'AdapterError',
-			code: 'MAKOO_ADAPTER_MOUNT_FAIL',
-			summary: 'Failed to mount artifact at "#makoo-dev-target"',
-			context: {
-				taskId: 'broken-task',
-				artifact: 'BrokenArtifact',
-				injectAt: '#makoo-dev-target',
-				adapter: 'failing-adapter'
-			}
+			name: 'MakooError',
+			code: 'MAKOO_MOUNT_FAILED',
+			message: 'Failed to mount "broken-task"'
 		});
 	});
 
-	it('reports events even when the user observer stops propagation', () => {
-		expect(entry.runStoppedPropagation()).toEqual({ scoped: 1, any: 0 });
+	it('reports events even when a user observer throws', async () => {
+		const result = await entry.runFailingObserver();
+		expect(result.observed).toBeGreaterThanOrEqual(1);
 		expect(opens).toEqual([{ runtimeId: 1 }]);
-		expect(events).toEqual([
-			{ runtimeId: 1, event: expect.objectContaining({ name: 'start:requested' }) }
-		]);
+		expect(events).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					runtimeId: 1,
+					event: expect.objectContaining({ name: 'diagnostic' })
+				})
+			])
+		);
 	});
 
 	it('does not announce a runtime when creation fails', () => {

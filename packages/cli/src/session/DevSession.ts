@@ -47,7 +47,13 @@ export class DevSession {
 
 		switch (event.name) {
 			case 'task:afterDestroy':
-				if (event.taskId) runtimeState.tasks.delete(event.taskId);
+			case 'injection-removed': {
+				const taskId = event.taskId ?? event.injectionName;
+				if (taskId) runtimeState.tasks.delete(taskId);
+				break;
+			}
+			case 'instance-disposed':
+				runtimeState.tasks.clear();
 				break;
 			case 'register:success':
 				if (event.taskId && event.kind && event.status && event.injectAt) {
