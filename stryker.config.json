@@ -6,7 +6,15 @@
 		"configFile": "vitest.mutation.config.ts",
 		"related": false
 	},
-	"mutate": ["packages/core/src/**/*.ts", "!packages/core/src/**/types.ts", "!packages/core/src/index.ts"],
+	"mutate": [
+		"packages/core/src/**/*.ts",
+		"!packages/core/src/**/types.ts",
+		"!packages/core/src/index.ts",
+		"packages/cli/src/**/*.ts",
+		"!packages/cli/src/**/types.ts",
+		"!packages/cli/src/index.ts",
+		"!packages/cli/src/monkey/index.ts"
+	],
 	"ignorePatterns": [
 		"apps",
 		"dist",

@@ -4,6 +4,7 @@ import { createServer, createServerModuleRunner, type ViteDevServer } from 'vite
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DevTerminal } from '../../src/cli/commands/dev/DevTerminal';
 import { devCommand } from '../../src/cli/commands/dev/dev';
+import type { DevSession } from '../../src/session/DevSession';
 import type { RuntimeInjection, RuntimeNotice, RuntimeOpen } from '../../src/session/types';
 import { makooDev } from '../../src/vite/makooDev';
 import { cleanupTempProjects, trackProject } from '../utils/tempProject';
@@ -23,8 +24,10 @@ let entry: {
 	applyBrokenPanel(): void;
 	applyPanelRemovingLaterListener(): void;
 	applyWithThrowingSubscriber(): MakooRuntime;
+	applyPanelFailingCleanup(): MakooRuntime;
 };
 let messages: WireMessage[];
+let session: DevSession;
 
 describe('makooDev serve integration', () => {
 	beforeEach(async () => {
@@ -89,6 +92,20 @@ describe('makooDev serve integration', () => {
 					return core;
 				}
 
+				export function applyPanelFailingCleanup() {
+					host('panel-host');
+					const core = createMakoo();
+					core.useAdapter({
+						name: 'sticky',
+						mount: () => 'handle',
+						unmount: () => {
+							throw new Error('unmount exploded');
+						}
+					});
+					core.apply([inject({ name: 'sticky', injectAt: '#panel-host', adapter: 'sticky', component: {} })]);
+					return core;
+				}
+
 				export function applyBrokenPanel() {
 					host('panel-host');
 					const core = createMakoo();
@@ -106,6 +123,8 @@ describe('makooDev serve integration', () => {
 			`
 		});
 
+		const devPlugin = makooDev();
+		session = devPlugin.api.session;
 		server = await createServer({
 			root,
 			configFile: false,
@@ -113,7 +132,7 @@ describe('makooDev serve integration', () => {
 			server: { middlewareMode: true },
 			appType: 'custom',
 			plugins: [
-				makooDev(),
+				devPlugin,
 				{
 					name: 'makoo-test-core-resolve',
 					resolveId(source) {
@@ -168,6 +187,22 @@ describe('makooDev serve integration', () => {
 				injection: { name: 'play-click', kind: 'standalone-listener', status: 'bound' }
 			}
 		]);
+		expect(session.getRuntimeSnapshots()).toEqual([
+			{
+				clientId: 1,
+				runtimeId: 1,
+				injections: [
+					{
+						name: 'panel',
+						kind: 'component',
+						status: 'mounted',
+						attachedListeners: [{ name: 'hover', status: 'bound' }]
+					},
+					{ name: 'play-click', kind: 'standalone-listener', status: 'bound' }
+				],
+				diagnostics: []
+			}
+		]);
 	});
 
 	it('streams a later failure with its lastError code and message', async () => {
@@ -192,9 +227,26 @@ describe('makooDev serve integration', () => {
 					name: 'broken',
 					kind: 'component',
 					status: 'failed',
-					lastError: { code: 'MAKOO_MOUNT_FAILED', message: 'Failed to mount "broken"' },
+					lastError: {
+						code: 'MAKOO_MOUNT_FAILED',
+						message: 'Failed to mount "broken"',
+						cause: 'adapter exploded'
+					},
 					attachedListeners: []
 				}
+			}
+		]);
+		expect(session.getRuntimeSnapshots()[0]?.injections).toEqual([
+			{
+				name: 'broken',
+				kind: 'component',
+				status: 'failed',
+				lastError: {
+					code: 'MAKOO_MOUNT_FAILED',
+					message: 'Failed to mount "broken"',
+					cause: 'adapter exploded'
+				},
+				attachedListeners: []
 			}
 		]);
 	});
@@ -215,6 +267,9 @@ describe('makooDev serve integration', () => {
 				notice: { type: 'injection-removed', name: 'play-click' }
 			}
 		]);
+		expect(
+			session.getRuntimeSnapshots()[0]?.injections.map((injection) => injection.name)
+		).toEqual(['panel']);
 		messages = [];
 		await core.dispose();
 		const panel = (status: string, hover: string) => ({
@@ -232,6 +287,45 @@ describe('makooDev serve integration', () => {
 			panel('idle', 'idle'),
 			{ type: 'notice', runtimeId: 1, notice: { type: 'injection-removed', name: 'panel' } },
 			{ type: 'notice', runtimeId: 1, notice: { type: 'instance-disposed' } }
+		]);
+		expect(session.getRuntimeSnapshots()).toEqual([]);
+		expect(session.isEmpty()).toBe(false);
+	});
+
+	it('clears only the CLI session when the page client disconnects', async () => {
+		const core = entry.applyPanelAndListener();
+		expect(session.getRuntimeSnapshots()).toHaveLength(1);
+		messages = [];
+
+		await runner.close();
+
+		expect(session.isEmpty()).toBe(true);
+		expect(session.getRuntimeSnapshots()).toEqual([]);
+		expect(messages).toEqual([]);
+		expect(core.statusHandle('panel').getSnapshot()).toBe('mounted');
+		expect(core.statusHandle('play-click').getSnapshot()).toBe('bound');
+	});
+
+	it('keeps an Injection retained by a cleanup failure visible as failed', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		const core = entry.applyPanelFailingCleanup();
+		messages = [];
+		await expect(core.command('sticky').remove()).rejects.toMatchObject({
+			code: 'MAKOO_INJECTION_CLEANUP_FAILED'
+		});
+
+		expect(messages.some((message) => message.type === 'notice')).toBe(false);
+		expect(session.getRuntimeSnapshots()[0]?.injections).toEqual([
+			{
+				name: 'sticky',
+				kind: 'component',
+				status: 'failed',
+				lastError: {
+					code: 'MAKOO_INJECTION_CLEANUP_FAILED',
+					message: 'Cleanup failed for "sticky"\nFailed to unmount "sticky"'
+				},
+				attachedListeners: []
+			}
 		]);
 	});
 
@@ -276,8 +370,24 @@ describe('makooDev serve integration', () => {
 					name: 'play-click',
 					error: {
 						code: 'MAKOO_STATE_SUBSCRIBER_FAILED',
-						message: 'State subscriber of "play-click" failed'
+						message: 'State subscriber of "play-click" failed',
+						cause: 'subscriber exploded'
 					}
+				}
+			}
+		]);
+		const [runtime] = session.getRuntimeSnapshots();
+		expect(runtime?.injections).toEqual([
+			{ name: 'play-click', kind: 'standalone-listener', status: 'idle' }
+		]);
+		expect(runtime?.diagnostics).toEqual([
+			{
+				type: 'diagnostic',
+				name: 'play-click',
+				error: {
+					code: 'MAKOO_STATE_SUBSCRIBER_FAILED',
+					message: 'State subscriber of "play-click" failed',
+					cause: 'subscriber exploded'
 				}
 			}
 		]);

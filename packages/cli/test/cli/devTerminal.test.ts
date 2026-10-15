@@ -160,8 +160,8 @@ describe('DevTerminal', () => {
 	it.each([
 		{ from: 'home' as const, key: 'h', expected: 'Actions' },
 		{ from: 'home' as const, key: '\x1b', expected: 'Actions' },
-		{ from: 'tasks' as const, key: 'h', expected: 'Makoo Tasks' },
-		{ from: 'tasks' as const, key: '\x1b', expected: 'Makoo Tasks' },
+		{ from: 'injections' as const, key: 'h', expected: 'Makoo Injections' },
+		{ from: 'injections' as const, key: '\x1b', expected: 'Makoo Injections' },
 		{ from: 'logs' as const, key: 'h', expected: '' },
 		{ from: 'logs' as const, key: '\x1b', expected: '' }
 	])('returns from help to $from using $key', async ({ from, key, expected }) => {

@@ -1,8 +1,18 @@
 import type { NormalizedHotChannelClient } from 'vite';
-import type { RuntimeOpen, RuntimeSnapshot, TaskSnapshot } from './types';
+import type {
+	InjectionSnapshot,
+	RuntimeInjection,
+	RuntimeNotice,
+	RuntimeOpen,
+	RuntimeSnapshot,
+	SerializedDiagnostic
+} from './types';
+
+const MAX_DIAGNOSTICS = 5;
 
 type RuntimeState = {
-	tasks: Map<string, TaskSnapshot>;
+	injections: Map<string, InjectionSnapshot>;
+	diagnostics: SerializedDiagnostic[];
 };
 
 type ClientState = {
@@ -31,8 +41,37 @@ export class DevSession {
 		}
 
 		clientState.runtimes.set(payload.runtimeId, {
-			tasks: new Map()
+			injections: new Map(),
+			diagnostics: []
 		});
+		this.onChange?.();
+	}
+
+	public updateInjection(client: NormalizedHotChannelClient, payload: RuntimeInjection): void {
+		const runtime = this.clients.get(client)?.runtimes.get(payload.runtimeId);
+		if (!runtime) return;
+		runtime.injections.set(payload.injection.name, payload.injection);
+		this.onChange?.();
+	}
+
+	public applyNotice(client: NormalizedHotChannelClient, payload: RuntimeNotice): void {
+		const runtimes = this.clients.get(client)?.runtimes;
+		const runtime = runtimes?.get(payload.runtimeId);
+		if (!runtimes || !runtime) return;
+		const { notice } = payload;
+		// sync update injections table status
+		switch (notice.type) {
+			case 'injection-removed':
+				runtime.injections.delete(notice.name);
+				break;
+			case 'diagnostic':
+				runtime.diagnostics.push(notice);
+				if (runtime.diagnostics.length > MAX_DIAGNOSTICS) runtime.diagnostics.shift();
+				break;
+			case 'instance-disposed':
+				runtimes.delete(payload.runtimeId);
+				break;
+		}
 		this.onChange?.();
 	}
 
@@ -48,12 +87,13 @@ export class DevSession {
 		return this.clients.size === 0;
 	}
 
-	public getTasks(): RuntimeSnapshot[] {
+	public getRuntimeSnapshots(): RuntimeSnapshot[] {
 		return [...this.clients.values()].flatMap((clientState) =>
 			[...clientState.runtimes.entries()].map(([runtimeId, state]) => ({
 				clientId: clientState.clientId,
 				runtimeId,
-				tasks: [...state.tasks.values()]
+				injections: [...state.injections.values()],
+				diagnostics: [...state.diagnostics]
 			}))
 		);
 	}

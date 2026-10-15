@@ -1,9 +1,14 @@
 import type { InlineConfig, Plugin } from 'vite';
 import { DevSession } from '../session/DevSession';
-import type { RuntimeOpen } from '../session/types';
+import type { RuntimeInjection, RuntimeNotice, RuntimeOpen } from '../session/types';
 
 const VIRTUAL_CORE_ID = '\0virtual:makoo-dev';
 const CORE_PACKAGE = '@makoojs/core';
+const RUNTIME_EVENT = {
+	open: 'makoo:runtime:open',
+	injection: 'makoo:runtime:injection',
+	notice: 'makoo:runtime:notice'
+} as const;
 
 export const bindDevSession = Symbol('makooDev.bindSession');
 
@@ -12,6 +17,7 @@ export type InlineConfigWithSession = InlineConfig & {
 };
 
 // The wrapper only reads public Status Handles and Instance Observation; it never starts, stops, or removes injections.
+// HMR cleanup is left to Vite on purpose (ADR 0004).
 function buildVirtualModuleSource(resolvedCoreId: string): string {
 	const coreId = JSON.stringify(resolvedCoreId);
 
@@ -28,7 +34,11 @@ function __makooSend(event, payload) {
 }
 
 function __makooSerializeError(error) {
-	return { code: error.code, message: error.message };
+	const serialized = { code: error.code, message: error.message };
+	if (error.cause !== undefined) {
+		serialized.cause = error.cause instanceof Error ? error.cause.message : String(error.cause);
+	}
+	return serialized;
 }
 
 function __makooSnapshotInjection(declaration, statusHandle) {
@@ -62,7 +72,7 @@ function __makooWatchInjection(runtime, runtimeId, declaration) {
 		return;
 	}
 	const push = () => {
-		__makooSend('makoo:runtime:injection', {
+		__makooSend('${RUNTIME_EVENT.injection}', {
 			runtimeId,
 			injection: __makooSnapshotInjection(declaration, statusHandle)
 		});
@@ -81,9 +91,9 @@ let __makooNextRuntimeId = 1;
 export function createMakoo() {
 	const runtime = __makooCreateMakoo();
 	const runtimeId = __makooNextRuntimeId++;
-	__makooSend('makoo:runtime:open', { runtimeId });
+	__makooSend('${RUNTIME_EVENT.open}', { runtimeId });
 	runtime.observe((notice) => {
-		__makooSend('makoo:runtime:notice', { runtimeId, notice: __makooSerializeNotice(notice) });
+		__makooSend('${RUNTIME_EVENT.notice}', { runtimeId, notice: __makooSerializeNotice(notice) });
 	});
 	return {
 		...runtime,
@@ -136,12 +146,21 @@ export function makooDev(): Plugin {
 			const bind = (server.config.inlineConfig as InlineConfigWithSession)[bindDevSession];
 			bind?.(session);
 
-			server.hot.on('makoo:runtime:open', (payload, client) => {
-				session.open(client, payload as RuntimeOpen);
-			});
-			server.hot.on('vite:client:disconnect', (_payload, client) => {
-				session.disconnect(client);
-			});
+			for (const environment of Object.values(server.environments)) {
+				const { hot } = environment;
+				hot.on(RUNTIME_EVENT.open, (payload, client) => {
+					session.open(client, payload as RuntimeOpen);
+				});
+				hot.on(RUNTIME_EVENT.injection, (payload, client) => {
+					session.updateInjection(client, payload as RuntimeInjection);
+				});
+				hot.on(RUNTIME_EVENT.notice, (payload, client) => {
+					session.applyNotice(client, payload as RuntimeNotice);
+				});
+				hot.on('vite:client:disconnect', (_payload, client) => {
+					session.disconnect(client);
+				});
+			}
 		}
 	};
 }

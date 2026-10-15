@@ -1,9 +1,9 @@
-# 回调异常只报告，不结束注入
+# Callback errors are only reported and do not end the Injection
 
-core 会调用两类不属于它的代码：监听的事件处理函数，以及状态入口的订阅者（Vue/React 适配器或用户代码）。它们抛出同步异常或返回被拒绝的 Promise 时，core 只报告这次异常，不把它当成执行失败：事件绑定保持有效，所属组件不被卸载，状态保持不变，其余订阅者照常收到通知。运行状态表达框架执行到了哪一步，回调异常是另一类信息，两者分别表达。
+core calls two kinds of code that it does not own: listener event handlers, and Status Handle subscribers (Vue/React adapters or user code). When they throw a synchronous exception or return a rejected Promise, core only reports that exception and does not treat it as an execution failure: event bindings stay active, the owning component is not unmounted, the status stays unchanged, and the remaining subscribers are notified as usual. The run status expresses which step the framework's execution has reached; callback errors are a different kind of information, and the two are expressed separately.
 
-选择只报告，是因为这类错误通常只影响这一次处理或这一个订阅者；如果升级成执行失败，就会卸载整个组件或解绑全部事件，把局部问题扩大成整个功能不可用。
+Reporting only was chosen because such errors usually affect only this one handling or this one subscriber; escalating them to an execution failure would unmount the whole component or unbind all events, turning a local problem into the entire feature being unavailable.
 
 ## Consequences
 
-- 错误体系需要把回调异常和框架执行失败区分开，前者不能触发结束、清理或重注入。
+- The error system needs to distinguish callback errors from framework execution failures; the former must not trigger ending, cleanup, or reinjection.

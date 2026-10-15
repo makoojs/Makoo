@@ -14,6 +14,9 @@ export default defineConfig({
   test: {
     silent: true,
     environment: 'jsdom',
-    include: ['./packages/core/test/**/*.test.ts'],
+    include: [
+      './packages/core/test/**/*.test.ts',
+      './packages/cli/test/**/*.test.ts',
+    ],
   },
 })

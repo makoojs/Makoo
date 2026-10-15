@@ -1,4 +1,4 @@
-import type { ComponentStatus, ListenerStatus } from '@makoojs/core';
+import type { ComponentStatus, ListenerStatus, ObservationNotice } from '@makoojs/core';
 
 export type RuntimeOpen = {
 	runtimeId: number;
@@ -7,6 +7,7 @@ export type RuntimeOpen = {
 export type SerializedMakooError = {
 	code: string;
 	message: string;
+	cause?: string;
 };
 
 export type AttachedListenerSnapshot = {
@@ -29,10 +30,15 @@ export type InjectionSnapshot =
 			lastError?: SerializedMakooError;
 	  };
 
+export type SerializedDiagnostic = {
+	type: 'diagnostic';
+	name?: string;
+	error: SerializedMakooError;
+};
+
 export type SerializedObservationNotice =
-	| { type: 'injection-removed'; name: string }
-	| { type: 'instance-disposed' }
-	| { type: 'diagnostic'; name?: string; error: SerializedMakooError };
+	| Exclude<ObservationNotice, { type: 'diagnostic' }>
+	| SerializedDiagnostic;
 
 export type RuntimeInjection = {
 	runtimeId: number;
@@ -44,15 +50,9 @@ export type RuntimeNotice = {
 	notice: SerializedObservationNotice;
 };
 
-export type TaskSnapshot = {
-	taskId: string;
-	kind: 'component' | 'listener';
-	status: 'active' | 'pending' | 'idle';
-	injectAt: string;
-};
-
 export type RuntimeSnapshot = {
 	clientId: number;
 	runtimeId: number;
-	tasks: TaskSnapshot[];
+	injections: InjectionSnapshot[];
+	diagnostics: SerializedDiagnostic[];
 };

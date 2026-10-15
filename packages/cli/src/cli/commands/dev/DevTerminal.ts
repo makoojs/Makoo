@@ -4,14 +4,14 @@ import type { LogErrorOptions, Logger, LogOptions, ViteDevServer } from 'vite';
 import type { DevSession } from '../../../session/DevSession';
 import type { RuntimeSnapshot } from '../../../session/types';
 import { bindDevSession, type InlineConfigWithSession } from '../../../vite/makooDev';
-import { renderTasksTable } from '../../tasks/renderTasks';
+import { renderInjectionsTable } from '../../injections/renderInjections';
 import { ansi, colorize } from '../../terminalColor';
 
 const ENTER_ALT_SCREEN = '\x1B[?1049h';
 const LEAVE_ALT_SCREEN = '\x1B[?1049l';
 const MAX_BUFFERED_LOGS = 1000;
 
-type DevView = 'home' | 'tasks' | 'help' | 'logs';
+type DevView = 'home' | 'injections' | 'help' | 'logs';
 type BufferedLog =
 	| { type: 'info' | 'warn' | 'warnOnce'; message: string; options?: LogOptions }
 	| { type: 'error'; message: string; options?: LogErrorOptions };
@@ -90,7 +90,7 @@ export class DevTerminal {
 				this.show('home');
 				this.bindShortcuts();
 			} else {
-				const runtimes = this.session.getTasks();
+				const runtimes = this.session.getRuntimeSnapshots();
 				this.runtimeCount = runtimes.length;
 				this.logger.info(this.renderHome(runtimes));
 			}
@@ -113,7 +113,7 @@ export class DevTerminal {
 	// Session events, navigation and new logs all redraw through this entry point.
 	public refresh = (): void => {
 		if (!this.ready || this.closed || !this.session) return;
-		const runtimes = this.session.getTasks();
+		const runtimes = this.session.getRuntimeSnapshots();
 		this.selectedRuntime = runtimes.length === 0 ? 0 : this.selectedRuntime % runtimes.length;
 		if (!this.interactive) {
 			if (this.runtimeCount !== runtimes.length) {
@@ -129,9 +129,9 @@ export class DevTerminal {
 					'Press a key to select an action. Press Ctrl+C to stop.'
 				);
 				break;
-			case 'tasks':
+			case 'injections':
 				this.draw(
-					this.renderTasks(runtimes),
+					this.renderInjections(runtimes),
 					'Press t or Esc to return home. Press Ctrl+C to stop.'
 				);
 				break;
@@ -190,19 +190,19 @@ export class DevTerminal {
 			...(this.hasInstallationPage()
 				? [`  ${colorize('i', ansi.bold, ansi.cyan)}  Open installation page`]
 				: []),
-			`  ${colorize('t', ansi.bold, ansi.cyan)}  View runtime tasks`,
+			`  ${colorize('t', ansi.bold, ansi.cyan)}  View runtime injections`,
 			`  ${colorize('l', ansi.bold, ansi.cyan)}  View logs`,
 			`  ${colorize('r', ansi.bold, ansi.cyan)}  Restart server`,
 			`  ${colorize('h', ansi.bold, ansi.cyan)}  Show help`
 		].join('\n');
 	}
 
-	private renderTasks(runtimes: RuntimeSnapshot[]): string {
-		if (runtimes.length === 0) return 'Makoo Tasks\n\nWaiting for a browser runtime';
+	private renderInjections(runtimes: RuntimeSnapshot[]): string {
+		if (runtimes.length === 0) return 'Makoo Injections\n\nWaiting for a browser runtime';
 		const runtime = runtimes[this.selectedRuntime];
 		return [
 			`Runtime ${this.selectedRuntime + 1}/${runtimes.length} · Client ${runtime.clientId} · Makoo${runtime.runtimeId}`,
-			renderTasksTable([runtime]),
+			renderInjectionsTable([runtime]),
 			...(runtimes.length > 1 ? ['Press n to view the next runtime.'] : [])
 		].join('\n\n');
 	}
@@ -217,8 +217,8 @@ export class DevTerminal {
 					]
 				: []),
 			...[
-				['t', 'toggle Runtime tasks'],
-				['n', 'view next runtime tasks'],
+				['t', 'toggle runtime injections'],
+				['n', 'view next runtime injections'],
 				['l', 'view logs / return home'],
 				['r', 'restart the server'],
 				['u', 'show server URLs'],
@@ -293,11 +293,11 @@ export class DevTerminal {
 		try {
 			switch (key.name) {
 				case 't':
-					this.show(this.currentView === 'tasks' ? 'home' : 'tasks');
+					this.show(this.currentView === 'injections' ? 'home' : 'injections');
 					break;
 				case 'n':
 					this.selectedRuntime += 1;
-					this.show('tasks');
+					this.show('injections');
 					break;
 				case 'l':
 					this.show(this.currentView === 'logs' ? 'home' : 'logs');

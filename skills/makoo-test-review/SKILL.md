@@ -26,15 +26,16 @@ Show them grouped by file and compare against the behavior the change was meant 
 
 ## 2. Surviving mutants
 
-Mutation testing is configured for `packages/core` only. `vitest.mutation.config.ts` includes only core tests because Stryker requires its initial run to pass, and other packages still have known failures. When a package's suite passes, extend both that config's `include` and `mutate` in `stryker.config.json` before using this step there.
+Mutation testing covers `packages/core` and `packages/cli`. `vitest.mutation.config.ts` includes those packages' tests because Stryker requires its initial run to pass; vue/react/create-makoo stay out until their suites are green. When another package's suite passes, extend both that config's `include` and `mutate` in `stryker.config.json` before using this step there.
 
 Mutate only the changed source files:
 
 ```bash
 pnpm test:mutation --mutate packages/core/src/listener/execution.ts
+pnpm test:mutation --mutate packages/cli/src/session/DevSession.ts
 ```
 
-Incremental mode reuses earlier results. Stryker writes its output under `.tmp/mutation/`: `report.json` (read mutants with `status: "Survived"`), `index.html` for browsing, `incremental.json`, and `sandbox/` for its temporary copy. Put extra analysis for that run in the same folder. A full core run takes several minutes, so prefer `--mutate` on changed files.
+Incremental mode reuses earlier results. Stryker writes its output under `.tmp/mutation/`: `report.json` (read mutants with `status: "Survived"`), `index.html` for browsing, `incremental.json`, and `sandbox/` for its temporary copy. Put extra analysis for that run in the same folder. A full core+cli run takes several minutes, so prefer `--mutate` on changed files.
 
 Stryker counts `Timeout` as killed, but a loaded machine produces false timeouts. Do not run other test jobs alongside Stryker. Before trusting a score that rests on timeouts, apply one timed-out mutation by hand and run the suite: if it passes quickly, the mutant actually survived.
 

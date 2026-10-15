@@ -1,15 +1,15 @@
-# 清理失败后关闭该注入，不自动恢复
+# Close the Injection after a cleanup failure, without automatic recovery
 
-注入的一次执行收尾时，只要有一步清理失败（适配器卸载抛错、容器移除失败、监听解绑失败等），core 就无法确认页面上没有残留的组件、容器或事件绑定。此时该注入转为失败并保持关闭：保留记录和诊断，继续占用注入名称，拒绝后续启动；重复的停止、移除或实例销毁请求复用同一个失败结果，不再重试清理。恢复的方式是修复问题后刷新页面。
+When an execution of an Injection is wrapping up, if any cleanup step fails (the adapter unmount throws, container removal fails, listener unbinding fails, etc.), core cannot confirm that no component, container, or event binding is left on the page. In that case the Injection becomes failed and stays closed: it keeps its record and diagnostics, keeps holding its Injection Name, and rejects subsequent starts; repeated stop, remove, or instance dispose requests reuse the same failure result and do not retry cleanup. The way to recover is to fix the problem and refresh the page.
 
-选择关闭而不是重试或强制重置，是因为残留资源与新一轮执行叠加会造成重复挂载、重复触发事件，这类问题比"功能停了"更难被用户脚本作者发现和定位。其他顶层注入不受影响。
+Closing was chosen over retrying or forcing a reset because leftover resources stacking with a new round of execution cause duplicate mounts and duplicate event triggers, and such problems are harder for userscript authors to notice and locate than "the feature stopped". Other top-level Injections are not affected.
 
 ## Considered Options
 
-- 自动或手动重试清理：卸载是同步的、失败原因通常不会自行消失，重试大概率得到同样的失败，还会让同一次执行被卸载多次。
-- 强制遗忘记录并释放名称：允许同名注入重新挂载到残留资源旁边，正是要避免的叠加。
+- Automatically or manually retrying cleanup: unmounting is synchronous and the cause of failure usually does not go away on its own, so a retry will most likely produce the same failure, and it would also unmount the same execution multiple times.
+- Forcibly forgetting the record and releasing the name: this allows a same-named Injection to mount again next to the leftover resources, which is exactly the stacking to be avoided.
 
 ## Consequences
 
-- 只有清理失败适用这条策略。普通执行失败（等待超时、挂载失败、目标失效）在清理成功后仍可由外部主动启动。
-- 错误体系必须能区分"执行失败"与"清理失败"，并在两者同时发生时都保留下来；显式停止或移除因清理失败而拒绝时，调用方要能拿到这些错误。
+- Only cleanup failures fall under this policy. Ordinary execution failures (wait timeout, mount failure, target invalidated) can still be started externally on demand once cleanup has succeeded.
+- The error system must be able to distinguish "execution failure" from "cleanup failure", and keep both when they occur together; when an explicit stop or remove is rejected because of a cleanup failure, the caller must be able to get these errors.
