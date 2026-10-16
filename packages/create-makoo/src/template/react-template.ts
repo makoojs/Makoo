@@ -118,23 +118,21 @@ function mainTemplate(data: InitData): string {
 import { createReactAdapter } from '@makoojs/react';
 import App from './injections/hello-world/App.${data.variant === 'ts' ? 'tsx' : 'jsx'}';
 
-createMakoo({ adapters: [createReactAdapter()] }).start([
+const core = createMakoo();
+core.useAdapter(createReactAdapter());
+core.apply([
   inject({
-    id: 'hello-world',
+    name: 'hello-world',
     injectAt: 'body',
-    artifact: App,
+    adapter: 'react',
+    component: App,
   }),
 ]);
 `;
 }
 
 function reactComponentTemplate(data: InitData): string {
-	const stateImport =
-		data.variant === 'ts'
-			? "import { useState } from 'react';"
-			: "import { useState } from 'react';";
-
-	return `${stateImport}
+	return `import { useState } from 'react';
 import './style.css';
 import makooLogo from '../../../assets/makoo-icon.png';
 import reactLogo from '../../../assets/react.svg';

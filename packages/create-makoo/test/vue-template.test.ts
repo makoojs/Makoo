@@ -87,9 +87,20 @@ describe('generateVueTemplate', () => {
 				"match: ['https://www.google.com/']"
 			);
 			expect(readFileSync(appPath, 'utf-8')).toContain('../../../assets/makoo-icon.png');
-			expect(readFileSync(mainPath, 'utf-8')).toContain('createVueAdapter()');
-			expect(readFileSync(mainPath, 'utf-8')).toContain("injectAt: 'body'");
-			expect(readFileSync(mainPath, 'utf-8')).not.toContain('import.meta.hot');
+			const mainSource = readFileSync(mainPath, 'utf-8');
+			expect(mainSource).toContain('const core = createMakoo();');
+			expect(mainSource).toContain('core.useAdapter(createVueAdapter());');
+			expect(mainSource).toContain('core.apply([');
+			expect(mainSource).toContain("name: 'hello-world'");
+			expect(mainSource).toContain("injectAt: 'body'");
+			expect(mainSource).toContain("adapter: 'vue'");
+			expect(mainSource).toContain('component: App');
+			expect(mainSource).not.toContain('.start(');
+			expect(mainSource).not.toContain('id:');
+			expect(mainSource).not.toContain('artifact:');
+			expect(mainSource).not.toContain('import.meta.hot');
+			expect(mainSource).not.toContain('destroyAll');
+			expect(mainSource).not.toContain('adapters:');
 			expect(existsSync(path.join(projectRoot, 'injections', 'manifest.ts'))).toBe(false);
 			expect(readFileSync(appPath, 'utf-8')).toContain('<h1>Makoo</h1>');
 		});
@@ -103,6 +114,7 @@ describe('generateVueTemplate', () => {
 
 			const projectRoot = path.join(root, 'demo-app');
 			const packageJson = readPackageJson(path.join(projectRoot, 'package.json'));
+			const mainSource = readFileSync(path.join(projectRoot, 'src', 'main.js'), 'utf-8');
 			expect(existsSync(path.join(projectRoot, 'tsconfig.json'))).toBe(false);
 			expect(existsSync(path.join(projectRoot, 'tsconfig.app.json'))).toBe(false);
 			expect(existsSync(path.join(projectRoot, 'tsconfig.node.json'))).toBe(false);
@@ -116,6 +128,19 @@ describe('generateVueTemplate', () => {
 				build: 'makoo build',
 				preview: 'makoo preview'
 			});
+			expect(mainSource).toContain('const core = createMakoo();');
+			expect(mainSource).toContain('core.useAdapter(createVueAdapter());');
+			expect(mainSource).toContain('core.apply([');
+			expect(mainSource).toContain("name: 'hello-world'");
+			expect(mainSource).toContain("injectAt: 'body'");
+			expect(mainSource).toContain("adapter: 'vue'");
+			expect(mainSource).toContain('component: App');
+			expect(mainSource).not.toContain('.start(');
+			expect(mainSource).not.toContain('id:');
+			expect(mainSource).not.toContain('artifact:');
+			expect(mainSource).not.toContain('import.meta.hot');
+			expect(mainSource).not.toContain('destroyAll');
+			expect(mainSource).not.toContain('adapters:');
 		});
 	});
 
