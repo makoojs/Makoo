@@ -1,8 +1,8 @@
-# Userscript APIs
+# Userscript API
 
-Import `@makoojs/cli/monkey` in browser application code. These APIs require the script manager’s GM environment; do not call them in `vite.config.ts`.
+Import `@makoojs/cli/monkey` in browser application code. These APIs depend on the GM environment provided by the script manager; do not call them in `vite.config.ts`.
 
-## GM APIs
+## GM API
 
 The following values are exported from `@makoojs/cli/monkey`.
 
@@ -24,7 +24,7 @@ The following values are exported from `@makoojs/cli/monkey`.
 | `gmStyle` | `add`, `element` |
 | `gmTab` | `open`, `get`, `getAll`, `save` |
 
-## Store data
+## Save Data
 
 `gmStorage` reads and writes persistent data in the script manager. For example, count how many times the script has run:
 
@@ -71,7 +71,7 @@ gmRequest.get('https://example.com/', {
 
 Configure cross-origin request domains through `monkey.userscript.connect`.
 
-## GM types
+## GM Types
 
 ```ts
 type GmRequestOptions<R extends GmResponseType = 'text', C = unknown> = Omit<

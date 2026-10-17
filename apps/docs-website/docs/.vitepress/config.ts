@@ -13,27 +13,30 @@ const enGuideSidebar = [
 		items: [
 			{ text: 'Introduction', link: '/docs/' },
 			{ text: 'Quick Start', link: '/docs/getting-started' },
-			{ text: 'Manual Installation', link: '/docs/installation' },
-			{ text: 'Core Concepts', link: '/docs/concepts' }
+			{ text: 'Tutorial: A Toggleable Tool Panel', link: '/docs/tutorial' }
 		]
 	},
 	{
-		text: 'Guides',
+		text: 'How-to Guides',
 		items: [
-			{ text: 'Component Injection', link: '/docs/injection' },
-			{ text: 'Event Listeners', link: '/docs/listeners' },
-			{ text: 'Lifecycle and Cleanup', link: '/docs/lifecycle' },
-			{ text: 'Configuration', link: '/docs/configuration' },
-			{ text: 'Case Study: Element Picker', link: '/docs/recipes' }
-		]
-	},
-	{
-		text: 'Development and Release',
-		items: [
+			{ text: 'Add Makoo to an Existing Project', link: '/docs/installation' },
+			{ text: 'Mount Components', link: '/docs/injection' },
+			{ text: 'Listen to Page Events', link: '/docs/listeners' },
+			{ text: 'Control Injections and Read Status', link: '/docs/control' },
+			{ text: 'Handle Node Replacement', link: '/docs/reinject' },
+			{ text: 'Project Configuration', link: '/docs/configuration' },
 			{ text: 'Local Development', link: '/docs/development' },
-			{ text: 'Hot Updates and Cleanup', link: '/docs/hmr' },
 			{ text: 'Build and Preview', link: '/docs/build' },
 			{ text: 'Troubleshooting', link: '/docs/troubleshooting' }
+		]
+	},
+	{
+		text: 'Explanation',
+		items: [
+			{ text: 'Core Concepts', link: '/docs/concepts' },
+			{ text: 'Injection Lifecycle', link: '/docs/lifecycle' },
+			{ text: 'Error Categories and Handling', link: '/docs/errors' },
+			{ text: 'Hot Updates', link: '/docs/hmr' }
 		]
 	}
 ];
@@ -43,56 +46,60 @@ const enApiSidebar = [
 		text: 'Core',
 		items: [
 			{ text: 'Overview', link: '/api/core' },
-			{ text: 'Runtime and Tasks', link: '/api/runtime' },
-			{ text: 'Events and State', link: '/api/observation' },
-			{ text: 'Adapters and Context', link: '/api/adapters' },
-			{ text: 'DOM, Logging and Errors', link: '/api/utilities' }
+			{ text: 'Core Instance', link: '/api/instance' },
+			{ text: 'Declarations', link: '/api/declarations' },
+			{ text: 'Commands and Status', link: '/api/status' },
+			{ text: 'Adapter Contract', link: '/api/adapters' },
+			{ text: 'Errors and Error Codes', link: '/api/errors' }
+		]
+	},
+	{
+		text: 'Frameworks',
+		items: [
+			{ text: 'Vue', link: '/api/vue' },
+			{ text: 'React', link: '/api/react' }
 		]
 	},
 	{
 		text: 'Toolchain',
 		items: [
 			{ text: 'CLI Commands', link: '/api/cli' },
-			{ text: 'Vite Plugins', link: '/api/vite' }
-		]
-	},
-	{
-		text: 'Frameworks and Browser',
-		items: [
-			{ text: 'Vue', link: '/api/vue' },
-			{ text: 'React', link: '/api/react' },
-			{ text: 'Userscript APIs', link: '/api/monkey' }
+			{ text: 'Vite Plugins', link: '/api/vite' },
+			{ text: 'Userscript API', link: '/api/monkey' }
 		]
 	}
 ];
 
 const zhGuideSidebar = [
 	{
-		text: '开始使用',
+		text: '开始',
 		items: [
 			{ text: '介绍', link: '/zh/docs/' },
 			{ text: '快速开始', link: '/zh/docs/getting-started' },
-			{ text: '手动接入', link: '/zh/docs/installation' },
-			{ text: '核心概念', link: '/zh/docs/concepts' }
+			{ text: '教程：可开关的工具面板', link: '/zh/docs/tutorial' }
 		]
 	},
 	{
-		text: '功能指南',
+		text: '操作指南',
 		items: [
-			{ text: '组件注入', link: '/zh/docs/injection' },
-			{ text: '事件监听', link: '/zh/docs/listeners' },
-			{ text: '生命周期与清理', link: '/zh/docs/lifecycle' },
+			{ text: '接入已有项目', link: '/zh/docs/installation' },
+			{ text: '挂载组件', link: '/zh/docs/injection' },
+			{ text: '监听页面事件', link: '/zh/docs/listeners' },
+			{ text: '控制注入与读取状态', link: '/zh/docs/control' },
+			{ text: '应对节点替换', link: '/zh/docs/reinject' },
 			{ text: '项目配置', link: '/zh/docs/configuration' },
-			{ text: '案例：元素选择器', link: '/zh/docs/recipes' }
-		]
-	},
-	{
-		text: '开发与发布',
-		items: [
 			{ text: '本地开发', link: '/zh/docs/development' },
-			{ text: '热更新与清理', link: '/zh/docs/hmr' },
 			{ text: '构建与预览', link: '/zh/docs/build' },
 			{ text: '常见问题', link: '/zh/docs/troubleshooting' }
+		]
+	},
+	{
+		text: '原理',
+		items: [
+			{ text: '核心概念', link: '/zh/docs/concepts' },
+			{ text: '注入的生命周期', link: '/zh/docs/lifecycle' },
+			{ text: '错误的分类与处置', link: '/zh/docs/errors' },
+			{ text: '热更新', link: '/zh/docs/hmr' }
 		]
 	}
 ];
@@ -102,24 +109,25 @@ const zhApiSidebar = [
 		text: 'Core',
 		items: [
 			{ text: '总览', link: '/zh/api/core' },
-			{ text: 'Runtime 与任务', link: '/zh/api/runtime' },
-			{ text: '事件与状态', link: '/zh/api/observation' },
-			{ text: 'Adapter 与 Context', link: '/zh/api/adapters' },
-			{ text: 'DOM、日志与错误', link: '/zh/api/utilities' }
+			{ text: 'Core 实例', link: '/zh/api/instance' },
+			{ text: '声明', link: '/zh/api/declarations' },
+			{ text: '命令与状态', link: '/zh/api/status' },
+			{ text: '适配器契约', link: '/zh/api/adapters' },
+			{ text: '错误与错误码', link: '/zh/api/errors' }
+		]
+	},
+	{
+		text: '框架',
+		items: [
+			{ text: 'Vue', link: '/zh/api/vue' },
+			{ text: 'React', link: '/zh/api/react' }
 		]
 	},
 	{
 		text: '工具链',
 		items: [
 			{ text: 'CLI 命令', link: '/zh/api/cli' },
-			{ text: 'Vite 插件', link: '/zh/api/vite' }
-		]
-	},
-	{
-		text: '框架与浏览器',
-		items: [
-			{ text: 'Vue', link: '/zh/api/vue' },
-			{ text: 'React', link: '/zh/api/react' },
+			{ text: 'Vite 插件', link: '/zh/api/vite' },
 			{ text: 'Userscript API', link: '/zh/api/monkey' }
 		]
 	}
@@ -127,7 +135,7 @@ const zhApiSidebar = [
 
 export default defineConfig({
 	title: 'Makoo',
-	description: 'A userscript development framework for component-driven injection apps.',
+	description: 'A development framework for building component-based userscripts.',
 	lang: 'en-US',
 	base,
 	cleanUrls: true,
@@ -138,7 +146,7 @@ export default defineConfig({
 			label: 'English',
 			lang: 'en-US',
 			title: 'Makoo',
-			description: 'A userscript development framework for component-driven injection apps.',
+			description: 'A development framework for building component-based userscripts.',
 			themeConfig: {
 				nav: [
 					{ text: 'Docs', link: '/docs/' },

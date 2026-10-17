@@ -1,88 +1,76 @@
-# Adapters and Context
+# Adapter Contract
 
-Vue and React components receive their task Context through the `makoo` prop. Import the mounting interfaces below from `@makoojs/core` when creating a custom adapter.
-
-## Adapter types
-
-### `MountAdapter`
+A component adapter connects a frontend framework to Core's mounting and unmounting. `@makoojs/vue` and `@makoojs/react` already provide adapters; usually you only need to register one:
 
 ```ts
-interface MountAdapter<TArtifact = unknown, THandle = unknown, TInstance = unknown> {
-	name: string;
-	mount(input: AdapterMountInput<TArtifact>): AdapterMountResult<THandle, TInstance>;
-	unmount(input: AdapterUnmountInput<THandle>): void;
+core.useAdapter(createVueAdapter());
+```
+
+This page lists the contract an adapter must satisfy, for reference when reading the source or integrating another framework. Types are imported from `@makoojs/core`.
+
+## `MountAdapter`
+
+```ts
+interface MountAdapter<TComponent = unknown, TProps = unknown, THandle = unknown> {
+  readonly name: string;
+  mount(params: AdapterMountParams<TComponent, TProps>): THandle;
+  unmount(mountHandle: THandle): void;
 }
 ```
 
-### `ResolvableMountAdapter`
+| Member | Description |
+| --- | --- |
+| `name` | Adapter name, selected by the `adapter` field of component declarations; unique within an instance |
+| `mount(params)` | Synchronously mounts the component into `params.container` and returns a mount handle |
+| `unmount(mountHandle)` | Synchronously unmounts the mount returned by `mount()` |
+
+Core only stores the mount handle without reading its contents, and passes it back to `unmount()` as-is when unmounting.
+
+## `AdapterMountParams`
 
 ```ts
-interface ResolvableMountAdapter<TArtifact = unknown, THandle = unknown, TInstance = unknown>
-	extends MountAdapter<TArtifact, THandle, TInstance> {
-	matches(artifact: unknown): artifact is TArtifact;
+interface AdapterMountParams<TComponent = unknown, TProps = unknown> {
+  component: TComponent;
+  command: ComponentCommand;
+  statusHandle: ComponentStatusHandle;
+  props: TProps | undefined;
+  container: HTMLElement;
+  globalListener(name: string): {
+    command: ListenerCommand;
+    statusHandle: ListenerStatusHandle;
+  };
 }
 ```
 
-### `AdapterMountInput`
-
-| Field | Type |
+| Field | Description |
 | --- | --- |
-| `host` | `HTMLElement` |
-| `mountPoint` | `HTMLElement` |
-| `artifact` | `TArtifact` |
-| `taskId` | `string` |
-| `injectAt` | `string` |
-| `makoo` | `MakooContext` |
+| `component` | The `component` from the declaration |
+| `props` | The `props` from the declaration, or `undefined` if not provided |
+| `container` | The component container Core created for this mount |
+| `command` | The owning component's command handle |
+| `statusHandle` | The owning component's status handle |
+| `globalListener(name)` | Finds a standalone listener in the same instance and returns `{ command, statusHandle }` |
 
-`host` is the page element matching `injectAt`; `mountPoint` is the container Makoo creates inside it. Mount the `artifact` into `mountPoint`.
+`globalListener(name)` throws `MAKOO_INJECTION_NOT_FOUND` when the name doesn't exist, belongs to a component, or is only an attached listener.
 
-### `AdapterMountResult`
+## Behavior Conventions
 
-```ts
-type AdapterMountResult<THandle = unknown, TInstance = unknown> = {
-	handle: THandle;
-	instance?: TInstance;
-};
-```
+### Mounting
 
-### `AdapterUnmountInput`
+- A normal return from `mount()` counts as a successful mount. Core doesn't wait for the framework's first render or effects to finish.
+- After `mount()` returns, Core starts the attached listeners only if this round hasn't been stopped and the mount target and component container are still valid; otherwise it unmounts this mount directly.
 
-| Field | Type |
-| --- | --- |
-| `host?` | `HTMLElement` |
-| `mountPoint` | `HTMLElement` |
-| `handle` | `THandle` |
-| `taskId` | `string` |
-| `injectAt` | `string` |
-| `reason` | `AdapterUnmountReason` |
+### Mount Failure
 
-```ts
-type AdapterUnmountReason = 'destroy' | 'reset' | 'remount' | 'manual';
-type AdapterResolver = (artifact: unknown) => MountAdapter | undefined;
-```
+- Throw the original error directly; Core wraps it as `MAKOO_MOUNT_FAILED` with the original value in `cause`.
+- Before throwing, the adapter should release the framework resources it created in this attempt.
+- If releasing also fails, or you can't confirm everything was released, throw a `MakooAggregateError` with `code` set to `MakooErrorCode.MOUNT_CLEANUP_FAILED`, `cause` set to the original mount error, and `errors` set to the release errors. Core treats it as a cleanup failure and closes the injection: `lastError` is `MAKOO_INJECTION_CLEANUP_FAILED`, whose `errors` are, in order, `MAKOO_MOUNT_FAILED` (with `cause` set to the original mount error) and each error the adapter provided.
 
-Use the `handle` returned during mounting to release the framework instance on unmount. `reason` identifies why unmounting was requested.
+### Unmounting
 
-### `MakooContext`
+- `unmount()` runs synchronously. Core removes the component container only after it returns normally.
+- If it throws, Core wraps the error as `MAKOO_UNMOUNT_FAILED`, counts it as a cleanup failure, and still tries to remove the container.
 
-```ts
-type MakooContext = {
-	taskId: string;
-	injectAt: string;
-	enableAlive(): void;
-	disableAlive(): void;
-	reset(): void;
-	destroy(): void;
-	on(event: ObserveEventName, hook: ObserveHook): () => void;
-	onTask(event: ObserveEventName, hook: ObserveHook): () => void;
-	off(event: ObserveEventName, hook?: ObserveHook): void;
-	offTask(event?: ObserveEventName, hook?: ObserveHook): void;
-	getLogger(): ILogger;
-	bindListenerSignal(source: ActivitySignalSource<boolean>): boolean;
-	controlListener(event: ActionEvent): boolean;
-};
-```
+### Component-side Capabilities
 
-`taskId` and `injectAt` identify the current component task. `destroy()` unmounts and removes the task; `reset()` releases its resources and retains its record.
-
-`on()` subscribes to a named event across the Runtime; `onTask()` subscribes only to events for this task. Both return an unsubscribe function. `controlListener()` and `bindListenerSignal()` control the listener registered with the component through `options.on`.
+How `command`, `statusHandle`, and `globalListener` are handed to components is up to the adapter. The Vue adapter hands them to [`useMakooComponent()`](./vue.md#usemakoocomponent) through `provide`, and the React adapter hands them to [hooks](./react.md#hooks) through Context. When the component unmounts, the adapter should release status subscriptions created inside the component.

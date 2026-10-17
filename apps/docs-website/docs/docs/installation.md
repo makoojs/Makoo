@@ -1,10 +1,12 @@
-# Manual Installation
+# Add Makoo to an Existing Project
 
-Use this page to add Makoo to an existing Vite project. For a new project, use the [scaffolder](./getting-started.md). These examples use TypeScript and ESM (`"type": "module"` in `package.json`).
+This page is for when you already have a Vite project and want to add Makoo. For new projects, use the scaffold in [Quick Start](./getting-started.md) directly.
 
-## Install packages
+Prerequisites: the project uses ESM (`"type": "module"` in `package.json`), and Node.js is 20.x at 20.19 or later, or 22.12 or later (21.x is not supported).
 
-Choose the dependencies for your framework:
+Version requirements: `vite` 8.x at 8.2.2 or later, `vue` 3.3 or later, `react` and `react-dom` 19 or later.
+
+## 1. Install Dependencies
 
 ::: code-group
 ```sh [Vue]
@@ -17,9 +19,9 @@ pnpm add -D @makoojs/cli vite @vitejs/plugin-react typescript @types/react @type
 ```
 :::
 
-## Configure Vite
+## 2. Configure Vite
 
-A Vue project configuration:
+Add `makoo()` to `vite.config.ts`. Below is the configuration for a Vue project; for React projects, replace `vue()` with `react()` from `@vitejs/plugin-react`:
 
 ```ts
 import { defineConfig } from 'vite';
@@ -39,13 +41,13 @@ export default defineConfig({
 });
 ```
 
-For React, replace the `vue` import and `vue()` with `react()` from `@vitejs/plugin-react`. `makooDev()` enables development Runtime task inspection and can be omitted if you do not need it.
+`makooDev()` is optional and lets you view injection status in the development terminal; see [Local Development](./development.md). For field descriptions, see [Project Configuration](./configuration.md).
 
-`vite.config.ts` runs in Node. Components and the entry that calls `createMakoo()` run on the target page. Keep `document`, GM APIs, and other browser code in the application entry and its imported modules.
+`vite.config.ts` runs in Node. Browser code such as `document` and GM APIs can only be written in the entry and the modules it imports.
 
-## Add project commands
+## 3. Add Project Scripts
 
-Add these entries to `scripts` in `package.json`:
+Add the following to `scripts` in `package.json`:
 
 ```json
 {
@@ -55,12 +57,45 @@ Add these entries to `scripts` in `package.json`:
 }
 ```
 
-## Create an entry and component
+## 4. Write the Entry
 
-Follow [Component Injection](./injection.md) to create `src/main.ts` and a component. Add Vite’s asset type declarations in `src/vite-env.d.ts`:
+Create `src/main.ts`:
+
+::: code-group
+```ts [Vue]
+import { createMakoo, inject } from '@makoojs/core';
+import { createVueAdapter } from '@makoojs/vue';
+import App from './App.vue';
+
+const core = createMakoo();
+core.useAdapter(createVueAdapter());
+core.apply([
+  inject({ name: 'app', injectAt: 'body', adapter: 'vue', component: App })
+]);
+```
+```ts [React]
+import { createMakoo, inject } from '@makoojs/core';
+import { createReactAdapter } from '@makoojs/react';
+import App from './App';
+
+const core = createMakoo();
+core.useAdapter(createReactAdapter());
+core.apply([
+  inject({ name: 'app', injectAt: 'body', adapter: 'react', component: App })
+]);
+```
+:::
+
+TypeScript projects also need to reference Vite's type declarations in a declaration file included by `tsconfig` (for example `src/vite-env.d.ts`), so that assets such as images can be imported:
 
 ```ts
 /// <reference types="vite/client" />
 ```
 
-Run `pnpm dev`, install the development script from the installation entry, and visit a page matching `@match`. See [Local Development](./development.md) for shortcuts and task inspection.
+## 5. Run
+
+```sh
+pnpm dev
+```
+
+Install the development script from the address the terminal prints, then open a page that matches `@match`; the component should appear on the page. If it doesn't, go through [Troubleshooting](./troubleshooting.md) step by step.

@@ -1,26 +1,26 @@
 # Vite Plugins
 
-Import plugins from `@makoojs/cli` in `vite.config.ts`. See [Configuration](../docs/configuration.md) for setup and [Local Development](../docs/development.md) for terminal usage.
+Import the plugins from `@makoojs/cli` in `vite.config.ts`. This code runs in Node. For setup steps, see [Project Configuration](../docs/configuration.md); for terminal usage, see [Local Development](../docs/development.md).
 
 ## `makoo()`
 
-Creates Vite plugins from Makoo configuration.
+Creates Vite plugins from the Makoo configuration.
 
-### Type
+### Type {#type}
 
 ```ts
 function makoo(options: MakooOptions): Plugin[];
 ```
 
-### Parameters
+### Parameters {#parameters}
 
 `options` uses `MakooOptions`.
 
-### Returns
+### Returns {#returns}
 
-Returns `Plugin[]`.
+Returns a `Plugin[]`.
 
-### Example
+### Example {#example}
 
 ```ts
 import { defineConfig } from 'vite';
@@ -52,15 +52,17 @@ export default defineConfig({
 function makooDev(): Plugin;
 ```
 
-Enables development Runtime connections and task inspection. It takes no arguments. Add it alongside `makoo()` and start with `makoo dev`. It applies to the dev server.
+Shows, in the dev terminal, the connections of Core instances on the page and the status and errors of each injection; takes no arguments. Put it in `plugins` together with `makoo()` and start with `makoo dev`; it only takes effect in the dev server and doesn't affect build output.
 
-`makoo()` provides userscript building and the installation entry. `makooDev()` provides development task inspection. Add each plugin explicitly.
+`makooDev()` only reads status handles and instance observation and reports them; it doesn't start, stop, or remove injections, and doesn't handle hot updates.
+
+`makoo()` handles the userscript build and installation entry; `makooDev()` handles injection inspection during development. Add them separately.
 
 ## `cdn`
 
 CDN configuration factories re-exported from `vite-plugin-monkey`.
 
-### Type
+### Type {#type-1}
 
 ```ts
 type CdnFactory = (
@@ -84,7 +86,7 @@ const cdn: {
 
 `bootcdn` and `staticfile` are marked as deprecated by `vite-plugin-monkey`.
 
-## Configuration types
+## Configuration Types
 
 ### `MakooOptions`
 
@@ -158,21 +160,40 @@ type MonkeyBuildConfig = {
 };
 ```
 
-## Defaults and constraints
+## Defaults and Field Constraints
 
 | Field | Default or constraint |
 | --- | --- |
-| `root` | Working directory |
+| `root` | Current working directory |
 | `entry` | Required; resolved relative to root |
-| `app.name / app.version` | Required; own the corresponding userscript fields |
-| `app.description` | Optional; owns userscript description |
+| `app.name / app.version` | Required; control the userscript fields of the same name |
+| `app.description` | Optional; controls the userscript description |
 | `monkey` | Required; may be an empty object |
 | `monkey.align` | 2 |
 | `monkey.styleImport` | true |
-| `monkey.server.open` | true on Windows/macOS; false elsewhere |
-| `monkey.server.prefix` | 'server:' |
+| `monkey.server.open` | true on Windows/macOS, false on other platforms |
+| `monkey.server.prefix` | `` (name) => `server:${name}` ``; see the note below |
 | `monkey.build.fileName` | `${app.name}.user.js` |
-| `monkey.build.metaFileName` | false; true derives a .meta.js filename from the script filename |
+| `monkey.build.metaFileName` | false; when true, replaces the trailing `.user.js` of the file name with `.meta.js` |
 | `monkey.build.autoGrant` | true |
 
-`monkey.userscript` does not accept `name`, `version`, or `description`; set these through `app`.
+`monkey.server.prefix` determines the dev script's name in the script manager, and the three forms behave differently:
+
+| Form | Dev script name |
+| --- | --- |
+| Function, including the default | The function's return value; `server:my-script` by default |
+| String, for example `'dev'` | The whole name is replaced by this string |
+| `false` | Same as `app.name` |
+
+The type of `monkey.userscript` doesn't include `name`, `version`, or `description`; if they are passed at runtime anyway, they are overridden by the same-named fields of `app` without an error.
+
+Fields such as `app` and `entry` are validated at startup; on failure, `MAKOO_CLI_CONFIG_INVALID` is thrown, with one `field path: reason` per line in the message. `entry`, `app.name`, and `app.version` must be non-empty strings, and unknown fields at the top level (other than `root`, `entry`, `app`, and `monkey`) and in `app` are rejected; other fields in `monkey` are passed to vite-plugin-monkey as-is.
+
+### Settings Determined by vite-plugin-monkey
+
+`makoo()` uses vite-plugin-monkey internally, which fixes the following settings; same-named values in the Vite config and CLI options have no effect:
+
+- Build: `build.sourcemap` is `false`, `build.assetsDir` is `'./'`, all assets are inlined, and CSS is not split.
+- Minification: JS is not minified when `build.minify` is not set; CSS is minified by default (`build.cssMinify`).
+- Dev and preview servers: `cors` is fixed to `true`.
+- Dev script: `@grant *` is declared automatically, so all GM APIs are available; the build output's `@grant` is inferred from the code by `autoGrant`, so the two may differ.

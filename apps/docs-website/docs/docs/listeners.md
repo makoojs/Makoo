@@ -1,17 +1,23 @@
-# Event Listeners
+# Listen to Page Events
 
-`listen()` lets Makoo manage a DOM event listener. The following entry logs the target each time you click the page.
+This page shows how to listen to events on elements of the host page, such as the site's own search box, buttons, or videos. Makoo waits for the element to appear, binds the event, and unbinds it when stopped. For events on elements inside your components, use your framework's own syntax directly; you don't need Makoo.
 
-## Declare a listener
+First decide which kind of listener to use (see [Core Concepts](./concepts.md#standalone-and-attached-listeners) for the difference):
 
-`src/main.ts`
+- The listener is a feature on its own, unrelated to any component: **standalone listener**.
+- The listener is part of a component's feature: **attached listener**.
+
+## Standalone Listeners
+
+Put the `listen()` declaration directly in `apply()`. Standalone listeners don't need an adapter:
 
 ```ts
 import { createMakoo, listen } from '@makoojs/core';
 
-const tasks = createMakoo().start([
+const core = createMakoo();
+core.apply([
   listen({
-    id: 'page-click',
+    name: 'page-click',
     listenAt: 'body',
     type: 'click',
     callback: (event) => console.log('Clicked:', event.target)
@@ -19,64 +25,165 @@ const tasks = createMakoo().start([
 ]);
 ```
 
-`listenAt` is the target element’s CSS selector, `type` is the event name, and `callback` receives the native DOM event. Run the development script, click the page, and check the browser console.
+- `listenAt`: the CSS selector of the listener target; the first matching element is used.
+- `type`: the event type.
+- `callback`: the event handler, which receives the native event object.
 
-## Pause, resume, and remove
+When you need to handle the event in the capture phase (for example, to run before the site's own handler), set `capture: true`.
 
-Use the `tasks` returned by `start()` to retrieve a listener by ID. Call `close()` to pause click logging:
+## Read the Listener Target
+
+When the callback is a regular function, `this` is the listener target; in arrow functions, use `event.currentTarget`:
 
 ```ts
-const task = tasks.get('page-click');
-if (task?.kind === 'listener') {
-  task.close();
-}
+listen({
+  name: 'video-play',
+  listenAt: 'video',
+  type: 'play',
+  callback(this: Element) {
+    console.log('Playback started', (this as HTMLVideoElement).currentSrc);
+  }
+})
 ```
 
-| Method | Purpose |
-| --- | --- |
-| `close()` | Pause listening and retain the task |
-| `open()` | Resume listening |
-| `destroy()` | Remove the listener and task |
+## Pause and Resume
 
-`open()` and `close()` return whether the state changed successfully. See [Task Handles](../api/runtime.md#startedtasks) for the full types.
-
-## Control listening with state
-
-Use `activitySignal` when the listener should follow application state. This example toggles click logging with the Escape key:
-
-`src/main.ts`
+Use the command handle to stop and restart a standalone listener; the declaration stays the same:
 
 ```ts
-import { createActivityStore, createMakoo, listen } from '@makoojs/core';
+const clicks = core.command('page-click');
+await clicks.stop(); // unbind the event, status idle
+clicks.start();      // find the target again and bind
+```
 
-const enabled = createActivityStore(true);
+The example below toggles the click listener above with the Escape key:
 
-createMakoo().start([
-  listen({
-    id: 'page-click',
-    listenAt: 'body',
-    type: 'click',
-    callback: (event) => console.log('Clicked:', event.target),
-    activitySignal: () => enabled
-  }),
-  listen({
-    id: 'toggle-clicks',
-    listenAt: 'body',
-    type: 'keydown',
-    callback: (event) => {
-      if (event instanceof KeyboardEvent && event.key === 'Escape') {
-        enabled.update((value) => !value);
-        console.log('Click listener enabled:', enabled.get());
-      }
-    }
+```ts
+listen({
+  name: 'toggle-clicks',
+  listenAt: 'body',
+  type: 'keydown',
+  callback: (event) => {
+    if (!(event instanceof KeyboardEvent) || event.key !== 'Escape') return;
+    const status = core.statusHandle('page-click').getSnapshot();
+    if (status === 'idle') core.command('page-click').start();
+    else void core.command('page-click').stop();
+  }
+})
+```
+
+When it's no longer needed, call `remove()`; it unbinds and unregisters the listener, and the name can be used again.
+
+## Listen Along with a Component
+
+Put the `listen()` declaration in the component's `listeners` and it becomes an attached listener: it starts finding its target after the component mounts, and unbinds when the component stops.
+
+The panel below shows what is being typed into the site's search box. The event handler passes data to the component through a shared Vue `ref`:
+
+::: code-group
+```ts [src/query.ts]
+import { ref } from 'vue';
+
+export const query = ref('');
+```
+```ts [src/main.ts]
+import { createMakoo, inject, listen } from '@makoojs/core';
+import { createVueAdapter } from '@makoojs/vue';
+import SearchPreview from './SearchPreview.vue';
+import { query } from './query';
+
+const core = createMakoo();
+core.useAdapter(createVueAdapter());
+core.apply([
+  inject({
+    name: 'search-preview',
+    injectAt: 'body',
+    adapter: 'vue',
+    component: SearchPreview,
+    listeners: [
+      listen({
+        name: 'search-input',
+        listenAt: 'input[name="q"]',
+        type: 'input',
+        callback(this: Element) {
+          query.value = (this as HTMLInputElement).value;
+        }
+      })
+    ]
   })
 ]);
 ```
+```vue [src/SearchPreview.vue]
+<script setup lang="ts">
+import { useMakooComponent } from '@makoojs/vue';
+import { query } from './query';
 
-Click logging is enabled when `enabled` is `true` and paused when it is `false`. The object returned by `activitySignal` provides `get()` to read the value and `subscribe()` to observe changes. `createActivityStore()` implements both methods.
+const search = useMakooComponent().attachedListener('search-input');
+</script>
 
-The keyboard listener stays enabled, so Escape can resume click logging after it has been paused.
+<template>
+  <aside style="position: fixed; right: 16px; bottom: 16px">
+    <p v-if="search !== 'bound'">Waiting for the search box…</p>
+    <p v-else>Searching: {{ query }}</p>
+  </aside>
+</template>
+```
+:::
 
-## Attach a listener to a component
+React components read the same status with `useAttachedListenerStatus('search-input')`; see the [React API](../api/react.md#useattachedlistenerstatus).
 
-A component task’s `options.on` accepts a `listen()` declaration, registering and releasing it with the component task. Inside the component, use `makoo.controlListener('OPEN')` or `makoo.controlListener('CLOSE')` to control it. See [MakooContext](../api/adapters.md#makoocontext).
+A few rules for attached listeners:
+
+- The name only needs to be unique within its owning component.
+- It can't be started or stopped on its own, only its status can be read; to stop it, stop the whole component.
+- It can't set `reinject`; it uses the component's setting.
+- When it fails (wait timeout, target invalidated with recovery not allowed), the whole component ends with `MAKOO_ATTACHED_LISTENER_FAILED`.
+
+## Control a Standalone Listener from a Component
+
+A component can get a standalone listener in the same instance by name, read its status, and call its commands. When the component unmounts, only the subscription is released; the listener is not stopped.
+
+::: code-group
+```vue [Vue]
+<script setup lang="ts">
+import { useMakooComponent } from '@makoojs/vue';
+
+const clicks = useMakooComponent().globalListener('page-click');
+const status = clicks.status;
+</script>
+
+<template>
+  <button @click="status === 'idle' ? clicks.start() : clicks.stop()">
+    Click log: {{ status }}
+  </button>
+</template>
+```
+```tsx [React]
+import { useGlobalListener } from '@makoojs/react';
+
+export default function ClickToggle() {
+  const clicks = useGlobalListener('page-click');
+
+  return (
+    <button onClick={() => (clicks.status === 'idle' ? clicks.start() : clicks.stop())}>
+      Click log: {clicks.status}
+    </button>
+  );
+}
+```
+:::
+
+If the name doesn't exist or is not a standalone listener, `MAKOO_INJECTION_NOT_FOUND` is thrown.
+
+## When the Target Gets Replaced
+
+When the site re-renders, it may replace the listener target with a new element. By default the listener fails along with it; set `reinject: true` on a standalone listener, or on the owning component for an attached listener, to rebind automatically; see [Handle Node Replacement](./reinject.md).
+
+## When the Callback Errors
+
+When an event handler throws or returns a rejected Promise, Makoo prints `MAKOO_LISTENER_CALLBACK_FAILED`, the listener stays bound, and the next event calls it as usual. Standalone listeners also write the error to `lastError`, but the status doesn't change, and subscribers and the component UI are not notified.
+
+## Reference
+
+- [All fields of `listen()`](../api/declarations.md#listen)
+- [Commands and Status](../api/status.md)

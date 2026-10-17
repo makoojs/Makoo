@@ -1,73 +1,115 @@
-# Vue API Reference
+# Vue API
 
-## API Index
-
-- [`createVueAdapter()`](#createvueadapter): creates the Vue mounting adapter
-- [`VuePlugin`](#vueplugin): manages plugins installed on mounted Vue apps
-- [`VueAdapterError`](#vueadaptererror): reports Vue mounting errors
-- [TypeScript types](#typescript-types): public Vue adapter types
+The APIs on this page are imported from `@makoojs/vue`.
 
 ## `createVueAdapter()`
 
-Creates a Makoo adapter that mounts Vue components.
-
-### Type
+Creates a component adapter named `'vue'`.
 
 ```ts
 function createVueAdapter(): VueMountAdapter;
 ```
-
-### Returns
-
-Returns a resolvable Makoo mount adapter for Vue components.
-
-### Details
-
-The adapter uses `createApp(artifact, { makoo })` to create a Vue app, installs every plugin registered with `VuePlugin`, and mounts the app into the task's `mountPoint`. It calls `app.unmount()` when the task is unmounted.
-
-Mounting or unmounting failures throw `VueAdapterError`.
-
-### Example
 
 ```ts
 import { createMakoo, inject } from '@makoojs/core';
 import { createVueAdapter } from '@makoojs/vue';
 import Panel from './Panel.vue';
 
-const makoo = createMakoo({
-	adapters: [createVueAdapter()]
-});
-
-makoo.start([
-	inject({ injectAt: '#app', artifact: Panel })
+const core = createMakoo();
+core.useAdapter(createVueAdapter());
+core.apply([
+  inject({ name: 'panel', injectAt: 'body', adapter: 'vue', component: Panel })
 ]);
 ```
 
-## `VuePlugin`
+On each mount, the adapter calls `createApp(component, props)` to create a separate Vue app, installs the plugins registered in [`VuePlugin`](#vueplugin), and then mounts it into the component container. On unmount, it calls `app.unmount()`.
 
-Register Vue plugins before calling `start()`. Each Vue app mounted afterward installs those plugins.
+The `props` in the declaration are passed as the root component's props, which the component receives with `defineProps()`.
 
-### Type
+## `useMakooComponent()`
+
+In a Vue component mounted by Makoo, gets the command and status of the owning component.
 
 ```ts
-const VuePlugin: {
-	getPlugins(): Plugin[];
-	use<T extends Plugin>(plugin: T): void;
-	usePlugins(...plugins: Plugin[]): void;
-	clear(): void;
+function useMakooComponent(): VueMakooComponent;
+```
+
+```vue
+<script setup lang="ts">
+import { useMakooComponent } from '@makoojs/vue';
+
+const makoo = useMakooComponent();
+const search = makoo.attachedListener('search-submit');
+</script>
+
+<template>
+  <p>Search box: {{ search }}</p>
+  <button @click="makoo.remove()">Close</button>
+</template>
+```
+
+### Return Value
+
+```ts
+type VueMakooComponent = ComponentCommand & {
+  readonly lastError: MakooError | undefined;
+  readonly status: Readonly<Ref<ComponentStatus>>;
+  attachedListener(name: string): Readonly<Ref<ListenerStatus>>;
+  globalListener(name: string): ListenerCommand & {
+    readonly lastError: MakooError | undefined;
+    readonly status: Readonly<Ref<ListenerStatus>>;
+  };
 };
 ```
 
-### Methods
+| Member | Description |
+| --- | --- |
+| `name`, `start()`, `stop()`, `remove()` | The owning component's [command handle](./status.md#command-handle), the same set of methods as `core.command(name)` |
+| `status` | A read-only ref of the component status |
+| `lastError` | Reads the status handle's `lastError`; not reactive |
+| `attachedListener(name)` | A read-only ref of an attached listener's status; throws `MAKOO_LISTENER_NOT_FOUND` if the name doesn't exist |
+| `globalListener(name)` | The command and status ref of a standalone listener in the same instance |
 
-| Method | Returns | Description |
-| --- | --- | --- |
-| `getPlugins()` | `Plugin[]` | Returns a copy of the current plugin list |
-| `use(plugin)` | `void` | Registers one plugin; the same plugin instance is stored once |
-| `usePlugins(...plugins)` | `void` | Registers multiple plugins |
-| `clear()` | `void` | Removes every plugin |
+Refs such as `status` live on a plain object, and templates only auto-unwrap top-level variables. Assign them to top-level constants first (like `search` in the example above) instead of writing `makoo.status` directly in the template.
 
-### Example
+`setup` and `onMounted` run during Vue's mount, when the component status is still `waiting` and attached listeners are still `idle`. Only after mounting returns does Core start the attached listeners and set the status to `mounted`, and the refs update accordingly. Don't branch on status read synchronously in `setup`.
+
+### Subscription and Release
+
+- Calling `useMakooComponent()` creates subscriptions for the component status and all attached listeners.
+- `globalListener(name)` subscribes to that standalone listener on first call; repeated calls with the same name reuse the same ref. After that standalone listener is removed and `apply()`d again, call `globalListener(name)` once more: the ref switches to the new listener, while `start` / `stop` / `remove` on the old return value still point to the old listener.
+- Subscriptions are released automatically when the component unmounts or its effect scope ends. Releasing subscriptions doesn't stop standalone listeners.
+- `lastError` doesn't trigger updates. When the component fails, its status becomes `failed`, so reading `status` in the template as well is enough to re-render. When a standalone listener's callback fails, its status stays `bound` and only `lastError` is written, so the UI won't update because of it.
+
+### Where to Call It
+
+`useMakooComponent()` must be called synchronously inside a Vue app mounted by Makoo, in a component's `setup` or an effect scope. Child components can call it too, and get the same owning component.
+
+| Situation | Error code |
+| --- | --- |
+| Makoo's injection context isn't available: not in an app mounted by Makoo, or not called synchronously in `setup` (for example, in an event handler or `setTimeout`) | `MAKOO_VUE_HOOK_OUTSIDE_COMPONENT` |
+| The injection context is available but there is no effect scope, for example when called in a plugin through `app.runWithContext()` | `MAKOO_VUE_HOOK_OUTSIDE_SCOPE` |
+| `globalListener(name)` can't find a standalone listener | `MAKOO_INJECTION_NOT_FOUND` |
+
+## `VuePlugin`
+
+Registers plugins to install into every Makoo Vue app, such as Pinia, Vue Router, or a component library.
+
+```ts
+const VuePlugin: {
+  use<T extends Plugin>(plugin: T): void;
+  usePlugins(...plugins: Plugin[]): void;
+  getPlugins(): Plugin[];
+  clear(): void;
+};
+```
+
+| Method | Description |
+| --- | --- |
+| `use(plugin)` | Registers a plugin; the same plugin instance is registered only once |
+| `usePlugins(...plugins)` | Registers multiple plugins |
+| `getPlugins()` | Returns a copy of the registered plugins |
+| `clear()` | Clears the registrations |
 
 ```ts
 import { createPinia } from 'pinia';
@@ -76,63 +118,26 @@ import { VuePlugin } from '@makoojs/vue';
 VuePlugin.use(createPinia());
 ```
 
-## `VueAdapterError`
+On each mount, the current registrations are read and installed into the new app; already mounted apps don't get plugins registered later, and `clear()` only affects later mounts too, so register plugins before `core.apply()` as a rule. `VuePlugin` is a module-level global registry that applies to all Core instances. When the same Pinia instance is shared by multiple apps, those components read and write the same store.
 
-Error class used when the Vue adapter cannot mount or unmount a component. It extends `AdapterError`.
+## `VueErrorCode`
 
-### Type
+| Constant | Value |
+| --- | --- |
+| `VUE_HOOK_OUTSIDE_COMPONENT` | `'MAKOO_VUE_HOOK_OUTSIDE_COMPONENT'` |
+| `VUE_HOOK_OUTSIDE_SCOPE` | `'MAKOO_VUE_HOOK_OUTSIDE_SCOPE'` |
+| `VUE_PARTIAL_MOUNT_UNCONFIRMED` | `'MAKOO_VUE_PARTIAL_MOUNT_UNCONFIRMED'` |
 
-```ts
-class VueAdapterError extends AdapterError {
-	constructor(
-		message: string,
-		issues?: MakooIssue[],
-		code?: string,
-		cause?: Error
-	);
-}
-```
+When failure happens after `app.mount()` has started (for example, a child component's `setup` throws), Vue can't unmount the half-built component tree. The adapter releases the subscriptions it created and attaches `VUE_PARTIAL_MOUNT_UNCONFIRMED`. Core treats this failure as a cleanup failure: the injection is closed, later `start()` calls throw `MAKOO_INJECTION_CLOSED`, and only reloading the page helps. When an error is thrown during plugin installation (before `app.mount()`), the original error is reported directly as a mount failure, and the injection can be started again.
 
-When `code` is omitted, it defaults to `ErrorCode.ADAPTER_MOUNT_FAIL`.
+## Types
 
-## TypeScript types
-
-### `VueMountAdapter`
+`VueMakooComponent` is the return type of `useMakooComponent()`; for its shape, see [Return Value](#return-value).
 
 ```ts
-type VueMountAdapter = ResolvableMountAdapter<
-	VueMountArtifact,
-	VueMountHandle,
-	VueMountInstance
->;
-```
 
-### `VueMountProps`
-
-Props received by the Vue root component.
-
-```ts
-type VueMountProps = {
-	makoo: MakooContext;
-};
-```
-
-### `VueMountArtifact`
-
-```ts
-type VueMountArtifact = Component;
-```
-
-### `VueMountHandle`
-
-```ts
+type VueMountComponent = Component;
+type VueMountProps = Record<string, unknown>;
 type VueMountHandle = App<Element>;
+type VueMountAdapter = MountAdapter<VueMountComponent, VueMountProps, VueMountHandle>;
 ```
-
-### `VueMountInstance`
-
-```ts
-type VueMountInstance = ComponentPublicInstance;
-```
-
-See [Component Injection](../docs/injection.md) for a component example and the `makoo` prop. See [MakooContext](./adapters.md#makoocontext) for the full method reference.

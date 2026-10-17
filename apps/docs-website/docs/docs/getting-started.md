@@ -1,70 +1,108 @@
-# Getting Started
+# Quick Start
 
-Create a project, install its development script in your browser, and see the first component on a target page.
+In this tutorial, you will create a Makoo project, install the development script in your browser, and see your first component appear on a page. It takes about 10 minutes.
 
-## 1. Prepare your environment
+## 1. Prepare Your Environment
 
-- Node.js 20.19+ (20.x) or 22.12+, and pnpm.
-- Install and enable a browser script manager such as Tampermonkey or ScriptCat.
-- Choose a page for testing. This example uses `https://example.com/`.
+- Node.js 20.x at 20.19 or later, or 22.12 or later; and pnpm.
+- A script manager installed and enabled in your browser, such as Tampermonkey, Violentmonkey, or ScriptCat.
+- A page to test on. This tutorial uses `https://example.com/`.
 
-For an existing Vite project, see [Manual Installation](./installation.md).
-
-## 2. Create a project
+## 2. Create the Project
 
 ```sh
 pnpm dlx @makoojs/create-makoo
 ```
 
-The prompts ask for a project name, script name, version, namespace, matching URLs, language, and framework. Use `makoo-project` as the project name, `https://example.com/*` as the match rule, and TypeScript with Vue or React.
+Answer the prompts in order:
 
-Enter the generated directory. If you skipped dependency installation during creation, run `pnpm install` first:
+| Prompt | Value for this tutorial |
+| --- | --- |
+| Project name | `makoo-project` |
+| Userscript name | Keep the default |
+| Version | Keep the default `0.0.1` |
+| Namespace | Keep the default `npm/makoo` |
+| Match URL(s) | `https://example.com/*` |
+| Variant | TypeScript |
+| Framework | Vue or React, either one |
+
+Confirm the final `Install with pnpm and start now?`, and the scaffold installs dependencies (this step does not start the development server). Then enter the project directory and start the development server:
 
 ```sh
 cd makoo-project
-pnpm install
 pnpm dev
 ```
 
-## 3. Install the development script
+If you did not install dependencies while creating the project, run `pnpm install` first.
 
-Open the local URL printed in the terminal and confirm installation in your script manager. Then visit `https://example.com/`. The template’s Hello World component should appear on the page.
+## 3. Install the Development Script
 
-The installation entry and the target page serve different purposes: one installs the script; the other runs your component. Keep `pnpm dev` running during development.
+The terminal prints a local address. Open it in your browser; the script manager shows an install page. Confirm the installation.
 
-If the component does not appear, check that the current URL matches `monkey.userscript.match` in `vite.config.ts`, then inspect the browser console. See [Troubleshooting](./troubleshooting.md) for the full checklist.
+Then visit `https://example.com/`. A Makoo card with a counter button appears in the middle of the page.
 
-## 4. Find the application entry
+The install page and the target page are two different places: the former is only for installing the script, and the latter is where the component runs. Keep `pnpm dev` running during development.
 
-The main template files are:
+If you don't see the card, first check that the URL in the address bar matches `https://example.com/*`, then look at the browser console. For more troubleshooting steps, see [Troubleshooting](./troubleshooting.md).
 
-```text
-vite.config.ts                 # Userscript metadata and build configuration
-src/main.ts                    # Create the Runtime and start tasks
-src/injections/hello-world/    # Vue or React component and styles
-assets/                        # Example assets
-```
+## 4. Edit the Component
 
-Edit the text in `src/injections/hello-world/App.vue` or `App.tsx`, then return to the target page to see the change.
+Open `src/injections/hello-world/App.vue` (`App.tsx` for React projects), change the title `Makoo` to `Hello Makoo`, and save.
 
-## 5. Understand the first task
+Go back to the target page and the title updates. Vue components update in place and keep the count; React components usually update in place too.
 
-The Vue template uses this combination:
+## 5. Understand the Entry
 
-```ts
+Open `src/main.ts`:
+
+::: code-group
+```ts [Vue]
 import { createMakoo, inject } from '@makoojs/core';
 import { createVueAdapter } from '@makoojs/vue';
 import App from './injections/hello-world/App.vue';
 
-createMakoo({ adapters: [createVueAdapter()] }).start([
-  inject({ id: 'hello-world', injectAt: 'body', artifact: App })
+const core = createMakoo();
+core.useAdapter(createVueAdapter());
+core.apply([
+  inject({
+    name: 'hello-world',
+    injectAt: 'body',
+    adapter: 'vue',
+    component: App,
+  }),
 ]);
 ```
+```ts [React]
+import { createMakoo, inject } from '@makoojs/core';
+import { createReactAdapter } from '@makoojs/react';
+import App from './injections/hello-world/App.tsx';
 
-`inject()` declares a task; `start()` registers and runs it. `injectAt: 'body'` selects the host element and `artifact` is the component to mount. React projects use `createReactAdapter()` and `App.tsx`; see [Component Injection](./injection.md) for both examples.
+const core = createMakoo();
+core.useAdapter(createReactAdapter());
+core.apply([
+  inject({
+    name: 'hello-world',
+    injectAt: 'body',
+    adapter: 'react',
+    component: App,
+  }),
+]);
+```
+:::
 
-## Next steps
+These four lines do all the work:
 
-- [Core Concepts](./concepts.md): distinguish configuration, declarations, Runtime, and components.
-- [Local Development](./development.md): add `makooDev()` and use task inspection and terminal actions.
-- [Build and Preview](./build.md): produce and inspect a release userscript.
+1. `createMakoo()` creates a Core instance.
+2. `useAdapter()` registers the framework adapter so the instance can mount Vue or React components.
+3. `inject()` declares a component named `hello-world`: mount it to `body` using `App`.
+4. `apply()` hands the declaration to the instance. The instance finds `body`, creates a container, and mounts the component into it.
+
+## What You Accomplished
+
+You created a project, installed the development script, ran a component on a real page, and saw your changes take effect live.
+
+## Next Steps
+
+- [Tutorial: A Toggleable Tool Panel](./tutorial.md): add a close button and a listener on a page element to the component.
+- [Core Concepts](./concepts.md): understand how instances, declarations, and injections relate.
+- [Build and Preview](./build.md): produce a distributable `.user.js`.
