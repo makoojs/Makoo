@@ -31,15 +31,31 @@ export type VueComponentContext = {
 
 export const componentContextKey: InjectionKey<VueComponentContext> = Symbol('makoo-component');
 
+/** The current component's command, plus reactive status refs. */
 export type VueMakooComponent = ComponentCommand & {
+	/** The error that ended the last execution; not reactive. */
 	readonly lastError: MakooError | undefined;
+	/** The component status. */
 	readonly status: Readonly<Ref<ComponentStatus>>;
+	/**
+	 * Returns the status of an attached listener.
+	 *
+	 * @throws {@link MakooError} `LISTENER_NOT_FOUND` when the component has no listener with that name.
+	 */
 	attachedListener(name: string): Readonly<Ref<ListenerStatus>>;
+	/**
+	 * Looks up a standalone listener in the same Core Instance and tracks its status until the
+	 * calling scope is disposed. Repeated calls for the same listener share one status ref.
+	 *
+	 * @throws {@link MakooError} `INJECTION_NOT_FOUND` when no standalone listener has that name.
+	 */
 	globalListener(name: string): VueStandaloneListener;
 };
 
 type VueStandaloneListener = ListenerCommand & {
+	/** The latest execution failure, cleanup failure, or event handler error; not reactive. */
 	readonly lastError: MakooError | undefined;
+	/** The listener status. */
 	readonly status: Readonly<Ref<ListenerStatus>>;
 };
 
@@ -50,6 +66,14 @@ type StandaloneSubscription = {
 	release: () => void;
 };
 
+/**
+ * Returns the controls and status of the Makoo component this Vue component belongs to.
+ * Subscriptions end when the calling scope is disposed.
+ *
+ * @throws {@link MakooError} `VUE_HOOK_OUTSIDE_COMPONENT` when there is no injection context from
+ * an app mounted by the Vue adapter, such as in an event handler or timer, or
+ * `VUE_HOOK_OUTSIDE_SCOPE` when that context exists but there is no active effect scope.
+ */
 export function useMakooComponent(): VueMakooComponent {
 	const context = hasInjectionContext() ? inject(componentContextKey, null) : null;
 	if (!context) {

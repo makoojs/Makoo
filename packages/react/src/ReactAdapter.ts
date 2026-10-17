@@ -3,13 +3,26 @@ import { type ComponentType, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MakooComponentContext } from './hooks';
 
+/** Any React component; its props come from the declaration's `props`. */
 // biome-ignore lint/suspicious/noExplicitAny: accepts components with any props shape
 export type ReactMountComponent = ComponentType<any>;
+/** Props passed to the root component as-is. */
 export type ReactMountProps = Record<string, unknown>;
+/** The React root created for one component mount. */
 export type ReactMountRoot = Root;
 
+/** The React component adapter, registered under the name `react`. */
 export type ReactMountAdapter = MountAdapter<ReactMountComponent, ReactMountProps, ReactMountRoot>;
 
+/**
+ * Creates the React component adapter. Each mount renders the component into its own root, where
+ * the Makoo hooks such as `useComponentStatus()` are available.
+ *
+ * @example
+ * ```ts
+ * makoo.useAdapter(createReactAdapter());
+ * ```
+ */
 export function createReactAdapter(): ReactMountAdapter {
 	return {
 		name: 'react',

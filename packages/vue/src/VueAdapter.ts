@@ -4,13 +4,25 @@ import { componentContextKey } from './composables';
 import { VueErrorCode } from './error';
 import { VuePlugin } from './VuePlugin';
 
+/** The Vue app created for one component mount. */
 export type VueMountHandle = App<Element>;
+/** Any Vue component accepted by `createApp`. */
 export type VueMountComponent = Component;
 /** Root props passed to the component as-is; reactive values keep Vue reactivity. */
 export type VueMountProps = Record<string, unknown>;
 
+/** The Vue component adapter, registered under the name `vue`. */
 export type VueMountAdapter = MountAdapter<VueMountComponent, VueMountProps, VueMountHandle>;
 
+/**
+ * Creates the Vue component adapter. Each mount creates its own Vue app, installs the plugins
+ * registered with {@link VuePlugin}, and makes `useMakooComponent()` available inside it.
+ *
+ * @example
+ * ```ts
+ * makoo.useAdapter(createVueAdapter());
+ * ```
+ */
 export function createVueAdapter(): VueMountAdapter {
 	return {
 		name: 'vue',

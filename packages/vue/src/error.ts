@@ -1,3 +1,4 @@
+/** Values of `MakooError.code` added by the Vue adapter. */
 export const VueErrorCode = {
 	VUE_HOOK_OUTSIDE_COMPONENT: 'MAKOO_VUE_HOOK_OUTSIDE_COMPONENT',
 	VUE_HOOK_OUTSIDE_SCOPE: 'MAKOO_VUE_HOOK_OUTSIDE_SCOPE',

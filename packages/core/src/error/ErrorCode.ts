@@ -1,3 +1,12 @@
+/**
+ * Values of `MakooError.code`, grouped as:
+ * configuration errors, thrown before anything in a batch starts;
+ * control errors, thrown by a call that is not allowed in the current state;
+ * execution failures, which end one execution and set the status to `failed` unless the
+ * injection recovers through `reinject`;
+ * cleanup failures, after which the injection cannot start again;
+ * and callback errors, which are only reported.
+ */
 export const MakooErrorCode = {
 	DECLARATION_INVALID: 'MAKOO_DECLARATION_INVALID',
 	INJECTION_NAME_CONFLICT: 'MAKOO_INJECTION_NAME_CONFLICT',

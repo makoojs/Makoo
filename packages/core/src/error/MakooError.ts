@@ -6,7 +6,9 @@ type MakooErrorOptions = {
 	readonly cause?: unknown;
 };
 
+/** The error type Core throws and reports; match on `code`, not on `message`. */
 export class MakooError extends Error {
+	/** Identifies the problem: a `MakooErrorCode` value, or a code added by an adapter or the CLI. */
 	readonly code: string;
 
 	constructor(message: string, options: MakooErrorOptions) {
@@ -17,7 +19,9 @@ export class MakooError extends Error {
 	}
 }
 
+/** A {@link MakooError} that collects several failures; the message adds one line per error. */
 export class MakooAggregateError extends MakooError {
+	/** The collected failures, in the order they happened. */
 	readonly errors: readonly unknown[];
 
 	constructor(errors: readonly unknown[], message: string, options: MakooErrorOptions) {

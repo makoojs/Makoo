@@ -40,11 +40,6 @@ const listenerSchema = z.object(
 			issue.code === 'invalid_type' ? 'Expected a listener declaration' : undefined
 	}
 );
-
-export function listen(input: MakooListenerInput): MakooListenerDeclaration {
-	return { ...input, kind: 'listener' };
-}
-
 export function validateListener(input: unknown): MakooListenerDeclaration {
 	const parsed = listenerSchema.safeParse(input);
 	if (!parsed.success) {
@@ -56,4 +51,17 @@ export function validateListener(input: unknown): MakooListenerDeclaration {
 		);
 	}
 	return Object.freeze(parsed.data);
+}
+
+/**
+ * Declares a host listener. Apply it directly for a standalone listener, or put it in a
+ * component's `listeners` for an attached listener. Validation happens when it is applied.
+ *
+ * @example
+ * ```ts
+ * makoo.apply([listen({ name: 'play', listenAt: 'video', type: 'play', callback: onPlay })]);
+ * ```
+ */
+export function listen(input: MakooListenerInput): MakooListenerDeclaration {
+	return { ...input, kind: 'listener' };
 }

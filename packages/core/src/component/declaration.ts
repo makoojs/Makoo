@@ -39,12 +39,6 @@ const componentSchema = z.object(
 	}
 );
 
-export function inject<TComponent = unknown, TProps = unknown>(
-	input: MakooComponentInput<TComponent, TProps>
-): MakooComponentDeclaration<TComponent, TProps> {
-	return { ...input, kind: 'component' };
-}
-
 export function validateComponent(input: unknown): MakooComponentDeclaration {
 	const injectInput = componentSchema.safeParse(input);
 	if (!injectInput.success) {
@@ -85,4 +79,18 @@ export function validateComponent(input: unknown): MakooComponentDeclaration {
 		return listener;
 	});
 	return Object.freeze({ ...injectInput.data, listeners: listeners && Object.freeze(listeners) });
+}
+
+/**
+ * Declares a component injection. Validation happens when the declaration is applied.
+ *
+ * @example
+ * ```ts
+ * makoo.apply([inject({ name: 'panel', injectAt: '#sidebar', adapter: 'vue', component: Panel })]);
+ * ```
+ */
+export function inject<TComponent = unknown, TProps = unknown>(
+	input: MakooComponentInput<TComponent, TProps>
+): MakooComponentDeclaration<TComponent, TProps> {
+	return { ...input, kind: 'component' };
 }

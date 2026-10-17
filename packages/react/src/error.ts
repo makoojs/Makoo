@@ -1,3 +1,4 @@
+/** Values of `MakooError.code` added by the React adapter. */
 export const ReactErrorCode = {
 	REACT_HOOK_OUTSIDE_COMPONENT: 'MAKOO_REACT_HOOK_OUTSIDE_COMPONENT'
 } as const;

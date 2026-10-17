@@ -30,6 +30,7 @@ type PreparedDeclaration =
 	| { kind: 'listener'; config: MakooListenerDeclaration }
 	| { kind: 'component'; config: MakooComponentDeclaration; adapter: MountAdapter };
 
+/** Creates an independent Core Instance with no adapters and no injections. */
 export function createMakoo(): MakooRuntime {
 	const makooInstance: MakooInstance = {
 		injections: new Map(),

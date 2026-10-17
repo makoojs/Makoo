@@ -18,13 +18,20 @@ type MakooComponentContextValue = {
 };
 
 type ReactStandaloneListener = ListenerCommand & {
+	/** The listener status at the last render. */
 	readonly status: ListenerStatus;
+	/** The latest execution failure, cleanup failure, or event handler error; reading it does not subscribe. */
 	readonly lastError: MakooError | undefined;
 };
 
 export const MakooComponentContext = createContext<MakooComponentContextValue | null>(null);
 
-/** Returns the stable command for this mount. */
+/**
+ * Returns the stable command for this mount.
+ *
+ * Every Makoo hook throws a {@link MakooError} with `REACT_HOOK_OUTSIDE_COMPONENT` when called
+ * outside a component tree mounted by the React adapter.
+ */
 export function useComponentCommand(): ComponentCommand {
 	return useComponentContext().command;
 }
@@ -34,7 +41,10 @@ export function useComponentStatusHandle(): ComponentStatusHandle {
 	return useComponentContext().statusHandle;
 }
 
-/** Subscribes to the component status, or to a selector result compared with Object.is. */
+/**
+ * Subscribes to the component status, or to a selector result compared with Object.is.
+ * Pass a stable `select`; a new function on each render recomputes the selection.
+ */
 export function useComponentStatus(): ComponentStatus;
 export function useComponentStatus<T>(select: (status: ComponentStatus) => T): T;
 export function useComponentStatus<T>(select?: (status: ComponentStatus) => T) {
@@ -42,7 +52,11 @@ export function useComponentStatus<T>(select?: (status: ComponentStatus) => T) {
 	return useSelectedSnapshot(statusHandle, select);
 }
 
-/** Subscribes only to the named attached listener; selector results use Object.is. */
+/**
+ * Subscribes only to the named attached listener; selector results use Object.is.
+ *
+ * @throws {@link MakooError} `LISTENER_NOT_FOUND` when the component has no listener with that name.
+ */
 export function useAttachedListenerStatus(name: string): ListenerStatus;
 export function useAttachedListenerStatus<T>(
 	name: string,
@@ -53,7 +67,11 @@ export function useAttachedListenerStatus<T>(name: string, select?: (status: Lis
 	return useSelectedSnapshot(statusHandle.attachedListener(name), select);
 }
 
-/** Looks up a standalone listener in this Core Instance and subscribes to its status. */
+/**
+ * Looks up a standalone listener in this Core Instance and subscribes to its status.
+ *
+ * @throws {@link MakooError} `INJECTION_NOT_FOUND` when no standalone listener has that name.
+ */
 export function useGlobalListener(name: string): ReactStandaloneListener {
 	const { globalListener } = useComponentContext();
 	const found = globalListener(name);

@@ -108,6 +108,10 @@ export function createMakoo() {
 `;
 }
 
+/**
+ * Reports the Core Instances on the page, and the status and errors of each injection, to the
+ * `makoo dev` terminal. Only active in the dev server; it never controls injections.
+ */
 export function makooDev(): Plugin {
 	let resolvedCoreId: string | null = null;
 	const session = new DevSession();

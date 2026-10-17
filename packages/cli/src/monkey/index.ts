@@ -21,6 +21,7 @@ import { gmStorage } from './storage';
 import { gmStyle } from './style';
 import { gmTab } from './tab';
 
+/** Every GM wrapper in one object; `raw` is the promise-based `GM` object. */
 export const GMapi = {
 	raw: gm,
 	info: gmInfo,
