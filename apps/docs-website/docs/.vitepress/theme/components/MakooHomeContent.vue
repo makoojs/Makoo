@@ -8,51 +8,51 @@ const framework = ref<'Vue' | 'React'>('Vue');
 const messages = {
 	zh: {
 		intro: '组件化开发', introAccent: '结构化管理',
-		introLead: '为复杂用户脚本提供组件注入与运行时管理能力',
+		introLead: '为复杂用户脚本提供组件注入与生命周期管理能力',
 		features: [
 			['组件化开发', '使用 Vue 或 React 为网页构建交互界面'],
-			['声明式注入', '通过声明配置组件与目标节点及运行策略'],
-			['页面变化处理', '等待异步节点并在宿主替换后重新挂载组件'],
-			['统一事件管理', '通过任务统一管理事件监听的启停与清理'],
-			['TypeScript 支持', '为任务声明与组件上下文提供类型支持'],
+			['声明式注入', '声明组件的挂载位置、附属监听与恢复策略'],
+			['页面变化处理', '等待异步节点并在宿主替换后重新注入组件'],
+			['统一事件管理', '统一管理宿主事件监听的启停与清理'],
+			['TypeScript 支持', '为声明、命令与组件内状态提供类型支持'],
 			['完整开发工具链', '支持项目创建与开发调试及构建预览']
 		],
 		spotlight: '组件注入', spotlightAccent: '适配动态网页',
 		products: [
-			{ name: 'Runtime', tag: '运行时管理', title: '目标节点等待\n组件挂载与恢复', description: '管理组件注入与任务生命周期并处理宿主节点替换', points: ['异步 DOM 等待', '组件挂载与恢复', '统一销毁与清理'], link: '/docs/lifecycle', action: '了解 Runtime', visual: ['等待', '挂载', '恢复'] },
-			{ name: 'Devtools', tag: '开发状态查看', title: 'Runtime 连接\n任务状态与日志', description: '在 Vite 开发流程中通过终端查看脚本运行状态', points: ['Runtime 连接', '任务状态查看', '开发日志'], link: '/docs/development', action: '查看开发工具', visual: ['连接', '任务', '日志'] },
+			{ name: 'Core', tag: '注入管理', title: '目标节点等待\n组件挂载与重注入', description: '管理组件与监听的执行并在宿主节点替换后恢复', points: ['异步 DOM 等待', '组件挂载与重注入', '完整停止与清理'], link: '/docs/lifecycle', action: '了解生命周期', visual: ['等待', '挂载', '恢复'] },
+			{ name: 'Devtools', tag: '开发状态查看', title: '实例连接\n注入状态与日志', description: '在 Vite 开发流程中通过终端查看脚本运行状态', points: ['实例连接', '注入状态查看', '开发日志'], link: '/docs/development', action: '查看开发工具', visual: ['连接', '注入', '日志'] },
 			{ name: 'Toolchain', tag: '用户脚本工具链', title: '创建与开发\n构建与预览', description: '基于 Vite 与 Monkey 构建可安装的 userscript', points: ['Vue 与 React 模板', 'Vite 开发服务', '构建与预览'], link: '/docs/build', action: '了解工具链', visual: ['创建', '开发', '构建'] }
 		],
-		frameworkLabel: '框架适配', frameworkTitle: '使用 Vue 或 React\n构建网页组件', frameworkLead: '通过 Adapter 挂载组件并统一管理组件生命周期', frameworkLink: '了解框架适配',
+		frameworkLabel: '框架适配', frameworkTitle: '使用 Vue 或 React\n构建网页组件', frameworkLead: '通过适配器挂载组件并在组件内读取命令与状态', frameworkLink: '了解框架适配',
 		cliLabel: 'Makoo CLI 开发终端', cliTitle: '终端快捷操作', cliLead: '通过快捷键安装开发脚本与查看日志及重启服务', cliLink: '查看开发终端', cliKeys: ['安装脚本', '查看日志', '重启服务'],
-		tasksLabel: 'Runtime 任务查看', tasksTitle: '查看任务运行状态', tasksLead: '在终端查看任务类型与目标节点并切换已连接的 Runtime', tasksLink: '了解任务查看', tasksCaption: '任务状态随页面更新',
-		codeLabel: '组件注入示例', codeTitle: '声明组件与目标节点', codeLead: '通过 inject 声明注入任务并由 Runtime 执行', codeLink: '开始构建',
+		tasksLabel: '注入状态查看', tasksTitle: '查看注入运行状态', tasksLead: '在终端查看组件与监听的状态和错误并切换已连接的 Core 实例', tasksLink: '了解注入查看', tasksCaption: '注入状态随页面更新',
+		codeLabel: '组件注入示例', codeTitle: '声明组件与目标节点', codeLead: '通过 inject 声明组件并交给 Core 实例执行', codeLink: '开始构建',
 		endLabel: '开源 MIT License', endTitle: '开始构建用户脚本', endLead: '使用 Makoo 开发组件化网页功能', start: '开始使用', github: '查看 GitHub',
-		resources: [['组件注入', '/docs/injection'], ['事件监听', '/docs/listeners'], ['完整案例', '/docs/recipes'], ['API 参考', '/api/core']]
+		resources: [['挂载组件', '/docs/injection'], ['监听页面事件', '/docs/listeners'], ['完整教程', '/docs/tutorial'], ['API 参考', '/api/core']]
 	},
 	en: {
 		intro: 'Component-driven development', introAccent: 'Structured management',
-		introLead: 'Component injection and runtime management for complex userscripts',
+		introLead: 'Component injection and lifecycle management for complex userscripts',
 		features: [
-			['Component-driven', 'Build page interfaces with Vue or React'],
-			['Declarative injection', 'Declare the component target node and run strategy'],
-			['Page change handling', 'Wait for async nodes and remount after host replacement'],
-			['Unified event management', 'Start stop and clean up listeners as tasks'],
-			['TypeScript support', 'Types for task declarations and component context'],
-			['Complete toolchain', 'Project creation development debugging and preview']
+			['Component-driven development', 'Build interactive interfaces for web pages with Vue or React'],
+			['Declarative injection', 'Declare where a component mounts, its attached listeners, and its recovery strategy'],
+			['Page change handling', 'Wait for async nodes and reinject components after the host replaces them'],
+			['Unified event management', 'Start, stop, and clean up host event listeners in one place'],
+			['TypeScript support', 'Types for declarations, commands, and in-component status'],
+			['Complete development toolchain', 'Project creation, development debugging, and build preview']
 		],
 		spotlight: 'Component injection', spotlightAccent: 'For dynamic pages',
 		products: [
-			{ name: 'Runtime', tag: 'Runtime management', title: 'Wait for target nodes\nMount and restore components', description: 'Manage injection and task lifecycle and handle host node replacement', points: ['Asynchronous DOM waiting', 'Component mount and restore', 'Unified destroy and cleanup'], link: '/docs/lifecycle', action: 'Learn about Runtime', visual: ['Wait', 'Mount', 'Restore'] },
-			{ name: 'Devtools', tag: 'Development inspection', title: 'Runtime connections\nTask status and logs', description: 'Inspect script status in the terminal during the Vite development flow', points: ['Runtime connections', 'Task inspection', 'Development logs'], link: '/docs/development', action: 'View devtools', visual: ['Connect', 'Tasks', 'Logs'] },
+			{ name: 'Core', tag: 'Injection management', title: 'Wait for target nodes\nMount and reinject components', description: 'Manage component and listener executions and recover after the host replaces nodes', points: ['Async DOM waiting', 'Component mount and reinjection', 'Complete stop and cleanup'], link: '/docs/lifecycle', action: 'Learn about the lifecycle', visual: ['Wait', 'Mount', 'Recover'] },
+			{ name: 'Devtools', tag: 'Development status inspection', title: 'Instance connections\nInjection status and logs', description: 'Inspect script status in the terminal during the Vite development flow', points: ['Instance connections', 'Injection status inspection', 'Development logs'], link: '/docs/development', action: 'View devtools', visual: ['Connect', 'Inject', 'Logs'] },
 			{ name: 'Toolchain', tag: 'Userscript toolchain', title: 'Create and develop\nBuild and preview', description: 'Build installable userscripts with Vite and Monkey', points: ['Vue and React templates', 'Vite development server', 'Build and preview'], link: '/docs/build', action: 'Learn about the toolchain', visual: ['Create', 'Develop', 'Build'] }
 		],
-		frameworkLabel: 'Framework adapters', frameworkTitle: 'Build page components\nwith Vue or React', frameworkLead: 'Mount components through Adapters and manage their lifecycle', frameworkLink: 'Learn about adapters',
-		cliLabel: 'Makoo CLI development terminal', cliTitle: 'Terminal shortcuts', cliLead: 'Install the development script view logs and restart the server with shortcuts', cliLink: 'View the development terminal', cliKeys: ['Install script', 'View logs', 'Restart server'],
-		tasksLabel: 'Runtime task inspection', tasksTitle: 'Inspect running tasks', tasksLead: 'View task type and target node in the terminal and switch between connected Runtimes', tasksLink: 'Learn about task inspection', tasksCaption: 'Task status updates with the page',
-		codeLabel: 'Injection example', codeTitle: 'Declare a component and target', codeLead: 'Declare an inject task and let the Runtime run it', codeLink: 'Start building',
+		frameworkLabel: 'Framework support', frameworkTitle: 'Build page components\nwith Vue or React', frameworkLead: 'Mount components through adapters and read commands and status inside them', frameworkLink: 'Learn about framework support',
+		cliLabel: 'Makoo CLI development terminal', cliTitle: 'Terminal shortcuts', cliLead: 'Install the development script, view logs, and restart the server with shortcuts', cliLink: 'View the development terminal', cliKeys: ['Install script', 'View logs', 'Restart server'],
+		tasksLabel: 'Injection status inspection', tasksTitle: 'Inspect running injections', tasksLead: 'View component and listener status and errors in the terminal, and switch between connected Core instances', tasksLink: 'Learn about injection inspection', tasksCaption: 'Injection status updates with the page',
+		codeLabel: 'Component injection example', codeTitle: 'Declare a component and its target node', codeLead: 'Declare a component with inject and hand it to a Core instance to run', codeLink: 'Start building',
 		endLabel: 'Open source MIT License', endTitle: 'Start building userscripts', endLead: 'Build component-driven page features with Makoo', start: 'Get started', github: 'View GitHub',
-		resources: [['Component injection', '/docs/injection'], ['Event listeners', '/docs/listeners'], ['Complete example', '/docs/recipes'], ['API reference', '/api/core']]
+		resources: [['Mount components', '/docs/injection'], ['Listen to page events', '/docs/listeners'], ['Full tutorial', '/docs/tutorial'], ['API reference', '/api/core']]
 	}
 } as const;
 const content = computed(() => messages[props.locale]);
@@ -69,8 +69,10 @@ const source = computed(() => `import { createMakoo, inject } from '@makoojs/cor
 import { create${framework.value}Adapter } from '@makoojs/${framework.value.toLowerCase()}';
 import Panel from './Panel.${framework.value === 'Vue' ? 'vue' : 'tsx'}';
 
-createMakoo({ adapters: [create${framework.value}Adapter()] }).start([
-  inject({ id: 'panel', injectAt: 'body', artifact: Panel })
+const core = createMakoo();
+core.useAdapter(create${framework.value}Adapter());
+core.apply([
+  inject({ name: 'panel', injectAt: 'body', adapter: '${framework.value.toLowerCase()}', component: Panel })
 ]);`);
 function link(path: string) { return withBase(`${props.locale === 'zh' ? '/zh' : ''}${path}`); }
 </script>
@@ -123,7 +125,7 @@ function link(path: string) { return withBase(`${props.locale === 'zh' ? '/zh' :
 		<section class="cli-section cli-tasks-section" aria-labelledby="tasks-title">
 			<div class="cli-task-art" aria-hidden="true">
 				<svg viewBox="0 0 480 240" fill="none"><path d="M240 28v54M80 146v-34h320v34M240 82v64" stroke="currentColor" stroke-width="1.5" opacity=".25"/><circle cx="240" cy="28" r="7" fill="currentColor"/><circle cx="80" cy="170" r="24" stroke="currentColor" stroke-width="1.5"/><path d="m70 170 7 7 13-14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="240" cy="170" r="24" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 6" opacity=".65"/><circle cx="240" cy="170" r="5" fill="currentColor" opacity=".65"/><circle cx="400" cy="170" r="24" stroke="currentColor" stroke-width="1.5" opacity=".3"/><path d="M394 170h12" stroke="currentColor" stroke-width="2" opacity=".5"/></svg>
-				<div class="cli-task-states"><span>active</span><span>pending</span><span>idle</span></div>
+				<div class="cli-task-states"><span>mounted</span><span>waiting</span><span>idle</span></div>
 				<p>{{ content.tasksCaption }}</p>
 			</div>
 			<div class="cli-copy">
