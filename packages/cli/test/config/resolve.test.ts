@@ -107,6 +107,21 @@ describe('resolveConfig', () => {
 		expect(options.server).toMatchObject({ open: false, mountGmApi: false });
 	});
 
+	it('prefixes the dev userscript name by default', () => {
+		const config = resolveConfig(
+			{
+				entry: './src/main.ts',
+				app: { name: 'demo-script', version: '1.2.3' },
+				monkey: {}
+			},
+			root
+		);
+
+		const { prefix } = resolveMonkeyPluginOptions(config).server ?? {};
+
+		expect(typeof prefix === 'function' && prefix('demo-script')).toBe('server:demo-script');
+	});
+
 	it('keeps app identity on the userscript even if monkey repeats those fields', () => {
 		const config = resolveConfig(
 			{
