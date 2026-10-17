@@ -1,130 +1,41 @@
 # @makoojs/create-makoo
 
-`@makoojs/create-makoo` is Makoo's project scaffolding tool. It creates a ready-to-run userscript project through an interactive command and generates either a Vue or React template based on your choices.
+<p>
+  <a href="https://www.npmjs.com/package/@makoojs/create-makoo"><img alt="npm" src="https://img.shields.io/npm/v/@makoojs/create-makoo?style=flat-square"></a>
+  <a href="https://github.com/makoojs/Makoo/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square"></a>
+</p>
 
-The generated project uses the development and build commands from `@makoojs/cli`. Use `makoo dev` to start the development server and `makoo build` to build the final userscript.
+<p>
+  <a href="https://makoojs.github.io/Makoo/docs/getting-started">Quick Start</a> •
+  <a href="https://github.com/makoojs/Makoo">Makoo</a> •
+  <a href="https://github.com/makoojs/Makoo/blob/main/packages/create-makoo/README.CN.md">中文</a>
+</p>
 
-## Use Cases
-
-- Quickly create a new Makoo userscript project.
-- Choose between Vue and React templates.
-- Choose a TypeScript or JavaScript project structure.
-- Generate a project with Vite config, an example injection, and basic assets.
+The project scaffold for Makoo. Answer a few questions and you get a userscript project that runs right away: the Vite config, dev commands, and an example component are all ready.
 
 ## Usage
 
-Run the scaffolder through your package manager's temporary execution command:
-
-```bash
+```sh
 pnpm dlx @makoojs/create-makoo
 ```
 
-You can also use npm or yarn:
+You can also use `npx @makoojs/create-makoo` or `yarn dlx @makoojs/create-makoo`.
 
-```bash
-npx @makoojs/create-makoo
-yarn dlx @makoojs/create-makoo
+The scaffold asks, in order, for the project name, userscript name, version, namespace, and match URLs, then lets you choose TypeScript or JavaScript and Vue or React, and finally asks whether to install dependencies right away.
+
+After it finishes:
+
+```sh
+cd makoo-project
+pnpm dev
 ```
 
-The scaffolder asks for:
+Open the address printed in the terminal in your browser and install the dev script, then visit a matching page, and you'll see the example component.
 
-| Prompt | Description |
-| --- | --- |
-| Project name | Generated project directory name, defaulting to `makoo-project` |
-| Userscript name | The `@name` value in the userscript header |
-| Version | Project version and userscript version |
-| Namespace | The `@namespace` value in the userscript header |
-| Match URL(s) | Userscript match pages, supporting comma-separated URLs |
-| Variant | TypeScript or JavaScript |
-| Framework | Vue or React |
-| Install with package manager | Whether to install dependencies immediately; after installation, it prints the dev command |
+> [!NOTE]
+> When the target directory already exists and isn't empty, the scaffold lets you cancel, remove the existing files and continue, or keep the existing files and continue.
 
-If the target directory already exists and is not empty, the scaffolder asks whether to cancel, remove existing files and continue, or ignore existing files and continue.
+## Documentation
 
-## Generated Files
-
-The Vue template generates:
-
-```txt
-package.json
-vite.config.ts/js
-src/main.ts/js
-src/injections/hello-world/App.vue
-assets/vue.svg
-assets/makoo-icon.png
-.gitignore
-```
-
-The React template generates:
-
-```txt
-package.json
-vite.config.ts/js
-src/main.ts/js
-src/injections/hello-world/App.tsx/jsx
-src/injections/hello-world/style.css
-assets/react.svg
-assets/makoo-icon.png
-.gitignore
-```
-
-When TypeScript is selected, it also generates:
-
-```txt
-tsconfig.json
-tsconfig.app.json
-tsconfig.node.json
-env.d.ts
-```
-
-## Project Scripts
-
-The generated `package.json` includes:
-
-```json
-{
-	"scripts": {
-		"dev": "makoo dev",
-		"build": "vue-tsc -b && makoo build",
-		"typecheck": "vue-tsc -b"
-	}
-}
-```
-
-The React TypeScript template uses `tsc -b`:
-
-```json
-{
-	"scripts": {
-		"dev": "makoo dev",
-		"build": "tsc -b && makoo build",
-		"typecheck": "tsc -b"
-	}
-}
-```
-
-JavaScript templates do not include a typecheck script, and build runs:
-
-```bash
-makoo build
-```
-
-## Template Notes
-
-The generated application code starts Makoo and registers a `hello-world` injection that targets `body` by default.
-
-The Vue template configures `@vitejs/plugin-vue` and loads Vue as an external global dependency during userscript builds.
-
-The React template configures `@vitejs/plugin-react`. Because React 19 related packages no longer provide official UMD builds, the template uses the third-party `umd-react` CDN and configures `react`, `react-dom`, and `react-dom/client` as external global dependencies.
-
-## Relationship With Other Packages
-
-| Package | Responsibility |
-| --- | --- |
-| `@makoojs/create-makoo` | Interactive project creation |
-| `@makoojs/cli` | Development and build capabilities for Makoo projects |
-| `@makoojs/core` | Injection task scheduling |
-| `@makoojs/vue` | Vue component mounting |
-| `@makoojs/react` | React component mounting |
-
-`@makoojs/create-makoo` provides project creation, `@makoojs/cli` provides development and build capabilities, and `@makoojs/core` provides runtime task composition.
+- [Quick Start](https://makoojs.github.io/Makoo/docs/getting-started): from creating a project to seeing your first component on a web page.
+- [Tutorial: A Toggleable Tool Panel](https://makoojs.github.io/Makoo/docs/tutorial): build a complete small feature on top of the generated project.

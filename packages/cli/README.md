@@ -1,154 +1,73 @@
 # @makoojs/cli
 
-`@makoojs/cli` provides Makoo's Vite plugin and CLI commands, with userscript development and build capabilities powered by [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey).
+<p>
+  <a href="https://www.npmjs.com/package/@makoojs/cli"><img alt="npm" src="https://img.shields.io/npm/v/@makoojs/cli?style=flat-square"></a>
+  <a href="https://github.com/makoojs/Makoo/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square"></a>
+</p>
 
-Application code composes runtime behavior through `createMakoo()`, `inject()`, and `listen()` from `@makoojs/core`. `@makoojs/cli` handles the Vite and userscript build integration.
+<p>
+  <a href="https://makoojs.github.io/Makoo/api/vite">API Reference</a> •
+  <a href="https://github.com/makoojs/Makoo">Makoo</a> •
+  <a href="https://github.com/makoojs/Makoo/blob/main/packages/cli/README.CN.md">中文</a>
+</p>
 
-## Use Cases
-
-- Develop Makoo userscript projects with Vite.
-- Generate userscript metadata, dev entries, and build output through [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey).
-- Use the `makoo dev` and `makoo build` commands.
-- Use Makoo's stable GM API entry through `@makoojs/cli/monkey`.
+The toolchain package for Makoo. It provides two Vite plugins, `makoo()` and `makooDev()`, the `makoo dev` / `build` / `preview` commands, and `@makoojs/cli/monkey` for calling GM APIs from your script. Userscript metadata, the dev server, and builds are handled by [vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey).
 
 ## Installation
 
-```bash
-# npm install @makoojs/cli
-# yarn add @makoojs/cli
-pnpm add @makoojs/cli
+```sh
+pnpm add -D @makoojs/cli vite
 ```
 
-If you create a project with `@makoojs/create-makoo`, `@makoojs/cli` is usually configured for you.
+> [!TIP]
+> Projects created with `pnpm dlx @makoojs/create-makoo` already have it configured; no separate installation is needed.
 
-## Minimal Vite Config
+## Usage
 
-Use `makoo()` in the Vite configuration:
+### Configure Vite
 
 ```ts
+// vite.config.ts
 import { defineConfig } from 'vite';
-import { makoo } from '@makoojs/cli';
 import vue from '@vitejs/plugin-vue';
+import { makoo, makooDev } from '@makoojs/cli';
 
 export default defineConfig({
-	plugins: [
-		vue(),
-		makoo({
-			entry: './src/app.ts',
-			app: {
-				name: 'my-userscript',
-				version: '0.0.1',
-				description: 'My first Makoo script'
-			},
-			monkey: {
-				userscript: {
-					namespace: 'https://example.com',
-					// This is only an example. Replace it with the pages supported by the userscript.
-					match: ['https://www.google.com/']
-				}
-			}
-		})
-	]
+  plugins: [
+    vue(),
+    makoo({
+      entry: './src/main.ts',
+      app: { name: 'my-script', version: '0.0.1' },
+      monkey: { userscript: { match: ['https://example.com/*'] } }
+    }),
+    // optional: view injection status in the dev terminal
+    makooDev()
+  ]
 });
 ```
 
-`makoo()` passes the configuration to [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) for userscript development and builds.
+### Develop and Build
 
-## Configuration Overview
-
-`makoo()` has three main configuration areas:
-
-```ts
-makoo({
-	entry: './src/app.ts',
-	app: {
-		name: 'my-script',
-		version: '0.0.1',
-		description: 'demo script'
-	},
-	monkey: {
-		userscript: {
-			match: ['https://www.google.com/']
-		}
-	}
-});
+```sh
+makoo dev       # start the dev server; install the dev script from the printed address
+makoo build     # build the .user.js
+makoo preview   # preview the build output
 ```
 
-| Config | Description |
-| --- | --- |
-| `entry` | Application module passed to Vite for building |
-| `app` | Generates userscript `name`, `version`, and `description` |
-| `monkey` | Most options are passed through to [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) |
+### Call GM APIs
 
-By default, `monkey.build.autoGrant` is `true`, so [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) generates `@grant` from the final code.
-
-## CLI Commands
-
-After installation, you can use the `makoo` command:
-
-| Command | Description |
-| --- | --- |
-| `makoo dev` | Starts the Vite dev server and prints the local URL |
-| `makoo build` | Runs Vite build and generates userscript output |
-| `makoo preview` | Previews the built userscript with the Vite preview server |
-
-## Use GM APIs
-
-`@makoojs/cli` provides the `@makoojs/cli/monkey` subpath as Makoo's stable wrapper around [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) GM APIs.
+Import by capability in browser code, and the build only generates `@grant` for the APIs you use:
 
 ```ts
-import { gmStorage, gmStyle } from '@makoojs/cli/monkey';
+import { gmStorage } from '@makoojs/cli/monkey';
 
-gmStyle.add('.makoo-panel { z-index: 999999; }');
-gmStorage.set('enabled', true);
+const runs = gmStorage.get<number>('runs', 0) + 1;
+gmStorage.set('runs', runs);
 ```
 
-You can also use the grouped entry:
+## Documentation
 
-```ts
-import { GMapi } from '@makoojs/cli/monkey';
-
-GMapi.storage.set('enabled', true);
-```
-
-Use capability-level imports when you want the generated `@grant` surface to stay as small as possible. See the CLI API documentation for the complete GM API.
-
-## Reduce Build Size
-
-`@makoojs/cli` re-exports `cdn` from [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey). Use it with `monkey.build.externalGlobals` to load external dependencies from a CDN and reduce userscript bundle size.
-
-```ts
-import { defineConfig } from 'vite';
-import { cdn, makoo } from '@makoojs/cli';
-
-export default defineConfig({
-	plugins: [
-		makoo({
-			entry: './src/app.ts',
-			app: {
-				name: 'my-script',
-				version: '0.0.1'
-			},
-			monkey: {
-				build: {
-					externalGlobals: {
-						vue: cdn.jsdelivr('Vue', 'dist/vue.global.prod.js')
-					}
-				}
-			}
-		})
-	]
-});
-```
-
-## Relationship To Other Packages
-
-| Package | Responsibility |
-| --- | --- |
-| `@makoojs/cli` | Vite plugin, CLI commands, and userscript build integration |
-| `@makoojs/core` | Framework-agnostic injection runtime core |
-| `@makoojs/vue` | Vue adapter and Vue plugin registration |
-| `@makoojs/react` | React adapter |
-| `@makoojs/create-makoo` | Project scaffold |
-
-Application code composes runtime behavior through `@makoojs/core`.
+- [Vite Plugins](https://makoojs.github.io/Makoo/api/vite): all `makoo()` options, defaults, and `makooDev()`.
+- [CLI Commands](https://makoojs.github.io/Makoo/api/cli): options for each command.
+- [Userscript API](https://makoojs.github.io/Makoo/api/monkey): the GM APIs exported by `@makoojs/cli/monkey`.
+- [Project Configuration](https://makoojs.github.io/Makoo/docs/configuration): configuring match URLs, permissions, and external dependencies.
