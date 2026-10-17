@@ -21,8 +21,8 @@ describe('makooDev', () => {
 		const first = makooDev().api.session as DevSession;
 		const second = makooDev().api.session as DevSession;
 		first.open({} as NormalizedHotChannelClient, { runtimeId: 1 });
-		expect(first.getTasks()).toHaveLength(1);
-		expect(second.getTasks()).toEqual([]);
+		expect(first.getRuntimeSnapshots()).toHaveLength(1);
+		expect(second.getRuntimeSnapshots()).toEqual([]);
 	});
 
 	it('leaves makoo() responsible only for vite-plugin-monkey', () => {
@@ -68,7 +68,7 @@ describe('makooDev', () => {
 		).toBeNull();
 	});
 
-	it('updates the DevSession from connected Vite clients', () => {
+	it('updates the DevSession from clients of every Vite environment', () => {
 		const plugin = makooDev();
 		const configureServer = getHookHandler(plugin.configureServer);
 		if (!configureServer) {
@@ -78,16 +78,17 @@ describe('makooDev', () => {
 		const onChange = vi.fn();
 		session.subscribe(onChange);
 
-		const on = vi.fn();
+		const clientOn = vi.fn();
+		const ssrOn = vi.fn();
 		configureServer.call(
 			{} as never,
 			{
-				hot: { on },
+				environments: { client: { hot: { on: clientOn } }, ssr: { hot: { on: ssrOn } } },
 				config: { inlineConfig: {} }
 			} as never
 		);
 
-		const getListener = (name: string) => {
+		const getListener = (on: typeof clientOn, name: string) => {
 			const listener = on.mock.calls.find(([event]) => event === name)?.[1] as
 				| ((payload: unknown, client: unknown) => void)
 				| undefined;
@@ -95,54 +96,40 @@ describe('makooDev', () => {
 			return listener;
 		};
 
-		const client = {};
-		getListener('makoo:runtime:open')({ runtimeId: 1 }, client);
-		getListener('makoo:runtime:event')(
+		const page = {};
+		getListener(clientOn, 'makoo:runtime:open')({ runtimeId: 1 }, page);
+		getListener(clientOn, 'makoo:runtime:injection')(
 			{
 				runtimeId: 1,
-				event: {
-					name: 'register:success',
-					ts: 1,
-					taskId: 'task-1',
-					kind: 'component',
-					status: 'idle',
-					injectAt: '#app',
-					meta: { artifactName: 'Demo' }
-				}
+				injection: { name: 'play-click', kind: 'standalone-listener', status: 'bound' }
 			},
-			client
+			page
 		);
-
-		expect(session.getTasks()).toMatchObject([
+		getListener(clientOn, 'makoo:runtime:notice')(
+			{
+				runtimeId: 1,
+				notice: { type: 'diagnostic', error: { code: 'MAKOO_X', message: 'x' } }
+			},
+			page
+		);
+		expect(session.getRuntimeSnapshots()).toEqual([
 			{
 				clientId: 1,
 				runtimeId: 1,
-				tasks: [{ taskId: 'task-1', status: 'idle' }]
+				injections: [{ name: 'play-click', kind: 'standalone-listener', status: 'bound' }],
+				diagnostics: [{ type: 'diagnostic', error: { code: 'MAKOO_X', message: 'x' } }]
 			}
 		]);
-		expect(onChange).toHaveBeenCalledTimes(2);
+		expect(onChange).toHaveBeenCalledTimes(3);
 
-		getListener('makoo:runtime:event')(
-			{
-				runtimeId: 1,
-				event: {
-					name: 'task:statusChange',
-					ts: 2,
-					taskId: 'task-1',
-					status: 'active'
-				}
-			},
-			client
-		);
-		expect(session.getTasks()).toMatchObject([
-			{
-				tasks: [{ taskId: 'task-1', status: 'active' }]
-			}
-		]);
+		const runner = {};
+		getListener(ssrOn, 'makoo:runtime:open')({ runtimeId: 1 }, runner);
+		expect(session.getRuntimeSnapshots()).toHaveLength(2);
 
-		getListener('vite:client:disconnect')(undefined, client);
+		getListener(clientOn, 'vite:client:disconnect')(undefined, page);
+		getListener(ssrOn, 'vite:client:disconnect')(undefined, runner);
 		expect(session.isEmpty()).toBe(true);
-		expect(session.getTasks()).toEqual([]);
+		expect(session.getRuntimeSnapshots()).toEqual([]);
 	});
 
 	it('rebinds the DevSession when Vite restarts from inlineConfig', () => {
@@ -154,7 +141,7 @@ describe('makooDev', () => {
 		configureServer.call(
 			{} as never,
 			{
-				hot: { on: vi.fn() },
+				environments: {},
 				config: { inlineConfig: { [bindDevSession]: bind } }
 			} as never
 		);

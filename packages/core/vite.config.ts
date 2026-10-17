@@ -10,6 +10,9 @@ export default defineConfig({
 			entry: resolve(import.meta.dirname, 'src/index.ts'),
 			formats: ['es', 'cjs'],
 			fileName: 'index'
+		},
+		rollupOptions: {
+			external: ['zod']
 		}
 	},
 	plugins: [

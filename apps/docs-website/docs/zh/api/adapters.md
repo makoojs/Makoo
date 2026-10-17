@@ -1,88 +1,76 @@
-# Adapter 与 Context
+# 适配器契约
 
-Vue 和 React 组件通过 `makoo` prop 接收当前任务的 Context。自定义 Adapter 时，从 `@makoojs/core` 导入下面的挂载协议类型。
-
-## Adapter 类型
-
-### `MountAdapter`
+组件适配器把某个前端框架接入 Core 的挂载与卸载。`@makoojs/vue` 和 `@makoojs/react` 已提供适配器，通常只需注册：
 
 ```ts
-interface MountAdapter<TArtifact = unknown, THandle = unknown, TInstance = unknown> {
-	name: string;
-	mount(input: AdapterMountInput<TArtifact>): AdapterMountResult<THandle, TInstance>;
-	unmount(input: AdapterUnmountInput<THandle>): void;
+core.useAdapter(createVueAdapter());
+```
+
+本页列出适配器需要满足的契约，供阅读源码或接入其他框架时查阅。类型从 `@makoojs/core` 导入。
+
+## `MountAdapter`
+
+```ts
+interface MountAdapter<TComponent = unknown, TProps = unknown, THandle = unknown> {
+  readonly name: string;
+  mount(params: AdapterMountParams<TComponent, TProps>): THandle;
+  unmount(mountHandle: THandle): void;
 }
 ```
 
-### `ResolvableMountAdapter`
+| 成员 | 说明 |
+| --- | --- |
+| `name` | 适配器名称，组件声明的 `adapter` 字段按它选择；同一实例内唯一 |
+| `mount(params)` | 同步把组件挂载到 `params.container`，返回挂载句柄 |
+| `unmount(mountHandle)` | 同步卸载 `mount()` 返回的那次挂载 |
+
+Core 只保存挂载句柄，不读取其内容，卸载时原样交回给 `unmount()`。
+
+## `AdapterMountParams`
 
 ```ts
-interface ResolvableMountAdapter<TArtifact = unknown, THandle = unknown, TInstance = unknown>
-	extends MountAdapter<TArtifact, THandle, TInstance> {
-	matches(artifact: unknown): artifact is TArtifact;
+interface AdapterMountParams<TComponent = unknown, TProps = unknown> {
+  component: TComponent;
+  command: ComponentCommand;
+  statusHandle: ComponentStatusHandle;
+  props: TProps | undefined;
+  container: HTMLElement;
+  globalListener(name: string): {
+    command: ListenerCommand;
+    statusHandle: ListenerStatusHandle;
+  };
 }
 ```
 
-### `AdapterMountInput`
-
-| 字段 | 类型 |
+| 字段 | 说明 |
 | --- | --- |
-| `host` | `HTMLElement` |
-| `mountPoint` | `HTMLElement` |
-| `artifact` | `TArtifact` |
-| `taskId` | `string` |
-| `injectAt` | `string` |
-| `makoo` | `MakooContext` |
+| `component` | 声明中的 `component` |
+| `props` | 声明中的 `props`，未提供时为 `undefined` |
+| `container` | Core 为这次挂载创建的组件容器 |
+| `command` | 所属组件的命令入口 |
+| `statusHandle` | 所属组件的状态入口 |
+| `globalListener(name)` | 查找同一实例中的独立监听，返回 `{ command, statusHandle }` |
 
-`host` 是页面中匹配 `injectAt` 的元素，`mountPoint` 是 Makoo 在其中创建的挂载容器。Adapter 将 `artifact` 挂载到 `mountPoint`。
+`globalListener(name)` 在名称不存在、名称属于组件或只是附属监听时，抛出 `MAKOO_INJECTION_NOT_FOUND`。
 
-### `AdapterMountResult`
+## 行为约定
 
-```ts
-type AdapterMountResult<THandle = unknown, TInstance = unknown> = {
-	handle: THandle;
-	instance?: TInstance;
-};
-```
+### 挂载
 
-### `AdapterUnmountInput`
+- `mount()` 正常返回即视为挂载成功。Core 不等待框架首次渲染或副作用完成。
+- `mount()` 返回后，若这一轮没有被停止、挂载目标和组件容器仍然有效，Core 才启动附属监听；否则直接卸载这次挂载。
 
-| 字段 | 类型 |
-| --- | --- |
-| `host?` | `HTMLElement` |
-| `mountPoint` | `HTMLElement` |
-| `handle` | `THandle` |
-| `taskId` | `string` |
-| `injectAt` | `string` |
-| `reason` | `AdapterUnmountReason` |
+### 挂载失败
 
-```ts
-type AdapterUnmountReason = 'destroy' | 'reset' | 'remount' | 'manual';
-type AdapterResolver = (artifact: unknown) => MountAdapter | undefined;
-```
+- 直接抛出原始错误，Core 会将其包装为 `MAKOO_MOUNT_FAILED`，原始值放在 `cause` 中。
+- 抛出前，适配器应释放本次已创建的框架资源。
+- 若释放也失败，或无法确认已释放干净，抛出 `MakooAggregateError`，`code` 为 `MakooErrorCode.MOUNT_CLEANUP_FAILED`，`cause` 为原始挂载错误，`errors` 为释放失败的错误。Core 会把它当作清理失败处理并关闭该注入：`lastError` 为 `MAKOO_INJECTION_CLEANUP_FAILED`，其 `errors` 依次是 `MAKOO_MOUNT_FAILED`（`cause` 为原始挂载错误）和适配器给出的各个错误。
 
-卸载时使用挂载阶段返回的 `handle` 释放框架实例。`reason` 表示此次卸载的原因。
+### 卸载
 
-### `MakooContext`
+- `unmount()` 同步执行。正常返回后 Core 才移除组件容器。
+- 抛错时 Core 将其包装为 `MAKOO_UNMOUNT_FAILED`，计入清理失败，并继续尝试移除容器。
 
-```ts
-type MakooContext = {
-	taskId: string;
-	injectAt: string;
-	enableAlive(): void;
-	disableAlive(): void;
-	reset(): void;
-	destroy(): void;
-	on(event: ObserveEventName, hook: ObserveHook): () => void;
-	onTask(event: ObserveEventName, hook: ObserveHook): () => void;
-	off(event: ObserveEventName, hook?: ObserveHook): void;
-	offTask(event?: ObserveEventName, hook?: ObserveHook): void;
-	getLogger(): ILogger;
-	bindListenerSignal(source: ActivitySignalSource<boolean>): boolean;
-	controlListener(event: ActionEvent): boolean;
-};
-```
+### 组件侧能力
 
-`taskId` 和 `injectAt` 标识当前组件任务。`destroy()` 卸载并移除任务，`reset()` 释放资源并保留任务记录。
-
-`on()` 订阅 Runtime 中指定名称的事件，`onTask()` 只订阅当前任务的事件；两者都返回取消订阅函数。`controlListener()` 和 `bindListenerSignal()` 用于控制通过 `options.on` 随组件注册的监听器。
+把 `command`、`statusHandle` 和 `globalListener` 交给组件的方式由适配器自行决定。Vue 适配器通过 `provide` 交给 [`useMakooComponent()`](./vue.md#usemakoocomponent)，React 适配器通过 Context 交给 [hooks](./react.md#hooks)。组件卸载时，适配器应释放组件内建立的状态订阅。

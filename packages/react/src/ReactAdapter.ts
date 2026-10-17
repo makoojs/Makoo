@@ -1,41 +1,46 @@
-import { ErrorCode } from '@makoojs/core';
-import { createElement } from 'react';
-import { createRoot } from 'react-dom/client';
-import { ReactAdapterError } from './error';
-import type { ReactMountAdapter } from './types';
-import { isReactMountArtifact } from './util';
+import { MakooAggregateError, MakooErrorCode, type MountAdapter } from '@makoojs/core';
+import { type ComponentType, createElement } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
+import { MakooComponentContext } from './hooks';
+
+// biome-ignore lint/suspicious/noExplicitAny: accepts components with any props shape
+export type ReactMountComponent = ComponentType<any>;
+export type ReactMountProps = Record<string, unknown>;
+export type ReactMountRoot = Root;
+
+export type ReactMountAdapter = MountAdapter<ReactMountComponent, ReactMountProps, ReactMountRoot>;
 
 export function createReactAdapter(): ReactMountAdapter {
 	return {
 		name: 'react',
-		matches: isReactMountArtifact,
-		mount({ mountPoint, artifact, makoo }) {
+		mount({ component, props, command, statusHandle, container, globalListener }) {
+			let root: Root | undefined;
 			try {
-				const root = createRoot(mountPoint);
-				root.render(createElement(artifact, { makoo }));
-				return {
-					handle: root
-				};
-			} catch (cause) {
-				throw new ReactAdapterError(
-					`Failed to mount React component at "${makoo.injectAt}"`,
-					undefined,
-					ErrorCode.ADAPTER_MOUNT_FAIL,
-					cause instanceof Error ? cause : new Error(String(cause))
+				root = createRoot(container);
+				root.render(
+					createElement(
+						MakooComponentContext.Provider,
+						{ value: { command, statusHandle, globalListener } },
+						createElement(component, props)
+					)
 				);
+				return root;
+			} catch (cause) {
+				if (!root) throw cause;
+				try {
+					root.unmount();
+				} catch (unmountCause) {
+					throw new MakooAggregateError(
+						[unmountCause],
+						'Failed to clean up after the React mount failed',
+						{ code: MakooErrorCode.MOUNT_CLEANUP_FAILED, cause }
+					);
+				}
+				throw cause;
 			}
 		},
-		unmount({ handle }) {
-			try {
-				handle.unmount();
-			} catch (cause) {
-				throw new ReactAdapterError(
-					'Failed to unmount React component',
-					undefined,
-					ErrorCode.ADAPTER_UNMOUNT_FAIL,
-					cause instanceof Error ? cause : new Error(String(cause))
-				);
-			}
+		unmount(root) {
+			root.unmount();
 		}
 	};
 }

@@ -16,6 +16,7 @@
 .eyebrow { margin: 0 0 24px; color: var(--makoo-accent-bright); font: 400 12px/1.7 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; }
 .makoo-home-shell .hero h1 { max-width: 15ch; margin: 0; font-size: clamp(44px, 4.3vw, 68px); font-weight: 450; line-height: 1.14; letter-spacing: -.045em; }
 .makoo-home-shell .hero h1:lang(zh) { max-width: none; font-size: clamp(38px, 4.1vw, 64px); font-weight: 400; letter-spacing: -.035em; line-height: 1.32; }
+.hero-title-line { display: block; white-space: nowrap; }
 .hero-lead { max-width: 42ch; margin: 28px 0 0; color: var(--makoo-muted); font-size: clamp(17px, 1.55vw, 22px); line-height: 1.75; white-space: pre-line; text-wrap: pretty; }
 .hero-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
 .primary-link, .makoo-home-shell .secondary-link { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; gap: 9px; padding: 0 18px; border-radius: 8px; font-size: 14px; font-weight: 500; transition: background-color 150ms, border-color 150ms, box-shadow 150ms; }

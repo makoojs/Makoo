@@ -1,347 +1,115 @@
 <p align="center">
-  <img width="250" src="./apps/docs-website/docs/public/makoo-icon.svg" alt="Makoo">
+  <img width="180" src="./apps/docs-website/docs/public/makoo-icon.svg" alt="Makoo">
 </p>
 
 <h1 align="center">Makoo</h1>
-<p align="center">A userscript development framework for Tampermonkey, Violentmonkey, and ScriptCat</p>
 
-<div align="center">
+<p align="center"><em>A framework for building userscripts with Vue or React</em></p>
+
+<p align="center">
   <a href="https://github.com/makoojs/Makoo/"><img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/makoojs/Makoo?style=flat-square"></a>
-  <a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/License-MIT-yellow.svg"></a>
-</div>
+  <img alt="Node.js" src="https://img.shields.io/badge/Node.js-20.19%2B%20%7C%2022.12%2B-3c873a?style=flat-square">
+  <a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square"></a>
+</p>
 
-<div align="center">
-  English | <a href="./README.CN.md">中文</a>
-</div>
+<p align="center">
+  <a href="https://makoojs.github.io/Makoo/">Docs</a> •
+  <a href="#quick-start">Quick Start</a> •
+  <a href="#when-to-use-makoo">When to Use</a> •
+  <a href="./README.CN.md">中文</a>
+</p>
 
 ---
 
-Makoo is a userscript development framework for building maintainable Vue / React injection apps for browser script managers such as Tampermonkey, Violentmonkey, and ScriptCat.
+Makoo is a userscript development framework for Tampermonkey, Violentmonkey, and ScriptCat. You write components in Vue or React and declare where they mount on the page and which page events they listen to; Makoo takes care of waiting for elements to appear, mounting components, recovering after nodes are replaced, and cleaning up when a feature stops. The dev server, userscript metadata, and builds are provided by [Vite](https://vite.dev/) and [vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey).
 
-It focuses on waiting for target DOM nodes, mounting components, reinjecting after a host target is removed, and composing multiple injection tasks. [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) handles build output, userscript metadata, and installation. Makoo provides runtime composition and adapters for component injection.
+## Features
 
-## When To Use Makoo
+- **Component-driven development**: Build the interfaces injected into web pages with Vue or React.
+- **Declarative injection**: Declare mount positions and attached listeners; a component and the page events it depends on start and stop together.
+- **Handles dynamic pages**: Waits for asynchronously loaded nodes, and remounts automatically after the site replaces a node.
+- **Complete cleanup**: Unmounts components and unbinds events on stop or removal, and reports cleanup failures explicitly.
+- **Complete toolchain**: Scaffolding, hot updates, injection status in the terminal, and a single command to build the `.user.js`.
 
-Makoo is not meant for simple userscripts. If your script only changes a button, hides an element, or injects a small style block, plain userscript code is often enough.
+## When to Use Makoo
 
-Makoo is a better fit for userscripts that start behaving like small frontend applications:
+> [!IMPORTANT]
+> Makoo is not meant for simple scripts. If your script only changes a button, hides an element, or injects a block of styles, plain userscript code is often enough.
 
-- building injected UI with Vue or React to modify existing web pages
-- multiple injection points or feature modules on the same page
-- host target nodes that are removed and recreated, requiring component reinjection
-- modules that need to be enabled by URL or page state
-- growing codebases that need clear structure, configuration, and development workflow
+Makoo becomes useful once a script starts to behave like a small frontend application:
 
-Makoo becomes useful when lifecycle, module boundaries, and long-term maintenance start to matter.
-
-## Table of Contents
-
-- [When To Use Makoo](#when-to-use-makoo)
-- [Quick Start](#quick-start)
-- [Core Concepts](#core-concepts)
-- [Project Structure](#project-structure)
-- [Configuration Overview](#configuration-overview)
-- [Runtime Composition](#runtime-composition)
-- [Recipes](#recipes)
-- [Packages](#packages)
-- [Special Thanks](#special-thanks)
-- [Development](#development)
-- [License](#license)
+- You need to build interfaces with Vue or React to modify existing web pages
+- There are multiple components or feature modules on the same page
+- Target nodes are removed and recreated by the site, and components and listeners need to recover with them
+- The codebase is growing and needs a clear structure, configuration, and development workflow
 
 ## Quick Start
 
-Create a project with the scaffold:
+Have pnpm ready and a script manager installed in your browser, then create a project:
 
-```bash
+```sh
 pnpm dlx @makoojs/create-makoo
-```
-
-Then enter the project and start the dev server:
-
-```bash
-pnpm install
+cd makoo-project
 pnpm dev
 ```
 
-A project includes Vite configuration, application code, and an example injection.
+Open the address printed in the terminal in your browser, install the development script, then visit the target page you set, and you'll see the example component.
 
-## Core Concepts
+For an existing Vite project, see [Add Makoo to an Existing Project](https://makoojs.github.io/Makoo/docs/installation).
 
-`createMakoo()` creates Makoo's runtime scheduler. It starts declared injection tasks, waits for target nodes, asks the matching adapter to mount components, and handles reinjection when needed.
+## Usage
 
-`Injection Module` represents an independent injection feature or mount unit. It can include components, styles, and related application logic.
+### Declare a Component
 
-`Task` is a runtime declaration. `inject()` declares a component injection and `listen()` declares an event listener. The application composes these tasks and passes them to `makoo.start()`.
-
-`Adapter` is the component mounting bridge. Makoo supports Vue and React through `@makoojs/vue` and `@makoojs/react`, and the adapter model can support other mountable artifacts later.
-
-## Project Structure
-
-Projects can organize injection-related code as needed. For example:
-
-```txt
-src/injections
-├─ profile-card
-│  ├─ App.vue
-│  └─ style.css
-└─ react-badge
-   ├─ App.tsx
-   └─ style.css
-```
-
-`createMakoo()`, `inject()`, and `listen()` provide runtime composition. Projects can organize the related code according to their own conventions.
-
-## Configuration Overview
-
-Makoo's Vite plugin config describes the build toolchain:
-
-```ts
-import { defineConfig } from 'vite';
-import { makoo } from '@makoojs/cli';
-import vue from '@vitejs/plugin-vue';
-
-export default defineConfig({
-	plugins: [
-		vue(),
-		makoo({
-			entry: './src/main.ts',
-			app: {
-				name: 'my-script',
-				version: '0.0.1'
-			},
-			monkey: {
-				userscript: {
-					match: ['https://example.com/*']
-				}
-			}
-		})
-	]
-});
-```
-
-`app` is used to generate userscript metadata such as name, version, and description.
-
-`entry` specifies the application file bundled by Vite. It can import Vue, React, components, stores, hooks, and other browser code directly.
-
-Most `monkey` options are passed through to [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) for userscript metadata, dev server behavior, and build behavior.
-
-## Runtime Composition
-
-`@makoojs/core` provides `createMakoo()`, `inject()`, and `listen()` for creating the runtime and declaring tasks. This example uses both Vue and React modules:
-
-```ts
-import { createMakoo, inject } from '@makoojs/core';
-import { createReactAdapter } from '@makoojs/react';
-import { createVueAdapter } from '@makoojs/vue';
-import Header from './injections/header/App.vue';
-import Badge from './injections/badge/App.tsx';
-
-const makoo = createMakoo({
-	adapters: [createVueAdapter(), createReactAdapter()],
-	defaults: {
-		alive: false,
-		scope: 'local'
-	}
-});
-
-makoo.start([
-	inject({ id: 'header', injectAt: '#header', artifact: Header }),
-	inject({
-		id: 'badge',
-		injectAt: 'body',
-		artifact: Badge,
-		options: { alive: true, timeout: 10_000 }
-	})
-]);
-```
-
-Common injection fields:
-
-| Field | Description |
-| --- | --- |
-| `id` | Stable task id |
-| `injectAt` | Target selector for injection |
-| `artifact` | Component or other value mounted by an adapter |
-| `options.alive` | Whether to wait for the same selector and reinject after the host target node is removed |
-| `options.scope` | Removal observation scope used by alive mode, supports `local` and `global` |
-| `options.timeout` | Timeout for waiting for the target node |
-| `options.hooks` | Lifecycle hooks for the current task |
-| `options.on` | Listener declaration owned by the component task |
-
-`injectAt` must be a CSS selector; `document` and `window` are not supported injection targets.
-
-### Standalone Listeners
-
-`listen()` declares event tasks that are not owned by an injection module. They do not need a component directory or framework adapter:
-
-```ts
-import { listen } from '@makoojs/core';
-
-const escapeClose = listen({
-	id: 'escape-close',
-	listenAt: 'body',
-	type: 'keydown',
-	capture: true,
-	callback: (event) => {
-		if (event instanceof KeyboardEvent && event.key === 'Escape') console.log('close');
-	}
-});
-```
-
-Listeners support `capture` and `activitySignal`. `capture` defaults to `false`; set it to `true` to listen during the DOM capture phase. `listenAt` must be a CSS selector; `document` and `window` are not supported listener targets.
-
-## Recipes
-
-### Enable a Module by URL
-
-```ts
-const isProfilePage = location.pathname.startsWith('/users/') &&
-	location.pathname !== '/users/settings';
-
-if (isProfilePage) {
-	makoo.start([
-		inject({ id: 'profile', injectAt: '#app', artifact: Profile })
-	]);
-}
-```
-
-### Use a Vue Module
-
-```ts
-import { createMakoo, inject } from '@makoojs/core';
-import { createVueAdapter } from '@makoojs/vue';
-import Panel from './injections/panel/App.vue';
-
-createMakoo({ adapters: [createVueAdapter()] }).start([
-	inject({ id: 'panel', injectAt: 'body', artifact: Panel })
-]);
-```
-
-### Split Hooks
-
-```ts
-// src/hooks.ts
-export const hooks = {
-	'start:requested': () => {
-		console.log('[makoo] start requested');
-	}
-};
-```
+In the entry file, create a Core instance, register a framework adapter, then declare the component to mount:
 
 ```ts
 // src/main.ts
-import { hooks } from './hooks';
 import { createMakoo, inject } from '@makoojs/core';
-import App from './injections/hello-world/App.vue';
+import { createVueAdapter } from '@makoojs/vue';
+import Panel from './Panel.vue';
 
-const makoo = createMakoo({ hooks });
-makoo.start([
-	inject({ id: 'hello-world', injectAt: 'body', artifact: App })
+const core = createMakoo();
+core.useAdapter(createVueAdapter());
+
+core.apply([
+  inject({
+    // injection name, unique within the same instance
+    name: 'panel',
+    // CSS selector of the mount target; waits if the element appears later
+    injectAt: 'body',
+    adapter: 'vue',
+    component: Panel
+  })
 ]);
 ```
 
-### Reduce Bundle Size with `externalGlobals`
+### Control the Injection from the Component
 
-`monkey.build.externalGlobals` and `externalResource` are passed through to [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey):
+A component can read its own status and stop itself:
 
-```ts
-import { defineConfig } from 'vite';
-import { cdn, makoo } from '@makoojs/cli';
-import vue from '@vitejs/plugin-vue';
+```vue
+<script setup lang="ts">
+import { useMakooComponent } from '@makoojs/vue';
 
-export default defineConfig({
-	plugins: [
-		vue(),
-		makoo({
-			entry: './src/main.ts',
-			app: {
-				name: 'my-script',
-				version: '0.0.1'
-			},
-			monkey: {
-				build: {
-					externalGlobals: {
-						vue: cdn.jsdelivr('Vue', 'dist/vue.global.prod.js')
-					}
-				}
-			}
-		})
-	]
-});
+const makoo = useMakooComponent();
+const status = makoo.status;
+</script>
+
+<template>
+  <aside>
+    <p>Status: {{ status }}</p>
+    <button @click="makoo.stop()">Close</button>
+  </aside>
+</template>
 ```
 
-### Use GM APIs
+For React, page event listeners, and recovery after node replacement, see the [docs](https://makoojs.github.io/Makoo/).
 
-Makoo provides a stable [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) GM API import path through `@makoojs/cli/monkey`. Prefer capability-level imports so the final userscript only references the GM APIs it actually uses:
+## Documentation
 
-```ts
-import { gmRequest, gmStorage, gmStyle } from '@makoojs/cli/monkey';
+Start with the [Quick Start](https://makoojs.github.io/Makoo/docs/getting-started) and [Tutorial: A Toggleable Tool Panel](https://makoojs.github.io/Makoo/docs/tutorial); the full guides and API reference are on the [docs site](https://makoojs.github.io/Makoo/).
 
-gmStyle.add('.makoo-panel { z-index: 999999; }');
+## Acknowledgements
 
-gmStorage.set('token', 'abc');
-const token = gmStorage.get<string>('token');
-
-gmRequest.get('https://api.example.com/data', {
-	responseType: 'json',
-	onload(event) {
-		console.log(event.response);
-	}
-});
-```
-
-You can also use grouped imports. Prefer capability-level imports when you want the smallest generated `@grant` surface; `GMapi` is convenient for shared or exploratory code:
-
-```ts
-import { GMapi } from '@makoojs/cli/monkey';
-
-GMapi.storage.set('enabled', true);
-```
-
-When `monkey.build.autoGrant` is enabled, which is the default, `@grant` is still generated by [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) from the final code. Development does not require manually mounting global `GM_*` APIs.
-
-## Packages
-
-| Package | Responsibility |
-| --- | --- |
-| `@makoojs/core` | Framework-agnostic injection runtime |
-| `@makoojs/vue` | Vue mount adapter |
-| `@makoojs/react` | React mount adapter |
-| `@makoojs/cli` | Vite and userscript integration, config resolution, and project commands |
-| `@makoojs/create-makoo` | Project scaffold |
-
-A typical project uses `@makoojs/cli` for Vite and userscript integration, `@makoojs/core` for task composition, and either `@makoojs/vue` or `@makoojs/react` for its component adapter.
-
-## Special Thanks
-
-Makoo is built on top of these excellent open-source projects:
-
-| Project | What it provides |
-| --- | --- |
-| [Vite](https://vite.dev/) | Modern frontend development and build tooling |
-| [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) | Userscript build, metadata generation, and dev workflow |
-| [Vue](https://vuejs.org/) | Vue component ecosystem and runtime |
-| [React](https://react.dev/) | React component ecosystem and runtime |
-| [Vitest](https://vitest.dev/) | Test runner |
-
-## Development
-
-```bash
-pnpm install
-pnpm build
-pnpm test
-```
-
-Common commands:
-
-| Command | Description |
-| --- | --- |
-| `pnpm build` | Build all packages |
-| `pnpm test` | Run tests |
-| `pnpm docs:dev` | Start the documentation site |
-| `pnpm docs:build` | Build the documentation site |
-| `pnpm lint:fix` | Run Biome checks and fixes |
-
-## License
-
-[MIT](./LICENSE)
+Makoo is built on [Vite](https://vite.dev/), [vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey), [Vue](https://vuejs.org/), and [React](https://react.dev/). Thanks to these projects.

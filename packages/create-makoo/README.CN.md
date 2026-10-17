@@ -1,130 +1,41 @@
 # @makoojs/create-makoo
 
-`@makoojs/create-makoo` 是 Makoo 的项目脚手架。它通过交互式命令生成一个可以直接运行的 userscript 项目，并根据选择创建 Vue 或 React 模板。
+<p>
+  <a href="https://www.npmjs.com/package/@makoojs/create-makoo"><img alt="npm" src="https://img.shields.io/npm/v/@makoojs/create-makoo?style=flat-square"></a>
+  <a href="https://github.com/makoojs/Makoo/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square"></a>
+</p>
 
-生成后的项目使用 `@makoojs/cli` 提供的开发和构建命令，通过 `makoo dev` 启动开发服务，通过 `makoo build` 构建最终 userscript。
+<p>
+  <a href="https://makoojs.github.io/Makoo/zh/docs/getting-started">快速开始</a> •
+  <a href="https://github.com/makoojs/Makoo">Makoo</a> •
+  <a href="https://github.com/makoojs/Makoo/blob/main/packages/create-makoo/README.md">English</a>
+</p>
 
-## 适用场景
+Makoo 的项目脚手架。回答几个问题，就能得到一个可以直接运行的 userscript 项目：Vite 配置、开发命令和一个示例组件都已经准备好。
 
-- 快速创建一个新的 Makoo userscript 项目。
-- 在 Vue 和 React 模板之间选择起点。
-- 选择 TypeScript 或 JavaScript 项目结构。
-- 生成包含 Vite 配置、示例 injection 和基础资源的项目。
+## 用法
 
-## 使用
-
-推荐通过包管理器的临时执行能力运行脚手架：
-
-```bash
+```sh
 pnpm dlx @makoojs/create-makoo
 ```
 
-也可以使用 npm 或 yarn：
+也可以用 `npx @makoojs/create-makoo` 或 `yarn dlx @makoojs/create-makoo`。
 
-```bash
-npx @makoojs/create-makoo
-yarn dlx @makoojs/create-makoo
+脚手架会依次询问项目名、userscript 名称、版本、命名空间和匹配的网址，再让你选择 TypeScript 或 JavaScript、Vue 或 React，最后询问是否立即安装依赖。
+
+创建完成后：
+
+```sh
+cd makoo-project
+pnpm dev
 ```
 
-脚手架会询问：
+在浏览器中打开终端打印的地址并安装开发脚本，再访问匹配的网页，就能看到示例组件。
 
-| 问题 | 说明 |
-| --- | --- |
-| Project name | 生成的项目目录名，默认 `makoo-project` |
-| Userscript name | userscript 头部中的 `@name` |
-| Version | 项目版本和 userscript 版本 |
-| Namespace | userscript 头部中的 `@namespace` |
-| Match URL(s) | userscript 匹配页面，支持逗号分隔多个 URL |
-| Variant | 选择 TypeScript 或 JavaScript |
-| Framework | 选择 Vue 或 React |
-| Install with package manager | 是否立即安装依赖；安装完成后会提示运行 dev 命令 |
+> [!NOTE]
+> 目标目录已存在且不为空时，脚手架会让你选择取消、删除已有文件后继续，或保留已有文件继续。
 
-如果目标目录已经存在且不为空，脚手架会让你选择取消、删除原有文件继续，或忽略已有文件继续。
+## 文档
 
-## 生成内容
-
-Vue 模板会生成：
-
-```txt
-package.json
-vite.config.ts/js
-src/main.ts/js
-src/injections/hello-world/App.vue
-assets/vue.svg
-assets/makoo-icon.png
-.gitignore
-```
-
-React 模板会生成：
-
-```txt
-package.json
-vite.config.ts/js
-src/main.ts/js
-src/injections/hello-world/App.tsx/jsx
-src/injections/hello-world/style.css
-assets/react.svg
-assets/makoo-icon.png
-.gitignore
-```
-
-选择 TypeScript 时，还会生成：
-
-```txt
-tsconfig.json
-tsconfig.app.json
-tsconfig.node.json
-env.d.ts
-```
-
-## 项目脚本
-
-生成项目的 `package.json` 会包含：
-
-```json
-{
-	"scripts": {
-		"dev": "makoo dev",
-		"build": "vue-tsc -b && makoo build",
-		"typecheck": "vue-tsc -b"
-	}
-}
-```
-
-React TypeScript 模板会使用 `tsc -b`：
-
-```json
-{
-	"scripts": {
-		"dev": "makoo dev",
-		"build": "tsc -b && makoo build",
-		"typecheck": "tsc -b"
-	}
-}
-```
-
-JavaScript 模板不会生成 typecheck 脚本，build 会直接执行：
-
-```bash
-makoo build
-```
-
-## 模板说明
-
-生成的应用代码会启动 Makoo，并注册一个默认注入到 `body` 的 `hello-world` injection。
-
-Vue 模板会配置 `@vitejs/plugin-vue`，并在 userscript 构建中把 Vue 作为外部全局依赖加载。
-
-React 模板会配置 `@vitejs/plugin-react`。由于 React 19 相关包不再提供官方 UMD 构建，模板会使用第三方 `umd-react` CDN，并把 `react`、`react-dom` 和 `react-dom/client` 配置为外部全局依赖。
-
-## 与其他包的关系
-
-| 包 | 职责 |
-| --- | --- |
-| `@makoojs/create-makoo` | 提供交互式项目创建能力 |
-| `@makoojs/cli` | 提供 Makoo 项目的 dev/build 等相关能力 |
-| `@makoojs/core` | 提供 injection task 调度能力 |
-| `@makoojs/vue` | 提供 Vue 组件挂载能力 |
-| `@makoojs/react` | 提供 React 组件挂载能力 |
-
-`@makoojs/create-makoo` 提供项目创建能力，`@makoojs/cli` 提供开发和构建能力，`@makoojs/core` 提供运行时任务编排能力。
+- [快速开始](https://makoojs.github.io/Makoo/zh/docs/getting-started)：从创建项目到在网页上看到第一个组件。
+- [教程：可开关的工具面板](https://makoojs.github.io/Makoo/zh/docs/tutorial)：在生成的项目上继续做一个完整的小功能。

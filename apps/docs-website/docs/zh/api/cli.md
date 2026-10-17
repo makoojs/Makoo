@@ -35,7 +35,7 @@ makoo preview [root]
 | `--port <port>` | 设置端口 |
 | `--open [path] / --no-open` | 启动时打开浏览器路径，或禁用打开 |
 | `--strictPort / --no-strictPort` | 端口被占用时是否直接退出 |
-| `--cors / --no-cors` | 控制 CORS |
+| `--cors / --no-cors` | 控制 CORS；Makoo 项目中固定开启，见[由 vite-plugin-monkey 决定的设置](./vite.md#由-vite-plugin-monkey-决定的设置) |
 | `--force` | 忽略依赖预打包缓存 |
 
 ```sh
@@ -50,16 +50,18 @@ pnpm exec makoo dev --port 5174 --no-open
 | --- | --- |
 | `--target <target>` | 构建语法目标 |
 | `--outDir <dir>` | 产物目录 |
-| `--assetsDir <dir>` | 资源目录 |
-| `--assetsInlineLimit <number>` | 资源内联阈值，单位字节 |
-| `--sourcemap [output]` | true / false / inline / hidden；不带值等同 true |
-| `--minify [minifier] / --no-minify` | 配置压缩；具体压缩器由 Vite 支持范围决定 |
+| `--assetsDir <dir>` | 资源目录；Makoo 项目中不生效 |
+| `--assetsInlineLimit <number>` | 资源内联阈值，单位字节；Makoo 项目中不生效 |
+| `--sourcemap [output]` | true / false / inline / hidden；Makoo 项目中不生效 |
+| `--minify [minifier] / --no-minify` | 配置 JS 压缩；Makoo 项目默认不压缩 JS，可用 `--minify` 开启 |
 | `--manifest [name]` | 生成构建清单，可指定文件名 |
 | `--emptyOutDir / --no-emptyOutDir` | 控制构建时清空产物目录 |
 | `-w, --watch` | 监听源码并重新构建 |
 
+标为「不生效」的参数会被 vite-plugin-monkey 覆盖，见[由 vite-plugin-monkey 决定的设置](./vite.md#由-vite-plugin-monkey-决定的设置)。
+
 ```sh
-pnpm exec makoo build --mode staging --outDir release --sourcemap --no-minify
+pnpm exec makoo build --mode staging --outDir release --minify
 ```
 
 ## `makoo preview`

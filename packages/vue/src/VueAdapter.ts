@@ -1,49 +1,69 @@
-import { ErrorCode } from '@makoojs/core';
-import type { ComponentPublicInstance } from 'vue';
-import { createApp } from 'vue';
-import { VueAdapterError } from './error';
-import type { VueMountAdapter } from './types';
-import { isVueComponent } from './util';
+import { MakooAggregateError, MakooError, MakooErrorCode, type MountAdapter } from '@makoojs/core';
+import { type App, type Component, createApp } from 'vue';
+import { componentContextKey } from './composables';
+import { VueErrorCode } from './error';
 import { VuePlugin } from './VuePlugin';
 
+export type VueMountHandle = App<Element>;
+export type VueMountComponent = Component;
+/** Root props passed to the component as-is; reactive values keep Vue reactivity. */
+export type VueMountProps = Record<string, unknown>;
+
+export type VueMountAdapter = MountAdapter<VueMountComponent, VueMountProps, VueMountHandle>;
+
 export function createVueAdapter(): VueMountAdapter {
-	const adapter: VueMountAdapter = {
+	return {
 		name: 'vue',
-		matches: isVueComponent,
-		mount({ mountPoint, artifact, makoo }) {
+		mount({ component, props, command, statusHandle, container, globalListener }) {
+			const subscriptions = new Set<() => void>();
+			let hasMountStarted = false;
 			try {
-				const app = createApp(artifact, { makoo });
-				const plugins = VuePlugin.getPlugins();
-				for (const plugin of plugins) {
+				const app = createApp(component, props ?? null);
+				app.provide(componentContextKey, {
+					command,
+					statusHandle,
+					globalListener,
+					subscriptions
+				});
+				for (const plugin of VuePlugin.getPlugins()) {
 					app.use(plugin);
 				}
-				const instance = app.mount(mountPoint) as ComponentPublicInstance;
-				return {
-					handle: app,
-					instance
-				};
+				hasMountStarted = true;
+				app.mount(container);
+				return app;
 			} catch (cause) {
-				throw new VueAdapterError(
-					`Failed to mount Vue component at "${makoo.injectAt}"`,
-					undefined,
-					ErrorCode.ADAPTER_MOUNT_FAIL,
-					cause instanceof Error ? cause : new Error(String(cause))
+				const cleanupErrors = releaseSubscriptions(subscriptions);
+				if (hasMountStarted) {
+					// app.unmount() cannot clean a tree that failed during mount.
+					cleanupErrors.push(
+						new MakooError(
+							'Cannot confirm Vue component cleanup after mount failed; reload the page',
+							{ code: VueErrorCode.VUE_PARTIAL_MOUNT_UNCONFIRMED }
+						)
+					);
+				}
+				if (cleanupErrors.length === 0) throw cause;
+				throw new MakooAggregateError(
+					cleanupErrors,
+					'Failed to clean up after the Vue mount failed',
+					{ code: MakooErrorCode.MOUNT_CLEANUP_FAILED, cause }
 				);
 			}
 		},
-		unmount({ handle }) {
-			try {
-				handle.unmount();
-			} catch (cause) {
-				throw new VueAdapterError(
-					'Failed to unmount Vue component',
-					undefined,
-					ErrorCode.ADAPTER_UNMOUNT_FAIL,
-					cause instanceof Error ? cause : new Error(String(cause))
-				);
-			}
+		unmount(app) {
+			app.unmount();
 		}
 	};
+}
 
-	return adapter;
+function releaseSubscriptions(subscriptions: Set<() => void>): unknown[] {
+	const errors: unknown[] = [];
+	for (const release of [...subscriptions]) {
+		try {
+			release();
+		} catch (cause) {
+			errors.push(cause);
+		}
+	}
+	return errors;
 }

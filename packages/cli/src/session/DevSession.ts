@@ -1,8 +1,18 @@
 import type { NormalizedHotChannelClient } from 'vite';
-import type { RuntimeEvent, RuntimeOpen, RuntimeSnapshot, TaskSnapshot } from './types';
+import type {
+	InjectionSnapshot,
+	RuntimeInjection,
+	RuntimeNotice,
+	RuntimeOpen,
+	RuntimeSnapshot,
+	SerializedDiagnostic
+} from './types';
+
+const MAX_DIAGNOSTICS = 5;
 
 type RuntimeState = {
-	tasks: Map<string, TaskSnapshot>;
+	injections: Map<string, InjectionSnapshot>;
+	diagnostics: SerializedDiagnostic[];
 };
 
 type ClientState = {
@@ -31,45 +41,37 @@ export class DevSession {
 		}
 
 		clientState.runtimes.set(payload.runtimeId, {
-			tasks: new Map()
+			injections: new Map(),
+			diagnostics: []
 		});
 		this.onChange?.();
 	}
 
-	public record(client: NormalizedHotChannelClient, payload: RuntimeEvent): void {
-		const clientState = this.clients.get(client);
-		if (!clientState) return;
+	public updateInjection(client: NormalizedHotChannelClient, payload: RuntimeInjection): void {
+		const runtime = this.clients.get(client)?.runtimes.get(payload.runtimeId);
+		if (!runtime) return;
+		runtime.injections.set(payload.injection.name, payload.injection);
+		this.onChange?.();
+	}
 
-		const runtimeState = clientState.runtimes.get(payload.runtimeId);
-		if (!runtimeState) return;
-
-		const { event } = payload;
-
-		switch (event.name) {
-			case 'task:afterDestroy':
-				if (event.taskId) runtimeState.tasks.delete(event.taskId);
+	public applyNotice(client: NormalizedHotChannelClient, payload: RuntimeNotice): void {
+		const runtimes = this.clients.get(client)?.runtimes;
+		const runtime = runtimes?.get(payload.runtimeId);
+		if (!runtimes || !runtime) return;
+		const { notice } = payload;
+		// sync update injections table status
+		switch (notice.type) {
+			case 'injection-removed':
+				runtime.injections.delete(notice.name);
 				break;
-			case 'register:success':
-				if (event.taskId && event.kind && event.status && event.injectAt) {
-					runtimeState.tasks.set(event.taskId, {
-						taskId: event.taskId,
-						kind: event.kind,
-						status: event.status,
-						injectAt: event.injectAt
-					});
-				}
+			case 'diagnostic':
+				runtime.diagnostics.push(notice);
+				if (runtime.diagnostics.length > MAX_DIAGNOSTICS) runtime.diagnostics.shift();
 				break;
-			// update task snapshot
-			default: {
-				if (!event.taskId) break;
-				const task = runtimeState.tasks.get(event.taskId);
-				if (!task) break;
-				if (event.status) task.status = event.status;
-				if (event.injectAt) task.injectAt = event.injectAt;
+			case 'instance-disposed':
+				runtimes.delete(payload.runtimeId);
 				break;
-			}
 		}
-		// refresh the terminal when have a new update
 		this.onChange?.();
 	}
 
@@ -85,12 +87,13 @@ export class DevSession {
 		return this.clients.size === 0;
 	}
 
-	public getTasks(): RuntimeSnapshot[] {
+	public getRuntimeSnapshots(): RuntimeSnapshot[] {
 		return [...this.clients.values()].flatMap((clientState) =>
 			[...clientState.runtimes.entries()].map(([runtimeId, state]) => ({
 				clientId: clientState.clientId,
 				runtimeId,
-				tasks: [...state.tasks.values()]
+				injections: [...state.injections.values()],
+				diagnostics: [...state.diagnostics]
 			}))
 		);
 	}

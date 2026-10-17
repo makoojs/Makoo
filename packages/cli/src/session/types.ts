@@ -1,26 +1,58 @@
-import type { ObserveEvent } from '@makoojs/core';
-
-type TaskKind = NonNullable<ObserveEvent['kind']>;
-type TaskStatus = NonNullable<ObserveEvent['status']>;
+import type { ComponentStatus, ListenerStatus, ObservationNotice } from '@makoojs/core';
 
 export type RuntimeOpen = {
 	runtimeId: number;
 };
 
-export type RuntimeEvent = {
-	runtimeId: number;
-	event: ObserveEvent;
+export type SerializedMakooError = {
+	code: string;
+	message: string;
+	cause?: string;
 };
 
-export type TaskSnapshot = {
-	taskId: string;
-	kind: TaskKind;
-	status: TaskStatus;
-	injectAt: string;
+export type AttachedListenerSnapshot = {
+	name: string;
+	status: ListenerStatus;
+};
+
+export type InjectionSnapshot =
+	| {
+			name: string;
+			kind: 'component';
+			status: ComponentStatus;
+			lastError?: SerializedMakooError;
+			attachedListeners: AttachedListenerSnapshot[];
+	  }
+	| {
+			name: string;
+			kind: 'standalone-listener';
+			status: ListenerStatus;
+			lastError?: SerializedMakooError;
+	  };
+
+export type SerializedDiagnostic = {
+	type: 'diagnostic';
+	name?: string;
+	error: SerializedMakooError;
+};
+
+export type SerializedObservationNotice =
+	| Exclude<ObservationNotice, { type: 'diagnostic' }>
+	| SerializedDiagnostic;
+
+export type RuntimeInjection = {
+	runtimeId: number;
+	injection: InjectionSnapshot;
+};
+
+export type RuntimeNotice = {
+	runtimeId: number;
+	notice: SerializedObservationNotice;
 };
 
 export type RuntimeSnapshot = {
 	clientId: number;
 	runtimeId: number;
-	tasks: TaskSnapshot[];
+	injections: InjectionSnapshot[];
+	diagnostics: SerializedDiagnostic[];
 };

@@ -1,9 +1,5 @@
-import type { MakooIssue } from '@makoojs/core';
-import { AdapterError, ErrorCode } from '@makoojs/core';
-
-export class VueAdapterError extends AdapterError {
-	constructor(message: string, issues?: MakooIssue[], code?: string, cause?: Error) {
-		super(message, issues, code ?? ErrorCode.ADAPTER_MOUNT_FAIL, cause);
-		this.name = 'VueAdapterError';
-	}
-}
+export const VueErrorCode = {
+	VUE_HOOK_OUTSIDE_COMPONENT: 'MAKOO_VUE_HOOK_OUTSIDE_COMPONENT',
+	VUE_HOOK_OUTSIDE_SCOPE: 'MAKOO_VUE_HOOK_OUTSIDE_SCOPE',
+	VUE_PARTIAL_MOUNT_UNCONFIRMED: 'MAKOO_VUE_PARTIAL_MOUNT_UNCONFIRMED'
+} as const;

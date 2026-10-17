@@ -1,287 +1,90 @@
 # @makoojs/core
 
-`@makoojs/core` 是 Makoo 的框架无关运行时核心。它负责声明注入任务、启动任务批次、等待目标 DOM、挂载 artifact、管理 alive 重新注入、绑定事件监听，并提供生命周期观察、日志和错误基础设施。
+<p>
+  <a href="https://www.npmjs.com/package/@makoojs/core"><img alt="npm" src="https://img.shields.io/npm/v/@makoojs/core?style=flat-square"></a>
+  <a href="https://github.com/makoojs/Makoo/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square"></a>
+</p>
 
-> [!NOTE]
-> `@makoojs/core` 提供 Makoo 的公共运行时协议，其他 Makoo 包会直接或间接使用这里的类型和能力。
+<p>
+  <a href="https://makoojs.github.io/Makoo/zh/api/core">API 参考</a> •
+  <a href="https://github.com/makoojs/Makoo">Makoo</a> •
+  <a href="https://github.com/makoojs/Makoo/blob/main/packages/core/README.md">English</a>
+</p>
 
-## 使用场景
+Makoo 的核心包，运行在浏览器中。你用它创建 Core 实例，声明组件和网页事件监听，再控制它们、读取它们的状态。等待目标元素、挂载、节点被替换后恢复和清理都在这里完成。
 
-- 编写自定义 `ResolvableMountAdapter`，让 Makoo 挂载新的 artifact 类型。
-- 使用 `createMakoo()` 创建运行时，并显式启动任务声明。
-- 监听注入生命周期事件，用于调试、埋点、错误上报或可视化开发工具。
-- 使用 `DOMWatcher`、`createActivityStore` 等底层工具构建自定义运行时集成。
+它不依赖任何前端框架，组件通过 [`@makoojs/vue`](https://www.npmjs.com/package/@makoojs/vue) 或 [`@makoojs/react`](https://www.npmjs.com/package/@makoojs/react) 提供的适配器挂载。
 
 ## 安装
 
-```bash
-# npm install @makoojs/core
-# yarn add @makoojs/core
+```sh
 pnpm add @makoojs/core
 ```
 
-## 最小运行时示例
+> [!TIP]
+> 用 `pnpm dlx @makoojs/create-makoo` 创建的项目已经装好了它，不需要单独安装。
 
-```ts
-import {
-	createMakoo,
-	inject,
-	type ResolvableMountAdapter
-} from '@makoojs/core';
+## 用法
 
-type TextArtifact = {
-	kind: 'text';
-	text: string;
-};
-
-const textAdapter: ResolvableMountAdapter<TextArtifact, HTMLElement> = {
-	name: 'text',
-	matches(artifact): artifact is TextArtifact {
-		return (
-			typeof artifact === 'object' &&
-			artifact !== null &&
-			(artifact as { kind?: unknown }).kind === 'text'
-		);
-	},
-	mount({ mountPoint, artifact }) {
-		const el = document.createElement('span');
-		el.textContent = artifact.text;
-		mountPoint.appendChild(el);
-
-		return { handle: el };
-	},
-	unmount({ handle }) {
-		handle.remove();
-	}
-};
-
-const makoo = createMakoo({
-	defaults: {
-		alive: true,
-		scope: 'local',
-		timeout: 5000
-	},
-	adapters: [textAdapter]
-});
-
-makoo.start([
-	inject({
-		id: 'text',
-		injectAt: '#app',
-		artifact: {
-			kind: 'text',
-			text: 'Hello from Makoo core'
-		}
-	})
-]);
-```
-
-## 运行时基础
-
-`inject()` 和 `listen()` 用于声明任务。它们不会触碰 DOM，也不会自己注册任务。`makoo.start([...])` 会注册传入批次里的声明，并立即调度这些任务。
-
-`inject()` 接收包含目标、artifact 和任务选项的对象。可选的 `id` 会作为任务 ID，适合后续需要查找或控制这个任务的场景：
-
-```ts
-inject({
-	id: 'settings-panel',
-	injectAt: '#settings',
-	artifact: settingsArtifact,
-	options: {
-		alive: true
-	}
-});
-```
-
-没有传 `id` 时，Makoo 会根据 artifact 和目标 selector 推导任务 ID。
+### 声明组件与监听
 
 ```ts
 import { createMakoo, inject, listen } from '@makoojs/core';
+import { createVueAdapter } from '@makoojs/vue';
+import Panel from './Panel.vue';
 
-const makoo = createMakoo({
-	defaults: {
-		alive: false,
-		scope: 'local',
-		timeout: 5000
-	},
-	adapters: [myAdapter],
-	hooks: {
-		'start:requested': (event) => {
-			console.log(event.name);
-		}
-	}
-});
+const core = createMakoo();
+core.useAdapter(createVueAdapter());
 
-const started = makoo.start([
-	inject({
-		id: 'toolbar',
-		injectAt: '#toolbar',
-		artifact: toolbarArtifact,
-		options: {
-			alive: true
-		}
-	}),
-	inject({
-		id: 'settings-panel',
-		injectAt: '#settings',
-		artifact: settingsArtifact,
-		options: {
-			alive: true
-		}
-	}),
-	inject({
-		id: 'save-tip',
-		injectAt: '#save-tip',
-		artifact: saveTipArtifact,
-		options: {
-			on: listen({
-				listenAt: '#save',
-				type: 'click',
-				callback: () => {
-					console.log('save clicked');
-				}
-			})
-		}
-	}),
-	listen({
-		id: 'escape-close',
-		listenAt: '#escape',
-		type: 'keydown',
-		callback: onEscape
-	})
+core.apply([
+  inject({
+    name: 'panel',
+    injectAt: '#sidebar',
+    adapter: 'vue',
+    component: Panel,
+    // 网站替换掉 #sidebar 后重新挂载
+    reinject: true,
+    listeners: [
+      // 附属监听：随 panel 一起启动和停止
+      listen({
+        name: 'search',
+        listenAt: '#search-form',
+        type: 'submit',
+        callback: () => console.log('提交了搜索')
+      })
+    ]
+  }),
+  // 独立监听：不属于任何组件
+  listen({
+    name: 'escape',
+    listenAt: 'body',
+    type: 'keydown',
+    callback: (event) => {
+      if ((event as KeyboardEvent).key === 'Escape') console.log('按下了 Escape');
+    }
+  })
 ]);
 ```
 
-`start()` 返回 `StartedTasks`，用于控制本批次任务：
+### 控制注入与读取状态
+
+每个注入都可以按名称取得命令入口和状态入口：
 
 ```ts
-const toolbar = started.get('toolbar');
+const panel = core.command('panel');
+const status = core.statusHandle('panel');
 
-if (toolbar?.kind === 'component') {
-	toolbar.disableAlive();
-	toolbar.enableAlive();
-}
-
-started.destroyAll();
-```
-
-`started.destroyAll()` 只影响本次启动产生的任务。`makoo.destroyAll()` 会影响整个运行时中的全部任务。
-
-## Adapter 协议
-
-core 不关心 artifact 是 Vue 组件、React 组件还是其他对象。它只要求 adapter 实现统一挂载协议。
-
-```ts
-import type { ResolvableMountAdapter } from '@makoojs/core';
-
-const adapter: ResolvableMountAdapter<MyArtifact, MyHandle, MyInstance> = {
-	name: 'my-adapter',
-	matches(artifact): artifact is MyArtifact {
-		return isMyArtifact(artifact);
-	},
-	mount(input) {
-		return {
-			handle,
-			instance
-		};
-	},
-	unmount(input) {
-		// 根据 input.reason 清理资源。
-	}
-};
-```
-
-`mount(input)` 会收到目标宿主节点、生成的挂载点、artifact、taskId、selector，以及任务级 `makoo` 上下文。
-
-## Listener 和 activity signal
-
-独立监听任务使用 `listen()` 的对象形式声明。可选的 `id` 是任务 ID；后续需要稳定地查找或控制任务时应提供它。组件的 `on` listener 归属于组件任务本身，不需要单独的 ID。
-
-`capture` 默认为 `false`；设置为 `true` 后，监听器会在 DOM 捕获阶段执行。
-
-```ts
-import { createActivityStore, createMakoo, listen } from '@makoojs/core';
-
-const enabled = createActivityStore(true);
-const makoo = createMakoo();
-
-makoo.start([
-	listen({
-		id: 'save-listener',
-		listenAt: '#save',
-		type: 'click',
-		callback: () => {
-			console.log('save clicked');
-		},
-		activitySignal: () => enabled
-	})
-]);
-
-enabled.set(false);
-enabled.set(true);
-```
-
-## 观察事件
-
-core 会在声明注册、启动、挂载、监听、alive 模式、DOM 观察和任务状态变化时发出观察事件。
-
-```ts
-const off = makoo.on('artifact:mountSuccess', (event) => {
-	console.log(event.taskId, event.injectAt);
+status.subscribe(() => {
+  console.log(status.getSnapshot(), status.lastError);
 });
 
-makoo.onAny((event, ctrl) => {
-	if (event.name === 'artifact:mountFail') {
-		ctrl.stopPropagation();
-	}
-});
-
-off();
+await panel.stop();
+panel.start();
 ```
 
-常见事件包括：
+## 文档
 
-- `register:start`
-- `register:success`
-- `start:requested`
-- `start:taskScheduled`
-- `artifact:mountStart`
-- `artifact:mountSuccess`
-- `artifact:mountFail`
-- `listener:attached`
-- `alive:enabled`
-- `alive:observerStarted`
-- `task:statusChange`
-- `dom:targetFound`
-- `dom:targetTimeout`
-
-完整事件名列表可从 `OBSERVE_EVENT_NAMES` 获取。
-
-## DOMWatcher
-
-`DOMWatcher` 是 core 的底层 DOM 观察工具。通常你不需要直接使用它，因为 `makoo.start()` 和 alive 模式已经封装了目标等待和恢复逻辑。
-
-## 日志和错误
-
-core 默认使用 `Logger`，并用 `[Makoo]` 前缀打印日志。你可以通过 `createMakoo({ logger })` 传入自定义 logger。
-
-core 也导出这些错误相关类型：
-
-- `MakooError`
-- `AdapterError`
-- `TaskError`
-- `SignalError`
-- `ErrorCode`
-- `MakooIssue`
-
-## Public Exports 概览
-
-| 分类 | 代表导出 |
-| --- | --- |
-| 运行时 API | `createMakoo`, `inject`, `listen`, `MakooRuntime`, `StartedTasks` |
-| Adapter 协议 | `MountAdapter`, `ResolvableMountAdapter`, `AdapterMountInput`, `AdapterUnmountInput`, `MakooContext` |
-| 生命周期观察 | `ObserverHub`, `OBSERVE_EVENT_NAMES`, `ObserveEvent`, `ObserveHook`, `LifecycleHookMap` |
-| DOM 观察 | `DOMWatcher` |
-| 监听 signal | `createActivityStore`, `ActivitySignalSource` |
-| 日志 | `Logger`, `ILogger`, `LoggerLevel` |
-| 错误 | `MakooError`, `AdapterError`, `TaskError`, `SignalError`, `ErrorCode` |
+- [Core 实例](https://makoojs.github.io/Makoo/zh/api/instance)：`createMakoo()` 与实例上的方法。
+- [声明](https://makoojs.github.io/Makoo/zh/api/declarations)：`inject()` 与 `listen()` 的全部字段。
+- [命令与状态](https://makoojs.github.io/Makoo/zh/api/status)：启动、停止、移除，以及状态值的含义。
+- [错误与错误码](https://makoojs.github.io/Makoo/zh/api/errors)：错误的种类和处理方式。

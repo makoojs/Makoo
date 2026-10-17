@@ -69,21 +69,29 @@ function parseArgs(argv) {
 	return args;
 }
 
-function getChangesetBinary() {
+function getChangesetInvocation() {
+	const cliJs = resolve(rootDir, 'node_modules/@changesets/cli/bin.js');
+	if (existsSync(cliJs)) {
+		return { file: process.execPath, argsPrefix: [cliJs], shell: false };
+	}
+
 	const binaryName = process.platform === 'win32' ? 'changeset.cmd' : 'changeset';
 	const localBinary = resolve(rootDir, 'node_modules/.bin', binaryName);
+	const file = existsSync(localBinary) ? localBinary : 'changeset';
 
-	return existsSync(localBinary) ? localBinary : 'changeset';
+	return { file, argsPrefix: [], shell: process.platform === 'win32' };
 }
 
 function readPendingChangesets(since) {
 	const outputDir = mkdtempSync(resolve(tmpdir(), 'makoo-changeset-status-'));
 	const outputPath = resolve(outputDir, 'status.json');
+	const { file, argsPrefix, shell } = getChangesetInvocation();
 
 	try {
-		execFileSync(getChangesetBinary(), ['status', '--since', since, '--output', outputPath], {
+		execFileSync(file, [...argsPrefix, 'status', '--since', since, '--output', outputPath], {
 			cwd: rootDir,
-			stdio: 'pipe'
+			stdio: 'pipe',
+			shell
 		});
 
 		return JSON.parse(readFileSync(outputPath, 'utf8'));

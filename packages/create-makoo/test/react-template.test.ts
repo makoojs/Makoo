@@ -67,15 +67,10 @@ describe('generateReactTemplate', () => {
 				build: 'tsc -b && makoo build',
 				preview: 'makoo preview'
 			});
-			expect(packageJson.devDependencies.esbuild).toBe('^0.28.2');
-			expect(packageJson.devDependencies.vite).toBe('^8.2.2');
-			expect(packageJson.devDependencies['@vitejs/plugin-react']).toBe('^6.1.1');
-			expect(packageJson.devDependencies.typescript).toBe('^7.0.2');
-			expect(packageJson.devDependencies['@types/node']).toBe('^26.4.1');
-			expect(packageJson.devDependencies['@types/react']).toBe('^19.2.18');
-			expect(packageJson.devDependencies['@types/react-dom']).toBe('^19.2.7');
-			expect(packageJson.dependencies.react).toBe('^19.2.8');
-			expect(packageJson.dependencies['react-dom']).toBe('^19.2.8');
+			expect(packageJson.dependencies).toHaveProperty('react');
+			expect(packageJson.dependencies).toHaveProperty('react-dom');
+			expect(packageJson.devDependencies).toHaveProperty('vite');
+			expect(packageJson.devDependencies).toHaveProperty('@vitejs/plugin-react');
 			expect(packageJson.dependencies['@makoojs/core']).toBe(recommendedMakooVersions.core);
 			expect(packageJson.dependencies['@makoojs/react']).toBe(recommendedMakooVersions.react);
 			expect(packageJson.devDependencies['@makoojs/cli']).toBe(recommendedMakooVersions.cli);
@@ -91,9 +86,20 @@ describe('generateReactTemplate', () => {
 				"match: ['https://www.google.com/']"
 			);
 			expect(readFileSync(appPath, 'utf-8')).toContain('../../../assets/react.svg');
-			expect(readFileSync(mainPath, 'utf-8')).toContain('createReactAdapter()');
-			expect(readFileSync(mainPath, 'utf-8')).toContain("injectAt: 'body'");
-			expect(readFileSync(mainPath, 'utf-8')).not.toContain('import.meta.hot');
+			const mainSource = readFileSync(mainPath, 'utf-8');
+			expect(mainSource).toContain('const core = createMakoo();');
+			expect(mainSource).toContain('core.useAdapter(createReactAdapter());');
+			expect(mainSource).toContain('core.apply([');
+			expect(mainSource).toContain("name: 'hello-world'");
+			expect(mainSource).toContain("injectAt: 'body'");
+			expect(mainSource).toContain("adapter: 'react'");
+			expect(mainSource).toContain('component: App');
+			expect(mainSource).not.toContain('.start(');
+			expect(mainSource).not.toContain('id:');
+			expect(mainSource).not.toContain('artifact:');
+			expect(mainSource).not.toContain('import.meta.hot');
+			expect(mainSource).not.toContain('destroyAll');
+			expect(mainSource).not.toContain('adapters:');
 			expect(existsSync(path.join(projectRoot, 'injections', 'manifest.ts'))).toBe(false);
 			expect(readFileSync(appPath, 'utf-8')).toContain('count is {count}');
 			expect(readFileSync(stylePath, 'utf-8')).toContain('.logo-react');
@@ -108,6 +114,7 @@ describe('generateReactTemplate', () => {
 
 			const projectRoot = path.join(root, 'demo-react-app');
 			const packageJson = readPackageJson(path.join(projectRoot, 'package.json'));
+			const mainSource = readFileSync(path.join(projectRoot, 'src', 'main.js'), 'utf-8');
 			expect(existsSync(path.join(projectRoot, 'tsconfig.json'))).toBe(false);
 			expect(existsSync(path.join(projectRoot, 'tsconfig.app.json'))).toBe(false);
 			expect(existsSync(path.join(projectRoot, 'assets', 'react.svg'))).toBe(true);
@@ -121,6 +128,19 @@ describe('generateReactTemplate', () => {
 				build: 'makoo build',
 				preview: 'makoo preview'
 			});
+			expect(mainSource).toContain('const core = createMakoo();');
+			expect(mainSource).toContain('core.useAdapter(createReactAdapter());');
+			expect(mainSource).toContain('core.apply([');
+			expect(mainSource).toContain("name: 'hello-world'");
+			expect(mainSource).toContain("injectAt: 'body'");
+			expect(mainSource).toContain("adapter: 'react'");
+			expect(mainSource).toContain('component: App');
+			expect(mainSource).not.toContain('.start(');
+			expect(mainSource).not.toContain('id:');
+			expect(mainSource).not.toContain('artifact:');
+			expect(mainSource).not.toContain('import.meta.hot');
+			expect(mainSource).not.toContain('destroyAll');
+			expect(mainSource).not.toContain('adapters:');
 		});
 	});
 

@@ -54,11 +54,14 @@
     "format:check": "biome format .",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "test:mutation": "stryker run",
     "test:watch": "vitest"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.16",
     "@changesets/cli": "^2.31.0",
+    "@stryker-mutator/core": "^10.0.0",
+    "@stryker-mutator/vitest-runner": "^10.0.0",
     "@types/node": "^25.9.1",
     "@types/react": "^19.2.15",
     "@types/react-dom": "^19.2.3",

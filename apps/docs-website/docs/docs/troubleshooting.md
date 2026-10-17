@@ -1,54 +1,97 @@
 # Troubleshooting
 
-Check the path in order: server → installation → page match → Runtime → task → component. First identify which stage failed.
+When the script doesn't work as expected, check in the order "development server → script installation → URL matching → entry execution → injection status → page behavior" to find which step the problem is in first.
 
-## Dev fails to start
+## Reading Errors
 
-Read the first terminal error. Check installed dependencies, the entry file, and the directory where you ran the command. Fix invalid configuration at the reported field path. Change ports or stop the process occupying the requested port.
+Most runtime problems can be traced through the injection's status handle. Temporarily add the following to the entry:
 
-`--strictPort` exits when the requested port is unavailable. See [CLI Commands](../api/cli.md).
+```ts
+const status = core.statusHandle('panel');
+status.subscribe(() => console.log('panel:', status.getSnapshot(), status.lastError));
+```
 
-## Installation opens, but no component appears
+Or add `makooDev()` and view each injection's status and errors directly on the injections page of the development terminal; see [Local Development](./development.md#view-injection-status-in-the-terminal).
 
-The installation page installs the script. Confirm that installation finished and that the manager enabled the script, then open a target page matching `@match`.
+The browser console also prints the error object for every execution failure and cleanup failure. Expand it and follow `cause` down to find the original line of code. For what each error code means, see the [Errors API](../api/errors.md#makooerrorcode).
 
-After changing `@match`, inspect the script metadata in the manager.
+## dev Fails to Start
 
-## The terminal has no task action
+Look at the first error in the terminal. Confirm that dependencies are installed, the entry file exists, and you are running the command in the project directory. The error code for invalid configuration fields is `MAKOO_CLI_CONFIG_INVALID`, and the message has one `field path: reason` per line; fix them as indicated. When the port is in use, switch to another port or close the process using it.
 
-Check that `vite.config.ts` includes both `makoo(...)` and `makooDev()`, and start with `makoo dev`.
+## The Install Page Opened, but Nothing Shows on the Page
 
-Redirected output and CI do not show interactive views. See [Local Development](./development.md).
+The install page is only for installing the script. Confirm that the script manager has finished installing and the script is enabled, then open a target page matched by `@match`.
 
-## Waiting for a Runtime
+After changing `@match`, check whether the metadata in the script manager has been updated.
 
-Confirm that the target page is open and its script reached `createMakoo()`. Check the browser console for module loading or entry execution errors, and ensure the dev server is still running.
+## The Script Doesn't Run
 
-## A task exists, but its component is missing
+- Open the script manager's popup menu and confirm the script is running on the current page.
+- Check the browser console for module loading failures or errors thrown by the entry.
+- Confirm that `pnpm dev` is still running; the development script loads code from it.
+- With `makooDev()` added, `Waiting for a browser runtime` on the terminal home page means there is currently no connection: it appears when the page isn't open, the script isn't installed or doesn't match, or the entry throws before `createMakoo()`.
 
-1. Use `document.querySelector('your-selector')` in the target page’s console to check the target.
-2. Confirm that the component matches the registered Vue or React adapter.
-3. Inspect events such as `dom:targetTimeout` and `artifact:mountFail`, and browser errors.
-4. If mounted, check host CSS, overlapping elements, positioning, and visibility.
+## `apply()` Throws an Error
 
-`pending` means waiting for a target; `idle` means not currently running. Neither provides a full diagnosis. Subscribe to specific events through the [Events and State API](../api/observation.md).
+This is a configuration error, and none of the declarations in the batch started. Handle it by error code:
 
-## A panel disappears after target replacement
+| Error code | Fix |
+| --- | --- |
+| `MAKOO_DECLARATION_INVALID` | Fix the declaration according to the fields listed in the message, and check the selector syntax |
+| `MAKOO_INJECTION_NAME_CONFLICT` | Use a different name, or first `await` the `remove()` of the existing same-named injection; the name is released only after cleanup finishes. An injection whose cleanup failed keeps occupying its name, and you need to reload the page |
+| `MAKOO_ADAPTER_NOT_FOUND` | Call `core.useAdapter()` before `apply()`, and check the `adapter` name |
 
-Check whether the host removed the matched target. Enable `alive` with an appropriate `scope` if you need reinjection when the same selector returns. A URL change still requires your application to decide how tasks should change. See [Lifecycle and Cleanup](./lifecycle.md).
+## The Component Doesn't Appear
 
-## Duplicate mounts or callbacks after hot updates
+Check the component status first:
 
-- Enable only the script you are testing in the script manager.
-- Check whether component renders or repeated callbacks call `createMakoo()` multiple times.
-- If you defined a custom HMR boundary, check its cleanup of old side effects. Components should also release their events and timers on unmount.
+| Status | Meaning and fix |
+| --- | --- |
+| `waiting` | The mount target hasn't been found yet. Run `document.querySelector('your injectAt')` in the console to check the selector |
+| `failed` + `MAKOO_TARGET_WAIT_TIMEOUT` | The wait timed out (15 seconds by default). Check the selector, or increase `timeout` |
+| `failed` + `MAKOO_MOUNT_FAILED` | The component threw while mounting. Expand `cause` to see the error in the component code |
+| `failed` + `MAKOO_INJECTION_CLEANUP_FAILED` | Cleanup also failed after the mount failure, and the injection has been closed. When a Vue component throws partway through mounting (for example in a child component's `setup`), `errors` contains `MAKOO_VUE_PARTIAL_MOUNT_UNCONFIRMED`. Fix the component and reload the page |
+| `failed` + `MAKOO_ATTACHED_LISTENER_FAILED` | An attached listener failed and ended the component. Expand `cause` to see which listener |
+| `mounted` | The component is mounted. Check whether host CSS covers or hides it, or whether it was mounted into an unexpected element |
 
-See [Hot Updates](./hmr.md) for update behavior and boundaries.
+Search the developer tools for the `div` added at the end of the mount target to confirm where the component container is.
 
-## GM APIs are unavailable
+## The Component Appeared, Then Disappeared
 
-Import `@makoojs/cli/monkey` in browser application code, not Node configuration. Check that the script manager runs the script on this page and that the actual metadata declares the required permissions. See [Userscript APIs](../api/monkey.md).
+The site removed the mount target or the component container, and `lastError` is usually `MAKOO_MOUNT_TARGET_DETACHED`. Enable `reinject` so the component remounts on the new element; see [Handle Node Replacement](./reinject.md).
 
-## Preview shows old content
+## The Listener Doesn't Fire
 
-Build again before previewing. Use the same `outDir` for both commands and confirm that the manager runs the newly built script. Preview does not compile source automatically. See [Build and Preview](./build.md).
+- Status is `waiting`: the listener target hasn't appeared yet; check `listenAt`.
+- Status is `failed`: `MAKOO_TARGET_WAIT_TIMEOUT` means the wait timed out; `MAKOO_LISTENER_TARGET_DETACHED` means the site removed the target and `reinject` isn't enabled.
+- Status is `bound` but the callback didn't run: confirm the event actually happens on this element or its descendants; when the site stops propagation, try `capture: true`.
+- The callback ran but errored: the console shows `MAKOO_LISTENER_CALLBACK_FAILED`, and the listener stays bound.
+- Attached listeners only start finding their targets after the component mounts; while the component is `waiting`, they don't bind.
+
+## `useMakooComponent()` or React Hooks Throw
+
+| Error code | Cause |
+| --- | --- |
+| `MAKOO_VUE_HOOK_OUTSIDE_COMPONENT` / `MAKOO_REACT_HOOK_OUTSIDE_COMPONENT` | The component wasn't mounted by Makoo, for example when used in a plain `createApp()`; in Vue, calling it in an event handler or `setTimeout` also throws this error. Call it at the top level of `setup` |
+| `MAKOO_VUE_HOOK_OUTSIDE_SCOPE` | Called where there is no effect scope, for example `app.runWithContext()` in a plugin |
+| `MAKOO_LISTENER_NOT_FOUND` | The name passed to `attachedListener(name)` isn't in the component's `listeners` |
+| `MAKOO_INJECTION_NOT_FOUND` | `globalListener(name)` can't find this standalone listener; it may not have been `apply()`d yet, or it is a component |
+
+## `start()` Throws `MAKOO_INJECTION_CLOSED`
+
+This injection's cleanup failed earlier, so it has been closed and its name is still occupied. Check its `lastError` (a `MakooAggregateError`), fix the unmount or cleanup problem according to `errors`, then reload the page. For the reasoning, see [Why Cleanup Failure Closes the Injection](./lifecycle.md#why-cleanup-failure-closes-the-injection).
+
+## The Component Mounted Twice or the Callback Fired Twice
+
+- Enable only the one script you are currently testing in the script manager; for example, when both the development script and the build output are installed, disable one of them.
+- Confirm that `createMakoo()` and `apply()` run only once in the entry, and aren't written inside a component or a callback that runs repeatedly.
+- If you wrote `import.meta.hot.accept()` yourself, destroy the old instance in `dispose`; see [Hot Updates](./hmr.md#custom-hot-update-boundaries).
+
+## GM APIs Are Unavailable
+
+Import `@makoojs/cli/monkey` from browser code; don't call it in `vite.config.ts`. Confirm that the script manager ran the script on the current page, and that the build output's metadata declares the required permissions. The development script always declares `@grant *`, so "works in development, fails after building" usually means the output is missing the corresponding `@grant`. See [Userscript API](../api/monkey.md).
+
+## preview Shows Old Content
+
+preview doesn't compile source code. Run `build` again before `preview`, and confirm that both use the same `outDir` and that the script manager is running the newly built script. See [Build and Preview](./build.md).

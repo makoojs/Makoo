@@ -105,11 +105,14 @@ function mainTemplate(): string {
 import { createVueAdapter } from '@makoojs/vue';
 import App from './injections/hello-world/App.vue';
 
-createMakoo({ adapters: [createVueAdapter()] }).start([
+const core = createMakoo();
+core.useAdapter(createVueAdapter());
+core.apply([
   inject({
-    id: 'hello-world',
+    name: 'hello-world',
     injectAt: 'body',
-    artifact: App,
+    adapter: 'vue',
+    component: App,
   }),
 ]);
 `;

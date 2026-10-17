@@ -1,9 +1,3 @@
-import type { MakooIssue } from '@makoojs/core';
-import { AdapterError, ErrorCode } from '@makoojs/core';
-
-export class ReactAdapterError extends AdapterError {
-	constructor(message: string, issues?: MakooIssue[], code?: string, cause?: Error) {
-		super(message, issues, code ?? ErrorCode.ADAPTER_MOUNT_FAIL, cause);
-		this.name = 'ReactAdapterError';
-	}
-}
+export const ReactErrorCode = {
+	REACT_HOOK_OUTSIDE_COMPONENT: 'MAKOO_REACT_HOOK_OUTSIDE_COMPONENT'
+} as const;

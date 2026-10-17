@@ -3,7 +3,7 @@ import type { MonkeyBuildConfig, MonkeyConfig, ResolvedMonkeyServerConfig } from
 
 export const DEFAULT_MONKEY_SERVER_CONFIG: ResolvedMonkeyServerConfig = {
 	open: process.platform === 'win32' || process.platform === 'darwin',
-	prefix: 'server:',
+	prefix: (name) => `server:${name}`,
 	mountGmApi: false
 };
 

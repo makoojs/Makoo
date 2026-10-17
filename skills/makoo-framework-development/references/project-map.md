@@ -1,42 +1,32 @@
 # Makoo Project Map
 
-Use this file when the requested change spans packages, adds new files, or needs a sanity check on where code should live.
+Use this file when a change spans packages, adds files, or needs a check on where code should live.
 
 ## Package Responsibilities
 
-- `packages/core`
-  - Own runtime primitives, injection lifecycle, adapter contracts, observer payloads, watcher behavior, task orchestration, logging, and shared error types.
-  - Keep this package framework-agnostic.
-  - Existing runtime domains include `Makoo/`, `runtime/`, `Task/`, `watcher/`, `payload/`, and `adapter/`.
-- `packages/cli`
-  - Own config parsing and normalization, validation, project commands, and the Vite plugin surface.
-  - Keep `entry`, application metadata, and monkey options semantically separated in resolved config.
+- `packages/core`: framework-agnostic runtime. `CONTEXT.md` defines its vocabulary.
+  - `core/`: `createMakoo`, the declaration batch, Injection registration, and disposal.
+  - `component/` and `listener/`: declarations, Commands, Status, and executions for Components and Host Listeners (`listener/attach.ts` holds Attached Listeners).
+  - `dom/`: the shared DOM observer, `waitForElement`, and `watchElement`.
+  - `adapter/`: the Component Adapter contract and registry.
+  - `state/`: StateView. `error/`: `MakooError`, `MakooAggregateError`, and `MakooErrorCode`.
+- `packages/cli`: config parsing and resolution (`config/`), project commands (`cli/`), the Vite plugin (`vite/`), the dev session (`session/`), and `monkey/` aliases over userscript manager APIs.
+  - Keep `entry`, application metadata, and monkey options separate in resolved config.
   - Resolve the configured application module relative to the project root before passing it to `vite-plugin-monkey`.
-- `packages/react`
-  - Own React-specific mount and unmount behavior plus React-facing errors and type guards.
-- `packages/vue`
-  - Own Vue-specific mount and unmount behavior, Vue plugin registration, Vue-facing errors, and Vue type guards.
-- `packages/create-makoo`
-  - Own starter project templates and scaffold-time file content.
+- `packages/react`, `packages/vue`: framework-specific mount and unmount, hooks or composables, framework-facing errors and type guards. Vue also owns plugin registration.
+- `packages/create-makoo`: starter templates and scaffold-time file content.
 
 ## Recurring File Patterns
 
-- `index.ts`
-  - Re-export public package API only.
-- `types.ts` or `type.ts`
-  - Keep closely related type definitions near the implementation domain.
-- `defaults.ts`
-  - Centralize default values, regexes, constants, and fixed identifiers that multiple functions rely on.
-- `resolve.ts`
-  - Convert partial or user-facing config into normalized resolved structures.
-- `validation.ts`
-  - Reject unsupported or invalid input near the boundary.
-- `error.ts` or `XError.ts`
-  - Encode domain-specific failures with stable messages and codes.
+- `index.ts`: re-exports the public package API only.
+- `types.ts`: type definitions next to their domain.
+- `declaration.ts` (core) or `resolve.ts` / `validation.ts` (cli): validate and normalize user input at the boundary.
+- `defaults.ts`: shared default values, regexes, constants, and fixed identifiers.
+- `error.ts`, `errors.ts`, or `XError.ts`: domain failures with stable messages and codes.
 
 ## Package-Level Test Focus
 
-- Resolver tests assert merged defaults, path normalization, and override precedence.
-- Runtime tests create realistic DOM or adapter fixtures and verify lifecycle transitions.
-- Adapter tests focus on mount and unmount success and wrapped failure behavior.
-- CLI tests verify config transformation, command behavior, and Vite plugin options.
+- Core tests use real DOM fixtures and drive lifecycle transitions and reentry through Commands and Status.
+- Adapter tests cover mount and unmount success and wrapped failure behavior.
+- CLI tests cover config transformation, command behavior, and Vite plugin options.
+- Template tests check that the generated project matches the current public API.

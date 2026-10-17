@@ -1,49 +1,29 @@
 import type { NormalizedHotChannelClient } from 'vite';
 import { describe, expect, it, vi } from 'vitest';
 import { DevSession } from '../../src/session/DevSession';
+import type { InjectionSnapshot, SerializedDiagnostic } from '../../src/session/types';
 
 function createClient(): NormalizedHotChannelClient {
 	return {} as NormalizedHotChannelClient;
 }
 
-describe('DevSession', () => {
-	it('isolates identical task IDs across runtimes and browser clients', () => {
-		const session = new DevSession();
-		const first = createClient();
-		const second = createClient();
-		for (const [client, runtimeId] of [
-			[first, 1],
-			[first, 2],
-			[second, 1]
-		] as const) {
-			session.open(client, { runtimeId });
-			session.record(client, {
-				runtimeId,
-				event: {
-					name: 'register:success',
-					ts: 1,
-					taskId: 'shared',
-					kind: 'listener',
-					status: 'idle',
-					injectAt: 'window'
-				}
-			});
-		}
-		session.record(first, {
-			runtimeId: 2,
-			event: { name: 'task:statusChange', ts: 2, taskId: 'shared', status: 'active' }
-		});
-		expect(session.getTasks().map(({ tasks }) => tasks[0].status)).toEqual([
-			'idle',
-			'active',
-			'idle'
-		]);
-		session.disconnect(first);
-		expect(session.getTasks()).toMatchObject([
-			{ clientId: 2, runtimeId: 1, tasks: [{ taskId: 'shared', status: 'idle' }] }
-		]);
-	});
+const panel: InjectionSnapshot = {
+	name: 'panel',
+	kind: 'component',
+	status: 'mounted',
+	attachedListeners: [{ name: 'hover', status: 'bound' }]
+};
+const playClick: InjectionSnapshot = {
+	name: 'play-click',
+	kind: 'standalone-listener',
+	status: 'bound'
+};
 
+function diagnostic(message: string): SerializedDiagnostic {
+	return { type: 'diagnostic', error: { code: 'MAKOO_INSTANCE_OBSERVER_FAILED', message } };
+}
+
+describe('DevSession', () => {
 	it('does not let an old unsubscribe detach the current subscriber', () => {
 		const session = new DevSession();
 		const oldListener = vi.fn();
@@ -55,87 +35,19 @@ describe('DevSession', () => {
 		expect(listener).toHaveBeenCalledOnce();
 		expect(oldListener).not.toHaveBeenCalled();
 	});
-	it('reduces registered task events into the current runtime snapshot', () => {
+	it('drops state when the page disconnects', () => {
 		const session = new DevSession();
 		const client = createClient();
 		session.open(client, { runtimeId: 1 });
-
-		session.record(client, {
-			runtimeId: 1,
-			event: {
-				name: 'register:success',
-				ts: 1,
-				taskId: 'task-1',
-				kind: 'component',
-				status: 'idle',
-				injectAt: '#app',
-				meta: { artifactName: 'Demo' }
-			}
-		});
-		session.record(client, {
-			runtimeId: 1,
-			event: {
-				name: 'task:statusChange',
-				ts: 2,
-				taskId: 'task-1',
-				kind: 'component',
-				status: 'active',
-				preStatus: 'idle',
-				injectAt: '#app',
-				meta: { reason: 'target-found' }
-			}
-		});
-
-		expect(session.getTasks()).toEqual([
-			{
-				clientId: 1,
-				runtimeId: 1,
-				tasks: [
-					{
-						taskId: 'task-1',
-						kind: 'component',
-						status: 'active',
-						injectAt: '#app'
-					}
-				]
-			}
+		session.updateInjection(client, { runtimeId: 1, injection: panel });
+		expect(session.getRuntimeSnapshots()).toEqual([
+			{ clientId: 1, runtimeId: 1, injections: [panel], diagnostics: [] }
 		]);
-	});
-
-	it('removes destroyed tasks and drops state when the page disconnects', () => {
-		const session = new DevSession();
-		const client = createClient();
-		session.open(client, { runtimeId: 1 });
-		session.record(client, {
-			runtimeId: 1,
-			event: {
-				name: 'register:success',
-				ts: 1,
-				taskId: 'task-1',
-				kind: 'listener',
-				status: 'idle',
-				injectAt: 'window',
-				meta: {}
-			}
-		});
-		session.record(client, {
-			runtimeId: 1,
-			event: {
-				name: 'task:afterDestroy',
-				ts: 2,
-				taskId: 'task-1',
-				kind: 'listener',
-				preStatus: 'idle',
-				injectAt: 'window'
-			}
-		});
-
-		expect(session.getTasks()[0]?.tasks).toEqual([]);
 
 		session.disconnect(client);
 
 		expect(session.isEmpty()).toBe(true);
-		expect(session.getTasks()).toEqual([]);
+		expect(session.getRuntimeSnapshots()).toEqual([]);
 	});
 
 	it('keeps client labels stable when another page disconnects', () => {
@@ -146,7 +58,7 @@ describe('DevSession', () => {
 		session.open(secondClient, { runtimeId: 1 });
 		session.disconnect(firstClient);
 
-		expect(session.getTasks()[0]?.clientId).toBe(2);
+		expect(session.getRuntimeSnapshots()[0]?.clientId).toBe(2);
 	});
 
 	it('notifies a subscriber when session state changes', () => {
@@ -155,27 +67,117 @@ describe('DevSession', () => {
 		const onChange = vi.fn();
 		const stop = session.subscribe(onChange);
 
-		session.record(client, {
-			runtimeId: 1,
-			event: { name: 'start:requested', ts: 1 }
-		});
-		expect(onChange).not.toHaveBeenCalled();
-
 		session.open(client, { runtimeId: 1 });
-		expect(onChange).toHaveBeenCalledTimes(1);
-		session.record(client, {
-			runtimeId: 99,
-			event: { name: 'start:requested', ts: 2 }
-		});
-		expect(onChange).toHaveBeenCalledTimes(1);
-		session.record(client, {
-			runtimeId: 1,
-			event: { name: 'start:requested', ts: 2 }
-		});
-		expect(onChange).toHaveBeenCalledTimes(2);
+		session.updateInjection(client, { runtimeId: 1, injection: panel });
+		session.applyNotice(client, { runtimeId: 1, notice: diagnostic('observer exploded') });
+		expect(onChange).toHaveBeenCalledTimes(3);
 
 		stop();
 		session.disconnect(client);
-		expect(onChange).toHaveBeenCalledTimes(2);
+		expect(onChange).toHaveBeenCalledTimes(3);
+	});
+
+	it('upserts Injection rows by name in first-seen order', () => {
+		const session = new DevSession();
+		const client = createClient();
+		session.open(client, { runtimeId: 1 });
+		session.updateInjection(client, { runtimeId: 1, injection: panel });
+		session.updateInjection(client, { runtimeId: 1, injection: playClick });
+		const failedPanel: InjectionSnapshot = {
+			...panel,
+			status: 'failed',
+			lastError: { code: 'MAKOO_MOUNT_TARGET_DETACHED', message: 'Mount target detached' }
+		};
+		session.updateInjection(client, { runtimeId: 1, injection: failedPanel });
+
+		expect(session.getRuntimeSnapshots()[0]?.injections).toEqual([failedPanel, playClick]);
+	});
+
+	it('removes only the named Injection subtree on injection-removed', () => {
+		const session = new DevSession();
+		const client = createClient();
+		session.open(client, { runtimeId: 1 });
+		session.updateInjection(client, { runtimeId: 1, injection: panel });
+		session.updateInjection(client, { runtimeId: 1, injection: playClick });
+
+		session.applyNotice(client, {
+			runtimeId: 1,
+			notice: { type: 'injection-removed', name: 'panel' }
+		});
+
+		expect(session.getRuntimeSnapshots()[0]?.injections).toEqual([playClick]);
+	});
+
+	it('keeps diagnostics apart from Injection phases and retains only the latest five', () => {
+		const session = new DevSession();
+		const client = createClient();
+		session.open(client, { runtimeId: 1 });
+		session.updateInjection(client, { runtimeId: 1, injection: playClick });
+		for (let index = 1; index <= 6; index += 1) {
+			session.applyNotice(client, { runtimeId: 1, notice: diagnostic(`failure ${index}`) });
+		}
+
+		const [runtime] = session.getRuntimeSnapshots();
+		expect(runtime?.injections).toEqual([playClick]);
+		expect(runtime?.diagnostics.map((notice) => notice.error.message)).toEqual([
+			'failure 2',
+			'failure 3',
+			'failure 4',
+			'failure 5',
+			'failure 6'
+		]);
+	});
+
+	it('closes a runtime on instance-disposed and ignores its later messages', () => {
+		const session = new DevSession();
+		const client = createClient();
+		session.open(client, { runtimeId: 1 });
+		session.updateInjection(client, { runtimeId: 1, injection: panel });
+		session.applyNotice(client, { runtimeId: 1, notice: diagnostic('observer exploded') });
+		session.open(client, { runtimeId: 2 });
+		session.updateInjection(client, { runtimeId: 2, injection: playClick });
+
+		session.applyNotice(client, { runtimeId: 1, notice: { type: 'instance-disposed' } });
+		session.updateInjection(client, { runtimeId: 1, injection: panel });
+
+		expect(session.getRuntimeSnapshots()).toEqual([
+			{ clientId: 1, runtimeId: 2, injections: [playClick], diagnostics: [] }
+		]);
+	});
+
+	it('ignores messages for a runtime it never opened', () => {
+		const session = new DevSession();
+		const client = createClient();
+		const onChange = vi.fn();
+		session.open(client, { runtimeId: 1 });
+		session.subscribe(onChange);
+
+		session.updateInjection(client, { runtimeId: 2, injection: panel });
+		session.applyNotice(client, { runtimeId: 2, notice: diagnostic('stale') });
+		session.updateInjection(createClient(), { runtimeId: 1, injection: panel });
+
+		expect(session.getRuntimeSnapshots()).toEqual([
+			{ clientId: 1, runtimeId: 1, injections: [], diagnostics: [] }
+		]);
+		expect(onChange).not.toHaveBeenCalled();
+	});
+
+	it('ignores notices and disconnect for a client it never opened', () => {
+		const session = new DevSession();
+		const known = createClient();
+		const unknown = createClient();
+		const onChange = vi.fn();
+		session.open(known, { runtimeId: 1 });
+		session.subscribe(onChange);
+
+		expect(() => {
+			session.applyNotice(unknown, { runtimeId: 1, notice: diagnostic('stray') });
+			session.disconnect(unknown);
+		}).not.toThrow();
+
+		expect(session.getRuntimeSnapshots()).toEqual([
+			{ clientId: 1, runtimeId: 1, injections: [], diagnostics: [] }
+		]);
+		expect(onChange).not.toHaveBeenCalled();
 	});
 });

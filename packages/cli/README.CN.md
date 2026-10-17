@@ -1,154 +1,73 @@
 # @makoojs/cli
 
-`@makoojs/cli` 提供 Makoo 的 Vite 插件和 CLI 命令，并通过 [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) 提供 userscript 的开发与构建能力。
+<p>
+  <a href="https://www.npmjs.com/package/@makoojs/cli"><img alt="npm" src="https://img.shields.io/npm/v/@makoojs/cli?style=flat-square"></a>
+  <a href="https://github.com/makoojs/Makoo/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square"></a>
+</p>
 
-应用代码通过 `@makoojs/core` 的 `createMakoo()`、`inject()` 和 `listen()` 编排运行时行为；`@makoojs/cli` 负责 Vite 和 userscript 构建部分。
+<p>
+  <a href="https://makoojs.github.io/Makoo/zh/api/vite">API 参考</a> •
+  <a href="https://github.com/makoojs/Makoo">Makoo</a> •
+  <a href="https://github.com/makoojs/Makoo/blob/main/packages/cli/README.md">English</a>
+</p>
 
-## 适用场景
-
-- 使用 Vite 开发 Makoo userscript 项目。
-- 通过 [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) 生成 userscript 元信息、开发入口和构建产物。
-- 使用 `makoo dev` 和 `makoo build` 命令。
-- 通过 `@makoojs/cli/monkey` 使用 GM API 的 Makoo 稳定入口。
+Makoo 的工具链包。它提供 `makoo()` 与 `makooDev()` 两个 Vite 插件、`makoo dev` / `build` / `preview` 命令，以及在脚本中调用 GM API 的 `@makoojs/cli/monkey`。userscript 的元信息、开发服务与构建由 [vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) 完成。
 
 ## 安装
 
-```bash
-# npm install @makoojs/cli
-# yarn add @makoojs/cli
-pnpm add @makoojs/cli
+```sh
+pnpm add -D @makoojs/cli vite
 ```
 
-如果你使用 `@makoojs/create-makoo` 创建项目，通常会自动配置好 `@makoojs/cli`。
+> [!TIP]
+> 用 `pnpm dlx @makoojs/create-makoo` 创建的项目已经配置好了它，不需要单独安装。
 
-## 最小 Vite 配置
+## 用法
 
-在 Vite 配置中使用 `makoo()`：
+### 配置 Vite
 
 ```ts
+// vite.config.ts
 import { defineConfig } from 'vite';
-import { makoo } from '@makoojs/cli';
 import vue from '@vitejs/plugin-vue';
+import { makoo, makooDev } from '@makoojs/cli';
 
 export default defineConfig({
-	plugins: [
-		vue(),
-		makoo({
-			entry: './src/app.ts',
-			app: {
-				name: 'my-userscript',
-				version: '0.0.1',
-				description: 'My first Makoo script'
-			},
-			monkey: {
-				userscript: {
-					namespace: 'https://example.com',
-					// 这里只是示例，请替换为 userscript 实际支持的页面。
-					match: ['https://www.google.com/']
-				}
-			}
-		})
-	]
+  plugins: [
+    vue(),
+    makoo({
+      entry: './src/main.ts',
+      app: { name: 'my-script', version: '0.0.1' },
+      monkey: { userscript: { match: ['https://example.com/*'] } }
+    }),
+    // 可选：在开发终端查看注入状态
+    makooDev()
+  ]
 });
 ```
 
-`makoo()` 将配置交给 [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) 完成 userscript 的开发与构建。
+### 开发与构建
 
-## 配置概览
-
-`makoo()` 的主要配置分为三块：
-
-```ts
-makoo({
-	entry: './src/app.ts',
-	app: {
-		name: 'my-script',
-		version: '0.0.1',
-		description: 'demo script'
-	},
-	monkey: {
-		userscript: {
-			match: ['https://www.google.com/']
-		}
-	}
-});
+```sh
+makoo dev       # 启动开发服务，从打印的地址安装开发脚本
+makoo build     # 构建出 .user.js
+makoo preview   # 预览构建产物
 ```
 
-| 配置 | 说明 |
-| --- | --- |
-| `entry` | 交给 Vite 构建的应用模块 |
-| `app` | 用于生成 userscript 的 `name`、`version`、`description` |
-| `monkey` | 大多数配置会透传给 [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) |
+### 调用 GM API
 
-默认情况下，`monkey.build.autoGrant` 为 `true`，[lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) 会根据最终代码生成 `@grant`。
-
-## CLI 命令
-
-安装后可以使用 `makoo` 命令：
-
-| 命令 | 说明 |
-| --- | --- |
-| `makoo dev` | 启动 Vite dev server，并打印本地访问地址 |
-| `makoo build` | 执行 Vite build，生成 userscript 构建产物 |
-| `makoo preview` | 使用 Vite preview server 预览构建后的 userscript |
-
-## 使用 GM API
-
-`@makoojs/cli` 提供 `@makoojs/cli/monkey` 子入口，作为 [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) GM API 的 Makoo 稳定封装。
+在浏览器代码中按能力导入，构建时会只为用到的 API 生成 `@grant`：
 
 ```ts
-import { gmStorage, gmStyle } from '@makoojs/cli/monkey';
+import { gmStorage } from '@makoojs/cli/monkey';
 
-gmStyle.add('.makoo-panel { z-index: 999999; }');
-gmStorage.set('enabled', true);
+const runs = gmStorage.get<number>('runs', 0) + 1;
+gmStorage.set('runs', runs);
 ```
 
-也可以使用聚合入口：
+## 文档
 
-```ts
-import { GMapi } from '@makoojs/cli/monkey';
-
-GMapi.storage.set('enabled', true);
-```
-
-如果希望生成的 `@grant` 范围尽量小，可以按能力导入。完整 GM API 见 CLI API 文档。
-
-## 减小构建体积
-
-`@makoojs/cli` 重新导出了 [lisonge/vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey) 的 `cdn`。可以配合 `monkey.build.externalGlobals` 使用 CDN 外部依赖，减小 userscript 构建体积。
-
-```ts
-import { defineConfig } from 'vite';
-import { cdn, makoo } from '@makoojs/cli';
-
-export default defineConfig({
-	plugins: [
-		makoo({
-			entry: './src/app.ts',
-			app: {
-				name: 'my-script',
-				version: '0.0.1'
-			},
-			monkey: {
-				build: {
-					externalGlobals: {
-						vue: cdn.jsdelivr('Vue', 'dist/vue.global.prod.js')
-					}
-				}
-			}
-		})
-	]
-});
-```
-
-## 与其他包的关系
-
-| 包 | 职责 |
-| --- | --- |
-| `@makoojs/cli` | Vite 插件、CLI 命令和 userscript 构建接入 |
-| `@makoojs/core` | 框架无关的注入运行时内核 |
-| `@makoojs/vue` | Vue adapter 与 Vue 插件注册 |
-| `@makoojs/react` | React adapter |
-| `@makoojs/create-makoo` | 项目脚手架 |
-
-运行时行为由应用代码通过 `@makoojs/core` 进行编排。
+- [Vite 插件](https://makoojs.github.io/Makoo/zh/api/vite)：`makoo()` 的全部配置、默认值与 `makooDev()`。
+- [CLI 命令](https://makoojs.github.io/Makoo/zh/api/cli)：各命令的参数。
+- [Userscript API](https://makoojs.github.io/Makoo/zh/api/monkey)：`@makoojs/cli/monkey` 导出的 GM API。
+- [项目配置](https://makoojs.github.io/Makoo/zh/docs/configuration)：匹配网址、权限与外部依赖的配置方法。
