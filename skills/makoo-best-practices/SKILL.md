@@ -1,6 +1,6 @@
 ---
 name: makoo-best-practices
-description: Use when building, reviewing, or refactoring Makoo-powered userscript projects and an agent needs high-level guidance for browser entries, injection modules, listeners, runtime callbacks, framework adapters, DOM mounting, HMR, or Vue plugin setup.
+description: Use when building, reviewing, or refactoring Makoo-powered userscript projects and an agent needs high-level guidance for browser entries, injections, host listeners, framework adapters, DOM mounting, reinjection, HMR, or Vue plugin setup.
 license: MIT
 ---
 
@@ -12,8 +12,7 @@ Do not use this skill for developing the Makoo framework/monorepo itself; use th
 
 ## Core Rule
 
-`createMakoo()`, `inject()`, and `listen()` provide runtime composition, while framework
-components contain the product UI. A project may organize the related files like this:
+`createMakoo()`, `useAdapter()`, `inject()`, and `listen()` provide runtime composition, while framework components contain the product UI. A project may organize the related files like this:
 
 ```txt
 src
@@ -24,30 +23,39 @@ src
         `-- style.css
 ```
 
-Use `createMakoo()` to create the runtime, register the adapters in use, declare tasks with
-`inject()` and `listen()`, then start them. Point `makoo({ entry })` at the chosen application module.
+Create a Core Instance, register the adapters in use, declare injections with `inject()` and `listen()`, then hand them to `apply()`. Point `makoo({ entry })` at the chosen application module.
 
-Do not use `querySelector()` plus `appendChild()` and framework mount calls as the primary
-injection flow. Small DOM reads inside components are still appropriate for measurement,
-focus management, or host-page interop.
+Do not use `querySelector()` plus `appendChild()` and framework mount calls as the primary injection flow. Small DOM reads inside components are still appropriate for measurement, focus management, or host-page interop.
 
-## Compose Tasks Explicitly
+## Compose Injections Explicitly
 
 ```ts
-const makoo = createMakoo({
-	adapters: [createReactAdapter()],
-	defaults: { alive: false, scope: 'local', timeout: 5000 }
-});
+import { createMakoo, inject, listen } from '@makoojs/core';
+import { createReactAdapter } from '@makoojs/react';
+import ToolbarButton from './injections/toolbar-button/App';
 
-const tasks = makoo.start([
+const core = createMakoo();
+core.useAdapter(createReactAdapter());
+
+core.apply([
 	inject({
-		id: 'toolbar-button',
+		name: 'toolbar-button',
 		injectAt: '.toolbar',
-		artifact: ToolbarButton,
-		options: { alive: true }
+		adapter: 'react',
+		component: ToolbarButton,
+		timeout: 5000,
+		reinject: true,
+		listeners: [
+			listen({
+				name: 'toolbar-click',
+				listenAt: '.toolbar',
+				type: 'click',
+				callback: onToolbarClick
+			})
+		]
 	}),
 	listen({
-		id: 'escape-close',
+		name: 'escape-close',
 		listenAt: 'body',
 		type: 'keydown',
 		callback: onEscape
@@ -55,8 +63,9 @@ const tasks = makoo.start([
 ]);
 ```
 
-Keep `id` stable. Put `alive`, `scope`, `timeout`, task hooks, and component-owned listeners
-under `options`. Standalone listeners use `listen()` directly.
+Keep `name` stable. Put wait duration in `timeout`, recovery in `reinject`, and component-owned host listeners in `listeners`. Standalone listeners use `listen()` directly in `apply()`.
+
+Control and status live on the instance: `core.command(name)` and `core.statusHandle(name)`. Inside a mounted component, use the framework helpers (`useMakooComponent()` or the React hooks) instead of reaching for the instance.
 
 ## Put Component Logic In Framework Files
 
@@ -68,66 +77,65 @@ Keep imperative DOM creation out of runtime composition code.
 
 ## Register Framework Adapters
 
-Use `createVueAdapter()` for Vue artifacts and `createReactAdapter()` for React artifacts.
-Do not call `createRoot`, `ReactDOM.render`, `createApp`, or `app.mount` as the primary
-injection flow. Mixed-framework projects need both framework dependencies, Vite plugins, and
-adapters. Configure userscript external globals only when those dependencies are externalized.
+Call `core.useAdapter(createVueAdapter())` for Vue components and `core.useAdapter(createReactAdapter())` for React components. Pass the matching adapter name in each `inject({ adapter })`.
+
+Do not call `createRoot`, `ReactDOM.render`, `createApp`, or `app.mount` as the primary injection flow. Mixed-framework projects need both framework dependencies, Vite plugins, and adapters. Configure userscript external globals only when those dependencies are externalized.
 
 ## Vue Plugin Setup
 
-Register shared Vue plugins before creating tasks:
+Register shared Vue plugins before `apply()`:
 
 ```ts
 import { VuePlugin, createVueAdapter } from '@makoojs/vue';
 import { createPinia } from 'pinia';
 
 VuePlugin.use(createPinia());
-const makoo = createMakoo({ adapters: [createVueAdapter()] });
+
+const core = createMakoo();
+core.useAdapter(createVueAdapter());
+core.apply([/* ... */]);
 ```
 
-Import `VuePlugin` from `@makoojs/vue` so registration and the adapter use the same instance.
-Use `VuePlugin.clear()` in tests or special runtimes when shared plugin state must be reset.
+Import `VuePlugin` from `@makoojs/vue` so registration and the adapter use the same instance. Plugins registered after a mount do not retroactively install on already mounted apps. Use `VuePlugin.clear()` in tests or special runtimes when shared plugin state must be reset.
 
 ## Keep URL And DOM Rules Separate
 
 - `monkey.userscript.match` controls where the userscript manager loads the script.
-- Browser routing code controls which feature tasks enter the task list.
+- Browser routing code controls which feature declarations enter `apply()`.
 - `injectAt` selects the DOM target where a component mounts.
 
 Do not encode URL rules in `injectAt` or use DOM selectors as URL routing.
 
-## Use `alive` And `timeout` Deliberately
+## Use `reinject` And `timeout` Deliberately
 
 Keep defaults unless the page behavior requires a change:
 
-- Use `options.timeout` when the target node appears late.
-- Use `options.alive` when the host page removes and rebuilds the target node and the injection must recover.
-- Keep `options.alive: false` for stable targets or body-mounted floating UI that controls its own visibility.
-- Prefer `options.scope: 'local'`. Use `global` only when removal must be observed across the
-  wider document; restoration still searches the document in either mode.
+- Use `timeout` when the target node appears late.
+- Use `reinject: true` when the host page removes and rebuilds the mount or listener target and the injection must recover.
+- Keep `reinject` off for stable targets or body-mounted floating UI that controls its own visibility.
+- Attached listeners inherit the component's `reinject`; they must not set their own.
 
-Do not use `timeout` as a retry loop. Do not enable `alive` everywhere by default.
+Do not use `timeout` as a retry loop. Do not enable `reinject` everywhere by default.
 
 ## Respect Vite HMR
 
-Dispose started tasks during HMR so an updated module does not leave duplicate runtime state:
+Makoo does not manage HMR. Leave cleanup to Vite and the framework plugins (see ADR 0004):
 
-```ts
-if (import.meta.hot) {
-	import.meta.hot.dispose(() => tasks.destroyAll());
-}
-```
+- Editing a Vue SFC or a React Fast Refresh boundary updates in place; the entry does not re-run.
+- Editing the entry or a non-boundary module triggers a full page reload; the old Core Instance dies with the page.
+
+Do not add `import.meta.hot.dispose(() => core.dispose())` in the normal entry. Only dispose manually if you opt into a custom `import.meta.hot.accept()` boundary that recreates the Core Instance.
 
 Restart the dev server for Vite plugin, alias, or package-resolution changes.
 
 ## Review Checklist
 
 - `makoo({ entry })` points to the intended application module.
-- The entry composes runtime tasks and adapters; components own UI behavior.
-- Task options use the `options` field.
+- The entry creates a Core Instance, registers adapters, and calls `apply()`; components own UI behavior.
+- Injections use `name`, `adapter`, `component`, and top-level `timeout` / `reinject` / `listeners`.
 - React and Vue mounting goes through Makoo adapters.
 - Listener `capture` is chosen deliberately and explicit `false` is preserved.
-- Hooks, callbacks, and activity signals are browser-bundleable.
+- Callbacks stay browser-bundleable.
 - `monkey.userscript.match` covers every target page.
-- `injectAt`, `alive`, and `timeout` each serve their distinct purpose.
-- Started tasks are destroyed during HMR disposal.
+- `injectAt`, `reinject`, and `timeout` each serve their distinct purpose.
+- No routine HMR dispose unless a custom accept boundary recreates the instance.

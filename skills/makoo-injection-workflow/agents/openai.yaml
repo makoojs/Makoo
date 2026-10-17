@@ -1,4 +1,4 @@
 interface:
   display_name: "Makoo Injection Workflow"
-  short_description: "Makoo task composition and injection module workflow"
-  default_prompt: "Use $makoo-injection-workflow to create or revise Makoo task composition, injection modules, adapter choices, URL rules, and runtime options."
+  short_description: "Makoo injection composition and module workflow"
+  default_prompt: "Use $makoo-injection-workflow to create or revise Makoo injections, listeners, adapter choices, URL rules, reinject, and timeout."
