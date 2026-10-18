@@ -48,7 +48,8 @@ jobs:
 
       - name: Ensure npm supports trusted publishing
         run: |
-          npm install -g npm@latest
+          # npm 12 returns `npm info --json` as an array. Changesets 2.31 reads `.versions` on the object and treats every package as unpublished.
+          npm install -g npm@11
           npm --version
           npm config delete "//registry.npmjs.org/:_authToken" || true
 
