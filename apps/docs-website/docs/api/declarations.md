@@ -45,12 +45,10 @@ const toolbar = inject({
 
 ### Field Constraints
 
-- `name`, `injectAt`, and `adapter` can't be empty or whitespace only; `injectAt` must be a valid CSS selector. The same applies to a listener's `name`, `listenAt`, and `type`.
-- `timeout` must be greater than 0 and no more than `2147483647`.
 - Attached listener names are unique within the owning component and may match top-level injection names.
 - Attached listeners can't set `reinject`; they use the component's `reinject`.
 
-When a constraint is violated, `apply()` throws `MAKOO_DECLARATION_INVALID`; duplicate attached listener names throw `MAKOO_INJECTION_NAME_CONFLICT`.
+When an attached listener sets `reinject`, `apply()` throws `MAKOO_DECLARATION_INVALID`; duplicate attached listener names throw `MAKOO_INJECTION_NAME_CONFLICT`.
 
 ### Mount Position
 

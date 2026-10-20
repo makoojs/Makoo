@@ -7,12 +7,11 @@ This page shows how to start, stop, and remove an injection, and how to read its
 Get the handles from the Core instance by injection name:
 
 ```ts
-const panel = core.command('panel');
-const panelStatus = core.statusHandle('panel');
+const panel = core.injection('panel');
 
-await panel.stop();               // unmount the component, keep the registration
-panel.start();                    // find the mount target again and mount
-console.log(panelStatus.getSnapshot());
+await panel.command.stop();               // unmount the component, keep the registration
+panel.command.start();                    // find the mount target again and mount
+console.log(panel.statusHandle.getSnapshot());
 ```
 
 Handles can be obtained in any module that can access `core`; they don't need to be passed from where `apply()` is called. If the name doesn't exist, `MAKOO_INJECTION_NOT_FOUND` is thrown.
@@ -23,9 +22,10 @@ Handles can be obtained in any module that can access `core`; they don't need to
 import { gmMenu } from '@makoojs/cli/monkey';
 
 gmMenu.register('Show / hide panel', () => {
-  const status = core.statusHandle('panel').getSnapshot();
-  if (status === 'idle') core.command('panel').start();
-  else void core.command('panel').stop();
+  const panel = core.injection('panel');
+  const status = panel.statusHandle.getSnapshot();
+  if (status === 'idle') panel.command.start();
+  else void panel.command.stop();
 });
 ```
 
@@ -102,7 +102,7 @@ const ready = useAttachedListenerStatus('site-button', (status) => status === 'b
 ## Subscribe to Status Outside a Component
 
 ```ts
-const status = core.statusHandle('panel');
+const status = core.injection('panel').statusHandle;
 const unsubscribe = status.subscribe(() => {
   if (status.getSnapshot() === 'failed') console.warn('panel failed:', status.lastError);
 });
@@ -110,7 +110,7 @@ const unsubscribe = status.subscribe(() => {
 
 The `subscribe()` callback receives no arguments; call `getSnapshot()` inside the callback. When you no longer need it, call the returned `unsubscribe()`.
 
-A component's status handle can also read the status of its attached listeners. `core.statusHandle()` returns a union of the component and standalone listener status handle types, so check with `in` first:
+A component's status handle can also read the status of its attached listeners:
 
 ```ts
 if ('attachedListenerNames' in status) {
@@ -126,27 +126,27 @@ if ('attachedListenerNames' in status) {
 
 ```ts
 try {
-  await core.command('panel').remove();
+  await core.injection('panel').command.remove();
 } catch (error) {
   // Cleanup failed: error is a MakooAggregateError and the injection has been closed
   console.error(error);
 }
 ```
 
-When you only send a stop request and don't care about the result, `void core.command('panel').stop()` is enough; cleanup failures are still printed to the console.
+When you only send a stop request and don't care about the result, `void core.injection('panel').command.stop()` is enough; cleanup failures are still printed to the console.
 
 ## Switch to a Different Configuration
 
 A declaration is fixed at `apply()` time. To change configuration such as the selector, timeout, or props object, remove it first and declare it again:
 
 ```ts
-await core.command('panel').remove();
+await core.injection('panel').command.remove();
 core.apply([
   inject({ name: 'panel', injectAt: '#new-place', adapter: 'vue', component: Panel })
 ]);
 ```
 
-Old handles obtained before removal still point to the old injection; call `core.command('panel')` again to get the new handle.
+Old handles obtained before removal still point to the old injection; call `core.injection('panel')` again to get the new handle.
 
 ## Destroy the Whole Instance
 

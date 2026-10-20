@@ -7,7 +7,7 @@ When the script doesn't work as expected, check in the order "development server
 Most runtime problems can be traced through the injection's status handle. Temporarily add the following to the entry:
 
 ```ts
-const status = core.statusHandle('panel');
+const status = core.injection('panel').statusHandle;
 status.subscribe(() => console.log('panel:', status.getSnapshot(), status.lastError));
 ```
 
@@ -38,7 +38,7 @@ This is a configuration error, and none of the declarations in the batch started
 
 | Error code | Fix |
 | --- | --- |
-| `MAKOO_DECLARATION_INVALID` | Fix the declaration according to the fields listed in the message, and check the selector syntax |
+| `MAKOO_DECLARATION_INVALID` | Check that `apply()` got a non-empty batch of `inject()` / `listen()` declarations, and that attached listeners do not set `reinject` |
 | `MAKOO_INJECTION_NAME_CONFLICT` | Use a different name, or first `await` the `remove()` of the existing same-named injection; the name is released only after cleanup finishes. An injection whose cleanup failed keeps occupying its name, and you need to reload the page |
 | `MAKOO_ADAPTER_NOT_FOUND` | Call `core.useAdapter()` before `apply()`, and check the `adapter` name |
 
@@ -76,7 +76,7 @@ The site removed the mount target or the component container, and `lastError` is
 | `MAKOO_VUE_HOOK_OUTSIDE_COMPONENT` / `MAKOO_REACT_HOOK_OUTSIDE_COMPONENT` | The component wasn't mounted by Makoo, for example when used in a plain `createApp()`; in Vue, calling it in an event handler or `setTimeout` also throws this error. Call it at the top level of `setup` |
 | `MAKOO_VUE_HOOK_OUTSIDE_SCOPE` | Called where there is no effect scope, for example `app.runWithContext()` in a plugin |
 | `MAKOO_LISTENER_NOT_FOUND` | The name passed to `attachedListener(name)` isn't in the component's `listeners` |
-| `MAKOO_INJECTION_NOT_FOUND` | `globalListener(name)` can't find this standalone listener; it may not have been `apply()`d yet, or it is a component |
+| `MAKOO_INJECTION_NOT_FOUND` | `listener(name)` can't find this standalone listener; it may not have been `apply()`d yet, or it is a component |
 
 ## `start()` Throws `MAKOO_INJECTION_CLOSED`
 

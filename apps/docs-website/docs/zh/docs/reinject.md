@@ -6,7 +6,7 @@
 
 出现「组件一开始在，过一会儿消失了」时：
 
-1. 读取状态：`core.statusHandle('toolbar').lastError?.code`。
+1. 读取状态：`core.injection('toolbar').statusHandle.lastError?.code`。
 2. 如果是 `MAKOO_MOUNT_TARGET_DETACHED`，说明挂载目标离开了页面，或组件容器被移除、被移出挂载目标。
 3. 如果是 `MAKOO_ATTACHED_LISTENER_FAILED`，展开 `cause`，查看是哪个附属监听的目标失效了。
 
@@ -65,8 +65,8 @@ listen({ name: 'shortcut', listenAt: '#editor', type: 'keydown', callback: onKey
 - 在你能感知页面切换的地方（例如监听网站自己的导航按钮），对处于 `failed` 的注入调用 `start()`：
 
 ```ts
-const status = core.statusHandle('toolbar');
-if (status.getSnapshot() === 'failed') core.command('toolbar').start();
+const status = core.injection('toolbar').statusHandle;
+if (status.getSnapshot() === 'failed') core.injection('toolbar').command.start();
 ```
 
 ## 不会触发重新挂载的变化

@@ -175,8 +175,8 @@ In the `apply([...])` array in `src/main.ts`, add a comma after the `})` that cl
     type: 'keydown',
     callback(event) {
       if ((event as KeyboardEvent).key !== 'Escape') return;
-      const panel = core.command('panel');
-      if (core.statusHandle('panel').getSnapshot() === 'idle') panel.start();
+      const panel = core.injection('panel').command;
+      if (core.injection('panel').statusHandle.getSnapshot() === 'idle') panel.start();
       else panel.stop();
     }
   })
@@ -195,7 +195,7 @@ You built a toggleable panel and used several core parts of Makoo:
 
 - Declared a component with `inject()`, mounted it on the page through `apply()`, and used an attached listener so the component and the page element it depends on start and stop together.
 - Read listener status and called the command handle inside the component.
-- Controlled the panel from outside the component with a standalone listener and `core.command()` / `core.statusHandle()`.
+- Controlled the panel from outside the component with a standalone listener and `core.injection(name)`.
 
 ## Next Steps
 

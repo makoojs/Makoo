@@ -7,8 +7,8 @@
 用注入名称从 Core 实例取得入口：
 
 ```ts
-const panel = core.command('panel');
-const panelStatus = core.statusHandle('panel');
+const panel = core.injection('panel').command;
+const panelStatus = core.injection('panel').statusHandle;
 
 await panel.stop();               // 卸载组件，保留登记
 panel.start();                    // 重新查找挂载目标并挂载
@@ -23,9 +23,9 @@ console.log(panelStatus.getSnapshot());
 import { gmMenu } from '@makoojs/cli/monkey';
 
 gmMenu.register('显示 / 隐藏面板', () => {
-  const status = core.statusHandle('panel').getSnapshot();
-  if (status === 'idle') core.command('panel').start();
-  else void core.command('panel').stop();
+  const status = core.injection('panel').statusHandle.getSnapshot();
+  if (status === 'idle') core.injection('panel').command.start();
+  else void core.injection('panel').command.stop();
 });
 ```
 
@@ -102,7 +102,7 @@ const ready = useAttachedListenerStatus('site-button', (status) => status === 'b
 ## 在组件外订阅状态
 
 ```ts
-const status = core.statusHandle('panel');
+const status = core.injection('panel').statusHandle;
 const unsubscribe = status.subscribe(() => {
   if (status.getSnapshot() === 'failed') console.warn('panel 失败：', status.lastError);
 });
@@ -110,7 +110,7 @@ const unsubscribe = status.subscribe(() => {
 
 `subscribe()` 的回调不接收参数，请在回调中调用 `getSnapshot()`。不再需要时调用返回的 `unsubscribe()`。
 
-组件的状态入口还能读取附属监听的状态。`core.statusHandle()` 返回组件与独立监听状态入口的联合类型，先用 `in` 判断：
+组件的状态入口还能读取附属监听的状态：
 
 ```ts
 if ('attachedListenerNames' in status) {
@@ -126,27 +126,27 @@ if ('attachedListenerNames' in status) {
 
 ```ts
 try {
-  await core.command('panel').remove();
+  await core.injection('panel').command.remove();
 } catch (error) {
   // 清理失败：error 是 MakooAggregateError，注入已被关闭
   console.error(error);
 }
 ```
 
-只是发出停止请求、不关心结果时，用 `void core.command('panel').stop()` 即可，清理失败仍会打印到控制台。
+只是发出停止请求、不关心结果时，用 `void core.injection('panel').command.stop()` 即可，清理失败仍会打印到控制台。
 
 ## 换一份配置
 
 声明在 `apply()` 时固定。要修改选择器、超时、props 对象等配置，先移除再重新声明：
 
 ```ts
-await core.command('panel').remove();
+await core.injection('panel').command.remove();
 core.apply([
   inject({ name: 'panel', injectAt: '#new-place', adapter: 'vue', component: Panel })
 ]);
 ```
 
-移除前取得的旧入口仍指向旧注入，请重新调用 `core.command('panel')` 取得新入口。
+移除前取得的旧入口仍指向旧注入，请重新调用 `core.injection('panel')` 取得新入口。
 
 ## 销毁整个实例
 

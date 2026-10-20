@@ -65,7 +65,7 @@ core.apply([
 
 Keep `name` stable. Put wait duration in `timeout`, recovery in `reinject`, and component-owned host listeners in `listeners`. Standalone listeners use `listen()` directly in `apply()`.
 
-Control and status live on the instance: `core.command(name)` and `core.statusHandle(name)`. Inside a mounted component, use the framework helpers (`useMakooComponent()` or the React hooks) instead of reaching for the instance.
+Control and status live on the instance: `core.injection(name)` for components and `core.listener(name)` for standalone listeners. Inside a mounted component, use the framework helpers (`useMakooComponent()` or the React hooks) instead of reaching for the instance.
 
 ## Put Component Logic In Framework Files
 

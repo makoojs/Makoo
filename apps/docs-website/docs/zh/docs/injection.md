@@ -84,7 +84,7 @@ Core 会等待挂载目标出现，默认最多 15 秒。宿主页面加载较�
 inject({ name: 'badge', injectAt: '#comments', adapter: 'vue', component: Badge, timeout: 60000 })
 ```
 
-超时后组件状态变为 `failed`，`lastError` 的错误码是 `MAKOO_TARGET_WAIT_TIMEOUT`。目标只在用户操作后才出现时，与其设置很长的超时，不如在合适的时机调用 `core.command('badge').start()`，见[控制注入与读取状态](./control.md)。
+超时后组件状态变为 `failed`，`lastError` 的错误码是 `MAKOO_TARGET_WAIT_TIMEOUT`。目标只在用户操作后才出现时，与其设置很长的超时，不如在合适的时机调用 `core.injection('badge').command.start()`，见[控制注入与读取状态](./control.md)。
 
 ## 宿主会替换节点时
 

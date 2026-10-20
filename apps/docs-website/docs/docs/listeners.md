@@ -51,7 +51,7 @@ listen({
 Use the command handle to stop and restart a standalone listener; the declaration stays the same:
 
 ```ts
-const clicks = core.command('page-click');
+const clicks = core.listener('page-click').command;
 await clicks.stop(); // unbind the event, status idle
 clicks.start();      // find the target again and bind
 ```
@@ -65,9 +65,9 @@ listen({
   type: 'keydown',
   callback: (event) => {
     if (!(event instanceof KeyboardEvent) || event.key !== 'Escape') return;
-    const status = core.statusHandle('page-click').getSnapshot();
-    if (status === 'idle') core.command('page-click').start();
-    else void core.command('page-click').stop();
+    const status = core.listener('page-click').statusHandle.getSnapshot();
+    if (status === 'idle') core.listener('page-click').command.start();
+    else void core.listener('page-click').command.stop();
   }
 })
 ```
@@ -148,7 +148,7 @@ A component can get a standalone listener in the same instance by name, read its
 <script setup lang="ts">
 import { useMakooComponent } from '@makoojs/vue';
 
-const clicks = useMakooComponent().globalListener('page-click');
+const clicks = useMakooComponent().listener('page-click');
 const status = clicks.status;
 </script>
 
@@ -159,10 +159,10 @@ const status = clicks.status;
 </template>
 ```
 ```tsx [React]
-import { useGlobalListener } from '@makoojs/react';
+import { useListener } from '@makoojs/react';
 
 export default function ClickToggle() {
-  const clicks = useGlobalListener('page-click');
+  const clicks = useListener('page-click');
 
   return (
     <button onClick={() => (clicks.status === 'idle' ? clicks.start() : clicks.stop())}>

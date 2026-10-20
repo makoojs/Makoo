@@ -84,7 +84,7 @@ inject({
 
 `capture` defaults to `false`. Set it to `true` to run during the DOM capture phase. Attached listeners inherit the component's `reinject` and must not set their own. Keep callbacks in browser-compatible modules.
 
-Inside a mounted component, read attached or same-instance standalone listener status through the framework helpers (`attachedListener` / `globalListener`, or the React equivalents). Control the component with `start` / `stop` / `remove` from `useMakooComponent()` or `useComponentCommand()`, or with `core.command(name)` outside the component.
+Inside a mounted component, read attached or same-instance standalone listener status through the framework helpers (`attachedListener` / `listener`, or the React `useListener` equivalent). Control the component with `start` / `stop` / `remove` from `useMakooComponent()` or `useComponentCommand()`, or with `core.injection(name)` / `core.listener(name)` outside the component.
 
 ## How To Choose The React / Vue Adapter
 
@@ -161,7 +161,7 @@ Guidance:
 
 ## Control, Status, And HMR
 
-Outside components, use `core.command(name)` and `core.statusHandle(name)`. Inside Vue use `useMakooComponent()`; inside React use `useComponentCommand`, `useComponentStatus`, and related hooks.
+Outside components, use `core.injection(name)` for components and `core.listener(name)` for standalone listeners. Inside Vue use `useMakooComponent()`; inside React use `useComponentCommand`, `useComponentStatus`, `useListener`, and related hooks.
 
 Makoo does not manage HMR (ADR 0004). Prefer the default entry flow so Vite full-reloads on entry changes and framework plugins update components in place. Do not add routine `import.meta.hot.dispose` cleanup.
 

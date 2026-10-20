@@ -16,13 +16,13 @@ For the full list of error codes, see the [Errors API](../api/errors.md).
 
 ### Configuration Errors: Reported Before Anything Starts
 
-Incorrectly written declaration fields, selector syntax errors, duplicate names, and unregistered adapters are all thrown synchronously during `apply()`, and **none** of the declarations in the batch start.
+Duplicate names, an attached listener that sets its own `reinject`, an unregistered adapter or adapter name conflict, an empty `apply` batch, or an entry that is not a component or listener declaration throw synchronously from `apply()` / `useAdapter()`, and **none** of the declarations in the batch start. See [`DECLARATION_INVALID` and related codes](../api/errors.md#configuration-errors).
 
 This avoids a batch of features getting halfway started before the other half turns out to be misconfigured, leaving a partial state that is hard to explain. Configuration errors usually appear the first time you open the page during development; just fix the code.
 
 ### Control Errors: This Call Is Not Allowed
 
-Calling `core.command()` with a name that doesn't exist, starting an injection that has been removed, and calling `useMakooComponent()` outside a component mounted by Makoo are all control errors. They are thrown synchronously and indicate that the caller's assumptions don't match the current state.
+Calling `core.injection()` with a name that doesn't exist, starting an injection that has been removed, and calling `useMakooComponent()` outside a component mounted by Makoo are all control errors. They are thrown synchronously and indicate that the caller's assumptions don't match the current state.
 
 ### Execution Failures: This Round Ends, and You Can Try Again
 
@@ -67,6 +67,6 @@ Errors that Makoo throws or reports are all `MakooError`, with three key fields:
 - `code`: the kind of error, compared in code using `MakooErrorCode` constants.
 - `cause`: the original error Makoo caught, for example an error your component threw in `setup`.
 
-Makoo only adds a wrapping layer when it catches someone else's error (including errors from Zod during declaration validation); problems it determines itself, such as timeouts and target invalidation, are reported directly without a `cause`. Expand the error in the browser console and follow `cause` down to find the original line of code. Aggregate errors (`MakooAggregateError`) also have `errors`, listing every child error without losing any; cleanup errors given by an adapter are kept as-is and are not necessarily `MakooError`.
+Makoo only adds a wrapping layer when it catches someone else's error; problems it determines itself, such as timeouts and target invalidation, are reported directly without a `cause`. Expand the error in the browser console and follow `cause` down to find the original line of code. Aggregate errors (`MakooAggregateError`) also have `errors`, listing every child error without losing any; cleanup errors given by an adapter are kept as-is and are not necessarily `MakooError`.
 
 Makoo has no logging system of its own, and the console is the only output location. When you need to handle errors in code, read the status handle's `lastError`, or react when the status changes to `failed`; see [Troubleshooting](./troubleshooting.md#reading-errors).

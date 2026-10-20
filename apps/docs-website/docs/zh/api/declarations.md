@@ -45,12 +45,10 @@ const toolbar = inject({
 
 ### 字段约束
 
-- `name`、`injectAt`、`adapter` 不能为空或只含空白；`injectAt` 必须是合法的 CSS 选择器。监听的 `name`、`listenAt`、`type` 同理。
-- `timeout` 必须大于 0 且不超过 `2147483647`。
 - 附属监听的名称在所属组件内唯一，可以与顶层注入同名。
 - 附属监听不能设置 `reinject`，它沿用组件的 `reinject`。
 
-违反约束时，`apply()` 抛出 `MAKOO_DECLARATION_INVALID`；附属监听重名时抛出 `MAKOO_INJECTION_NAME_CONFLICT`。
+附属监听设置了 `reinject` 时，`apply()` 抛出 `MAKOO_DECLARATION_INVALID`；附属监听重名时抛出 `MAKOO_INJECTION_NAME_CONFLICT`。
 
 ### 挂载位置
 
