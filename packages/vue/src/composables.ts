@@ -1,9 +1,9 @@
 import type {
-	AdapterMountParams,
 	ComponentCommand,
+	ComponentInjection,
 	ComponentStatus,
-	ComponentStatusHandle,
 	ListenerCommand,
+	ListenerInjection,
 	ListenerStatus,
 	ListenerStatusHandle,
 	StateView
@@ -22,9 +22,8 @@ import {
 import { VueErrorCode } from './error';
 
 export type VueComponentContext = {
-	readonly command: ComponentCommand;
-	readonly statusHandle: ComponentStatusHandle;
-	readonly globalListener: AdapterMountParams['globalListener'];
+	readonly injection: ComponentInjection;
+	readonly listener: (name: string) => ListenerInjection;
 	/** Releases of subscriptions still held by this app; drained if mount fails. */
 	readonly subscriptions: Set<() => void>;
 };
@@ -47,9 +46,11 @@ export type VueMakooComponent = ComponentCommand & {
 	 * Looks up a standalone listener in the same Core Instance and tracks its status until the
 	 * calling scope is disposed. Repeated calls for the same listener share one status ref.
 	 *
+	 * Flat command methods and a reactive `status` wrap the same bag as `core.listener(name)`.
+	 *
 	 * @throws {@link MakooError} `INJECTION_NOT_FOUND` when no standalone listener has that name.
 	 */
-	globalListener(name: string): VueStandaloneListener;
+	listener(name: string): VueStandaloneListener;
 };
 
 type VueStandaloneListener = ListenerCommand & {
@@ -88,7 +89,7 @@ export function useMakooComponent(): VueMakooComponent {
 			{ code: VueErrorCode.VUE_HOOK_OUTSIDE_SCOPE }
 		);
 	}
-	const { command, statusHandle } = context;
+	const { command, statusHandle } = context.injection;
 	const componentStatus = subscribeState(statusHandle, context.subscriptions);
 	const listeners = new Map(
 		statusHandle.attachedListenerNames.map((name) => [
@@ -117,8 +118,8 @@ export function useMakooComponent(): VueMakooComponent {
 				});
 			return listener;
 		},
-		globalListener(name) {
-			const found = context.globalListener(name);
+		listener(name) {
+			const found = context.listener(name);
 			return {
 				name: found.command.name,
 				start: found.command.start,

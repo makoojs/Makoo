@@ -1,8 +1,8 @@
 import type {
-	AdapterMountParams,
 	ComponentCommand,
 	ComponentStatus,
 	ComponentStatusHandle,
+	ListenerInjection,
 	ListenerStatus,
 	StateView
 } from '@makoojs/core';
@@ -70,9 +70,8 @@ describe('React hook subscriptions at the adapter boundary', () => {
 					component: () => createElement(StrictMode, null, createElement(component)),
 					props: undefined,
 					container,
-					command,
-					statusHandle: status,
-					globalListener: () => ({}) as ReturnType<AdapterMountParams['globalListener']>
+					injection: { kind: 'component', command, statusHandle: status },
+					listener: () => ({}) as ListenerInjection
 				})
 			);
 		});

@@ -71,7 +71,7 @@ describe('makooDev serve integration', () => {
 					core.useAdapter({
 						name: 'remover',
 						mount: () => {
-							void core.command('play-click').remove();
+							void core.listener('play-click').command.remove();
 							return 'handle';
 						},
 						unmount: () => {}
@@ -86,7 +86,7 @@ describe('makooDev serve integration', () => {
 					host('play', 'button');
 					const core = createMakoo();
 					core.apply([listen({ name: 'play-click', listenAt: '#play', type: 'click', callback() {} })]);
-					core.statusHandle('play-click').subscribe(() => {
+					core.listener('play-click').statusHandle.subscribe(() => {
 						throw new Error('subscriber exploded');
 					});
 					return core;
@@ -254,7 +254,7 @@ describe('makooDev serve integration', () => {
 	it('forwards injection-removed and instance-disposed after the phase reaches idle', async () => {
 		const core = entry.applyPanelAndListener();
 		messages = [];
-		await core.command('play-click').remove();
+		await core.listener('play-click').command.remove();
 		expect(messages).toEqual([
 			{
 				type: 'injection',
@@ -302,15 +302,15 @@ describe('makooDev serve integration', () => {
 		expect(session.isEmpty()).toBe(true);
 		expect(session.getRuntimeSnapshots()).toEqual([]);
 		expect(messages).toEqual([]);
-		expect(core.statusHandle('panel').getSnapshot()).toBe('mounted');
-		expect(core.statusHandle('play-click').getSnapshot()).toBe('bound');
+		expect(core.injection('panel').statusHandle.getSnapshot()).toBe('mounted');
+		expect(core.listener('play-click').statusHandle.getSnapshot()).toBe('bound');
 	});
 
 	it('keeps an Injection retained by a cleanup failure visible as failed', async () => {
 		vi.spyOn(console, 'error').mockImplementation(() => {});
 		const core = entry.applyPanelFailingCleanup();
 		messages = [];
-		await expect(core.command('sticky').remove()).rejects.toMatchObject({
+		await expect(core.injection('sticky').command.remove()).rejects.toMatchObject({
 			code: 'MAKOO_INJECTION_CLEANUP_FAILED'
 		});
 
@@ -355,7 +355,7 @@ describe('makooDev serve integration', () => {
 		vi.spyOn(console, 'error').mockImplementation(() => {});
 		const core = entry.applyWithThrowingSubscriber();
 		messages = [];
-		await core.command('play-click').stop();
+		await core.listener('play-click').command.stop();
 		expect(messages).toEqual([
 			{
 				type: 'injection',

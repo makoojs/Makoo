@@ -66,7 +66,10 @@ function __makooSerializeNotice(notice) {
 function __makooWatchInjection(runtime, runtimeId, declaration) {
 	let statusHandle;
 	try {
-		statusHandle = runtime.statusHandle(declaration.name);
+		statusHandle =
+			declaration.kind === 'component'
+				? runtime.injection(declaration.name).statusHandle
+				: runtime.listener(declaration.name).statusHandle;
 	} catch {
 		// An earlier mount in the same batch already removed this injection.
 		return;
