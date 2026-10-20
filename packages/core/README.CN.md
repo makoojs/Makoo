@@ -71,15 +71,15 @@ core.apply([
 每个注入都可以按名称取得命令入口和状态入口：
 
 ```ts
-const panel = core.command('panel');
-const status = core.statusHandle('panel');
+const panel = core.injection('panel');
+const status = panel.statusHandle;
 
 status.subscribe(() => {
   console.log(status.getSnapshot(), status.lastError);
 });
 
-await panel.stop();
-panel.start();
+await panel.command.stop();
+panel.command.start();
 ```
 
 ## 文档

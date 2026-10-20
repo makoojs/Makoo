@@ -1,4 +1,3 @@
-import type { ZodError } from 'zod';
 import { MakooErrorCode } from './ErrorCode';
 
 type MakooErrorOptions = {
@@ -29,20 +28,6 @@ export class MakooAggregateError extends MakooError {
 		this.name = 'MakooAggregateError';
 		this.errors = errors;
 	}
-}
-
-export function declaredName(input: unknown): string | undefined {
-	if (typeof input !== 'object' || input === null || !('name' in input)) return undefined;
-	const { name } = input;
-	return typeof name === 'string' && name.trim().length > 0 ? name : undefined;
-}
-
-export function validationError(summary: string, code: string, error: ZodError): MakooError {
-	const lines = error.issues.map((issue) => {
-		const path = issue.path.map(String).join('.');
-		return `${path || '(root)'}: ${issue.message}`;
-	});
-	return new MakooError([summary, ...lines].join('\n'), { code, cause: error });
 }
 
 export function stateSubscriberFailed(owner: string, cause: unknown): MakooError {

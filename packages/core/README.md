@@ -71,15 +71,15 @@ core.apply([
 Every injection's command handle and status handle can be obtained by name:
 
 ```ts
-const panel = core.command('panel');
-const status = core.statusHandle('panel');
+const panel = core.injection('panel');
+const status = panel.statusHandle;
 
 status.subscribe(() => {
   console.log(status.getSnapshot(), status.lastError);
 });
 
-await panel.stop();
-panel.start();
+await panel.command.stop();
+panel.command.start();
 ```
 
 ## Documentation

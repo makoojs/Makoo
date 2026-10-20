@@ -2,13 +2,13 @@ import { createAdapterRegistry } from '../adapter/registry';
 import type { MountAdapter } from '../adapter/types';
 import { createComponent } from '../component/component';
 import { validateComponent } from '../component/declaration';
-import type { MakooComponentDeclaration } from '../component/types';
+import type { ComponentInjection, MakooComponentDeclaration } from '../component/types';
 import { createDOMObserver, type DOMObserver } from '../dom/observer';
 import { MakooErrorCode } from '../error/ErrorCode';
 import { instanceObserverFailed, MakooAggregateError, MakooError } from '../error/MakooError';
 import { validateListener } from '../listener/declaration';
 import { createListener } from '../listener/listener';
-import type { MakooListenerDeclaration } from '../listener/types';
+import type { ListenerInjection, MakooListenerDeclaration } from '../listener/types';
 import type {
 	Injection,
 	MakooInjectionDeclaration,
@@ -49,8 +49,8 @@ export function createMakoo(): MakooRuntime {
 			assertOpen(makooInstance);
 			applyDeclarations(makooInstance, declarations);
 		},
-		command: (name) => getInjection(makooInstance.injections, name).command,
-		statusHandle: (name) => getInjection(makooInstance.injections, name).statusHandle,
+		injection: (name) => getInjection(makooInstance.injections, name) as ComponentInjection,
+		listener: (name) => getInjection(makooInstance.injections, name) as ListenerInjection,
 		observe: (handler) => {
 			assertOpen(makooInstance);
 			makooInstance.observers.add(handler);
@@ -129,7 +129,7 @@ function registerInjection(
 					dom,
 					() => unregisterInjection(makooInstance, injection),
 					isDisposed,
-					(name) => standaloneListener(injections, name),
+					(name) => getInjection(injections, name) as ListenerInjection,
 					onDiagnostic
 				);
 	injections.set(declaration.config.name, injection);
@@ -197,16 +197,6 @@ function disposeInstance(makooInstance: MakooInstance): Promise<void> {
 		);
 	})();
 	return disposal;
-}
-
-function standaloneListener(injections: ReadonlyMap<string, Injection>, name: string) {
-	const injection = getInjection(injections, name);
-	if (injection.kind !== 'listener') {
-		throw new MakooError(`Unknown injection "${name}"`, {
-			code: MakooErrorCode.INJECTION_NOT_FOUND
-		});
-	}
-	return { command: injection.command, statusHandle: injection.statusHandle };
 }
 
 function getInjection(injections: ReadonlyMap<string, Injection>, name: string): Injection {

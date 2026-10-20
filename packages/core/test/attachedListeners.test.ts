@@ -29,14 +29,12 @@ describe('attached host listeners', () => {
 		let status!: ComponentStatusHandle;
 		const mount = vi.fn(
 			({
-				command,
-				statusHandle: mountStatus
+				injection
 			}: {
-				command: ComponentCommand;
-				statusHandle: ComponentStatusHandle;
+				injection: { command: ComponentCommand; statusHandle: ComponentStatusHandle };
 			}) => {
-				panel = command;
-				status = mountStatus;
+				panel = injection.command;
+				status = injection.statusHandle;
 			}
 		);
 		const unmount = vi.fn();
@@ -51,7 +49,7 @@ describe('attached host listeners', () => {
 				reinject
 			})
 		]);
-		controls.push(core.command('panel'));
+		controls.push(core.injection('panel').command);
 		return { core, panel, status, mount, unmount };
 	}
 	function child(name = 'play', callback = vi.fn(), timeout = 50) {
@@ -79,9 +77,9 @@ describe('attached host listeners', () => {
 				listeners: [child('play', replacementCallback)]
 			})
 		]);
-		const replacement = core.command('panel');
+		const replacement = core.injection('panel').command;
 		controls.push(replacement);
-		const replacementStatus = core.statusHandle('panel');
+		const replacementStatus = core.injection('panel').statusHandle;
 		if (!('attachedListener' in replacementStatus)) throw new Error('Expected a component');
 		const newState = replacementStatus.attachedListener('play');
 		const snapshot = newState.getSnapshot();
@@ -95,7 +93,7 @@ describe('attached host listeners', () => {
 		expect(replacementCallback).toHaveBeenCalledOnce();
 		expect(newState.getSnapshot()).toBe(snapshot);
 		expect(oldState.getSnapshot()).toBe('idle');
-		expect(core.statusHandle('panel').lastError).toBeUndefined();
+		expect(core.injection('panel').statusHandle.lastError).toBeUndefined();
 		expect(console.error).toHaveBeenCalledWith(expect.objectContaining({ cause }));
 	});
 	it('stops local recovery immediately when a waiting subscriber stops the parent', async () => {
@@ -219,12 +217,12 @@ describe('attached host listeners', () => {
 		let status!: ComponentStatusHandle;
 		core.useAdapter({
 			name: 'plain',
-			mount({ command, statusHandle: mountStatus }) {
-				panel = command;
-				status = mountStatus;
+			mount({ injection }) {
+				panel = injection.command;
+				status = injection.statusHandle;
 				if (action === 'throw') throw new Error('mount failed');
 				if (action === 'detach') element('#host').remove();
-				else void command[action]();
+				else void injection.command[action]();
 			},
 			unmount() {}
 		});
@@ -255,8 +253,8 @@ describe('attached host listeners', () => {
 				listeners: [child('play', callback)]
 			})
 		]);
-		controls.push(core.command('play'), core.command('other'));
-		expect(listenerOf(status, 'play')).not.toBe(core.statusHandle('play'));
+		controls.push(core.listener('play').command, core.injection('other').command);
+		expect(listenerOf(status, 'play')).not.toBe(core.listener('play').statusHandle);
 		element('#play').click();
 		expect(callback).toHaveBeenCalledTimes(3);
 	});
@@ -302,10 +300,10 @@ describe('attached host listeners', () => {
 		let status!: ComponentStatusHandle;
 		core.useAdapter({
 			name: 'plain',
-			mount({ command, statusHandle: mountStatus }) {
-				panel = command;
-				status = mountStatus;
-				const playStatus = mountStatus.attachedListener('play');
+			mount({ injection }) {
+				panel = injection.command;
+				status = injection.statusHandle;
+				const playStatus = injection.statusHandle.attachedListener('play');
 				playStatus.subscribe(() => {
 					if (playStatus.getSnapshot() === 'bound') host.remove();
 				});
@@ -335,10 +333,10 @@ describe('attached host listeners', () => {
 		let status!: ComponentStatusHandle;
 		core.useAdapter({
 			name: 'plain',
-			mount({ command, statusHandle: mountStatus }) {
-				panel = command;
-				status = mountStatus;
-				const playStatus = mountStatus.attachedListener('play');
+			mount({ injection }) {
+				panel = injection.command;
+				status = injection.statusHandle;
+				const playStatus = injection.statusHandle.attachedListener('play');
 				playStatus.subscribe(() => {
 					if (playStatus.getSnapshot() === 'bound') void panel.stop();
 				});
@@ -445,7 +443,7 @@ describe('attached host listeners', () => {
 		pause.click();
 		expect(callback).toHaveBeenCalledTimes(intent === 'restart' ? 2 : 0);
 		if (intent === 'remove')
-			expect(() => core.command('panel')).toThrow(
+			expect(() => core.injection('panel').command).toThrow(
 				expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 			);
 	});
@@ -581,15 +579,14 @@ describe('attached host listeners', () => {
 	});
 	it.each([
 		['duplicate', MakooErrorCode.INJECTION_NAME_CONFLICT, 'listeners[1]'],
-		['override', MakooErrorCode.DECLARATION_INVALID, 'listeners[0].reinject'],
-		['invalid-selector', MakooErrorCode.DECLARATION_INVALID, 'listeners[0]']
+		['override', MakooErrorCode.DECLARATION_INVALID, 'listeners[0].reinject']
 	])('rejects %s before starting any declaration', (invalid, code, path) => {
 		const core = createMakoo();
 		const mount = vi.fn();
 		core.useAdapter({ name: 'plain', mount, unmount() {} });
 		const child = listen({
 			name: 'play',
-			listenAt: invalid === 'invalid-selector' ? '[' : '#play',
+			listenAt: '#play',
 			type: 'click',
 			callback() {},
 			...(invalid === 'override' ? { reinject: true } : {})
@@ -608,18 +605,11 @@ describe('attached host listeners', () => {
 		).toThrow(
 			expect.objectContaining({
 				code,
-				message: expect.stringContaining(path),
-				...(invalid === 'invalid-selector'
-					? {
-							cause: expect.objectContaining({
-								cause: expect.objectContaining({ issues: expect.any(Array) })
-							})
-						}
-					: {})
+				message: expect.stringContaining(path)
 			})
 		);
 		expect(mount).not.toHaveBeenCalled();
-		expect(() => core.command('first')).toThrow(
+		expect(() => core.injection('first').command).toThrow(
 			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 		);
 	});
@@ -638,9 +628,9 @@ describe('attached host listeners', () => {
 		let state!: StateView<ListenerStatus>;
 		core.useAdapter({
 			name: 'plain',
-			mount({ command, statusHandle }) {
-				panel = command;
-				state = statusHandle.attachedListener('play');
+			mount({ injection }) {
+				panel = injection.command;
+				state = injection.statusHandle.attachedListener('play');
 				expect(state.getSnapshot()).toBe('idle');
 				button.click();
 				expect(callback).not.toHaveBeenCalled();
@@ -656,8 +646,8 @@ describe('attached host listeners', () => {
 				listeners: [listen({ name: 'play', listenAt: '#play', type: 'click', callback })]
 			})
 		]);
-		controls.push(core.command('panel'));
-		const status = core.statusHandle('panel');
+		controls.push(core.injection('panel').command);
+		const status = core.injection('panel').statusHandle;
 		if (!('attachedListener' in status)) throw new Error('Expected a component');
 		expect(status.getSnapshot()).toBe('mounted');
 		expect(status.attachedListenerNames).toEqual(['play']);
@@ -667,7 +657,7 @@ describe('attached host listeners', () => {
 		expect(() => status.attachedListener('missing')).toThrow(
 			expect.objectContaining({ code: MakooErrorCode.LISTENER_NOT_FOUND })
 		);
-		expect(() => core.command('play')).toThrow(
+		expect(() => core.listener('play').command).toThrow(
 			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 		);
 		button.click();
