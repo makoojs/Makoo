@@ -68,7 +68,7 @@ The current status or context doesn't allow this call; thrown synchronously.
 
 | Constant | Meaning |
 | --- | --- |
-| `INJECTION_NOT_FOUND` | The name doesn't exist; or what `listener()` looked up is not a standalone listener |
+| `INJECTION_NOT_FOUND` | The name isn't among this Core Instance's top-level injections |
 | `LISTENER_NOT_FOUND` | The component has no attached listener with this name |
 | `INJECTION_REMOVED` | The injection has been removed and can't be started again |
 | `INJECTION_CLOSED` | The injection's cleanup failed earlier and it can't be started again |

@@ -97,7 +97,7 @@ function useListener(name: string): ListenerCommand & {
 
 查找同一 Core 实例中的独立监听，返回它的命令入口方法，并订阅其状态。组件卸载只释放订阅，不会停止这个监听。
 
-找不到独立监听时（名称不存在、属于组件，或只是附属监听）抛出 `MAKOO_INJECTION_NOT_FOUND`。
+名称不在该 Core Instance 的顶层注入表中时（包括只指向附属监听）抛出 `MAKOO_INJECTION_NOT_FOUND`。
 
 每次渲染都会重新查找。该独立监听被移除并重新 `apply()` 后，下一次渲染才会取得新监听的命令和状态。回调出错时状态保持 `bound`，只写入 `lastError`，不会触发重新渲染。
 

@@ -97,7 +97,7 @@ function useListener(name: string): ListenerCommand & {
 
 Finds a standalone listener in the same Core instance, returns flat command methods wrapping `core.listener(name)`, and subscribes to its status. Unmounting the component only releases the subscription and doesn't stop this listener.
 
-When no standalone listener is found (the name doesn't exist, belongs to a component, or is only an attached listener), it throws `MAKOO_INJECTION_NOT_FOUND`.
+Throws `MAKOO_INJECTION_NOT_FOUND` if the name isn't among this Core Instance's top-level injections (including when it only names an attached listener).
 
 The lookup is repeated on every render. After that standalone listener is removed and `apply()`d again, the new listener's command and status are picked up on the next render. When the callback fails, the status stays `bound` and only `lastError` is written, which doesn't trigger a re-render.
 

@@ -68,10 +68,11 @@ core.apply([
 
 ### Control Injections and Read Status
 
-Every injection's command handle and status handle can be obtained by name:
+Components use `injection(name)`; standalone listeners use `listener(name)`:
 
 ```ts
 const panel = core.injection('panel');
+const escape = core.listener('escape');
 const status = panel.statusHandle;
 
 status.subscribe(() => {
@@ -80,6 +81,7 @@ status.subscribe(() => {
 
 await panel.command.stop();
 panel.command.start();
+await escape.command.stop();
 ```
 
 ## Documentation

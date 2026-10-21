@@ -14,7 +14,7 @@ export interface AdapterMountParams<TComponent = unknown, TProps = unknown> {
 	/**
 	 * Looks up a standalone listener in the owning Core Instance.
 	 *
-	 * @throws `MakooError` with `INJECTION_NOT_FOUND` when no standalone listener has that name.
+	 * @throws `MakooError` with `INJECTION_NOT_FOUND` when no top-level injection has that name.
 	 */
 	listener(name: string): ListenerInjection;
 }

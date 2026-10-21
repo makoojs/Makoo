@@ -72,7 +72,7 @@ export function useAttachedListenerStatus<T>(name: string, select?: (status: Lis
  *
  * Flat command methods and `status` wrap the same bag as `core.listener(name)`.
  *
- * @throws {@link MakooError} `INJECTION_NOT_FOUND` when no standalone listener has that name.
+ * @throws {@link MakooError} `INJECTION_NOT_FOUND` when no top-level injection has that name.
  */
 export function useListener(name: string): ReactStandaloneListener {
 	const { listener } = useComponentContext();

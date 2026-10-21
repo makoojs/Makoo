@@ -46,7 +46,7 @@ interface AdapterMountParams<TComponent = unknown, TProps = unknown> {
 | `injection` | 所属组件注入（含 `command` 与 `statusHandle`），与 `core.injection(name)` 同一对象 |
 | `listener(name)` | 查找同一实例中的独立监听，返回 `{ command, statusHandle }` |
 
-`listener(name)` 在名称不存在、名称属于组件或只是附属监听时，抛出 `MAKOO_INJECTION_NOT_FOUND`。
+`listener(name)` 在名称不存在或只是附属监听时，抛出 `MAKOO_INJECTION_NOT_FOUND`。
 
 ## 行为约定
 

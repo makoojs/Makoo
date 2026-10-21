@@ -89,7 +89,7 @@ type VueMakooComponent = ComponentCommand & {
 | --- | --- |
 | 取不到 Makoo 的注入上下文：不在 Makoo 挂载的 app 中，或不在 `setup` 中同步调用（例如在事件处理函数、`setTimeout` 里） | `MAKOO_VUE_HOOK_OUTSIDE_COMPONENT` |
 | 能取到注入上下文，但没有 effect scope，例如在插件里通过 `app.runWithContext()` 调用 | `MAKOO_VUE_HOOK_OUTSIDE_SCOPE` |
-| `listener(name)` 找不到独立监听 | `MAKOO_INJECTION_NOT_FOUND` |
+| `listener(name)` 名称不在顶层注入表中 | `MAKOO_INJECTION_NOT_FOUND` |
 
 ## `VuePlugin`
 

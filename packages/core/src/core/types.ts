@@ -66,7 +66,7 @@ export interface MakooRuntime {
 	 * Repeated calls for the same registration return the same object. After that injection is
 	 * removed and a new one is applied under the same name, a later call returns a new object.
 	 *
-	 * @throws {@link MakooError} `INJECTION_NOT_FOUND` when no component has that name.
+	 * @throws {@link MakooError} `INJECTION_NOT_FOUND` when no top-level injection has that name.
 	 */
 	injection(name: string): ComponentInjection;
 	/**
@@ -75,7 +75,7 @@ export interface MakooRuntime {
 	 * Repeated calls for the same registration return the same object. After that listener is
 	 * removed and a new one is applied under the same name, a later call returns a new object.
 	 *
-	 * @throws {@link MakooError} `INJECTION_NOT_FOUND` when no standalone listener has that name.
+	 * @throws {@link MakooError} `INJECTION_NOT_FOUND` when no top-level injection has that name.
 	 */
 	listener(name: string): ListenerInjection;
 	/**

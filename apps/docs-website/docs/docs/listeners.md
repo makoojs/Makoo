@@ -173,7 +173,7 @@ export default function ClickToggle() {
 ```
 :::
 
-If the name doesn't exist or is not a standalone listener, `MAKOO_INJECTION_NOT_FOUND` is thrown.
+If the name isn't among this Core Instance's top-level injections, `MAKOO_INJECTION_NOT_FOUND` is thrown.
 
 ## When the Target Gets Replaced
 

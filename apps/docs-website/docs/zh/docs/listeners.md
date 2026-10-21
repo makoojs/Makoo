@@ -173,7 +173,7 @@ export default function ClickToggle() {
 ```
 :::
 
-名称不存在或不是独立监听时，抛出 `MAKOO_INJECTION_NOT_FOUND`。
+名称不在该 Core Instance 的顶层注入表中时，抛出 `MAKOO_INJECTION_NOT_FOUND`。
 
 ## 目标会被替换时
 

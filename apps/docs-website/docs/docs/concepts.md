@@ -73,7 +73,7 @@ Every top-level injection exposes two handles:
 
 Control and reading are separated so that code that only cares about status (such as an indicator light) cannot trigger control by mistake, and code that only sends commands (such as a close button) doesn't have to subscribe to status.
 
-Handles are obtained by name: external code uses `core.injection(name)` and `core.injection(name).statusHandle`, and components use the framework APIs. A settings page or shortcut module doesn't need the entry module to pass variables down through layers.
+Handles are obtained by name: external code uses `core.injection(name)` for components and `core.listener(name)` for standalone listeners, and components use the framework APIs. A settings page or shortcut module doesn't need the entry module to pass variables down through layers.
 
 A handle is bound to **that particular injection**, not just its name. After the injection is removed, an old handle does not switch to controlling a same-named injection registered later.
 
