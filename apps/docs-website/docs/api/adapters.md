@@ -46,7 +46,7 @@ interface AdapterMountParams<TComponent = unknown, TProps = unknown> {
 | `injection` | The owning component injection (`command` + `statusHandle`), same object as `core.injection(name)` |
 | `listener(name)` | Finds a standalone listener in the same instance and returns `{ command, statusHandle }` |
 
-`listener(name)` throws `MAKOO_INJECTION_NOT_FOUND` when the name doesn't exist or is only an attached listener.
+`listener(name)` throws `MAKOO_INJECTION_NOT_FOUND` when the name doesn't exist, belongs to a component, or is only an attached listener.
 
 ## Behavior Conventions
 

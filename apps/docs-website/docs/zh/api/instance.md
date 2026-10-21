@@ -78,7 +78,7 @@ panel.command.start();
 console.log(panel.statusHandle.getSnapshot()); // 'waiting' | 'mounted' | ...
 ```
 
-名称不在该 Core Instance 的顶层注入表中时抛出 `MAKOO_INJECTION_NOT_FOUND`。同一次登记的重复查找返回同一对象；注入被移除后，旧对象不会作用到之后登记的同名注入。
+名称不存在或属于独立监听时抛出 `MAKOO_INJECTION_NOT_FOUND`。同一次登记的重复查找返回同一对象；注入被移除后，旧对象不会作用到之后登记的同名注入。
 
 ### `listener()`
 
@@ -90,7 +90,7 @@ await clicks.command.stop();
 console.log(clicks.statusHandle.getSnapshot()); // 'waiting' | 'bound' | ...
 ```
 
-名称不在该 Core Instance 的顶层注入表中时抛出 `MAKOO_INJECTION_NOT_FOUND`。与 `injection()` 一样，绑定的是取得时的那一次登记。
+名称不存在或属于组件时抛出 `MAKOO_INJECTION_NOT_FOUND`。与 `injection()` 一样，绑定的是取得时的那一次登记。
 
 ### `observe()`
 

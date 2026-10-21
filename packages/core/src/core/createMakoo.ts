@@ -49,8 +49,8 @@ export function createMakoo(): MakooRuntime {
 			assertOpen(makooInstance);
 			applyDeclarations(makooInstance, declarations);
 		},
-		injection: (name) => getInjection(makooInstance.injections, name) as ComponentInjection,
-		listener: (name) => getInjection(makooInstance.injections, name) as ListenerInjection,
+		injection: (name) => getComponentInjection(makooInstance.injections, name),
+		listener: (name) => getListenerInjection(makooInstance.injections, name),
 		observe: (handler) => {
 			assertOpen(makooInstance);
 			makooInstance.observers.add(handler);
@@ -129,7 +129,7 @@ function registerInjection(
 					dom,
 					() => unregisterInjection(makooInstance, injection),
 					isDisposed,
-					(name) => getInjection(injections, name) as ListenerInjection,
+					(name) => getListenerInjection(injections, name),
 					onDiagnostic
 				);
 	injections.set(declaration.config.name, injection);
@@ -202,6 +202,32 @@ function disposeInstance(makooInstance: MakooInstance): Promise<void> {
 function getInjection(injections: ReadonlyMap<string, Injection>, name: string): Injection {
 	const injection = injections.get(name);
 	if (!injection) {
+		throw new MakooError(`Unknown injection "${name}"`, {
+			code: MakooErrorCode.INJECTION_NOT_FOUND
+		});
+	}
+	return injection;
+}
+
+function getComponentInjection(
+	injections: ReadonlyMap<string, Injection>,
+	name: string
+): ComponentInjection {
+	const injection = getInjection(injections, name);
+	if (injection.kind !== 'component') {
+		throw new MakooError(`Unknown injection "${name}"`, {
+			code: MakooErrorCode.INJECTION_NOT_FOUND
+		});
+	}
+	return injection;
+}
+
+function getListenerInjection(
+	injections: ReadonlyMap<string, Injection>,
+	name: string
+): ListenerInjection {
+	const injection = getInjection(injections, name);
+	if (injection.kind !== 'listener') {
 		throw new MakooError(`Unknown injection "${name}"`, {
 			code: MakooErrorCode.INJECTION_NOT_FOUND
 		});

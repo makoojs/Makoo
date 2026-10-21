@@ -89,7 +89,7 @@ Refs such as `status` live on a plain object, and templates only auto-unwrap top
 | --- | --- |
 | Makoo's injection context isn't available: not in an app mounted by Makoo, or not called synchronously in `setup` (for example, in an event handler or `setTimeout`) | `MAKOO_VUE_HOOK_OUTSIDE_COMPONENT` |
 | The injection context is available but there is no effect scope, for example when called in a plugin through `app.runWithContext()` | `MAKOO_VUE_HOOK_OUTSIDE_SCOPE` |
-| `listener(name)` when the name isn't a top-level injection | `MAKOO_INJECTION_NOT_FOUND` |
+| `listener(name)` can't find a standalone listener | `MAKOO_INJECTION_NOT_FOUND` |
 
 ## `VuePlugin`
 

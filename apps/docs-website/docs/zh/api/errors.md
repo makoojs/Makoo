@@ -68,7 +68,7 @@ class MakooAggregateError extends MakooError {
 
 | 常量 | 含义 |
 | --- | --- |
-| `INJECTION_NOT_FOUND` | 名称不在该 Core Instance 的顶层注入表中 |
+| `INJECTION_NOT_FOUND` | 名称不存在；或 `injection()` / `listener()` 查到的 kind 不符 |
 | `LISTENER_NOT_FOUND` | 组件中没有这个名称的附属监听 |
 | `INJECTION_REMOVED` | 注入已被移除，不能再启动 |
 | `INJECTION_CLOSED` | 注入此前清理失败，不能再启动 |

@@ -82,7 +82,7 @@ describe('single component injection', () => {
 		expect(vi.getTimerCount()).toBe(0);
 	});
 
-	it('looks up a top-level injection from the component mount and rejects unknown names', async () => {
+	it('looks up a standalone listener from the component mount and rejects anything else', async () => {
 		document.body.innerHTML = '<section id="host"></section>';
 		let params: AdapterMountParams | undefined;
 		const core = createMakoo();
@@ -106,14 +106,17 @@ describe('single component injection', () => {
 			})
 		]);
 		handles.push(core.injection('panel').command, core.listener('save').command);
-		expect(core.injection('save')).toBe(core.listener('save'));
-		expect(core.listener('panel')).toBe(core.injection('panel'));
+		expect(() => core.injection('save')).toThrow(
+			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
+		);
+		expect(() => core.listener('panel')).toThrow(
+			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
+		);
 		const found = params?.listener('save');
 		expect(found).toBe(core.listener('save'));
 		expect(found?.command).toBe(core.listener('save').command);
 		expect(found?.statusHandle).toBe(core.listener('save').statusHandle);
-		expect(params?.listener('panel')).toBe(core.injection('panel'));
-		for (const name of ['play', 'missing']) {
+		for (const name of ['panel', 'play', 'missing']) {
 			expect(() => params?.listener(name)).toThrow(
 				expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 			);

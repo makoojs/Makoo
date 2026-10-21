@@ -78,7 +78,7 @@ panel.command.start();
 console.log(panel.statusHandle.getSnapshot()); // 'waiting' | 'mounted' | ...
 ```
 
-Throws `MAKOO_INJECTION_NOT_FOUND` if the name isn't among this Core Instance's top-level injections. Repeated calls for the same registration return the same object. After that injection is removed, the old object doesn't act on a same-named injection registered later.
+Throws `MAKOO_INJECTION_NOT_FOUND` if the name doesn't exist or belongs to a standalone listener. Repeated calls for the same registration return the same object. After that injection is removed, the old object doesn't act on a same-named injection registered later.
 
 ### `listener()`
 
@@ -90,7 +90,7 @@ await clicks.command.stop();
 console.log(clicks.statusHandle.getSnapshot()); // 'waiting' | 'bound' | ...
 ```
 
-Throws `MAKOO_INJECTION_NOT_FOUND` if the name isn't among this Core Instance's top-level injections. Like `injection()`, it is bound to the particular registration it was obtained for.
+Throws `MAKOO_INJECTION_NOT_FOUND` if the name doesn't exist or belongs to a component. Like `injection()`, it is bound to the particular registration it was obtained for.
 
 ### `observe()`
 
