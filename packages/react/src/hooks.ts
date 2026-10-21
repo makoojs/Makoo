@@ -1,9 +1,10 @@
 import type {
-	AdapterMountParams,
 	ComponentCommand,
+	ComponentInjection,
 	ComponentStatus,
 	ComponentStatusHandle,
 	ListenerCommand,
+	ListenerInjection,
 	ListenerStatus,
 	StateView
 } from '@makoojs/core';
@@ -12,9 +13,8 @@ import { createContext, useContext, useMemo, useSyncExternalStore } from 'react'
 import { ReactErrorCode } from './error';
 
 type MakooComponentContextValue = {
-	command: ComponentCommand;
-	statusHandle: ComponentStatusHandle;
-	globalListener: AdapterMountParams['globalListener'];
+	injection: ComponentInjection;
+	listener: (name: string) => ListenerInjection;
 };
 
 type ReactStandaloneListener = ListenerCommand & {
@@ -33,12 +33,12 @@ export const MakooComponentContext = createContext<MakooComponentContextValue | 
  * outside a component tree mounted by the React adapter.
  */
 export function useComponentCommand(): ComponentCommand {
-	return useComponentContext().command;
+	return useComponentContext().injection.command;
 }
 
 /** Returns the raw status handle for this mount; reading it, including lastError, does not subscribe. */
 export function useComponentStatusHandle(): ComponentStatusHandle {
-	return useComponentContext().statusHandle;
+	return useComponentContext().injection.statusHandle;
 }
 
 /**
@@ -48,7 +48,7 @@ export function useComponentStatusHandle(): ComponentStatusHandle {
 export function useComponentStatus(): ComponentStatus;
 export function useComponentStatus<T>(select: (status: ComponentStatus) => T): T;
 export function useComponentStatus<T>(select?: (status: ComponentStatus) => T) {
-	const { statusHandle } = useComponentContext();
+	const { statusHandle } = useComponentContext().injection;
 	return useSelectedSnapshot(statusHandle, select);
 }
 
@@ -63,18 +63,20 @@ export function useAttachedListenerStatus<T>(
 	select: (status: ListenerStatus) => T
 ): T;
 export function useAttachedListenerStatus<T>(name: string, select?: (status: ListenerStatus) => T) {
-	const { statusHandle } = useComponentContext();
+	const { statusHandle } = useComponentContext().injection;
 	return useSelectedSnapshot(statusHandle.attachedListener(name), select);
 }
 
 /**
  * Looks up a standalone listener in this Core Instance and subscribes to its status.
  *
+ * Flat command methods and `status` wrap the same bag as `core.listener(name)`.
+ *
  * @throws {@link MakooError} `INJECTION_NOT_FOUND` when no standalone listener has that name.
  */
-export function useGlobalListener(name: string): ReactStandaloneListener {
-	const { globalListener } = useComponentContext();
-	const found = globalListener(name);
+export function useListener(name: string): ReactStandaloneListener {
+	const { listener } = useComponentContext();
+	const found = listener(name);
 	const status = useSelectedSnapshot(found.statusHandle);
 	return {
 		name: found.command.name,
@@ -92,7 +94,7 @@ function useComponentContext(): MakooComponentContextValue {
 	const context = useContext(MakooComponentContext);
 	if (!context) {
 		throw new MakooError(
-			'Makoo hooks must be called inside a component mounted by the Makoo React adapter',
+			'Makoo hooks must be called inside a component tree mounted by the Makoo React adapter',
 			{ code: ReactErrorCode.REACT_HOOK_OUTSIDE_COMPONENT }
 		);
 	}

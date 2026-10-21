@@ -25,6 +25,7 @@
 | Type | Reference |
 | --- | --- |
 | `MakooRuntime` | [Core Instance](./instance.md#makooruntime) |
+| `ComponentInjection`, `ListenerInjection` | [Core Instance](./instance.md#injection) |
 | `MakooComponentInput`, `MakooComponentDeclaration` | [Declarations](./declarations.md#makoocomponentinput) |
 | `MakooListenerInput`, `MakooListenerDeclaration` | [Declarations](./declarations.md#makoolistenerinput) |
 | `MakooInjectionDeclaration` | [Declarations](./declarations.md#makooinjectiondeclaration) |

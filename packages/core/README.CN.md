@@ -68,18 +68,20 @@ core.apply([
 
 ### 控制注入与读取状态
 
-每个注入都可以按名称取得命令入口和状态入口：
+每个注入都可以按名称取得命令入口和状态入口：组件用 `core.injection(name)`，独立监听用 `core.listener(name)`。
 
 ```ts
-const panel = core.command('panel');
-const status = core.statusHandle('panel');
+const panel = core.injection('panel');
+const escape = core.listener('escape');
+const status = panel.statusHandle;
 
 status.subscribe(() => {
   console.log(status.getSnapshot(), status.lastError);
 });
 
-await panel.stop();
-panel.start();
+await panel.command.stop();
+panel.command.start();
+await escape.command.stop();
 ```
 
 ## 文档

@@ -68,18 +68,20 @@ core.apply([
 
 ### Control Injections and Read Status
 
-Every injection's command handle and status handle can be obtained by name:
+Every injection's command handle and status handle can be obtained by name: use `core.injection(name)` for components and `core.listener(name)` for standalone listeners.
 
 ```ts
-const panel = core.command('panel');
-const status = core.statusHandle('panel');
+const panel = core.injection('panel');
+const escape = core.listener('escape');
+const status = panel.statusHandle;
 
 status.subscribe(() => {
   console.log(status.getSnapshot(), status.lastError);
 });
 
-await panel.stop();
-panel.start();
+await panel.command.stop();
+panel.command.start();
+await escape.command.stop();
 ```
 
 ## Documentation

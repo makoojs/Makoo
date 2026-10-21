@@ -55,7 +55,7 @@ type VueMakooComponent = ComponentCommand & {
   readonly lastError: MakooError | undefined;
   readonly status: Readonly<Ref<ComponentStatus>>;
   attachedListener(name: string): Readonly<Ref<ListenerStatus>>;
-  globalListener(name: string): ListenerCommand & {
+  listener(name: string): ListenerCommand & {
     readonly lastError: MakooError | undefined;
     readonly status: Readonly<Ref<ListenerStatus>>;
   };
@@ -64,11 +64,11 @@ type VueMakooComponent = ComponentCommand & {
 
 | 成员 | 说明 |
 | --- | --- |
-| `name`、`start()`、`stop()`、`remove()` | 所属组件的[命令入口](./status.md#命令入口)，与 `core.command(name)` 是同一组方法 |
+| `name`、`start()`、`stop()`、`remove()` | 所属组件的[命令入口](./status.md#命令入口)，与 `core.injection(name).command` 是同一组方法 |
 | `status` | 组件状态的只读 ref |
 | `lastError` | 读取状态入口的 `lastError`，不是响应式的 |
 | `attachedListener(name)` | 附属监听状态的只读 ref；名称不存在时抛出 `MAKOO_LISTENER_NOT_FOUND` |
-| `globalListener(name)` | 同一实例中某个独立监听的命令和状态 ref |
+| `listener(name)` | 同一实例中某个独立监听的命令和状态 ref |
 
 `status` 等 ref 挂在普通对象上，模板只会自动解包顶层变量。请先赋给顶层常量（如上例的 `search`），不要在模板里直接写 `makoo.status`。
 
@@ -77,7 +77,7 @@ type VueMakooComponent = ComponentCommand & {
 ### 订阅与释放
 
 - 调用 `useMakooComponent()` 时，会为组件状态和全部附属监听建立订阅。
-- `globalListener(name)` 在首次调用时订阅该独立监听；对同一名称重复调用会复用同一个 ref。该独立监听被移除并重新 `apply()` 后，需要再调用一次 `globalListener(name)`：ref 会切换到新的监听，旧返回值上的 `start` / `stop` / `remove` 仍指向旧监听。
+- `listener(name)` 在首次调用时订阅该独立监听；对同一名称重复调用会复用同一个 ref。该独立监听被移除并重新 `apply()` 后，需要再调用一次 `listener(name)`：ref 会切换到新的监听，旧返回值上的 `start` / `stop` / `remove` 仍指向旧监听。
 - 组件卸载或所在 effect scope 结束时，订阅自动释放。释放订阅不会停止独立监听。
 - `lastError` 不会触发更新。组件出错时状态会变为 `failed`，在模板中同时读取 `status` 即可重新渲染。独立监听的回调出错时状态保持 `bound`，只写入 `lastError`，界面不会因此更新。
 
@@ -89,7 +89,7 @@ type VueMakooComponent = ComponentCommand & {
 | --- | --- |
 | 取不到 Makoo 的注入上下文：不在 Makoo 挂载的 app 中，或不在 `setup` 中同步调用（例如在事件处理函数、`setTimeout` 里） | `MAKOO_VUE_HOOK_OUTSIDE_COMPONENT` |
 | 能取到注入上下文，但没有 effect scope，例如在插件里通过 `app.runWithContext()` 调用 | `MAKOO_VUE_HOOK_OUTSIDE_SCOPE` |
-| `globalListener(name)` 找不到独立监听 | `MAKOO_INJECTION_NOT_FOUND` |
+| `listener(name)` 找不到独立监听 | `MAKOO_INJECTION_NOT_FOUND` |
 
 ## `VuePlugin`
 

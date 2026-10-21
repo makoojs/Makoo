@@ -18,8 +18,8 @@ function createMakoo(): MakooRuntime;
 interface MakooRuntime {
   useAdapter(adapter: MountAdapter): void;
   apply(declarations: readonly MakooInjectionDeclaration[]): void;
-  command(name: string): InjectionCommand;
-  statusHandle(name: string): InjectionStatusHandle;
+  injection(name: string): ComponentInjection;
+  listener(name: string): ListenerInjection;
   observe(handler: ObservationHandler): () => void;
   dispose(): Promise<void>;
 }
@@ -36,7 +36,6 @@ core.useAdapter(createReactAdapter()); // 名称为 'react'
 
 | 情况 | 错误码 |
 | --- | --- |
-| 对象缺少 `name`、`mount` 或 `unmount` | `MAKOO_ADAPTER_INVALID` |
 | 同名适配器已注册 | `MAKOO_ADAPTER_NAME_CONFLICT` |
 | 实例已销毁 | `MAKOO_INSTANCE_DISPOSED` |
 
@@ -55,41 +54,59 @@ core.apply([
 
 执行顺序：
 
-1. 校验整批声明：字段、CSS 选择器语法、批内与实例内的名称冲突、组件选择的适配器是否已注册。
+1. 按以下顺序检查整批声明：参数是否为非空数组；每一项是否为组件或监听声明，其中附属监听是否符合规则（在同一组件内不能重名，不能设置 `reinject`）；名称是否与批内其他项或实例中已有的注入冲突；组件选择的适配器是否已注册。
 2. 任一项不通过时同步抛出错误，整批都不登记、不启动。
-3. 全部通过后登记每一项，此时 `command()` 和 `statusHandle()` 已能查到它们；随后按数组顺序启动。
+3. 全部通过后登记每一项，此时 `injection()` / `listener()` 已能查到它们；随后按数组顺序启动。
 
 | 情况 | 错误码 |
 | --- | --- |
-| 参数不是非空数组，或某项声明无效 | `MAKOO_DECLARATION_INVALID` |
+| 参数不是非空数组，某一项不是组件或监听声明，或附属监听设置了 `reinject` | `MAKOO_DECLARATION_INVALID` |
 | 名称与批内其他项或实例中已有注入重复 | `MAKOO_INJECTION_NAME_CONFLICT` |
 | 组件选择的适配器未注册 | `MAKOO_ADAPTER_NOT_FOUND` |
 | 实例已销毁 | `MAKOO_INSTANCE_DISPOSED` |
 
 `apply()` 没有返回值。登记后通过名称取得控制入口，可以多次调用 `apply()` 追加声明。启动之后的等待超时、挂载失败等问题不会从 `apply()` 抛出，而是写入对应注入的 `lastError`，见[错误的分类与处置](../docs/errors.md)。
 
-### `command()`
+### `injection()`
 
-按名称取得注入的[命令入口](./status.md#命令入口)，用于启动、停止和移除。
-
-```ts
-const panel = core.command('panel');
-await panel.stop();
-panel.start();
-```
-
-名称不存在时抛出 `MAKOO_INJECTION_NOT_FOUND`。入口绑定的是取得时的那一个注入：注入被移除后，即使之后登记了同名注入，旧入口也不会作用到新注入上。
-
-### `statusHandle()`
-
-按名称取得注入的[状态入口](./status.md#状态入口)，用于读取和订阅状态以及读取 `lastError`。
+按名称取得组件注入。返回的对象包含[命令入口](./status.md#命令入口) `command` 和[状态入口](./status.md#状态入口) `statusHandle`。
 
 ```ts
-const status = core.statusHandle('panel');
-console.log(status.getSnapshot()); // 'waiting' | 'mounted' | ...
+interface ComponentInjection {
+  readonly kind: 'component';
+  readonly command: ComponentCommand;
+  readonly statusHandle: ComponentStatusHandle;
+}
 ```
 
-名称不存在时抛出 `MAKOO_INJECTION_NOT_FOUND`。返回值是组件或独立监听的状态入口，可以用 `'attachedListenerNames' in status` 区分。与 `command()` 一样，它绑定的是取得时的那一个注入。
+```ts
+const panel = core.injection('panel');
+await panel.command.stop();
+panel.command.start();
+console.log(panel.statusHandle.getSnapshot()); // 'waiting' | 'mounted' | ...
+```
+
+名称不存在或属于独立监听时抛出 `MAKOO_INJECTION_NOT_FOUND`。对同一个注入重复调用，得到的是同一个对象。这个对象绑定的是取得时的那一个注入：注入被移除后，即使之后登记了同名注入，旧对象也不会作用到新注入上。
+
+### `listener()`
+
+按名称取得独立监听。返回的对象包含命令入口 `command` 和状态入口 `statusHandle`。
+
+```ts
+interface ListenerInjection {
+  readonly kind: 'listener';
+  readonly command: ListenerCommand;
+  readonly statusHandle: ListenerStatusHandle;
+}
+```
+
+```ts
+const clicks = core.listener('page-click');
+await clicks.command.stop();
+console.log(clicks.statusHandle.getSnapshot()); // 'waiting' | 'bound' | ...
+```
+
+名称不存在或属于组件时抛出 `MAKOO_INJECTION_NOT_FOUND`。与 `injection()` 一样，返回的对象绑定的是取得时的那一个独立监听。
 
 ### `observe()`
 

@@ -24,15 +24,11 @@ function componentStatus(
 	core: ReturnType<typeof createMakoo>,
 	name: string
 ): ComponentStatusHandle {
-	const status = core.statusHandle(name);
-	if (!('attachedListener' in status)) throw new Error(`Expected a component: ${name}`);
-	return status;
+	return core.injection(name).statusHandle;
 }
 
 function listenerStatus(core: ReturnType<typeof createMakoo>, name: string): ListenerStatusHandle {
-	const status = core.statusHandle(name);
-	if ('attachedListener' in status) throw new Error(`Expected a listener: ${name}`);
-	return status;
+	return core.listener(name).statusHandle;
 }
 
 const VuePanel = defineComponent({
@@ -207,7 +203,7 @@ describe('mixed Vue, React, and listener runtime', () => {
 		expect(componentStatus(core, 'vue-panel').getSnapshot()).toBe('mounted');
 
 		await act(async () => {
-			await core.command('vue-panel').stop();
+			await core.injection('vue-panel').command.stop();
 		});
 		await nextTick();
 		expect(element('#vue-host').childElementCount).toBe(0);
@@ -221,10 +217,10 @@ describe('mixed Vue, React, and listener runtime', () => {
 		expect(document.body.querySelector('#vue-host p, #react-host p')).toBeNull();
 		element('#standalone').click();
 		expect(standalone).toHaveBeenCalledTimes(2);
-		expect(() => core.command('standalone')).toThrow(
+		expect(() => core.listener('standalone').command).toThrow(
 			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 		);
-		expect(() => core.statusHandle('react-panel')).toThrow(
+		expect(() => core.injection('react-panel').statusHandle).toThrow(
 			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 		);
 	});

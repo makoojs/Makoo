@@ -35,7 +35,7 @@ describe('injection target recovery', () => {
 				timeout
 			})
 		]);
-		const panel = core.command('panel');
+		const panel = core.injection('panel').command;
 		controls.push(panel);
 		const container = mount.mock.results[0].value as HTMLElement;
 		return { core, panel, host, parent, container, mount, unmount };
@@ -53,13 +53,13 @@ describe('injection target recovery', () => {
 		expect(unmount).toHaveBeenCalledExactlyOnceWith(container);
 		expect(mount).toHaveBeenCalledTimes(2);
 		expect(mount.mock.results[1].value.parentElement).toBe(replacement);
-		expect(core.statusHandle('panel').getSnapshot()).toBe('mounted');
+		expect(core.injection('panel').statusHandle.getSnapshot()).toBe('mounted');
 		unmount.mockReset();
 	});
 
 	it('can stop reinjection from a waiting state notification before mounting again', async () => {
 		const { core, panel, host, mount, unmount } = mountInjection(true);
-		const status = core.statusHandle('panel');
+		const status = core.injection('panel').statusHandle;
 		const unsubscribe = status.subscribe(() => {
 			if (status.getSnapshot() !== 'waiting') return;
 			unsubscribe();
@@ -75,7 +75,7 @@ describe('injection target recovery', () => {
 
 	it('keeps the mount through same-delivery moves, selector changes, and content updates', async () => {
 		const { core, host, parent, container, mount, unmount } = mountInjection(true);
-		const snapshot = core.statusHandle('panel').getSnapshot();
+		const snapshot = core.injection('panel').statusHandle.getSnapshot();
 		parent.remove();
 		document.body.append(parent);
 		container.remove();
@@ -86,7 +86,7 @@ describe('injection target recovery', () => {
 		await Promise.resolve();
 		expect(mount).toHaveBeenCalledOnce();
 		expect(unmount).not.toHaveBeenCalled();
-		expect(core.statusHandle('panel').getSnapshot()).toBe(snapshot);
+		expect(core.injection('panel').statusHandle.getSnapshot()).toBe(snapshot);
 	});
 
 	it.each([
@@ -98,13 +98,15 @@ describe('injection target recovery', () => {
 		vi.advanceTimersByTime(budget * 2);
 		host.remove();
 		await vi.advanceTimersByTimeAsync(0);
-		expect(core.statusHandle('panel').getSnapshot()).toBe('waiting');
+		expect(core.injection('panel').statusHandle.getSnapshot()).toBe('waiting');
 		vi.advanceTimersByTime(budget - 1);
 		document.body.append(document.createElement('div'));
 		await Promise.resolve();
-		expect(core.statusHandle('panel').getSnapshot()).toBe('waiting');
+		expect(core.injection('panel').statusHandle.getSnapshot()).toBe('waiting');
 		await vi.advanceTimersByTimeAsync(1);
-		expect(core.statusHandle('panel').lastError?.code).toBe('MAKOO_TARGET_WAIT_TIMEOUT');
+		expect(core.injection('panel').statusHandle.lastError?.code).toBe(
+			'MAKOO_TARGET_WAIT_TIMEOUT'
+		);
 		document.body.append(host);
 		await Promise.resolve();
 		expect(mount).toHaveBeenCalledOnce();
@@ -118,7 +120,7 @@ describe('injection target recovery', () => {
 		'remove'
 	] as const)('lets %s override recovery during its waiting notification', async (operation) => {
 		const { core, panel, host, mount } = mountInjection(true);
-		const status = core.statusHandle('panel');
+		const status = core.injection('panel').statusHandle;
 		status.subscribe(() => {
 			if (status.getSnapshot() === 'waiting') void panel[operation]();
 		});
@@ -137,11 +139,14 @@ describe('injection target recovery', () => {
 			throw new Error('unmount failed');
 		});
 		host.replaceWith(host.cloneNode());
-		await vi.waitFor(() => expect(core.statusHandle('panel').getSnapshot()).toBe('failed'), {
-			interval: 1
-		});
+		await vi.waitFor(
+			() => expect(core.injection('panel').statusHandle.getSnapshot()).toBe('failed'),
+			{
+				interval: 1
+			}
+		);
 		expect(container.isConnected).toBe(false);
-		expect(core.statusHandle('panel').lastError).toMatchObject({
+		expect(core.injection('panel').statusHandle.lastError).toMatchObject({
 			errors: expect.arrayContaining([
 				expect.objectContaining({
 					code: MakooErrorCode.UNMOUNT_FAILED,
@@ -151,7 +156,7 @@ describe('injection target recovery', () => {
 		});
 		expect(mount).toHaveBeenCalledOnce();
 		expect(() => panel.start()).toThrow(/cannot restart/);
-		await expect(panel.stop()).rejects.toBe(core.statusHandle('panel').lastError);
+		await expect(panel.stop()).rejects.toBe(core.injection('panel').statusHandle.lastError);
 	});
 
 	it('rejects a container moved outside its target during mount before publishing mounted', async () => {
@@ -169,13 +174,16 @@ describe('injection target recovery', () => {
 			unmount
 		});
 		core.apply([inject({ name: 'panel', injectAt: '#host', adapter: 'plain', component: {} })]);
-		const panel = core.command('panel');
+		const panel = core.injection('panel').command;
 		controls.push(panel);
-		await vi.waitFor(() => expect(core.statusHandle('panel').getSnapshot()).toBe('failed'), {
-			interval: 1
-		});
+		await vi.waitFor(
+			() => expect(core.injection('panel').statusHandle.getSnapshot()).toBe('failed'),
+			{
+				interval: 1
+			}
+		);
 		expect(unmount).toHaveBeenCalledOnce();
-		expect(core.statusHandle('panel').getSnapshot()).toBe('failed');
+		expect(core.injection('panel').statusHandle.getSnapshot()).toBe('failed');
 	});
 
 	it('starts validity observation before invoking the adapter and cleans it up on stop', async () => {
@@ -201,12 +209,15 @@ describe('injection target recovery', () => {
 		if (removedPart === 'ancestor') parent.remove();
 		if (removedPart === 'container') container.remove();
 		if (removedPart === 'outside') document.body.append(container);
-		await vi.waitFor(() => expect(core.statusHandle('panel').getSnapshot()).toBe('failed'), {
-			interval: 1
-		});
+		await vi.waitFor(
+			() => expect(core.injection('panel').statusHandle.getSnapshot()).toBe('failed'),
+			{
+				interval: 1
+			}
+		);
 		expect(unmount).toHaveBeenCalledExactlyOnceWith(container);
 		expect(container.isConnected).toBe(false);
-		expect(core.statusHandle('panel').getSnapshot()).toBe('failed');
+		expect(core.injection('panel').statusHandle.getSnapshot()).toBe('failed');
 		expect(mount).toHaveBeenCalledOnce();
 	});
 });

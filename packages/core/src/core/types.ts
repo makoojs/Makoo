@@ -45,33 +45,39 @@ export interface MakooRuntime {
 	/**
 	 * Registers a component adapter under its `name`.
 	 *
-	 * @throws {@link MakooError} `ADAPTER_INVALID` for a malformed adapter,
-	 * `ADAPTER_NAME_CONFLICT` for a name already registered here,
+	 * @throws {@link MakooError} `ADAPTER_NAME_CONFLICT` for a name already registered here,
 	 * or `INSTANCE_DISPOSED` after {@link MakooRuntime.dispose}.
 	 */
 	useAdapter(adapter: MountAdapter): void;
 	/**
 	 * Registers a batch of injections and starts each of them.
 	 *
-	 * The batch is validated as a whole first: if any declaration is invalid, any name is taken,
-	 * or any component names an unregistered adapter, nothing in the batch is registered.
+	 * The batch is checked as a whole first: if any entry is not a declaration, any name is taken,
+	 * an attached listener sets `reinject`, or any component names an unregistered adapter, nothing
+	 * in the batch is registered.
 	 *
 	 * @throws {@link MakooError} `DECLARATION_INVALID`, `INJECTION_NAME_CONFLICT`,
 	 * `ADAPTER_NOT_FOUND`, or `INSTANCE_DISPOSED`.
 	 */
 	apply(declarations: readonly MakooInjectionDeclaration[]): void;
 	/**
-	 * Returns the command of the top-level injection currently registered under `name`.
+	 * Returns the component injection currently registered under `name`.
 	 *
-	 * @throws {@link MakooError} `INJECTION_NOT_FOUND` when no injection has that name.
+	 * Repeated calls for the same registration return the same object. After that injection is
+	 * removed and a new one is applied under the same name, a later call returns a new object.
+	 *
+	 * @throws {@link MakooError} `INJECTION_NOT_FOUND` when no component has that name.
 	 */
-	command(name: string): InjectionCommand;
+	injection(name: string): ComponentInjection;
 	/**
-	 * Returns the status handle of the top-level injection currently registered under `name`.
+	 * Returns the standalone listener currently registered under `name`.
 	 *
-	 * @throws {@link MakooError} `INJECTION_NOT_FOUND` when no injection has that name.
+	 * Repeated calls for the same registration return the same object. After that listener is
+	 * removed and a new one is applied under the same name, a later call returns a new object.
+	 *
+	 * @throws {@link MakooError} `INJECTION_NOT_FOUND` when no standalone listener has that name.
 	 */
-	statusHandle(name: string): InjectionStatusHandle;
+	listener(name: string): ListenerInjection;
 	/**
 	 * Subscribes to instance notices.
 	 *

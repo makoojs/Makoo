@@ -16,9 +16,7 @@ class MakooError extends Error {
 | `name` | `'MakooError'` |
 | `message` | 说明 Makoo 在做什么、对象是谁，例如 `Failed to mount "panel"` |
 | `code` | 错误码，见下文 |
-| `cause` | 被包装的底层错误，例如适配器或事件处理函数抛出的值；声明和适配器校验失败时是 Zod 的校验错误。超时、目标失效等 Makoo 自己发现的问题没有 `cause` |
-
-校验类错误的 `message` 有多行：第一行是摘要，之后每行是 `字段路径: 问题`。
+| `cause` | 被包装的底层错误，例如适配器或事件处理函数抛出的值。超时、目标失效等 Makoo 自己发现的问题没有 `cause` |
 
 在浏览器控制台中展开错误对象，沿 `cause` 可以找到原始代码位置。
 
@@ -26,7 +24,7 @@ class MakooError extends Error {
 import { MakooError, MakooErrorCode } from '@makoojs/core';
 
 try {
-  core.command('panel').start();
+  core.injection('panel').command.start();
 } catch (error) {
   if (error instanceof MakooError && error.code === MakooErrorCode.INJECTION_CLOSED) {
     console.warn('panel 清理失败后已关闭，请刷新页面');
@@ -59,9 +57,8 @@ class MakooAggregateError extends MakooError {
 
 | 常量 | 含义 |
 | --- | --- |
-| `DECLARATION_INVALID` | 声明字段无效、选择器语法错误，或 `apply()` 收到空数组 |
+| `DECLARATION_INVALID` | `apply()` 收到空数组、某一项不是组件或监听声明，或附属监听设置了 `reinject` |
 | `INJECTION_NAME_CONFLICT` | 注入名称重复，或同一组件内附属监听重名 |
-| `ADAPTER_INVALID` | 适配器缺少 `name`、`mount` 或 `unmount` |
 | `ADAPTER_NAME_CONFLICT` | 同名适配器已注册 |
 | `ADAPTER_NOT_FOUND` | 组件选择的适配器未注册 |
 
@@ -71,7 +68,7 @@ class MakooAggregateError extends MakooError {
 
 | 常量 | 含义 |
 | --- | --- |
-| `INJECTION_NOT_FOUND` | 名称不存在；`globalListener()` 查找的不是独立监听 |
+| `INJECTION_NOT_FOUND` | 名称不存在，或名称对应的注入类型不符：用 `injection()` 查到的是独立监听，或用 `listener()` 查到的是组件 |
 | `LISTENER_NOT_FOUND` | 组件中没有这个名称的附属监听 |
 | `INJECTION_REMOVED` | 注入已被移除，不能再启动 |
 | `INJECTION_CLOSED` | 注入此前清理失败，不能再启动 |

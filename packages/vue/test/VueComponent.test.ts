@@ -36,11 +36,11 @@ describe('Vue components mounted by core', () => {
 	let core: MakooRuntime;
 
 	function panelCommand(): ComponentCommand {
-		return core.command('panel');
+		return core.injection('panel').command;
 	}
 
 	function panelStatus(): ComponentStatusHandle {
-		const status = core.statusHandle('panel');
+		const status = core.injection('panel').statusHandle;
 		if (!('attachedListener' in status)) throw new Error('Expected a component');
 		return status;
 	}
@@ -88,11 +88,11 @@ describe('Vue components mounted by core', () => {
 				props: { title: 'Count', store }
 			})
 		]);
-		controls.push(core.command('panel'));
+		controls.push(core.injection('panel').command);
 
 		const container = element('#host').firstElementChild;
 		expect(container?.textContent).toBe('Count:1');
-		expect(received?.stop).toBe(core.command('panel').stop);
+		expect(received?.stop).toBe(core.injection('panel').command.stop);
 		expect(received?.status.value).toBe('mounted');
 		expect(Object.isFrozen(store)).toBe(false);
 
@@ -125,7 +125,7 @@ describe('Vue components mounted by core', () => {
 				]
 			})
 		]);
-		controls.push(core.command('panel'));
+		controls.push(core.injection('panel').command);
 		await nextTick();
 		const text = () => element('#host').textContent;
 		expect(text()).toBe('mounted/waiting');
@@ -169,7 +169,7 @@ describe('Vue components mounted by core', () => {
 				)
 			})
 		]);
-		controls.push(core.command('panel'), core.command('external'));
+		controls.push(core.injection('panel').command, core.listener('external').command);
 		await nextTick();
 		expect(element('#host').textContent).toBe('waiting/waiting');
 		addButton('mute');
@@ -208,7 +208,7 @@ describe('Vue components mounted by core', () => {
 				]
 			})
 		]);
-		controls.push(core.command('panel'));
+		controls.push(core.injection('panel').command);
 		const panel = panelCommand();
 		const status = panelStatus();
 		const view = status.attachedListener('play');
@@ -272,7 +272,7 @@ describe('Vue components mounted by core', () => {
 			expect(panelStatus().lastError).toBe(diagnostic);
 			await expect(panel.stop()).rejects.toBe(diagnostic);
 			await expect(panel.remove()).rejects.toBe(diagnostic);
-			expect(core.command('panel')).toBe(panel);
+			expect(core.injection('panel').command).toBe(panel);
 			expect(element('#host').childElementCount).toBe(0);
 			expect(effect).toHaveBeenCalledTimes(1);
 		} finally {
@@ -287,7 +287,7 @@ describe('Vue components mounted by core', () => {
 			setup() {
 				const control = useMakooComponent();
 				received = control;
-				const save = control.globalListener('save');
+				const save = control.listener('save');
 				return () => h('p', save.status.value);
 			}
 		});
@@ -303,14 +303,14 @@ describe('Vue components mounted by core', () => {
 				]
 			})
 		]);
-		controls.push(core.command('panel'), core.command('save'));
+		controls.push(core.injection('panel').command, core.listener('save').command);
 		await nextTick();
-		const save = received?.globalListener('save');
-		expect(save?.stop).toBe(core.command('save').stop);
-		expect(save?.status).toBe(received?.globalListener('save').status);
+		const save = received?.listener('save');
+		expect(save?.stop).toBe(core.listener('save').command.stop);
+		expect(save?.status).toBe(received?.listener('save').status);
 		expect(element('#host').textContent).toBe('waiting');
 		for (const name of ['panel', 'play', 'missing']) {
-			expect(() => received?.globalListener(name)).toThrow(
+			expect(() => received?.listener(name)).toThrow(
 				expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 			);
 		}
@@ -318,13 +318,13 @@ describe('Vue components mounted by core', () => {
 		await save?.stop();
 		await nextTick();
 		expect(save?.status.value).toBe('idle');
-		expect(core.statusHandle('save').getSnapshot()).toBe('idle');
+		expect(core.listener('save').statusHandle.getSnapshot()).toBe('idle');
 		save?.start();
 		await flush();
-		expect(core.statusHandle('save').getSnapshot()).toBe('waiting');
+		expect(core.listener('save').statusHandle.getSnapshot()).toBe('waiting');
 
 		await panelCommand().stop();
-		expect(core.statusHandle('save').getSnapshot()).toBe('waiting');
+		expect(core.listener('save').statusHandle.getSnapshot()).toBe('waiting');
 	});
 
 	it('keeps one status ref when a standalone listener is replaced', async () => {
@@ -333,7 +333,7 @@ describe('Vue components mounted by core', () => {
 			setup() {
 				const control = useMakooComponent();
 				received = control;
-				const save = control.globalListener('save');
+				const save = control.listener('save');
 				return () => h('p', save.status.value);
 			}
 		});
@@ -347,10 +347,10 @@ describe('Vue components mounted by core', () => {
 			declaration,
 			inject({ name: 'panel', injectAt: '#host', adapter: 'vue', component: Panel })
 		]);
-		controls.push(core.command('panel'), core.command('save'));
+		controls.push(core.injection('panel').command, core.listener('save').command);
 		await nextTick();
-		const status = received?.globalListener('save').status;
-		const previous = received?.globalListener('save');
+		const status = received?.listener('save').status;
+		const previous = received?.listener('save');
 		addButton('save');
 		await flush();
 		expect(status?.value).toBe('bound');
@@ -359,9 +359,9 @@ describe('Vue components mounted by core', () => {
 		await nextTick();
 		expect(status?.value).toBe('idle');
 		core.apply([declaration]);
-		controls.push(core.command('save'));
-		const replacement = received?.globalListener('save');
-		expect(replacement?.stop).toBe(core.command('save').stop);
+		controls.push(core.listener('save').command);
+		const replacement = received?.listener('save');
+		expect(replacement?.stop).toBe(core.listener('save').command.stop);
 		expect(replacement?.stop).not.toBe(previous?.stop);
 		expect(replacement?.status).toBe(status);
 		expect(status?.value).toBe('bound');
@@ -380,7 +380,7 @@ describe('Vue components mounted by core', () => {
 		core.apply([
 			inject({ name: 'panel', injectAt: '#host', adapter: 'vue', component: Panel })
 		]);
-		controls.push(core.command('panel'));
+		controls.push(core.injection('panel').command);
 		const panel = panelCommand();
 
 		await expect(panel.stop()).rejects.toMatchObject({

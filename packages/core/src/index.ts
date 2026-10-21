@@ -2,6 +2,7 @@ export type { AdapterMountParams, MountAdapter } from './adapter/types';
 export { inject } from './component/declaration';
 export type {
 	ComponentCommand,
+	ComponentInjection,
 	ComponentStatus,
 	ComponentStatusHandle,
 	MakooComponentDeclaration,
@@ -9,6 +10,7 @@ export type {
 } from './component/types';
 export { createMakoo } from './core/createMakoo';
 export type {
+	Injection,
 	InjectionCommand,
 	InjectionStatusHandle,
 	MakooInjectionDeclaration,
@@ -21,6 +23,7 @@ export { MakooAggregateError, MakooError } from './error/MakooError';
 export { listen } from './listener/declaration';
 export type {
 	ListenerCommand,
+	ListenerInjection,
 	ListenerStatus,
 	ListenerStatusHandle,
 	MakooListenerDeclaration,

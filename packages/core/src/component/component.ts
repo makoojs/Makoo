@@ -1,9 +1,9 @@
-import type { AdapterMountParams, MountAdapter } from '../adapter/types';
+import type { MountAdapter } from '../adapter/types';
 import type { DOMObserver } from '../dom/observer';
 import { MakooErrorCode } from '../error/ErrorCode';
 import { injectionCleanupFailed, MakooError, stateSubscriberFailed } from '../error/MakooError';
 import { type AttachListener, createAttachListener } from '../listener/attach';
-import type { ListenerStatus } from '../listener/types';
+import type { ListenerInjection, ListenerStatus } from '../listener/types';
 import { createState } from '../state/createState';
 import type { StateView } from '../state/types';
 import {
@@ -67,7 +67,7 @@ export function createComponent(
 	dom: DOMObserver,
 	onRemoved: () => void,
 	isDisposed: () => boolean,
-	globalListener: AdapterMountParams['globalListener'],
+	listener: (name: string) => ListenerInjection,
 	onDiagnostic: (name: string, error: MakooError) => void
 ): ComponentInjection {
 	let component: Component;
@@ -89,6 +89,7 @@ export function createComponent(
 		attachedListenerNames,
 		attachedListener: (listenerName: string) => getAttachListenerStatus(component, listenerName)
 	});
+	const injection: ComponentInjection = { kind: 'component', command, statusHandle };
 	component = {
 		config,
 		dom,
@@ -100,9 +101,8 @@ export function createComponent(
 					component: config.component,
 					props: config.props,
 					container,
-					command,
-					statusHandle,
-					globalListener
+					injection,
+					listener
 				});
 			},
 			unmount(mountHandle) {
@@ -136,7 +136,7 @@ export function createComponent(
 			)
 		);
 	}
-	return { kind: 'component', command, statusHandle };
+	return injection;
 }
 
 function getAttachListenerStatus(component: Component, name: string): StateView<ListenerStatus> {

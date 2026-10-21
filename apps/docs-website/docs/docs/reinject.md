@@ -6,7 +6,7 @@ When a single-page app switches views or re-renders a list, it often removes the
 
 When "the component is there at first, then disappears after a while":
 
-1. Read the status: `core.statusHandle('toolbar').lastError?.code`.
+1. Read the status: `core.injection('toolbar').statusHandle.lastError?.code`.
 2. If it is `MAKOO_MOUNT_TARGET_DETACHED`, the mount target left the page, or the component container was removed or moved out of the mount target.
 3. If it is `MAKOO_ATTACHED_LISTENER_FAILED`, expand `cause` to see which attached listener's target became invalid.
 
@@ -65,8 +65,8 @@ You run into this when the user switches to a page without the target element an
 - Where you can detect page switches (for example, by listening to the site's own navigation buttons), call `start()` on an injection that is `failed`:
 
 ```ts
-const status = core.statusHandle('toolbar');
-if (status.getSnapshot() === 'failed') core.command('toolbar').start();
+const status = core.injection('toolbar').statusHandle;
+if (status.getSnapshot() === 'failed') core.injection('toolbar').command.start();
 ```
 
 ## Changes That Don't Trigger a Remount

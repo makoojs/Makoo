@@ -1,7 +1,8 @@
 import {
-	type AdapterMountParams,
 	type ComponentCommand,
+	type ComponentInjection,
 	type ComponentStatusHandle,
+	type ListenerInjection,
 	type ListenerStatus,
 	MakooAggregateError,
 	MakooErrorCode,
@@ -32,7 +33,15 @@ function createStatus(view: StateView<ListenerStatus>): ComponentStatusHandle {
 	};
 }
 
-const globalListener = () => ({}) as ReturnType<AdapterMountParams['globalListener']>;
+const listener = () => ({}) as ListenerInjection;
+
+function createInjection(view: StateView<ListenerStatus>): ComponentInjection {
+	return {
+		kind: 'component',
+		command: createCommand(),
+		statusHandle: createStatus(view)
+	};
+}
 
 function createView(unsubscribe: () => void): StateView<ListenerStatus> {
 	return {
@@ -79,9 +88,8 @@ describe('VueAdapter', () => {
 				component: defineComponent({ render: () => h('div') }),
 				props: undefined,
 				container: document.createElement('div'),
-				command: createCommand(),
-				globalListener,
-				statusHandle: createStatus(createView(() => {}))
+				injection: createInjection(createView(() => {})),
+				listener
 			})
 		).toThrow(expect.objectContaining({ code: VueErrorCode.VUE_HOOK_OUTSIDE_SCOPE }));
 	});
@@ -99,9 +107,8 @@ describe('VueAdapter', () => {
 				component: defineComponent({ render: () => h('div') }),
 				props: undefined,
 				container: document.createElement('div'),
-				command: createCommand(),
-				globalListener,
-				statusHandle: createStatus(createView(() => {}))
+				injection: createInjection(createView(() => {})),
+				listener
 			})
 		).toThrow(cause);
 	});
@@ -116,9 +123,8 @@ describe('VueAdapter', () => {
 				component: SubscribingParent,
 				props: undefined,
 				container: document.createElement('div'),
-				command: createCommand(),
-				globalListener,
-				statusHandle: createStatus(view)
+				injection: createInjection(view),
+				listener
 			})
 		).toThrow(
 			expect.objectContaining({
@@ -143,13 +149,12 @@ describe('VueAdapter', () => {
 				component: SubscribingParent,
 				props: undefined,
 				container: document.createElement('div'),
-				command: createCommand(),
-				globalListener,
-				statusHandle: createStatus(
+				injection: createInjection(
 					createView(() => {
 						throw releaseCause;
 					})
-				)
+				),
+				listener
 			});
 		} catch (error) {
 			thrown = error;

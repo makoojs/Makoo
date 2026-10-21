@@ -175,8 +175,8 @@ core.apply([
     type: 'keydown',
     callback(event) {
       if ((event as KeyboardEvent).key !== 'Escape') return;
-      const panel = core.command('panel');
-      if (core.statusHandle('panel').getSnapshot() === 'idle') panel.start();
+      const panel = core.injection('panel').command;
+      if (core.injection('panel').statusHandle.getSnapshot() === 'idle') panel.start();
       else panel.stop();
     }
   })
@@ -195,7 +195,7 @@ core.apply([
 
 - 用 `inject()` 声明组件、由 `apply()` 挂载到网页上，用附属监听让组件和它依赖的网页元素一起启停。
 - 在组件内读取监听状态、调用命令入口。
-- 用独立监听和 `core.command()` / `core.statusHandle()` 从组件外控制面板。
+- 用独立监听和 `core.injection(name)` 从组件外控制面板。
 
 ## 下一步
 

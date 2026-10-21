@@ -31,14 +31,10 @@ Core 只保存挂载句柄，不读取其内容，卸载时原样交回给 `unmo
 ```ts
 interface AdapterMountParams<TComponent = unknown, TProps = unknown> {
   component: TComponent;
-  command: ComponentCommand;
-  statusHandle: ComponentStatusHandle;
+  injection: ComponentInjection;
   props: TProps | undefined;
   container: HTMLElement;
-  globalListener(name: string): {
-    command: ListenerCommand;
-    statusHandle: ListenerStatusHandle;
-  };
+  listener(name: string): ListenerInjection;
 }
 ```
 
@@ -47,11 +43,10 @@ interface AdapterMountParams<TComponent = unknown, TProps = unknown> {
 | `component` | 声明中的 `component` |
 | `props` | 声明中的 `props`，未提供时为 `undefined` |
 | `container` | Core 为这次挂载创建的组件容器 |
-| `command` | 所属组件的命令入口 |
-| `statusHandle` | 所属组件的状态入口 |
-| `globalListener(name)` | 查找同一实例中的独立监听，返回 `{ command, statusHandle }` |
+| `injection` | 所属组件的注入对象，包含命令入口 `command` 和状态入口 `statusHandle`；与 `core.injection(name)` 返回的是同一个对象 |
+| `listener(name)` | 查找同一实例中的独立监听，返回 `{ command, statusHandle }` |
 
-`globalListener(name)` 在名称不存在、名称属于组件或只是附属监听时，抛出 `MAKOO_INJECTION_NOT_FOUND`。
+`listener(name)` 在名称不存在、名称属于组件或只是附属监听时，抛出 `MAKOO_INJECTION_NOT_FOUND`。
 
 ## 行为约定
 
@@ -73,4 +68,4 @@ interface AdapterMountParams<TComponent = unknown, TProps = unknown> {
 
 ### 组件侧能力
 
-把 `command`、`statusHandle` 和 `globalListener` 交给组件的方式由适配器自行决定。Vue 适配器通过 `provide` 交给 [`useMakooComponent()`](./vue.md#usemakoocomponent)，React 适配器通过 Context 交给 [hooks](./react.md#hooks)。组件卸载时，适配器应释放组件内建立的状态订阅。
+把 `injection` 和 `listener` 交给组件的方式由适配器自行决定。Vue 适配器通过 `provide` 交给 [`useMakooComponent()`](./vue.md#usemakoocomponent)，React 适配器通过 Context 交给 [hooks](./react.md#hooks)。组件卸载时，适配器应释放组件内建立的状态订阅。

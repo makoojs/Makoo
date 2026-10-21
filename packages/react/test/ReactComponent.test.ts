@@ -18,7 +18,7 @@ import {
 	useAttachedListenerStatus,
 	useComponentCommand,
 	useComponentStatus,
-	useGlobalListener
+	useListener
 } from '../src';
 
 type ActEnvironment = typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean };
@@ -43,11 +43,11 @@ describe('React components mounted by core', () => {
 	let core: MakooRuntime;
 
 	function panelCommand(): ComponentCommand {
-		return core.command('panel');
+		return core.injection('panel').command;
 	}
 
 	function panelStatus(): ComponentStatusHandle {
-		const status = core.statusHandle('panel');
+		const status = core.injection('panel').statusHandle;
 		if (!('attachedListener' in status)) throw new Error('Expected a component');
 		return status;
 	}
@@ -64,7 +64,7 @@ describe('React components mounted by core', () => {
 					listeners: [playListener()]
 				})
 			]);
-			controls.push(core.command('panel'));
+			controls.push(core.injection('panel').command);
 		});
 	}
 
@@ -109,10 +109,10 @@ describe('React components mounted by core', () => {
 				})
 			]);
 		});
-		controls.push(core.command('panel'));
+		controls.push(core.injection('panel').command);
 
 		expect(element('#host').textContent).toBe('hello');
-		expect(received?.stop).toBe(core.command('panel').stop);
+		expect(received?.stop).toBe(core.injection('panel').command.stop);
 		expect(status).toBe('mounted');
 	});
 
@@ -201,7 +201,7 @@ describe('React components mounted by core', () => {
 				})
 			]);
 		});
-		controls.push(core.command('panel'), core.command('external'));
+		controls.push(core.injection('panel').command, core.listener('external').command);
 		expect(element('#host').textContent).toBe('play:waiting');
 		const playRenders = renders;
 		await act(async () => addButton('mute'));
@@ -217,7 +217,7 @@ describe('React components mounted by core', () => {
 		core.apply([
 			listen({ name: 'external', listenAt: '#host', type: 'click', callback: vi.fn() })
 		]);
-		controls.push(core.command('external'));
+		controls.push(core.listener('external').command);
 		function Panel() {
 			const listener = useAttachedListenerStatus('external');
 			return createElement('p', null, listener);
@@ -254,10 +254,15 @@ describe('React components mounted by core', () => {
 			mount(params) {
 				return adapter.mount({
 					...params,
-					statusHandle: {
-						...params.statusHandle,
-						attachedListener: (name) =>
-							countSubscriptions(params.statusHandle.attachedListener(name))
+					injection: {
+						...params.injection,
+						statusHandle: {
+							...params.injection.statusHandle,
+							attachedListener: (name) =>
+								countSubscriptions(
+									params.injection.statusHandle.attachedListener(name)
+								)
+						}
 					}
 				});
 			}
@@ -308,7 +313,7 @@ describe('React components mounted by core', () => {
 	it('controls a standalone listener and leaves it running when the component stops', async () => {
 		let saveCommand: { stop: () => Promise<void>; start: () => void } | undefined;
 		function Panel() {
-			const save = useGlobalListener('save');
+			const save = useListener('save');
 			saveCommand = save;
 			return createElement('p', null, save.status);
 		}
@@ -331,27 +336,27 @@ describe('React components mounted by core', () => {
 				})
 			]);
 		});
-		controls.push(core.command('panel'), core.command('save'));
-		expect(saveCommand?.stop).toBe(core.command('save').stop);
+		controls.push(core.injection('panel').command, core.listener('save').command);
+		expect(saveCommand?.stop).toBe(core.listener('save').command.stop);
 		expect(element('#host').textContent).toBe('waiting');
 
 		await act(async () => {
 			await saveCommand?.stop();
 		});
 		expect(element('#host').textContent).toBe('idle');
-		expect(core.statusHandle('save').getSnapshot()).toBe('idle');
+		expect(core.listener('save').statusHandle.getSnapshot()).toBe('idle');
 		await act(async () => saveCommand?.start());
-		expect(core.statusHandle('save').getSnapshot()).toBe('waiting');
+		expect(core.listener('save').statusHandle.getSnapshot()).toBe('waiting');
 
 		await act(async () => panelCommand().stop());
-		expect(core.statusHandle('save').getSnapshot()).toBe('waiting');
+		expect(core.listener('save').statusHandle.getSnapshot()).toBe('waiting');
 	});
 
 	it('reads the replacement standalone listener on the next render', async () => {
 		let saveStop: (() => Promise<void>) | undefined;
 		function Panel() {
 			const [, render] = useState(0);
-			const save = useGlobalListener('save');
+			const save = useListener('save');
 			saveStop = save.stop;
 			return createElement(
 				'button',
@@ -371,18 +376,18 @@ describe('React components mounted by core', () => {
 				inject({ name: 'panel', injectAt: '#host', adapter: 'react', component: Panel })
 			]);
 		});
-		controls.push(core.command('panel'), core.command('save'));
+		controls.push(core.injection('panel').command, core.listener('save').command);
 		await act(async () => addButton('save'));
 		expect(element('#host').textContent).toBe('bound');
 		const previousStop = saveStop;
 		await act(async () => {
-			const removal = core.command('save').remove();
+			const removal = core.listener('save').command.remove();
 			core.apply([declaration]);
-			controls.push(core.command('save'));
+			controls.push(core.listener('save').command);
 			await removal;
 		});
 		await act(async () => element('#host button')?.click());
-		expect(saveStop).toBe(core.command('save').stop);
+		expect(saveStop).toBe(core.listener('save').command.stop);
 		expect(saveStop).not.toBe(previousStop);
 		expect(element('#host').textContent).toBe('bound');
 	});
@@ -393,7 +398,7 @@ describe('React components mounted by core', () => {
 		'missing'
 	])('does not resolve %s through the standalone listener hook', async (name) => {
 		function Panel() {
-			const save = useGlobalListener(name);
+			const save = useListener(name);
 			return createElement('p', null, save.status);
 		}
 		await expect(
@@ -417,6 +422,6 @@ describe('React components mounted by core', () => {
 				]);
 			})
 		).rejects.toThrow(expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND }));
-		controls.push(core.command('save'), core.command('panel'));
+		controls.push(core.listener('save').command, core.injection('panel').command);
 	});
 });

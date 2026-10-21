@@ -84,7 +84,7 @@ Core waits for the mount target to appear, for at most 15 seconds by default. Wh
 inject({ name: 'badge', injectAt: '#comments', adapter: 'vue', component: Badge, timeout: 60000 })
 ```
 
-After a timeout, the component status becomes `failed` and the error code of `lastError` is `MAKOO_TARGET_WAIT_TIMEOUT`. When the target only appears after a user action, instead of setting a very long timeout, call `core.command('badge').start()` at the right moment; see [Control Injections and Read Status](./control.md).
+After a timeout, the component status becomes `failed` and the error code of `lastError` is `MAKOO_TARGET_WAIT_TIMEOUT`. When the target only appears after a user action, instead of setting a very long timeout, call `core.injection('badge').command.start()` at the right moment; see [Control Injections and Read Status](./control.md).
 
 ## When the Host Replaces Nodes
 

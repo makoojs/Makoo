@@ -25,6 +25,7 @@
 | 类型 | 参考 |
 | --- | --- |
 | `MakooRuntime` | [Core 实例](./instance.md#makooruntime) |
+| `ComponentInjection`、`ListenerInjection` | [Core 实例](./instance.md#injection) |
 | `MakooComponentInput`、`MakooComponentDeclaration` | [声明](./declarations.md#makoocomponentinput) |
 | `MakooListenerInput`、`MakooListenerDeclaration` | [声明](./declarations.md#makoolistenerinput) |
 | `MakooInjectionDeclaration` | [声明](./declarations.md#makooinjectiondeclaration) |

@@ -16,9 +16,7 @@ class MakooError extends Error {
 | `name` | `'MakooError'` |
 | `message` | Says what Makoo was doing and to what, for example `Failed to mount "panel"` |
 | `code` | Error code; see below |
-| `cause` | The wrapped underlying error, such as a value thrown by an adapter or event handler; for declaration and adapter validation failures, it is the Zod validation error. Problems Makoo detects itself, such as timeouts and target invalidation, have no `cause` |
-
-The `message` of validation errors has multiple lines: the first is a summary, and each following line is `field path: problem`.
+| `cause` | The wrapped underlying error, such as a value thrown by an adapter or event handler. Problems Makoo detects itself, such as timeouts and target invalidation, have no `cause` |
 
 Expand the error object in the browser console and follow `cause` to find the original code location.
 
@@ -26,7 +24,7 @@ Expand the error object in the browser console and follow `cause` to find the or
 import { MakooError, MakooErrorCode } from '@makoojs/core';
 
 try {
-  core.command('panel').start();
+  core.injection('panel').command.start();
 } catch (error) {
   if (error instanceof MakooError && error.code === MakooErrorCode.INJECTION_CLOSED) {
     console.warn('panel was closed after a cleanup failure; please reload the page');
@@ -59,9 +57,8 @@ Thrown synchronously by `useAdapter()` or `apply()`; none of the declarations in
 
 | Constant | Meaning |
 | --- | --- |
-| `DECLARATION_INVALID` | Invalid declaration field, selector syntax error, or `apply()` received an empty array |
+| `DECLARATION_INVALID` | `apply()` received an empty array, an entry is not a component or listener declaration, or an attached listener sets `reinject` |
 | `INJECTION_NAME_CONFLICT` | Duplicate injection name, or duplicate attached listener names within the same component |
-| `ADAPTER_INVALID` | The adapter is missing `name`, `mount`, or `unmount` |
 | `ADAPTER_NAME_CONFLICT` | An adapter with the same name is already registered |
 | `ADAPTER_NOT_FOUND` | The adapter selected by a component is not registered |
 
@@ -71,7 +68,7 @@ The current status or context doesn't allow this call; thrown synchronously.
 
 | Constant | Meaning |
 | --- | --- |
-| `INJECTION_NOT_FOUND` | The name doesn't exist; or what `globalListener()` looked up is not a standalone listener |
+| `INJECTION_NOT_FOUND` | The name doesn't exist, or it belongs to the other kind of injection: `injection()` found a standalone listener, or `listener()` found a component |
 | `LISTENER_NOT_FOUND` | The component has no attached listener with this name |
 | `INJECTION_REMOVED` | The injection has been removed and can't be started again |
 | `INJECTION_CLOSED` | The injection's cleanup failed earlier and it can't be started again |
