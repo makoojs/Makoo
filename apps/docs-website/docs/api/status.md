@@ -1,6 +1,6 @@
 # Commands and Status
 
-Every top-level injection (component or standalone listener) has two handles: the command handle starts, stops, and removes it, and the status handle reads and subscribes to its status. Outside code gets them through [`core.injection()`](./instance.md#injection) / [`core.listener()`](./instance.md#listener); inside components, the same handles are available through the [Vue](./vue.md) or [React](./react.md) APIs.
+Every top-level injection (component or standalone listener) has two handles: the command handle starts, stops, and removes it, and the status handle reads and subscribes to its status. Outside components, a component is looked up with [`core.injection(name)`](./instance.md#injection) and a standalone listener with [`core.listener(name)`](./instance.md#listener); each returns an object whose `command` and `statusHandle` are these two handles; inside components, the same handles are available through the [Vue](./vue.md) or [React](./react.md) APIs.
 
 Attached listeners have no command handle of their own; their status can only be read through the owning component's status handle.
 

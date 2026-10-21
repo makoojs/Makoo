@@ -68,7 +68,7 @@ The current status or context doesn't allow this call; thrown synchronously.
 
 | Constant | Meaning |
 | --- | --- |
-| `INJECTION_NOT_FOUND` | The name doesn't exist; or `injection()` / `listener()` looked up the wrong kind |
+| `INJECTION_NOT_FOUND` | The name doesn't exist, or it belongs to the other kind of injection: `injection()` found a standalone listener, or `listener()` found a component |
 | `LISTENER_NOT_FOUND` | The component has no attached listener with this name |
 | `INJECTION_REMOVED` | The injection has been removed and can't be started again |
 | `INJECTION_CLOSED` | The injection's cleanup failed earlier and it can't be started again |

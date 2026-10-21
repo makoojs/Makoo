@@ -54,13 +54,13 @@ core.apply([
 
 Order of execution:
 
-1. Check the batch: non-empty array, each entry is a component or listener declaration, name conflicts within the batch and with the instance, attached-listener rules, and whether the adapters selected by components are registered.
+1. Check the whole batch in this order: whether the argument is a non-empty array; whether each entry is a component or listener declaration, and whether its attached listeners follow the rules (no duplicate names within the same component, no `reinject`); whether any name conflicts with another item in the batch or an existing injection in the instance; and whether the adapters selected by components are registered.
 2. If any item fails, an error is thrown synchronously, and nothing in the batch is registered or started.
 3. If all pass, each item is registered, at which point `injection()` / `listener()` can find them; they are then started in array order.
 
 | Situation | Error code |
 | --- | --- |
-| The argument is not a non-empty array, an entry is not a component or listener, or an attached listener sets `reinject` | `MAKOO_DECLARATION_INVALID` |
+| The argument is not a non-empty array, an entry is not a component or listener declaration, or an attached listener sets `reinject` | `MAKOO_DECLARATION_INVALID` |
 | A name duplicates another item in the batch or an existing injection in the instance | `MAKOO_INJECTION_NAME_CONFLICT` |
 | The adapter selected by a component is not registered | `MAKOO_ADAPTER_NOT_FOUND` |
 | The instance has been disposed | `MAKOO_INSTANCE_DISPOSED` |
@@ -69,7 +69,15 @@ Order of execution:
 
 ### `injection()`
 
-Gets a component injection by name. The returned object has `.command` and `.statusHandle`.
+Gets a component injection by name. The returned object contains the [command handle](./status.md#command-handle) `command` and the [status handle](./status.md#status-handle) `statusHandle`.
+
+```ts
+interface ComponentInjection {
+  readonly kind: 'component';
+  readonly command: ComponentCommand;
+  readonly statusHandle: ComponentStatusHandle;
+}
+```
 
 ```ts
 const panel = core.injection('panel');
@@ -78,11 +86,19 @@ panel.command.start();
 console.log(panel.statusHandle.getSnapshot()); // 'waiting' | 'mounted' | ...
 ```
 
-Throws `MAKOO_INJECTION_NOT_FOUND` if the name doesn't exist or belongs to a standalone listener. Repeated calls for the same registration return the same object. After that injection is removed, the old object doesn't act on a same-named injection registered later.
+Throws `MAKOO_INJECTION_NOT_FOUND` if the name doesn't exist or belongs to a standalone listener. Repeated calls for the same injection return the same object. The object is bound to the particular injection it was obtained for: after that injection is removed, the old object doesn't act on a same-named injection registered later.
 
 ### `listener()`
 
-Gets a standalone listener by name. The returned object has `.command` and `.statusHandle`.
+Gets a standalone listener by name. The returned object contains the command handle `command` and the status handle `statusHandle`.
+
+```ts
+interface ListenerInjection {
+  readonly kind: 'listener';
+  readonly command: ListenerCommand;
+  readonly statusHandle: ListenerStatusHandle;
+}
+```
 
 ```ts
 const clicks = core.listener('page-click');
@@ -90,7 +106,7 @@ await clicks.command.stop();
 console.log(clicks.statusHandle.getSnapshot()); // 'waiting' | 'bound' | ...
 ```
 
-Throws `MAKOO_INJECTION_NOT_FOUND` if the name doesn't exist or belongs to a component. Like `injection()`, it is bound to the particular registration it was obtained for.
+Throws `MAKOO_INJECTION_NOT_FOUND` if the name doesn't exist or belongs to a component. Like `injection()`, the returned object is bound to the particular standalone listener it was obtained for.
 
 ### `observe()`
 

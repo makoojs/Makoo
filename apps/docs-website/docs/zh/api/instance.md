@@ -54,13 +54,13 @@ core.apply([
 
 执行顺序：
 
-1. 检查整批声明：非空数组、每项是组件或监听声明、批内与实例内的名称冲突、附属监听规则、组件选择的适配器是否已注册。
+1. 按以下顺序检查整批声明：参数是否为非空数组；每一项是否为组件或监听声明，其中附属监听是否符合规则（在同一组件内不能重名，不能设置 `reinject`）；名称是否与批内其他项或实例中已有的注入冲突；组件选择的适配器是否已注册。
 2. 任一项不通过时同步抛出错误，整批都不登记、不启动。
 3. 全部通过后登记每一项，此时 `injection()` / `listener()` 已能查到它们；随后按数组顺序启动。
 
 | 情况 | 错误码 |
 | --- | --- |
-| 参数不是非空数组、某项不是组件或监听、或附属监听设置了 `reinject` | `MAKOO_DECLARATION_INVALID` |
+| 参数不是非空数组，某一项不是组件或监听声明，或附属监听设置了 `reinject` | `MAKOO_DECLARATION_INVALID` |
 | 名称与批内其他项或实例中已有注入重复 | `MAKOO_INJECTION_NAME_CONFLICT` |
 | 组件选择的适配器未注册 | `MAKOO_ADAPTER_NOT_FOUND` |
 | 实例已销毁 | `MAKOO_INSTANCE_DISPOSED` |
@@ -69,7 +69,15 @@ core.apply([
 
 ### `injection()`
 
-按名称取得组件注入。返回对象含 `.command` 与 `.statusHandle`。
+按名称取得组件注入。返回的对象包含[命令入口](./status.md#命令入口) `command` 和[状态入口](./status.md#状态入口) `statusHandle`。
+
+```ts
+interface ComponentInjection {
+  readonly kind: 'component';
+  readonly command: ComponentCommand;
+  readonly statusHandle: ComponentStatusHandle;
+}
+```
 
 ```ts
 const panel = core.injection('panel');
@@ -78,11 +86,19 @@ panel.command.start();
 console.log(panel.statusHandle.getSnapshot()); // 'waiting' | 'mounted' | ...
 ```
 
-名称不存在或属于独立监听时抛出 `MAKOO_INJECTION_NOT_FOUND`。同一次登记的重复查找返回同一对象；注入被移除后，旧对象不会作用到之后登记的同名注入。
+名称不存在或属于独立监听时抛出 `MAKOO_INJECTION_NOT_FOUND`。对同一个注入重复调用，得到的是同一个对象。这个对象绑定的是取得时的那一个注入：注入被移除后，即使之后登记了同名注入，旧对象也不会作用到新注入上。
 
 ### `listener()`
 
-按名称取得独立监听。返回对象含 `.command` 与 `.statusHandle`。
+按名称取得独立监听。返回的对象包含命令入口 `command` 和状态入口 `statusHandle`。
+
+```ts
+interface ListenerInjection {
+  readonly kind: 'listener';
+  readonly command: ListenerCommand;
+  readonly statusHandle: ListenerStatusHandle;
+}
+```
 
 ```ts
 const clicks = core.listener('page-click');
@@ -90,7 +106,7 @@ await clicks.command.stop();
 console.log(clicks.statusHandle.getSnapshot()); // 'waiting' | 'bound' | ...
 ```
 
-名称不存在或属于组件时抛出 `MAKOO_INJECTION_NOT_FOUND`。与 `injection()` 一样，绑定的是取得时的那一次登记。
+名称不存在或属于组件时抛出 `MAKOO_INJECTION_NOT_FOUND`。与 `injection()` 一样，返回的对象绑定的是取得时的那一个独立监听。
 
 ### `observe()`
 

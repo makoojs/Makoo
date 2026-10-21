@@ -57,7 +57,7 @@ class MakooAggregateError extends MakooError {
 
 | 常量 | 含义 |
 | --- | --- |
-| `DECLARATION_INVALID` | `apply()` 收到空数组、某项不是组件或监听声明，或附属监听设置了 `reinject` |
+| `DECLARATION_INVALID` | `apply()` 收到空数组、某一项不是组件或监听声明，或附属监听设置了 `reinject` |
 | `INJECTION_NAME_CONFLICT` | 注入名称重复，或同一组件内附属监听重名 |
 | `ADAPTER_NAME_CONFLICT` | 同名适配器已注册 |
 | `ADAPTER_NOT_FOUND` | 组件选择的适配器未注册 |
@@ -68,7 +68,7 @@ class MakooAggregateError extends MakooError {
 
 | 常量 | 含义 |
 | --- | --- |
-| `INJECTION_NOT_FOUND` | 名称不存在；或 `injection()` / `listener()` 查到的 kind 不符 |
+| `INJECTION_NOT_FOUND` | 名称不存在，或名称对应的注入类型不符：用 `injection()` 查到的是独立监听，或用 `listener()` 查到的是组件 |
 | `LISTENER_NOT_FOUND` | 组件中没有这个名称的附属监听 |
 | `INJECTION_REMOVED` | 注入已被移除，不能再启动 |
 | `INJECTION_CLOSED` | 注入此前清理失败，不能再启动 |

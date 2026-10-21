@@ -113,10 +113,8 @@ The `subscribe()` callback receives no arguments; call `getSnapshot()` inside th
 A component's status handle can also read the status of its attached listeners:
 
 ```ts
-if ('attachedListenerNames' in status) {
-  for (const name of status.attachedListenerNames) {
-    console.log(name, status.attachedListener(name).getSnapshot());
-  }
+for (const name of status.attachedListenerNames) {
+  console.log(name, status.attachedListener(name).getSnapshot());
 }
 ```
 

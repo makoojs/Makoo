@@ -1,6 +1,6 @@
 # 命令与状态
 
-每个顶层注入（组件或独立监听）都有两个入口：命令入口负责启动、停止和移除，状态入口负责读取和订阅状态。外部通过 [`core.injection()`](./instance.md#injection) / [`core.listener()`](./instance.md#listener) 取得它们；组件内通过 [Vue](./vue.md) 或 [React](./react.md) 的 API 取得同样的入口。
+每个顶层注入（组件或独立监听）都有两个入口：命令入口负责启动、停止和移除，状态入口负责读取和订阅状态。在组件外，组件通过 [`core.injection(name)`](./instance.md#injection)、独立监听通过 [`core.listener(name)`](./instance.md#listener) 取得一个对象，它的 `command` 和 `statusHandle` 就是这两个入口；组件内通过 [Vue](./vue.md) 或 [React](./react.md) 的 API 取得同样的入口。
 
 附属监听没有自己的命令入口，只能通过所属组件的状态入口读取状态。
 

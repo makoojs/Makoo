@@ -68,7 +68,7 @@ core.apply([
 
 ### Control Injections and Read Status
 
-Components use `injection(name)`; standalone listeners use `listener(name)`:
+Every injection's command handle and status handle can be obtained by name: use `core.injection(name)` for components and `core.listener(name)` for standalone listeners.
 
 ```ts
 const panel = core.injection('panel');

@@ -68,7 +68,7 @@ core.apply([
 
 ### 控制注入与读取状态
 
-组件用 `injection(name)`，独立监听用 `listener(name)`：
+每个注入都可以按名称取得命令入口和状态入口：组件用 `core.injection(name)`，独立监听用 `core.listener(name)`。
 
 ```ts
 const panel = core.injection('panel');

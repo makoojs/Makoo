@@ -7,12 +7,11 @@
 用注入名称从 Core 实例取得入口：
 
 ```ts
-const panel = core.injection('panel').command;
-const panelStatus = core.injection('panel').statusHandle;
+const panel = core.injection('panel');
 
-await panel.stop();               // 卸载组件，保留登记
-panel.start();                    // 重新查找挂载目标并挂载
-console.log(panelStatus.getSnapshot());
+await panel.command.stop();       // 卸载组件，保留登记
+panel.command.start();            // 重新查找挂载目标并挂载
+console.log(panel.statusHandle.getSnapshot());
 ```
 
 入口可以在任何能访问 `core` 的模块中取得，不需要从 `apply()` 处传递。名称不存在时抛出 `MAKOO_INJECTION_NOT_FOUND`。
@@ -23,9 +22,10 @@ console.log(panelStatus.getSnapshot());
 import { gmMenu } from '@makoojs/cli/monkey';
 
 gmMenu.register('显示 / 隐藏面板', () => {
-  const status = core.injection('panel').statusHandle.getSnapshot();
-  if (status === 'idle') core.injection('panel').command.start();
-  else void core.injection('panel').command.stop();
+  const panel = core.injection('panel');
+  const status = panel.statusHandle.getSnapshot();
+  if (status === 'idle') panel.command.start();
+  else void panel.command.stop();
 });
 ```
 
@@ -113,10 +113,8 @@ const unsubscribe = status.subscribe(() => {
 组件的状态入口还能读取附属监听的状态：
 
 ```ts
-if ('attachedListenerNames' in status) {
-  for (const name of status.attachedListenerNames) {
-    console.log(name, status.attachedListener(name).getSnapshot());
-  }
+for (const name of status.attachedListenerNames) {
+  console.log(name, status.attachedListener(name).getSnapshot());
 }
 ```
 

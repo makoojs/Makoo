@@ -16,13 +16,13 @@ For the full list of error codes, see the [Errors API](../api/errors.md).
 
 ### Configuration Errors: Reported Before Anything Starts
 
-Duplicate names, an attached listener that sets its own `reinject`, an unregistered adapter or adapter name conflict, an empty `apply` batch, or an entry that is not a component or listener declaration throw synchronously from `apply()` / `useAdapter()`, and **none** of the declarations in the batch start. See [`DECLARATION_INVALID` and related codes](../api/errors.md#configuration-errors).
+Duplicate names, an attached listener that sets `reinject`, an adapter selected by a component that is not registered, an empty array passed to `apply()`, or an entry that is not a component or listener declaration are all thrown synchronously during `apply()`, and **none** of the declarations in the batch start. Registering an adapter whose name is already taken throws synchronously from `useAdapter()`. For the full list, see [configuration error codes](../api/errors.md#configuration-errors).
 
 This avoids a batch of features getting halfway started before the other half turns out to be misconfigured, leaving a partial state that is hard to explain. Configuration errors usually appear the first time you open the page during development; just fix the code.
 
 ### Control Errors: This Call Is Not Allowed
 
-Calling `core.injection()` with a name that doesn't exist, starting an injection that has been removed, and calling `useMakooComponent()` outside a component mounted by Makoo are all control errors. They are thrown synchronously and indicate that the caller's assumptions don't match the current state.
+Calling `core.injection()` or `core.listener()` with a name that doesn't exist, starting an injection that has been removed, and calling `useMakooComponent()` outside a component mounted by Makoo are all control errors. They are thrown synchronously and indicate that the caller's assumptions don't match the current state.
 
 ### Execution Failures: This Round Ends, and You Can Try Again
 
