@@ -30,7 +30,7 @@ type ExecutionCallbacks = {
 };
 
 type ComponentExecution = {
-	readonly config: ComponentExecutionConfig;
+	readonly name: string;
 	readonly domWaitAbortController: AbortController;
 	phase: ComponentExecutionControl['phase'];
 	componentContainer: HTMLElement | null;
@@ -46,8 +46,52 @@ export function createComponentExecution(
 	attachListeners: ReadonlyMap<string, AttachListener>,
 	callbacks: ExecutionCallbacks
 ): ComponentExecutionControl {
-	const execution: ComponentExecution = {
-		config,
+	const execution = createExecutionState(config.name, attachListeners);
+	return {
+		get phase() {
+			return execution.phase;
+		},
+		start: () => awaitMountTarget(execution, config, dom, mounter, callbacks),
+		cancel: () => execution.domWaitAbortController.abort(),
+		finish: () => cleanupExecution(execution, dom, mounter)
+	};
+}
+
+/**
+ * Mounts into an already-known Mount Target: shared lifetime for single inject after wait
+ * and for Each Child mounts that skip wait-for-first-match.
+ */
+export function createChildExecution(
+	name: string,
+	mountTarget: Element,
+	dom: DOMObserver,
+	mounter: ComponentMounter,
+	attachListeners: ReadonlyMap<string, AttachListener>,
+	callbacks: ExecutionCallbacks
+): ComponentExecutionControl {
+	const execution = createExecutionState(name, attachListeners);
+	return {
+		get phase() {
+			return execution.phase;
+		},
+		start: () => {
+			try {
+				mountComponent(execution, mountTarget, dom, mounter, callbacks);
+			} catch (cause) {
+				callbacks.ended('failed', mountFailed(execution, cause));
+			}
+		},
+		cancel: () => execution.domWaitAbortController.abort(),
+		finish: () => cleanupExecution(execution, dom, mounter)
+	};
+}
+
+function createExecutionState(
+	name: string,
+	attachListeners: ReadonlyMap<string, AttachListener>
+): ComponentExecution {
+	return {
+		name,
 		attachListeners,
 		domWaitAbortController: new AbortController(),
 		phase: 'pending',
@@ -55,30 +99,23 @@ export function createComponentExecution(
 		mountedComponent: null,
 		cleanupErrors: []
 	};
-	return {
-		get phase() {
-			return execution.phase;
-		},
-		start: () => awaitMountTarget(execution, dom, mounter, callbacks),
-		cancel: () => execution.domWaitAbortController.abort(),
-		finish: () => cleanupExecution(execution, dom, mounter)
-	};
 }
 
 function awaitMountTarget(
 	execution: ComponentExecution,
+	config: ComponentExecutionConfig,
 	dom: DOMObserver,
 	mounter: ComponentMounter,
 	callbacks: ExecutionCallbacks
 ): void {
-	const { config, domWaitAbortController } = execution;
+	const { domWaitAbortController } = execution;
 	try {
 		waitForElement(
 			dom,
 			config.injectAt,
 			domWaitAbortController.signal,
 			config.timeout ?? DEFAULT_DOM_TIMEOUT,
-			(mountTarget) => mountComponent(execution, dom, mounter, callbacks, mountTarget),
+			(mountTarget) => mountComponent(execution, mountTarget, dom, mounter, callbacks),
 			() => {
 				callbacks.ended('failed', waitTimedOut(config.name));
 			},
@@ -92,18 +129,18 @@ function awaitMountTarget(
 
 function mountComponent(
 	execution: ComponentExecution,
+	mountTarget: Element,
 	dom: DOMObserver,
 	mounter: ComponentMounter,
-	callbacks: ExecutionCallbacks,
-	mountTarget: Element
+	callbacks: ExecutionCallbacks
 ): void {
-	const { config, domWaitAbortController } = execution;
+	const { name, domWaitAbortController } = execution;
 	const { signal } = domWaitAbortController;
 	watchElement(
 		dom,
 		mountTarget,
 		signal,
-		() => callbacks.ended('detached', targetDetachedError(config.name)),
+		() => callbacks.ended('detached', targetDetachedError(name)),
 		() =>
 			mountTarget.isConnected &&
 			(!execution.componentContainer ||
@@ -127,7 +164,7 @@ function mountComponent(
 		!componentContainer.isConnected ||
 		!mountTarget.contains(componentContainer)
 	) {
-		callbacks.ended('detached', targetDetachedError(config.name));
+		callbacks.ended('detached', targetDetachedError(name));
 		return;
 	}
 
@@ -149,7 +186,7 @@ function mountComponent(
 		!componentContainer.isConnected ||
 		!mountTarget.contains(componentContainer)
 	) {
-		callbacks.ended('detached', targetDetachedError(config.name));
+		callbacks.ended('detached', targetDetachedError(name));
 		return;
 	}
 	for (const attachListener of execution.attachListeners.values()) {
@@ -160,7 +197,7 @@ function mountComponent(
 			!componentContainer.isConnected ||
 			!mountTarget.contains(componentContainer)
 		) {
-			callbacks.ended('detached', targetDetachedError(config.name));
+			callbacks.ended('detached', targetDetachedError(name));
 			return;
 		}
 	}
@@ -180,7 +217,7 @@ async function cleanupExecution(
 }
 
 function unmountComponent(execution: ComponentExecution, mounter: ComponentMounter): unknown[] {
-	const { config, cleanupErrors } = execution;
+	const { name, cleanupErrors } = execution;
 
 	const mountedComponent = execution.mountedComponent;
 	if (mountedComponent) {
@@ -189,7 +226,7 @@ function unmountComponent(execution: ComponentExecution, mounter: ComponentMount
 			mounter.unmount(mountedComponent.mountHandle);
 		} catch (cause) {
 			cleanupErrors.push(
-				new MakooError(`Failed to unmount "${config.name}"`, {
+				new MakooError(`Failed to unmount "${name}"`, {
 					code: MakooErrorCode.UNMOUNT_FAILED,
 					cause
 				})
@@ -204,7 +241,7 @@ function unmountComponent(execution: ComponentExecution, mounter: ComponentMount
 			componentContainer.remove();
 		} catch (cause) {
 			cleanupErrors.push(
-				new MakooError(`Failed to remove container of "${config.name}"`, {
+				new MakooError(`Failed to remove container of "${name}"`, {
 					code: MakooErrorCode.CONTAINER_REMOVE_FAILED,
 					cause
 				})
@@ -231,7 +268,7 @@ function mountFailed(execution: ComponentExecution, cause: unknown): MakooError 
 			? cause
 			: undefined;
 	if (adapterCleanup) execution.cleanupErrors.push(...adapterCleanup.errors);
-	return new MakooError(`Failed to mount "${execution.config.name}"`, {
+	return new MakooError(`Failed to mount "${execution.name}"`, {
 		code: MakooErrorCode.MOUNT_FAILED,
 		cause: adapterCleanup ? adapterCleanup.cause : cause
 	});

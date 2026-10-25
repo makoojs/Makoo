@@ -57,7 +57,7 @@ Thrown synchronously by `useAdapter()` or `apply()`; none of the declarations in
 
 | Constant | Meaning |
 | --- | --- |
-| `DECLARATION_INVALID` | `apply()` received an empty array, an entry is not a component or listener declaration, or an attached listener sets `reinject` |
+| `DECLARATION_INVALID` | `apply()` received an empty array, an entry is not a component, Each Injection, or listener declaration, or an attached listener sets `reinject` |
 | `INJECTION_NAME_CONFLICT` | Duplicate injection name, or duplicate attached listener names within the same component |
 | `ADAPTER_NAME_CONFLICT` | An adapter with the same name is already registered |
 | `ADAPTER_NOT_FOUND` | The adapter selected by a component is not registered |

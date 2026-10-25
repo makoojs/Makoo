@@ -28,11 +28,12 @@ Most scripts only need to create one instance in the entry.
 
 ## Declarations and Injections
 
-`inject()` and `listen()` produce **declarations**: configuration describing "what I need", which does nothing on its own. Declarations can be written in their own feature modules and handed to the entry together.
+`inject()`, `injectEach()`, and `listen()` produce **declarations**: configuration describing "what I need", which does nothing on its own. Declarations can be written in their own feature modules and handed to the entry together.
 
-Only after a declaration is passed to `core.apply()` does it become a running **injection**. There are two kinds of injection:
+Only after a declaration is passed to `core.apply()` does it become a running **injection**. There are three kinds of injection:
 
 - **Component**: a framework component plus its attached listeners.
+- **Each Injection**: the same framework component mounted on every matching element. Each of those components is a **Child Injection** with its own command and status handles, but no name of its own in the instance.
 - **Standalone listener**: a host listener that belongs directly to the instance and is not attached to any component.
 
 Every injection has an **injection name**. The name is a stable business identifier used to get control handles; it has nothing to do with the DOM or selectors.
@@ -73,13 +74,13 @@ Every top-level injection exposes two handles:
 
 Control and reading are separated so that code that only cares about status (such as an indicator light) cannot trigger control by mistake, and code that only sends commands (such as a close button) doesn't have to subscribe to status.
 
-Handles are obtained by name: outside components, use `core.injection(name)` for a component and `core.listener(name)` for a standalone listener; inside components, use the APIs provided by the framework adapter. A settings page or shortcut module doesn't need the entry module to pass variables down through layers.
+Handles are obtained by name: outside components, use `core.injection(name)` for a component or Each Injection and `core.listener(name)` for a standalone listener; inside components, use the APIs provided by the framework adapter. A settings page or shortcut module doesn't need the entry module to pass variables down through layers.
 
 A handle is bound to **that particular injection**, not just its name. After the injection is removed, an old handle does not switch to controlling a same-named injection registered later.
 
 ## Status Only Expresses Availability
 
-Component statuses are `idle`, `waiting`, `mounted`, and `failed`; listener statuses are `idle`, `waiting`, `bound`, and `failed`. They answer only one question: can this feature be used right now?
+Component statuses are `idle`, `waiting`, `mounted`, and `failed`, and Child Injections use the same ones; Each Injection statuses are `idle`, `collecting`, and `failed`; listener statuses are `idle`, `waiting`, `bound`, and `failed`. They answer only one question: can this feature be used right now?
 
 **Business events** on the host page, such as clicks or playback, are not status. When an event fires, the listener status is still `bound`, and business logic happens in the event handler; when the component needs to be notified, pass it through shared business data or functions.
 

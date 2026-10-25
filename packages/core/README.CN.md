@@ -66,9 +66,21 @@ core.apply([
 ]);
 ```
 
+### 在每个匹配元素上挂载
+
+`injectEach()` 把同一个组件挂载到每个匹配 `injectAt` 的元素上，之后出现的元素也会挂载；一个都没匹配到时会持续监视：
+
+```ts
+import { injectEach } from '@makoojs/core';
+
+core.apply([
+  injectEach({ name: 'badges', injectAt: '.comment .author', adapter: 'vue', component: Badge })
+]);
+```
+
 ### 控制注入与读取状态
 
-每个注入都可以按名称取得命令入口和状态入口：组件用 `core.injection(name)`，独立监听用 `core.listener(name)`。
+每个注入都可以按名称取得命令入口和状态入口：组件和 Each 注入用 `core.injection(name)`，独立监听用 `core.listener(name)`。Each 注入还会在 `children` 中列出每个元素上的子注入。
 
 ```ts
 const panel = core.injection('panel');
@@ -87,6 +99,6 @@ await escape.command.stop();
 ## 文档
 
 - [Core 实例](https://makoojs.github.io/Makoo/zh/api/instance)：`createMakoo()` 与实例上的方法。
-- [声明](https://makoojs.github.io/Makoo/zh/api/declarations)：`inject()` 与 `listen()` 的全部字段。
+- [声明](https://makoojs.github.io/Makoo/zh/api/declarations)：`inject()`、`injectEach()` 与 `listen()` 的全部字段。
 - [命令与状态](https://makoojs.github.io/Makoo/zh/api/status)：启动、停止、移除，以及状态值的含义。
 - [错误与错误码](https://makoojs.github.io/Makoo/zh/api/errors)：错误的种类和处理方式。

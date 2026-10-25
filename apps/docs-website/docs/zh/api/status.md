@@ -1,8 +1,8 @@
 # 命令与状态
 
-每个顶层注入（组件或独立监听）都有两个入口：命令入口负责启动、停止和移除，状态入口负责读取和订阅状态。在组件外，组件通过 [`core.injection(name)`](./instance.md#injection)、独立监听通过 [`core.listener(name)`](./instance.md#listener) 取得一个对象，它的 `command` 和 `statusHandle` 就是这两个入口；组件内通过 [Vue](./vue.md) 或 [React](./react.md) 的 API 取得同样的入口。
+每个顶层注入（组件、Each 注入或独立监听）都有两个入口：命令入口负责启动、停止和移除，状态入口负责读取和订阅状态。在组件外，组件和 Each 注入通过 [`core.injection(name)`](./instance.md#injection)、独立监听通过 [`core.listener(name)`](./instance.md#listener) 取得一个对象，它的 `command` 和 `statusHandle` 就是这两个入口；组件内通过 [Vue](./vue.md) 或 [React](./react.md) 的 API 取得同样的入口。
 
-附属监听没有自己的命令入口，只能通过所属组件的状态入口读取状态。
+Each 注入 `children` 中的每个子注入也有自己的命令入口和状态入口，形状与组件的相同。附属监听没有自己的命令入口，只能通过所属组件的状态入口读取状态。
 
 ## 命令入口
 
@@ -57,6 +57,21 @@ type InjectionCommand = ComponentCommand | ListenerCommand;
 - 注销后 Core 实例发出 `injection-removed` 通知。
 - 清理失败时 Promise 拒绝，名称保持占用，直到页面刷新。
 
+### Each 注入与子注入
+
+Each 注入使用同样的 `ComponentCommand`，作用于整组：
+
+- `start()` 挂载当前所有匹配并持续收集新的匹配，状态变为 `collecting`。抛出的错误与上文相同。
+- `stop()` 停止收集，然后逐个停止存活的子注入；全部清理完成后 Promise 兑现，`children` 变为空。任一子注入清理失败时，Promise 以整组的一个 `MakooAggregateError`（`MAKOO_INJECTION_CLEANUP_FAILED`）拒绝，Each 注入被关闭。
+- `remove()` 同上，之后注销 Each 注入。
+- 停止后再次 `start()`，会在每个匹配上重新挂载，包括上一轮中子注入被停止或失败的元素。
+
+子注入的命令入口只作用于这一个子注入：
+
+- `stop()` 和 `remove()` 都会卸载它并把它移出 `children`；在 Each 注入的这一轮运行中，它的元素不会再被挂载。两者都不会注销任何东西。
+- 子注入还在 `children` 中时，`start()` 不做任何事；离开后 `start()` 抛出 `MAKOO_INJECTION_REMOVED`。新的子注入由 Each 注入自行挂载。
+- 子注入清理失败时，它自己的 `stop()` / `remove()` 以 `MAKOO_INJECTION_CLEANUP_FAILED` 拒绝；Each 注入继续运行。
+
 ## 状态入口
 
 ```ts
@@ -66,12 +81,21 @@ interface ComponentStatusHandle extends StateView<ComponentStatus> {
   attachedListener(name: string): StateView<ListenerStatus>;
 }
 
+interface ComponentEachStatusHandle extends StateView<ComponentEachStatus> {
+  readonly lastError: MakooError | undefined;
+}
+
 interface ListenerStatusHandle extends StateView<ListenerStatus> {
   readonly lastError: MakooError | undefined;
 }
 
-type InjectionStatusHandle = ComponentStatusHandle | ListenerStatusHandle;
+type InjectionStatusHandle =
+  | ComponentStatusHandle
+  | ComponentEachStatusHandle
+  | ListenerStatusHandle;
 ```
+
+子注入的状态入口是一个 `attachedListenerNames` 为空的 `ComponentStatusHandle`。
 
 | 成员 | 说明 |
 | --- | --- |
@@ -98,6 +122,8 @@ const unsubscribe = status.subscribe(() => {
 - 清理失败，值为 `MakooAggregateError`。
 - 独立监听的事件处理函数异常（`MAKOO_LISTENER_CALLBACK_FAILED`）。
 
+Each 注入的 `lastError` 只记录整组自身的失败：收集失败，例如 `injectAt` 不是合法的选择器（`MAKOO_MOUNT_FAILED`），或清理失败。子注入的失败记录在这个子注入的状态入口上。
+
 `lastError` 变化本身不会通知订阅者。执行失败和清理失败会在状态变为 `failed` 之前写入，因此在订阅回调中可以读到；回调异常只写入、不改变状态。
 
 两种 `failed` 不能只靠状态字符串区分：`lastError.code` 为 `MAKOO_INJECTION_CLEANUP_FAILED` 时注入已被关闭，其他错误码表示执行失败，可以再次 `start()`。
@@ -120,6 +146,22 @@ type ComponentStatus = 'idle' | 'waiting' | 'mounted' | 'failed';
 | `failed` | 执行失败或清理失败，原因见 `lastError` |
 
 `mounted` 不代表附属监听都已绑定。初次挂载时附属监听可能仍处于 `waiting`，请分别读取它们的状态。
+
+子注入同样使用 `ComponentStatus`：挂载过程中为 `waiting`，之后为 `mounted`，被停止或移除后为 `idle`，挂载失败或元素离开页面（`MAKOO_MOUNT_TARGET_DETACHED`）时为 `failed`。
+
+### `ComponentEachStatus`
+
+```ts
+type ComponentEachStatus = 'idle' | 'collecting' | 'failed';
+```
+
+| 状态 | 含义 |
+| --- | --- |
+| `idle` | 未运行：还没启动、已停止或已移除 |
+| `collecting` | 运行中：当前匹配都已挂载子注入，新匹配出现时继续挂载；一个都没匹配到时也处于此状态 |
+| `failed` | 整组的收集失败或清理失败，原因见 `lastError` |
+
+子注入停止或失败不会改变 Each 注入的状态。各子注入的状态从 `children` 中读取。
 
 ### `ListenerStatus`
 

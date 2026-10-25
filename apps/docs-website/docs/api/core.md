@@ -10,6 +10,7 @@
 | --- | --- | --- |
 | `createMakoo()` | Create a Core instance | [Core Instance](./instance.md#createmakoo) |
 | `inject()` | Declare a component | [Declarations](./declarations.md#inject) |
+| `injectEach()` | Declare an Each Injection: one component on every matching element | [Declarations](./declarations.md#injecteach) |
 | `listen()` | Declare a host listener | [Declarations](./declarations.md#listen) |
 
 ### Classes and Constants
@@ -25,13 +26,14 @@
 | Type | Reference |
 | --- | --- |
 | `MakooRuntime` | [Core Instance](./instance.md#makooruntime) |
-| `ComponentInjection`, `ListenerInjection` | [Core Instance](./instance.md#injection) |
+| `ComponentInjection`, `ComponentEachInjection`, `ChildInjection`, `ListenerInjection` | [Core Instance](./instance.md#injection) |
 | `MakooComponentInput`, `MakooComponentDeclaration` | [Declarations](./declarations.md#makoocomponentinput) |
+| `MakooComponentEachInput`, `MakooComponentEachDeclaration` | [Declarations](./declarations.md#makoocomponenteachinput) |
 | `MakooListenerInput`, `MakooListenerDeclaration` | [Declarations](./declarations.md#makoolistenerinput) |
 | `MakooInjectionDeclaration` | [Declarations](./declarations.md#makooinjectiondeclaration) |
 | `ComponentCommand`, `ListenerCommand`, `InjectionCommand` | [Commands and Status](./status.md#command-handle) |
-| `ComponentStatusHandle`, `ListenerStatusHandle`, `InjectionStatusHandle` | [Commands and Status](./status.md#status-handle) |
-| `ComponentStatus`, `ListenerStatus` | [Commands and Status](./status.md#status-values) |
+| `ComponentStatusHandle`, `ComponentEachStatusHandle`, `ListenerStatusHandle`, `InjectionStatusHandle` | [Commands and Status](./status.md#status-handle) |
+| `ComponentStatus`, `ComponentEachStatus`, `ListenerStatus` | [Commands and Status](./status.md#status-values) |
 | `StateView` | [Commands and Status](./status.md#stateview) |
 | `ObservationNotice`, `ObservationHandler` | [Commands and Status](./status.md#instance-observation) |
 | `MountAdapter`, `AdapterMountParams` | [Adapter Contract](./adapters.md) |

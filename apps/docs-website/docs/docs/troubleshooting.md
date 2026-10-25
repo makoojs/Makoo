@@ -38,7 +38,7 @@ This is a configuration error, and none of the declarations in the batch started
 
 | Error code | Fix |
 | --- | --- |
-| `MAKOO_DECLARATION_INVALID` | Check that `apply()` receives a non-empty array, that every entry was created by `inject()` or `listen()`, and that attached listeners don't set `reinject` |
+| `MAKOO_DECLARATION_INVALID` | Check that `apply()` receives a non-empty array, that every entry was created by `inject()`, `injectEach()`, or `listen()`, and that attached listeners don't set `reinject` |
 | `MAKOO_INJECTION_NAME_CONFLICT` | Use a different name, or first `await` the `remove()` of the existing same-named injection; the name is released only after cleanup finishes. An injection whose cleanup failed keeps occupying its name, and you need to reload the page |
 | `MAKOO_ADAPTER_NOT_FOUND` | Call `core.useAdapter()` before `apply()`, and check the `adapter` name |
 

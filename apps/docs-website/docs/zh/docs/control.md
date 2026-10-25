@@ -110,13 +110,36 @@ const unsubscribe = status.subscribe(() => {
 
 `subscribe()` 的回调不接收参数，请在回调中调用 `getSnapshot()`。不再需要时调用返回的 `unsubscribe()`。
 
-组件的状态入口还能读取附属监听的状态：
+组件的状态入口还能读取附属监听的状态。`core.injection()` 也会返回 Each 注入，所以先按 `kind` 收窄：
 
 ```ts
-for (const name of status.attachedListenerNames) {
-  console.log(name, status.attachedListener(name).getSnapshot());
+const panel = core.injection('panel');
+if (panel.kind === 'component') {
+  for (const name of panel.statusHandle.attachedListenerNames) {
+    console.log(name, panel.statusHandle.attachedListener(name).getSnapshot());
+  }
 }
 ```
+
+## 控制每个子注入
+
+用 [`injectEach()`](./injection.md#在每个匹配元素上挂载) 声明的 Each 注入，通过自己的入口整体控制，并在 `children` 中列出它的子注入：
+
+```ts
+const badges = core.injection('badges');
+if (badges.kind === 'component-each') {
+  console.log(badges.statusHandle.getSnapshot()); // 'collecting'
+  for (const child of badges.children) {
+    console.log(child.command.name, child.statusHandle.getSnapshot()); // 'badges#1' 'mounted'
+  }
+  await badges.children[0]?.command.stop(); // 只卸载第一个徽章
+}
+```
+
+- `children` 是按文档顺序排列的快照。页面变化后请重新读取；子注入的增减没有订阅。
+- 被停止或移除的子注入会离开 `children`，在整个 Each 注入停止并重新启动之前，它的元素不会再得到组件。它的旧入口无法再启动它。
+- `badges.command.stop()` 卸载所有子注入，并停止监视新的匹配；`start()` 在每个匹配上重新挂载。
+- 子注入失败不会改变 Each 注入的状态；请查看这个子注入自己的 `statusHandle.lastError`。
 
 ## 等待停止完成
 
