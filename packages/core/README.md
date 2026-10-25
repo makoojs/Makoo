@@ -66,25 +66,39 @@ core.apply([
 ]);
 ```
 
-### Control Injections and Read Status
+### Mount on Every Match
 
-Every injection's command handle and status handle can be obtained by name:
+`injectEach()` mounts the same component on every element matching `injectAt`, including elements that appear later, and keeps watching while nothing matches:
 
 ```ts
-const panel = core.command('panel');
-const status = core.statusHandle('panel');
+import { injectEach } from '@makoojs/core';
+
+core.apply([
+  injectEach({ name: 'badges', injectAt: '.comment .author', adapter: 'vue', component: Badge })
+]);
+```
+
+### Control Injections and Read Status
+
+Every injection's command handle and status handle can be obtained by name: use `core.injection(name)` for components and Each Injections, and `core.listener(name)` for standalone listeners. An Each Injection also lists its per-element Child Injections in `children`.
+
+```ts
+const panel = core.injection('panel');
+const escape = core.listener('escape');
+const status = panel.statusHandle;
 
 status.subscribe(() => {
   console.log(status.getSnapshot(), status.lastError);
 });
 
-await panel.stop();
-panel.start();
+await panel.command.stop();
+panel.command.start();
+await escape.command.stop();
 ```
 
 ## Documentation
 
 - [Core Instance](https://makoojs.github.io/Makoo/api/instance): `createMakoo()` and the methods on the instance.
-- [Declarations](https://makoojs.github.io/Makoo/api/declarations): all fields of `inject()` and `listen()`.
+- [Declarations](https://makoojs.github.io/Makoo/api/declarations): all fields of `inject()`, `injectEach()`, and `listen()`.
 - [Commands and Status](https://makoojs.github.io/Makoo/api/status): starting, stopping, removing, and what each status value means.
 - [Errors and Error Codes](https://makoojs.github.io/Makoo/api/errors): error categories and how to handle them.

@@ -4,7 +4,7 @@ export {
 	useComponentCommand,
 	useComponentStatus,
 	useComponentStatusHandle,
-	useGlobalListener
+	useListener
 } from './hooks';
 export type {
 	ReactMountAdapter,

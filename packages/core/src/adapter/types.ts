@@ -1,14 +1,16 @@
-import type { ComponentCommand, ComponentStatusHandle } from '../component/types';
+import type { ChildInjection, ComponentInjection } from '../component/types';
 import type { ListenerInjection } from '../listener/types';
 
 /** What Core passes to {@link MountAdapter.mount} for one component execution. */
 export interface AdapterMountParams<TComponent = unknown, TProps = unknown> {
 	/** The `component` from the declaration, unchanged. */
 	component: TComponent;
-	/** The command of the component being mounted. */
-	command: ComponentCommand;
-	/** The status handle of the component being mounted. */
-	statusHandle: ComponentStatusHandle;
+	/**
+	 * The component injection being mounted; same object as `core.injection(name)` for a
+	 * top-level injection, or the Child bag (without `start`/`remove`) for a mount under an
+	 * Each Injection.
+	 */
+	injection: ComponentInjection | ChildInjection;
 	/** The `props` from the declaration, unchanged. */
 	props: TProps | undefined;
 	/** The component container Core created inside the mount target; Core removes it after unmount. */
@@ -18,7 +20,7 @@ export interface AdapterMountParams<TComponent = unknown, TProps = unknown> {
 	 *
 	 * @throws `MakooError` with `INJECTION_NOT_FOUND` when no standalone listener has that name.
 	 */
-	globalListener(name: string): Omit<ListenerInjection, 'kind'>;
+	listener(name: string): ListenerInjection;
 }
 
 /**

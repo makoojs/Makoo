@@ -29,7 +29,7 @@ Key points:
 
 - If the target already exists, it is found immediately; otherwise Core rechecks whenever the page DOM changes, until it is found or the wait times out.
 - Each search has its own budget, and ordinary DOM changes on the page do not reset the countdown. After a timeout, the round fails with `MAKOO_TARGET_WAIT_TIMEOUT` and is not retried automatically.
-- Core uses only the first matching element; other matching elements that appear later are not handled.
+- Core uses only the first matching element; other matching elements that appear later are not handled. To handle every match, use an [Each Injection](#each-injections).
 - `mounted` means the adapter's mount call has returned, not that the framework has finished its first render; React's first commit usually happens a little later.
 - After the mount returns, and after each attached listener starts, Core immediately checks the mount target and component container again without waiting for the next DOM change.
 - When the component enters `mounted`, its attached listeners may still be `waiting`. The component can use this to show a hint such as "waiting for the site button to load".
@@ -82,6 +82,26 @@ An adapter mount error is not always a restartable execution failure: when the a
 Any execution failure of an attached listener ends the whole component with `MAKOO_ATTACHED_LISTENER_FAILED`: an initial wait timeout, a bind failure, a local recovery timeout, and target invalidation when `reinject` is not enabled. This ending does not trigger full reinjection, even if the component has `reinject` enabled. Attached listeners are part of the component's feature, and without them the component should not keep pretending to be usable.
 
 Standalone listeners use their own `reinject` to decide whether to recover, and a failure affects only themselves.
+
+## Each Injections
+
+An Each Injection declared with `injectEach()` doesn't wait for one target. While it runs:
+
+```text
+start()
+  ↓ status collecting
+Mount a Child Injection on every current match, in document order
+  ↓
+On every page DOM change, mount a Child on each new match
+  ↓ until stop() / remove()
+Stop collecting → stop each Child in turn → status idle
+```
+
+- There is no wait budget. With no matches, the Each Injection stays `collecting` and keeps watching.
+- Each Child runs the round described above without the search step: container → adapter mount → `mounted`, then the same validity checks and cleanup order. A Child has no attached listeners and no reinjection.
+- An element is mounted at most once per run. A Child that is stopped or fails is not remounted on that element until the Each Injection is stopped and started again.
+- When a Child's element leaves the page, the Child ends with `failed` (`MAKOO_MOUNT_TARGET_DETACHED`). The element is not blocked: if it or a replacement is inserted again, a new Child is mounted.
+- Child endings never change the Each Injection's status. The Each Injection only becomes `failed` when collection itself fails (for example, an invalid selector) or when stopping the Children fails to clean up; the latter closes it, like any injection.
 
 ## Control Intent
 

@@ -65,7 +65,9 @@ core.apply([
 
 Keep `name` stable. Put wait duration in `timeout`, recovery in `reinject`, and component-owned host listeners in `listeners`. Standalone listeners use `listen()` directly in `apply()`.
 
-Control and status live on the instance: `core.command(name)` and `core.statusHandle(name)`. Inside a mounted component, use the framework helpers (`useMakooComponent()` or the React hooks) instead of reaching for the instance.
+When the same component goes on every matching element (list rows, comments, cards), use `injectEach({ name, injectAt, adapter, component, props })` instead of looping `inject()` or observing the DOM yourself. It mounts current and later matches, has no `timeout` / `reinject` / `listeners`, and each mounted component controls only its own Child Injection.
+
+Control and status live on the instance: `core.injection(name)` for components and Each Injections (narrow by `kind`) and `core.listener(name)` for standalone listeners. Inside a mounted component, use the framework helpers (`useMakooComponent()` or the React hooks) instead of reaching for the instance.
 
 ## Put Component Logic In Framework Files
 
@@ -133,6 +135,7 @@ Restart the dev server for Vite plugin, alias, or package-resolution changes.
 - `makoo({ entry })` points to the intended application module.
 - The entry creates a Core Instance, registers adapters, and calls `apply()`; components own UI behavior.
 - Injections use `name`, `adapter`, `component`, and top-level `timeout` / `reinject` / `listeners`.
+- Per-element repeated UI uses `injectEach()`.
 - React and Vue mounting goes through Makoo adapters.
 - Listener `capture` is chosen deliberately and explicit `false` is preserved.
 - Callbacks stay browser-bundleable.

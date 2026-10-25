@@ -7,7 +7,7 @@
 多数运行期问题都可以从注入的状态入口找到原因。在入口中临时加入：
 
 ```ts
-const status = core.statusHandle('panel');
+const status = core.injection('panel').statusHandle;
 status.subscribe(() => console.log('panel:', status.getSnapshot(), status.lastError));
 ```
 
@@ -38,7 +38,7 @@ status.subscribe(() => console.log('panel:', status.getSnapshot(), status.lastEr
 
 | 错误码 | 处理 |
 | --- | --- |
-| `MAKOO_DECLARATION_INVALID` | 按消息中列出的字段修改声明，检查选择器语法 |
+| `MAKOO_DECLARATION_INVALID` | 确认传给 `apply()` 的是非空数组，每一项都由 `inject()`、`injectEach()` 或 `listen()` 创建，且附属监听没有设置 `reinject` |
 | `MAKOO_INJECTION_NAME_CONFLICT` | 换一个名称，或先 `await` 已有同名注入的 `remove()`，名称在清理完成后才释放；清理失败的注入会一直占用名称，需要刷新页面 |
 | `MAKOO_ADAPTER_NOT_FOUND` | 在 `apply()` 之前调用 `core.useAdapter()`，并核对 `adapter` 名称 |
 
@@ -76,7 +76,7 @@ status.subscribe(() => console.log('panel:', status.getSnapshot(), status.lastEr
 | `MAKOO_VUE_HOOK_OUTSIDE_COMPONENT` / `MAKOO_REACT_HOOK_OUTSIDE_COMPONENT` | 组件不是由 Makoo 挂载的，例如在普通的 `createApp()` 里使用；Vue 中放在事件处理函数或 `setTimeout` 里调用也会报这个错，应在 `setup` 顶层调用 |
 | `MAKOO_VUE_HOOK_OUTSIDE_SCOPE` | 在没有 effect scope 的位置调用，例如插件里的 `app.runWithContext()` |
 | `MAKOO_LISTENER_NOT_FOUND` | `attachedListener(name)` 的名称不在组件的 `listeners` 中 |
-| `MAKOO_INJECTION_NOT_FOUND` | `globalListener(name)` 找不到这个独立监听；它可能还没有 `apply()`，或是一个组件 |
+| `MAKOO_INJECTION_NOT_FOUND` | `listener(name)` 找不到这个独立监听：它可能还没有 `apply()`，或者这个名称属于组件 |
 
 ## `start()` 抛出 `MAKOO_INJECTION_CLOSED`
 

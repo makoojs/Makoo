@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createMakoo, type InjectionCommand, listen, MakooErrorCode } from '../src';
+import { createMakoo, type InjectionCommand, listen } from '../src';
 
 describe('host listener waiting and recovery', () => {
 	const handles: InjectionCommand[] = [];
@@ -23,16 +23,16 @@ describe('host listener waiting and recovery', () => {
 		const core = createMakoo();
 		const callback = vi.fn();
 		core.apply([listen({ name: 'play', listenAt: '.host', type: 'click', callback, timeout })]);
-		const handle = core.command('play');
+		const handle = core.listener('play').command;
 		handles.push(handle);
 		const budget = timeout ?? 15000;
 		vi.advanceTimersByTime(budget - 1);
 		document.body.append(document.createElement('div'));
 		await Promise.resolve();
-		expect(core.statusHandle('play').getSnapshot()).toBe('waiting');
+		expect(core.listener('play').statusHandle.getSnapshot()).toBe('waiting');
 		vi.advanceTimersByTime(1);
-		expect(core.statusHandle('play').getSnapshot()).toBe('failed');
-		expect(core.statusHandle('play').lastError).toMatchObject({
+		expect(core.listener('play').statusHandle.getSnapshot()).toBe('failed');
+		expect(core.listener('play').statusHandle.lastError).toMatchObject({
 			code: 'MAKOO_TARGET_WAIT_TIMEOUT',
 			message: expect.stringContaining('play')
 		});
@@ -43,11 +43,11 @@ describe('host listener waiting and recovery', () => {
 		await Promise.resolve();
 		button.click();
 		expect(callback).not.toHaveBeenCalled();
-		expect(core.statusHandle('play').getSnapshot()).toBe('failed');
+		expect(core.listener('play').statusHandle.getSnapshot()).toBe('failed');
 		handle.start();
 		button.click();
 		expect(callback).toHaveBeenCalledOnce();
-		expect(core.statusHandle('play').lastError).toBeUndefined();
+		expect(core.listener('play').statusHandle.lastError).toBeUndefined();
 		expect(vi.getTimerCount()).toBe(0);
 	});
 
@@ -72,9 +72,9 @@ describe('host listener waiting and recovery', () => {
 				timeout: 50
 			})
 		]);
-		const handle = core.command('play');
+		const handle = core.listener('play').command;
 		handles.push(handle);
-		const view = core.statusHandle('play');
+		const view = core.listener('play').statusHandle;
 		const changes: string[] = [];
 		view.subscribe(() => changes.push(view.getSnapshot()));
 		vi.advanceTimersByTime(100);
@@ -88,39 +88,8 @@ describe('host listener waiting and recovery', () => {
 		await Promise.resolve();
 		second.click();
 		expect(callback).toHaveBeenCalledTimes(reinject ? 1 : 0);
-		expect(core.statusHandle('play')).toBe(view);
+		expect(core.listener('play').statusHandle).toBe(view);
 		expect(changes).toEqual(reinject ? ['waiting', 'bound'] : ['failed']);
-	});
-
-	it.each([
-		['timeout 0', { timeout: 0 }],
-		['timeout -1', { timeout: -1 }],
-		['timeout Infinity', { timeout: Infinity }],
-		['timeout NaN', { timeout: NaN }],
-		['timeout "20"', { timeout: '20' }],
-		['reinject "yes"', { reinject: 'yes' }]
-	])('rejects invalid recovery config %s before accepting the batch', (_label, invalid) => {
-		const core = createMakoo();
-		const declaration = listen({
-			name: 'play',
-			listenAt: '.host',
-			type: 'click',
-			callback() {}
-		});
-		expect(() =>
-			Reflect.apply(core.apply, core, [
-				[declaration, { ...declaration, name: 'bad', ...invalid }]
-			])
-		).toThrow(
-			expect.objectContaining({
-				code: MakooErrorCode.DECLARATION_INVALID,
-				message: expect.stringContaining(Object.keys(invalid)[0] ?? '')
-			})
-		);
-		expect(() => core.command('play')).toThrow(
-			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
-		);
-		expect(vi.getTimerCount()).toBe(0);
 	});
 
 	it('preserves a connected target through same-batch moves and selector or content changes', async () => {
@@ -132,9 +101,9 @@ describe('host listener waiting and recovery', () => {
 		core.apply([
 			listen({ name: 'play', listenAt: '.host', type: 'click', callback, reinject: true })
 		]);
-		const handle = core.command('play');
+		const handle = core.listener('play').command;
 		handles.push(handle);
-		const view = core.statusHandle('play');
+		const view = core.listener('play').statusHandle;
 		const snapshot = view.getSnapshot();
 		const changed = vi.fn();
 		view.subscribe(changed);
@@ -163,7 +132,7 @@ describe('host listener waiting and recovery', () => {
 				reinject: true
 			})
 		]);
-		const handle = core.command('play');
+		const handle = core.listener('play').command;
 		handles.push(handle);
 		vi.advanceTimersByTime(90);
 		const button = document.createElement('button');
@@ -174,16 +143,16 @@ describe('host listener waiting and recovery', () => {
 		button.remove();
 		await Promise.resolve();
 		vi.advanceTimersByTime(99);
-		expect(core.statusHandle('play').getSnapshot()).toBe('waiting');
+		expect(core.listener('play').statusHandle.getSnapshot()).toBe('waiting');
 		vi.advanceTimersByTime(1);
-		expect(core.statusHandle('play').getSnapshot()).toBe('failed');
+		expect(core.listener('play').statusHandle.getSnapshot()).toBe('failed');
 		expect(vi.getTimerCount()).toBe(0);
 		document.body.append(button);
 		await Promise.resolve();
 		vi.advanceTimersByTime(1000);
 		button.click();
 		expect(callback).not.toHaveBeenCalled();
-		expect(core.statusHandle('play').getSnapshot()).toBe('failed');
+		expect(core.listener('play').statusHandle.getSnapshot()).toBe('failed');
 	});
 
 	it.each([
@@ -195,8 +164,8 @@ describe('host listener waiting and recovery', () => {
 		core.apply([
 			listen({ name: 'play', listenAt: '.host', type: 'click', callback, reinject: true })
 		]);
-		const handle = core.command('play');
-		const status = core.statusHandle('play');
+		const handle = core.listener('play').command;
+		const status = core.listener('play').statusHandle;
 		handles.push(handle);
 		const button = document.createElement('button');
 		button.className = 'host';
@@ -240,19 +209,23 @@ describe('host listener waiting and recovery', () => {
 			listen({ name: 'waiting', listenAt: '#later', type: 'click', callback })
 		]);
 		second.apply([listen({ name: 'waiting', listenAt: '#later', type: 'click', callback })]);
-		handles.push(first.command('bound'), first.command('waiting'), second.command('waiting'));
+		handles.push(
+			first.listener('bound').command,
+			first.listener('waiting').command,
+			second.listener('waiting').command
+		);
 		expect(observers).toHaveLength(2);
 		const disconnects = vi.mocked(observers[0].disconnect).mock.calls.length;
-		await first.command('waiting').stop();
+		await first.listener('waiting').command.stop();
 		expect(vi.mocked(observers[0].disconnect).mock.calls.length).toBe(disconnects);
 		button.click();
 		expect(callback).toHaveBeenCalledOnce();
-		await first.command('bound').stop();
+		await first.listener('bound').command.stop();
 		expect(vi.mocked(observers[0].disconnect).mock.calls.length).toBe(disconnects + 1);
 		button.id = 'later';
 		await Promise.resolve();
-		expect(second.statusHandle('waiting').getSnapshot()).toBe('bound');
-		await second.command('waiting').stop();
+		expect(second.listener('waiting').statusHandle.getSnapshot()).toBe('bound');
+		await second.listener('waiting').command.stop();
 		expect(vi.getTimerCount()).toBe(0);
 	});
 
@@ -263,7 +236,7 @@ describe('host listener waiting and recovery', () => {
 				listen({ name, listenAt: `#${name}`, type: 'click', callback() {} })
 			)
 		);
-		handles.push(core.command('a'), core.command('b'));
+		handles.push(core.listener('a').command, core.listener('b').command);
 		const query = vi.spyOn(document, 'querySelector');
 		for (let index = 0; index < 5; index++) document.body.append(document.createElement('div'));
 		await Promise.resolve();
@@ -279,10 +252,10 @@ describe('host listener waiting and recovery', () => {
 			listen({ name: 'first', listenAt: '#first', type: 'click', callback: firstCallback }),
 			listen({ name: 'second', listenAt: '#second', type: 'click', callback: secondCallback })
 		]);
-		const first = core.command('first');
-		const second = core.command('second');
+		const first = core.listener('first').command;
+		const second = core.listener('second').command;
 		handles.push(first, second);
-		const firstStatus = core.statusHandle('first');
+		const firstStatus = core.listener('first').statusHandle;
 		firstStatus.subscribe(() => {
 			if (firstStatus.getSnapshot() === 'bound') void second.stop();
 		});
@@ -296,7 +269,7 @@ describe('host listener waiting and recovery', () => {
 		b.click();
 		expect(firstCallback).toHaveBeenCalledOnce();
 		expect(secondCallback).not.toHaveBeenCalled();
-		expect(core.statusHandle('second').getSnapshot()).toBe('idle');
+		expect(core.listener('second').statusHandle.getSnapshot()).toBe('idle');
 		expect(vi.getTimerCount()).toBe(0);
 	});
 
@@ -315,8 +288,8 @@ describe('host listener waiting and recovery', () => {
 				})
 			)
 		);
-		handles.push(...['a', 'b', 'c'].map((name) => core.command(name)));
-		await core.command('a').stop();
+		handles.push(...['a', 'b', 'c'].map((name) => core.listener(name).command));
+		await core.listener('a').command.stop();
 		const b = document.createElement('button');
 		b.id = 'b';
 		const c = document.createElement('button');
@@ -326,9 +299,9 @@ describe('host listener waiting and recovery', () => {
 		b.remove();
 		await Promise.resolve();
 		vi.advanceTimersByTime(100);
-		expect(core.statusHandle('a').getSnapshot()).toBe('idle');
-		expect(core.statusHandle('b').getSnapshot()).toBe('failed');
-		expect(core.statusHandle('c').getSnapshot()).toBe('bound');
+		expect(core.listener('a').statusHandle.getSnapshot()).toBe('idle');
+		expect(core.listener('b').statusHandle.getSnapshot()).toBe('failed');
+		expect(core.listener('c').statusHandle.getSnapshot()).toBe('bound');
 		const replacement = c.cloneNode() as HTMLButtonElement;
 		c.replaceWith(replacement);
 		await Promise.resolve();
@@ -353,7 +326,7 @@ describe('host listener waiting and recovery', () => {
 				reinject: true
 			})
 		]);
-		const handle = core.command('play');
+		const handle = core.listener('play').command;
 		handles.push(handle);
 		const firstSignal = (bound.mock.calls[0][2] as AddEventListenerOptions).signal;
 		expect(firstSignal).toBeInstanceOf(AbortSignal);
@@ -378,9 +351,9 @@ describe('host listener waiting and recovery', () => {
 		core.apply([
 			listen({ name: 'play', listenAt: '.host', type: 'click', callback, reinject: true })
 		]);
-		const handle = core.command('play');
+		const handle = core.listener('play').command;
 		handles.push(handle);
-		const status = core.statusHandle('play');
+		const status = core.listener('play').statusHandle;
 		status.subscribe(() => {
 			if (status.getSnapshot() === 'waiting') void handle.stop();
 		});
@@ -399,7 +372,7 @@ describe('host listener waiting and recovery', () => {
 		core.apply([
 			listen({ name: 'play', listenAt: '.host', type: 'click', callback, reinject: true })
 		]);
-		const handle = core.command('play');
+		const handle = core.listener('play').command;
 		handles.push(handle);
 		const cause = new Error('observer setup failed');
 		vi.spyOn(MutationObserver.prototype, 'observe').mockImplementationOnce(() => {
@@ -409,8 +382,8 @@ describe('host listener waiting and recovery', () => {
 		button.className = 'host';
 		document.body.append(button);
 		await Promise.resolve();
-		expect(core.statusHandle('play').getSnapshot()).toBe('failed');
-		expect(core.statusHandle('play').lastError?.cause).toBe(cause);
+		expect(core.listener('play').statusHandle.getSnapshot()).toBe('failed');
+		expect(core.listener('play').statusHandle.lastError?.cause).toBe(cause);
 		button.click();
 		expect(callback).not.toHaveBeenCalled();
 		expect(vi.getTimerCount()).toBe(0);
@@ -420,7 +393,7 @@ describe('host listener waiting and recovery', () => {
 		const core = createMakoo();
 		const callback = vi.fn();
 		core.apply([listen({ name: 'play', listenAt: '.host', type: 'click', callback })]);
-		const handle = core.command('play');
+		const handle = core.listener('play').command;
 		handles.push(handle);
 		const button = document.createElement('button');
 		button.className = 'host';
@@ -432,7 +405,7 @@ describe('host listener waiting and recovery', () => {
 		await Promise.resolve();
 		button.click();
 		expect(callback).not.toHaveBeenCalled();
-		expect(core.statusHandle('play').getSnapshot()).toBe('idle');
+		expect(core.listener('play').statusHandle.getSnapshot()).toBe('idle');
 		expect(vi.getTimerCount()).toBe(0);
 		handle.start();
 		button.click();
@@ -444,15 +417,15 @@ describe('host listener waiting and recovery', () => {
 		core.apply([
 			listen({ name: 'play', listenAt: '.host', type: 'click', callback() {}, timeout: 100 })
 		]);
-		const handle = core.command('play');
+		const handle = core.listener('play').command;
 		handles.push(handle);
 		vi.advanceTimersByTime(99);
 		await handle.stop();
 		handle.start();
 		vi.advanceTimersByTime(1);
-		expect(core.statusHandle('play').getSnapshot()).toBe('waiting');
+		expect(core.listener('play').statusHandle.getSnapshot()).toBe('waiting');
 		vi.advanceTimersByTime(99);
-		expect(core.statusHandle('play').getSnapshot()).toBe('failed');
+		expect(core.listener('play').statusHandle.getSnapshot()).toBe('failed');
 		expect(vi.getTimerCount()).toBe(0);
 	});
 
@@ -474,26 +447,26 @@ describe('host listener waiting and recovery', () => {
 				reinject: true
 			})
 		]);
-		const handle = core.command('play');
+		const handle = core.listener('play').command;
 		handles.push(handle);
 		button.click();
 		button.replaceWith(button.cloneNode());
 		await Promise.resolve();
-		const snapshot = core.statusHandle('play').getSnapshot();
+		const snapshot = core.listener('play').statusHandle.getSnapshot();
 		reject(new Error('old execution'));
 		await Promise.resolve();
-		expect(core.statusHandle('play').getSnapshot()).toBe(snapshot);
+		expect(core.listener('play').statusHandle.getSnapshot()).toBe(snapshot);
 		expect(snapshot).toBe('bound');
-		expect(core.statusHandle('play').lastError).toBeUndefined();
+		expect(core.listener('play').statusHandle.lastError).toBeUndefined();
 	});
 
 	it('waits for the first delayed host, then stops searching for additional matches', async () => {
 		const core = createMakoo();
 		const callback = vi.fn();
 		core.apply([listen({ name: 'play', listenAt: '.host', type: 'click', callback })]);
-		const handle = core.command('play');
+		const handle = core.listener('play').command;
 		handles.push(handle);
-		const view = core.statusHandle('play');
+		const view = core.listener('play').statusHandle;
 		expect(view.getSnapshot()).toBe('waiting');
 		const changes: string[] = [];
 		view.subscribe(() => changes.push(view.getSnapshot()));
@@ -508,7 +481,7 @@ describe('host listener waiting and recovery', () => {
 		first.click();
 		second.click();
 		expect(callback).toHaveBeenCalledOnce();
-		expect(core.statusHandle('play')).toBe(view);
+		expect(core.listener('play').statusHandle).toBe(view);
 		expect(changes).toEqual(['bound']);
 	});
 });

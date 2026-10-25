@@ -31,14 +31,10 @@ Core only stores the mount handle without reading its contents, and passes it ba
 ```ts
 interface AdapterMountParams<TComponent = unknown, TProps = unknown> {
   component: TComponent;
-  command: ComponentCommand;
-  statusHandle: ComponentStatusHandle;
+  injection: ComponentInjection | ChildInjection;
   props: TProps | undefined;
   container: HTMLElement;
-  globalListener(name: string): {
-    command: ListenerCommand;
-    statusHandle: ListenerStatusHandle;
-  };
+  listener(name: string): ListenerInjection;
 }
 ```
 
@@ -47,11 +43,10 @@ interface AdapterMountParams<TComponent = unknown, TProps = unknown> {
 | `component` | The `component` from the declaration |
 | `props` | The `props` from the declaration, or `undefined` if not provided |
 | `container` | The component container Core created for this mount |
-| `command` | The owning component's command handle |
-| `statusHandle` | The owning component's status handle |
-| `globalListener(name)` | Finds a standalone listener in the same instance and returns `{ command, statusHandle }` |
+| `injection` | The owning component's injection object, containing the command handle `command` and the status handle `statusHandle`; the same object `core.injection(name)` returns. For a Child Injection of an Each Injection it is that Child's entry in `children`, whose `command` is a `ChildCommand` (`{ name, stop }`) |
+| `listener(name)` | Finds a standalone listener in the same instance and returns `{ command, statusHandle }` |
 
-`globalListener(name)` throws `MAKOO_INJECTION_NOT_FOUND` when the name doesn't exist, belongs to a component, or is only an attached listener.
+`listener(name)` throws `MAKOO_INJECTION_NOT_FOUND` when the name doesn't exist, belongs to a component, or is only an attached listener.
 
 ## Behavior Conventions
 
@@ -73,4 +68,4 @@ interface AdapterMountParams<TComponent = unknown, TProps = unknown> {
 
 ### Component-side Capabilities
 
-How `command`, `statusHandle`, and `globalListener` are handed to components is up to the adapter. The Vue adapter hands them to [`useMakooComponent()`](./vue.md#usemakoocomponent) through `provide`, and the React adapter hands them to [hooks](./react.md#hooks) through Context. When the component unmounts, the adapter should release status subscriptions created inside the component.
+How `injection` and `listener` are handed to components is up to the adapter. The Vue adapter hands them to [`useMakooComponent()`](./vue.md#usemakoocomponent) through `provide`, and the React adapter hands them to [hooks](./react.md#hooks) through Context. When the component unmounts, the adapter should release status subscriptions created inside the component.

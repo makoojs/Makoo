@@ -26,15 +26,14 @@ export type VueMountAdapter = MountAdapter<VueMountComponent, VueMountProps, Vue
 export function createVueAdapter(): VueMountAdapter {
 	return {
 		name: 'vue',
-		mount({ component, props, command, statusHandle, container, globalListener }) {
+		mount({ component, props, injection, container, listener }) {
 			const subscriptions = new Set<() => void>();
 			let hasMountStarted = false;
 			try {
 				const app = createApp(component, props ?? null);
 				app.provide(componentContextKey, {
-					command,
-					statusHandle,
-					globalListener,
+					injection,
+					listener,
 					subscriptions
 				});
 				for (const plugin of VuePlugin.getPlugins()) {

@@ -32,6 +32,7 @@ packages/core/src/
 ├─ component/
 │  ├─ declaration.ts
 │  ├─ component.ts
+│  ├─ componentEach.ts
 │  ├─ execution.ts
 │  └─ types.ts
 ├─ listener/
@@ -58,7 +59,7 @@ packages/core/src/
 | Domain | Owns | Does not own |
 | --- | --- | --- |
 | core | Instance assembly, batch validation coordination, top-level name registration, control entry lookup, whole-instance disposal | Concrete cleanup of individual mounts and listener resources |
-| component | Component declarations and their validation, long-lived control intent, execution switching, lifetime of the component and its attached listeners as a whole | Host event binding details, framework-internal instance structure |
+| component | Component and Each Injection declarations and their validation, long-lived control intent, execution switching, lifetime of the component and its attached listeners as a whole, Each Injection collection and its Child Injections | Host event binding details, framework-internal instance structure |
 | listener | Listener declarations and their validation, stable status, single lookup and binding, local recovery, unbinding | Component mounting, directly modifying the parent injection |
 | dom | Per-instance shared observation, waiting for targets, timeout and cancellation, validity notifications | Deciding reinjection, unmounting components, starting or stopping features |
 | adapter | Named registration, lookup, framework-agnostic mount and unmount contract | Implementing Vue/React operations inside core |
@@ -130,6 +131,16 @@ Long-lived state is named `Component`, `Listener`, and `AttachListener`. `Listen
 
 After successful cleanup the execution slot becomes `empty`, keeping only the settled Promise and not the whole execution object; after a cleanup failure it becomes `cleanup-failed`, keeping the completion Promise and the cleanup errors. Repeated stops wait for the same cleanup and reuse its result, without requiring the returned Promise to be the same object; cleanup failure is expressed explicitly by the execution slot and is not inferred from the latest diagnostic. Like `createComponent`, `createListener` initializes the long-lived data and returns the public command and status handle; attached listeners build their long-lived data through `createAttachListener` without creating public entries. Single-item control calls `startListener`, `stopListener`, and `removeListener`. A component starts each attached listener through the shared `startListener`, which accepts both `Listener` and `AttachListener`, and stops the whole group through `stopAttachListeners`, which accepts only `AttachListener`; the shared execution flow stays inside the listener domain, and the public declaration API does not change.
 
+### Each Injection and Child Injections
+
+`component/componentEach.ts` holds the whole Each Injection. The long-lived `ComponentEach` record keeps the group intent, the group status (`idle` / `collecting` / `failed`), `lastError`, the live `children` in document order, the `claimed` element set of the current run, the collection subscription, and the group cleanup Promise. Its public side is the same `ComponentCommand` as a component, a `ComponentEachStatusHandle` (status view plus `lastError`), and a `children` getter that builds a new array on every read.
+
+A Child runs exactly one execution and never restarts, so it needs no execution slot: the `Child` record holds that execution, its cleanup Promise, a `phase` (`running` / `cancelling` / `ended`), its status, and `lastError`. Its frozen public entry is a `ChildInjection`: `kind: 'component'`, a `ChildCommand` (`{ name, stop }`), and a `ChildStatusHandle` (status view plus `lastError`). There is no `start`/`remove` and no attached-listener members—Children run once and are not registered under top-level names, so there is nothing to restart or unregister. The adapter still receives it as `injection` (a `ComponentInjection | ChildInjection` union), so framework hooks bind to the Child without a second hook protocol. Their display name is `<name>#<sequence>`, and the sequence keeps counting across runs.
+
+`component/execution.ts` provides two execution factories that share one `ComponentExecution` state, `mountComponent`, and cleanup: `createComponentExecution` waits for the first match and then mounts, and `createChildExecution` mounts directly on the element the Each Injection claimed. A Child execution has no timeout, no reinjection, and no attached listeners.
+
+Start queries the document with `querySelectorAll` and mounts a Child on every connected element not yet in `claimed`; the same check then runs on every delivery of the shared DOM observer until the group stops. A Child that stops, is removed, or fails leaves `children` immediately and its element stays claimed for the rest of the run; a Child whose target detaches gives its element back, so a reinserted element is claimed again as a new Child. A group stop or remove stops collection and then stops the live Children one by one, collecting cleanup failures into one `INJECTION_CLEANUP_FAILED` that closes the group. Group cleanups (stop, remove, and the background cleanup after a collection failure) run one after another through `cleanUp`, so a later stop decides the final status and a remove waits for an earlier stop before unregistering. A start requested while a cleanup is pending is recorded and begins once it succeeds, with a fresh `claimed` set; if the cleanup fails, the group is closed and the start is dropped, like a component. A collection failure such as an invalid selector stops the group in `failed` with `MOUNT_FAILED`; a Child failure never changes the group status.
+
 ### Both kinds of listener share the full implementation
 
 | Difference | Standalone listener | Attached listener |
@@ -190,6 +201,8 @@ Two kinds of demand are maintained:
 
 - Pending lookups: selector, this lookup's timeout budget, cancellation signal, result receiver.
 - Pending observations: actual element, validity condition, cancellation signal, invalidation receiver.
+
+An Each Injection's collection is a plain subscription on the same observer: it has no budget, stays registered while the group is running, and re-runs its own `querySelectorAll` on each delivery.
 
 A new lookup queries immediately first and only keeps waiting if nothing is found. On each MutationObserver callback, all current pending lookups and observations are checked together, rather than running a full check once per mutation record. A batch here is the set of records delivered by one observer callback, not a frame, a fixed time window, or an extra debounce.
 

@@ -1,9 +1,9 @@
 import {
-	type AdapterMountParams,
 	type ComponentCommand,
 	type ComponentStatusHandle,
 	createMakoo,
 	inject,
+	type ListenerInjection,
 	MakooAggregateError,
 	MakooErrorCode
 } from '@makoojs/core';
@@ -49,11 +49,11 @@ describe('ReactAdapter', () => {
 		core.apply([
 			inject({ name: 'badge', injectAt: '#host', adapter: 'react', component: Badge })
 		]);
-		const command = core.command('badge');
+		const command = core.injection('badge').command;
 
 		const container = reactDomClientMock.createRoot.mock.calls[0]?.[0];
 		expect(container?.parentElement?.id).toBe('host');
-		expect(core.statusHandle('badge').getSnapshot()).toBe('mounted');
+		expect(core.injection('badge').statusHandle.getSnapshot()).toBe('mounted');
 
 		await command.stop();
 		expect(reactDomClientMock.root.unmount).toHaveBeenCalledOnce();
@@ -67,7 +67,7 @@ describe('ReactAdapter', () => {
 		]);
 
 		expect(reactDomClientMock.root.render).toHaveBeenCalledOnce();
-		expect(core.statusHandle('badge').getSnapshot()).toBe('mounted');
+		expect(core.injection('badge').statusHandle.getSnapshot()).toBe('mounted');
 	});
 
 	it('rethrows a createRoot failure unchanged, including a non-Error cause', () => {
@@ -80,9 +80,12 @@ describe('ReactAdapter', () => {
 				component: Badge,
 				props: undefined,
 				container: document.createElement('div'),
-				command: {} as ComponentCommand,
-				statusHandle: {} as ComponentStatusHandle,
-				globalListener: () => ({}) as ReturnType<AdapterMountParams['globalListener']>
+				injection: {
+					kind: 'component',
+					command: {} as ComponentCommand,
+					statusHandle: {} as ComponentStatusHandle
+				},
+				listener: () => ({}) as ListenerInjection
 			})
 		).toThrow('boom');
 	});
@@ -103,9 +106,12 @@ describe('ReactAdapter', () => {
 				component: Badge,
 				props: undefined,
 				container: document.createElement('div'),
-				command: {} as ComponentCommand,
-				statusHandle: {} as ComponentStatusHandle,
-				globalListener: () => ({}) as ReturnType<AdapterMountParams['globalListener']>
+				injection: {
+					kind: 'component',
+					command: {} as ComponentCommand,
+					statusHandle: {} as ComponentStatusHandle
+				},
+				listener: () => ({}) as ListenerInjection
 			});
 		} catch (error) {
 			thrown = error;
@@ -143,9 +149,11 @@ describe('ReactAdapter', () => {
 			inject({ name: 'badge', injectAt: '#host', adapter: 'react', component: Badge })
 		]);
 
-		await vi.waitFor(() => expect(core.statusHandle('badge').getSnapshot()).toBe('failed'));
+		await vi.waitFor(() =>
+			expect(core.injection('badge').statusHandle.getSnapshot()).toBe('failed')
+		);
 		expect(reactDomClientMock.root.unmount).toHaveBeenCalledOnce();
-		expect(core.statusHandle('badge').lastError).toMatchObject({
+		expect(core.injection('badge').statusHandle.lastError).toMatchObject({
 			code: MakooErrorCode.MOUNT_FAILED,
 			cause
 		});
@@ -162,13 +170,13 @@ describe('ReactAdapter', () => {
 		reactDomClientMock.root.unmount.mockImplementationOnce(() => {
 			throw cause;
 		});
-		const command = core.command('badge');
+		const command = core.injection('badge').command;
 
 		await expect(command.stop()).rejects.toMatchObject({
 			code: MakooErrorCode.INJECTION_CLEANUP_FAILED,
 			errors: [expect.objectContaining({ code: MakooErrorCode.UNMOUNT_FAILED, cause })]
 		});
-		expect(core.statusHandle('badge').getSnapshot()).toBe('failed');
+		expect(core.injection('badge').statusHandle.getSnapshot()).toBe('failed');
 		expect(() => command.start()).toThrow(
 			expect.objectContaining({ code: MakooErrorCode.INJECTION_CLOSED })
 		);

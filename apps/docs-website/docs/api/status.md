@@ -1,8 +1,8 @@
 # Commands and Status
 
-Every top-level injection (component or standalone listener) has two handles: the command handle starts, stops, and removes it, and the status handle reads and subscribes to its status. Outside code gets them through [`core.command()`](./instance.md#command) and [`core.statusHandle()`](./instance.md#statushandle); inside components, the same handles are available through the [Vue](./vue.md) or [React](./react.md) APIs.
+Every top-level injection (component, Each Injection, or standalone listener) has two handles: the command handle starts, stops, and removes it, and the status handle reads and subscribes to its status. Outside components, a component or Each Injection is looked up with [`core.injection(name)`](./instance.md#injection) and a standalone listener with [`core.listener(name)`](./instance.md#listener); each returns an object whose `command` and `statusHandle` are these two handles; inside components, the same handles are available through the [Vue](./vue.md) or [React](./react.md) APIs.
 
-Attached listeners have no command handle of their own; their status can only be read through the owning component's status handle.
+Each Child Injection in an Each Injection's `children` also has its own command handle and status handle. Attached listeners have no command handle of their own; their status can only be read through the owning component's status handle.
 
 ## Command Handle
 
@@ -57,6 +57,21 @@ Stops and unregisters this injection. On success, the name is released and a sam
 - After unregistering, the Core instance emits an `injection-removed` notice.
 - If cleanup fails, the Promise rejects and the name stays occupied until the page reloads.
 
+### Each Injections and Child Injections
+
+An Each Injection uses the same `ComponentCommand`, applied to the whole group:
+
+- `start()` mounts every current match and keeps collecting new ones; the status becomes `collecting`. It throws the same errors as above.
+- `stop()` stops collecting, then stops the live Children one by one; the Promise resolves when all of them are cleaned up, and `children` becomes empty. If any Child fails to clean up, the Promise rejects with one `MakooAggregateError` (`MAKOO_INJECTION_CLEANUP_FAILED`) for the group, and the Each Injection is closed.
+- `remove()` does the same, then unregisters the Each Injection.
+- After a stop, the next `start()` mounts again on every match, including elements whose Child was stopped or failed in the previous run.
+
+A Child Injection's command handle is a `ChildCommand` (`{ name, stop() }`) that acts on that Child only:
+
+- `stop()` unmounts it and takes it out of `children`; its element isn't mounted again in this run of the Each Injection. It is idempotent for an already-ended Child.
+- There is no `start()` or `remove()`: a Child runs once, the Each Injection mounts new Children by itself, and the Child is not registered under a top-level name, so there is nothing to restart or unregister.
+- If the Child fails to clean up, `stop()` rejects with `MAKOO_INJECTION_CLEANUP_FAILED`; the Each Injection keeps running.
+
 ## Status Handle
 
 ```ts
@@ -66,12 +81,25 @@ interface ComponentStatusHandle extends StateView<ComponentStatus> {
   attachedListener(name: string): StateView<ListenerStatus>;
 }
 
+interface ComponentEachStatusHandle extends StateView<ComponentEachStatus> {
+  readonly lastError: MakooError | undefined;
+}
+
+interface ChildStatusHandle extends StateView<ComponentStatus> {
+  readonly lastError: MakooError | undefined;
+}
+
 interface ListenerStatusHandle extends StateView<ListenerStatus> {
   readonly lastError: MakooError | undefined;
 }
 
-type InjectionStatusHandle = ComponentStatusHandle | ListenerStatusHandle;
+type InjectionStatusHandle =
+  | ComponentStatusHandle
+  | ComponentEachStatusHandle
+  | ListenerStatusHandle;
 ```
+
+A Child Injection's status handle is a `ChildStatusHandle`: the same `ComponentStatus` view and `lastError`, without the attached-listener members.
 
 | Member | Description |
 | --- | --- |
@@ -82,7 +110,7 @@ type InjectionStatusHandle = ComponentStatusHandle | ListenerStatusHandle;
 | `attachedListener(name)` | Get the status view of an attached listener; throws `MAKOO_LISTENER_NOT_FOUND` if the name doesn't exist |
 
 ```ts
-const status = core.statusHandle('toolbar');
+const status = core.injection('toolbar').statusHandle;
 const unsubscribe = status.subscribe(() => {
   console.log('toolbar:', status.getSnapshot(), status.lastError);
 });
@@ -97,6 +125,8 @@ The status handle stays the same for the lifetime of the injection; full reinjec
 - Execution failures, such as wait timeouts, mount failures, and target invalidation with recovery not allowed.
 - Cleanup failures, whose value is a `MakooAggregateError`.
 - Errors from a standalone listener's event handler (`MAKOO_LISTENER_CALLBACK_FAILED`).
+
+An Each Injection's `lastError` only records failures of the group itself: a collection failure such as an invalid `injectAt` selector (`MAKOO_MOUNT_FAILED`), or a cleanup failure. A Child's failure is recorded on that Child's status handle.
 
 A change to `lastError` by itself doesn't notify subscribers. Execution failures and cleanup failures are written before the status changes to `failed`, so they can be read in the subscription callback; callback errors are only written and don't change the status.
 
@@ -120,6 +150,22 @@ type ComponentStatus = 'idle' | 'waiting' | 'mounted' | 'failed';
 | `failed` | Execution failure or cleanup failure; see `lastError` for the cause |
 
 `mounted` doesn't mean all attached listeners are bound. On the initial mount, attached listeners may still be `waiting`; read their status separately.
+
+A Child Injection uses `ComponentStatus` too: it is `waiting` while mounting, `mounted` afterwards, `idle` after it is stopped, and `failed` when mounting fails or its element leaves the page (`MAKOO_MOUNT_TARGET_DETACHED`).
+
+### `ComponentEachStatus`
+
+```ts
+type ComponentEachStatus = 'idle' | 'collecting' | 'failed';
+```
+
+| Status | Meaning |
+| --- | --- |
+| `idle` | Not running: not started yet, stopped, or removed |
+| `collecting` | Running: Children are mounted on current matches and new matches are mounted as they appear; stays here even when nothing matches |
+| `failed` | Collection failure or cleanup failure of the group; see `lastError` |
+
+Children stopping or failing doesn't change the Each Injection's status. Read each Child's status from `children`.
 
 ### `ListenerStatus`
 

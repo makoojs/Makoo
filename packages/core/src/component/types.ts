@@ -2,41 +2,38 @@ import type { MakooError } from '../error/MakooError';
 import type { ListenerStatus, MakooListenerDeclaration } from '../listener/types';
 import type { StateView } from '../state/types';
 
-/** Options for `inject()`: a framework component to mount into a host page element. */
-export interface MakooComponentInput<TComponent = unknown, TProps = unknown> {
-	/** Injection name, unique among the top-level injections of a Core Instance. */
-	name: string;
-	/** CSS selector of the mount target; the first match receives the component container. */
-	injectAt: string;
-	/** Name of a component adapter registered with `useAdapter()`. */
-	adapter: string;
-	/** The framework component, passed to the adapter unchanged. */
-	component: TComponent;
-	/** Root props, passed to the adapter unchanged. */
-	props?: TProps;
-	/** DOM search budget in milliseconds. Defaults to 15000. */
-	timeout?: number;
-	/** Recover when the mount target or component container becomes invalid. */
-	reinject?: boolean;
-	/** Named host-page listeners owned by this component. */
-	listeners?: readonly Omit<MakooListenerDeclaration, 'reinject'>[];
+/**
+ * Control entry bound to one Child Injection. Children run once: there is no `start` to call,
+ * and `stop` is the only external control—ended children cannot re-enter the group.
+ */
+export interface ChildCommand {
+	/** The child display name (`<group>#<sequence>`); not a lookup key. */
+	readonly name: string;
+	/**
+	 * Stops the child and unmounts it. The element is skipped for the rest of the group run.
+	 * Idempotent for an already-ended child.
+	 *
+	 * @returns A promise that settles when cleanup finishes; it rejects with a
+	 * `MakooAggregateError` (`INJECTION_CLEANUP_FAILED`) when cleanup fails.
+	 */
+	stop(): Promise<void>;
 }
 
-/** A component declaration created by `inject()`; it does nothing until applied to a Core Instance. */
-export type MakooComponentDeclaration<TComponent = unknown, TProps = unknown> = Readonly<
-	MakooComponentInput<TComponent, TProps> & { kind: 'component' }
->;
-
 /**
- * The run phase of a component.
- *
- * - `idle`: not started yet, or stopped.
- * - `waiting`: looking for the mount target, or mounting into it.
- * - `mounted`: mounted, with every attached listener started.
- * - `failed`: the last execution ended in an execution failure or a cleanup failure; see
- *   `lastError`. After a cleanup failure the component cannot start again.
+ * One Child Injection under an Each Injection. Not registered in the top-level name map, so
+ * there is no `remove` to unregister it.
  */
-export type ComponentStatus = 'idle' | 'waiting' | 'mounted' | 'failed';
+export type ChildInjection = {
+	readonly kind: 'component';
+	readonly command: ChildCommand;
+	readonly statusHandle: ChildStatusHandle;
+};
+
+/** Read-only status of one Child Injection. */
+export interface ChildStatusHandle extends StateView<ComponentStatus> {
+	/** The error that ended the child; reading it does not subscribe. */
+	readonly lastError: MakooError | undefined;
+}
 
 /** Control entry bound to one component; it never controls a later component with the same name. */
 export interface ComponentCommand {
@@ -67,6 +64,48 @@ export interface ComponentCommand {
 	remove(): Promise<void>;
 }
 
+/** Control bag for an Each Injection: group command/status plus a snapshot of live Children. */
+export type ComponentEachInjection = {
+	readonly kind: 'component-each';
+	readonly command: ComponentCommand;
+	readonly statusHandle: ComponentEachStatusHandle;
+	/** Document-order snapshot of currently live Child bags; each read returns a new array. */
+	readonly children: readonly ChildInjection[];
+};
+
+/**
+ * The run phase of an Each Injection.
+ *
+ * - `idle`: not started yet, or stopped.
+ * - `collecting`: started; mounting current matches and (when continuous collect is active)
+ *   waiting for later ones. Zero matches stay here without a target-wait timeout.
+ * - `failed`: a group-level orchestration or cleanup failure; see `lastError`.
+ */
+export type ComponentEachStatus = 'idle' | 'collecting' | 'failed';
+
+/** Read-only status of an Each Injection. */
+export interface ComponentEachStatusHandle extends StateView<ComponentEachStatus> {
+	/** The error that ended the last group-level failure; reading it does not subscribe. */
+	readonly lastError: MakooError | undefined;
+}
+
+export type ComponentInjection = {
+	readonly kind: 'component';
+	readonly command: ComponentCommand;
+	readonly statusHandle: ComponentStatusHandle;
+};
+
+/**
+ * The run phase of a component.
+ *
+ * - `idle`: not started yet, or stopped.
+ * - `waiting`: looking for the mount target, or mounting into it.
+ * - `mounted`: mounted, with every attached listener started.
+ * - `failed`: the last execution ended in an execution failure or a cleanup failure; see
+ *   `lastError`. After a cleanup failure the component cannot start again.
+ */
+export type ComponentStatus = 'idle' | 'waiting' | 'mounted' | 'failed';
+
 /** Read-only status of one component, plus the status of each attached listener. */
 export interface ComponentStatusHandle extends StateView<ComponentStatus> {
 	/** The error that ended the last execution; reading it does not subscribe. */
@@ -81,8 +120,46 @@ export interface ComponentStatusHandle extends StateView<ComponentStatus> {
 	attachedListener(name: string): StateView<ListenerStatus>;
 }
 
-export type ComponentInjection = {
-	readonly kind: 'component';
-	readonly command: ComponentCommand;
-	readonly statusHandle: ComponentStatusHandle;
-};
+/** A component declaration created by `inject()`; it does nothing until applied to a Core Instance. */
+export type MakooComponentDeclaration<TComponent = unknown, TProps = unknown> = Readonly<
+	MakooComponentInput<TComponent, TProps> & { kind: 'component' }
+>;
+
+/** An Each Injection declaration created by `injectEach()`; inert until applied. */
+export type MakooComponentEachDeclaration<TComponent = unknown, TProps = unknown> = Readonly<
+	MakooComponentEachInput<TComponent, TProps> & { kind: 'component-each' }
+>;
+
+/** Options for `injectEach()`: mount the same component on every matching host element. */
+export interface MakooComponentEachInput<TComponent = unknown, TProps = unknown> {
+	/** Injection name, unique among the top-level injections of a Core Instance. */
+	name: string;
+	/** CSS selector; every current match receives a Child Injection (document order). */
+	injectAt: string;
+	/** Name of a component adapter registered with `useAdapter()`. */
+	adapter: string;
+	/** The framework component, passed to the adapter unchanged. */
+	component: TComponent;
+	/** Root props, shared by reference across every Child. */
+	props?: TProps;
+}
+
+/** Options for `inject()`: a framework component to mount into a host page element. */
+export interface MakooComponentInput<TComponent = unknown, TProps = unknown> {
+	/** Injection name, unique among the top-level injections of a Core Instance. */
+	name: string;
+	/** CSS selector of the mount target; the first match receives the component container. */
+	injectAt: string;
+	/** Name of a component adapter registered with `useAdapter()`. */
+	adapter: string;
+	/** The framework component, passed to the adapter unchanged. */
+	component: TComponent;
+	/** Root props, passed to the adapter unchanged. */
+	props?: TProps;
+	/** DOM search budget in milliseconds. Defaults to 15000. */
+	timeout?: number;
+	/** Recover when the mount target or component container becomes invalid. */
+	reinject?: boolean;
+	/** Named host-page listeners owned by this component. */
+	listeners?: readonly Omit<MakooListenerDeclaration, 'reinject'>[];
+}

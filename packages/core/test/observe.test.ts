@@ -28,12 +28,12 @@ describe('instance observation', () => {
 		core.apply([inject({ name: 'panel', injectAt: '#host', adapter: 'plain', component: {} })]);
 		const notices: ObservationNotice[] = [];
 		core.observe((notice) => {
-			expect(() => core.command('panel')).toThrow(
+			expect(() => core.injection('panel').command).toThrow(
 				expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 			);
 			notices.push(notice);
 		});
-		await core.command('panel').remove();
+		await core.injection('panel').command.remove();
 		expect(notices).toEqual([{ type: 'injection-removed', name: 'panel' }]);
 	});
 
@@ -51,10 +51,10 @@ describe('instance observation', () => {
 		core.observe((notice) => {
 			notices.push(notice);
 		});
-		await expect(core.command('panel').remove()).rejects.toMatchObject({
+		await expect(core.injection('panel').command.remove()).rejects.toMatchObject({
 			code: MakooErrorCode.INJECTION_CLEANUP_FAILED
 		});
-		expect(core.statusHandle('panel').getSnapshot()).toBe('failed');
+		expect(core.injection('panel').statusHandle.getSnapshot()).toBe('failed');
 		expect(notices).toEqual([]);
 	});
 
@@ -71,7 +71,7 @@ describe('instance observation', () => {
 			notices.push(notice);
 		});
 		stop();
-		await core.command('click').remove();
+		await core.listener('click').command.remove();
 		expect(notices).toEqual([]);
 	});
 
@@ -95,10 +95,10 @@ describe('instance observation', () => {
 		core.observe(() => {
 			order.push('second');
 		});
-		await core.command('one').remove();
+		await core.listener('one').command.remove();
 		expect(order).toEqual(['first', 'second']);
 		expect(midFanOut).toEqual([]);
-		await core.command('two').remove();
+		await core.listener('two').command.remove();
 		expect(midFanOut).toEqual([{ type: 'injection-removed', name: 'two' }]);
 	});
 
@@ -159,7 +159,7 @@ describe('instance observation', () => {
 		core.apply([
 			listen({ name: 'click', listenAt: '#play', type: 'click', callback: vi.fn() })
 		]);
-		const status = core.statusHandle('click');
+		const status = core.listener('click').statusHandle;
 		status.subscribe(() => {
 			throw new Error('subscriber boom');
 		});
@@ -167,7 +167,7 @@ describe('instance observation', () => {
 		core.observe((notice) => {
 			if (notice.type === 'diagnostic') diagnostics.push(notice);
 		});
-		await core.command('click').stop();
+		await core.listener('click').command.stop();
 		expect(status.getSnapshot()).toBe('idle');
 		expect(status.lastError).toBeUndefined();
 		expect(diagnostics).toHaveLength(1);
@@ -208,7 +208,7 @@ describe('instance observation', () => {
 		core.observe((notice) => {
 			if (notice.type === 'injection-removed') seen.push('second');
 		});
-		await core.command('click').remove();
+		await core.listener('click').command.remove();
 		expect(seen).toEqual(['first', 'diagnostic', 'second']);
 		expect(diagnostics).toHaveLength(1);
 		expect(diagnostics[0]).toMatchObject({

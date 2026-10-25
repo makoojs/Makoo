@@ -1,6 +1,6 @@
 ---
 name: makoo-injection-workflow
-description: Use when creating, modifying, or debugging Makoo injection composition, host listeners, React/Vue components, injectAt, reinject, timeout, HMR, or userscript injection workflows in Makoo projects.
+description: Use when creating, modifying, or debugging Makoo injection composition, host listeners, React/Vue components, injectAt, injectEach, reinject, timeout, HMR, or userscript injection workflows in Makoo projects.
 license: MIT
 ---
 
@@ -50,7 +50,25 @@ For Vue modules:
 - Prefer `<script setup>`.
 - Keep component styles close to the component unless the module has shared styles.
 
-Use `createMakoo()`, `useAdapter()`, `inject()`, and `listen()` for runtime composition. Keep React/Vue UI implementation in framework component files.
+Use `createMakoo()`, `useAdapter()`, `inject()`, `injectEach()`, and `listen()` for runtime composition. Keep React/Vue UI implementation in framework component files.
+
+## When To Use `injectEach`
+
+Use `injectEach()` when the same component belongs on every element matching a selector, such as a badge on every list row or comment, including rows that load later:
+
+```ts
+injectEach({
+	name: 'row-badges',
+	injectAt: '.feed-item .meta',
+	adapter: 'vue',
+	component: RowBadge
+});
+```
+
+- Do not loop `inject()` over `querySelectorAll` results, and do not add a `MutationObserver` to catch new rows; the Each Injection collects new matches by itself while it runs.
+- It has no `timeout`, `reinject`, or `listeners`. Zero matches keeps it `collecting`; a removed element ends that Child, and a reinserted match gets a new Child. Use standalone listeners for host events.
+- All Children share the same `props` object; there are no per-element props.
+- Inside each mounted component, `useMakooComponent()` / React hooks control only that Child. Outside, narrow `core.injection(name)` by `kind === 'component-each'` and use `children`.
 
 ## How To Declare Listeners
 
@@ -84,7 +102,7 @@ inject({
 
 `capture` defaults to `false`. Set it to `true` to run during the DOM capture phase. Attached listeners inherit the component's `reinject` and must not set their own. Keep callbacks in browser-compatible modules.
 
-Inside a mounted component, read attached or same-instance standalone listener status through the framework helpers (`attachedListener` / `globalListener`, or the React equivalents). Control the component with `start` / `stop` / `remove` from `useMakooComponent()` or `useComponentCommand()`, or with `core.command(name)` outside the component.
+Inside a mounted component, read attached or same-instance standalone listener status through the framework helpers (`attachedListener` / `listener`, or the React `useListener` equivalent). Control the component with `start` / `stop` / `remove` from `useMakooComponent()` or `useComponentCommand()`, or with `core.injection(name)` / `core.listener(name)` outside the component. Inside an Each Child the command is a `ChildCommand` (`{ name, stop }`): no `start`, `remove`, or attached-listener members.
 
 ## How To Choose The React / Vue Adapter
 
@@ -161,7 +179,7 @@ Guidance:
 
 ## Control, Status, And HMR
 
-Outside components, use `core.command(name)` and `core.statusHandle(name)`. Inside Vue use `useMakooComponent()`; inside React use `useComponentCommand`, `useComponentStatus`, and related hooks.
+Outside components, use `core.injection(name)` for components and Each Injections (narrow by `kind` before using `attachedListener` or `children`) and `core.listener(name)` for standalone listeners. Inside Vue use `useMakooComponent()`; inside React use `useComponentCommand`, `useComponentStatus`, `useListener`, and related hooks.
 
 Makoo does not manage HMR (ADR 0004). Prefer the default entry flow so Vite full-reloads on entry changes and framework plugins update components in place. Do not add routine `import.meta.hot.dispose` cleanup.
 
@@ -187,6 +205,7 @@ Before finishing injection work, check:
 - `injectAt` is a target DOM selector, not a URL or business condition.
 - `monkey.userscript.match` covers every page where the script should load.
 - `timeout`, `reinject`, and attached listeners sit on the declaration (attached listeners under `listeners`).
+- Repeated per-element UI uses `injectEach()`, not a loop of `inject()` calls or a hand-written observer.
 - Standalone listeners use `listen()` in `apply()` and preserve an explicit `capture: false` when that matters.
 - Callbacks remain browser-bundleable.
 - No routine HMR dispose unless a custom accept boundary recreates the instance.

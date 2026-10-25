@@ -55,7 +55,7 @@ type VueMakooComponent = ComponentCommand & {
   readonly lastError: MakooError | undefined;
   readonly status: Readonly<Ref<ComponentStatus>>;
   attachedListener(name: string): Readonly<Ref<ListenerStatus>>;
-  globalListener(name: string): ListenerCommand & {
+  listener(name: string): ListenerCommand & {
     readonly lastError: MakooError | undefined;
     readonly status: Readonly<Ref<ListenerStatus>>;
   };
@@ -64,11 +64,11 @@ type VueMakooComponent = ComponentCommand & {
 
 | Member | Description |
 | --- | --- |
-| `name`, `start()`, `stop()`, `remove()` | The owning component's [command handle](./status.md#command-handle), the same set of methods as `core.command(name)` |
+| `name`, `start()`, `stop()`, `remove()` | The owning component's [command handle](./status.md#command-handle), flattened from `core.injection(name).command` |
 | `status` | A read-only ref of the component status |
 | `lastError` | Reads the status handle's `lastError`; not reactive |
 | `attachedListener(name)` | A read-only ref of an attached listener's status; throws `MAKOO_LISTENER_NOT_FOUND` if the name doesn't exist |
-| `globalListener(name)` | The command and status ref of a standalone listener in the same instance |
+| `listener(name)` | Flat command methods and status ref for a standalone listener in the same instance (wraps `core.listener(name)`) |
 
 Refs such as `status` live on a plain object, and templates only auto-unwrap top-level variables. Assign them to top-level constants first (like `search` in the example above) instead of writing `makoo.status` directly in the template.
 
@@ -77,7 +77,7 @@ Refs such as `status` live on a plain object, and templates only auto-unwrap top
 ### Subscription and Release
 
 - Calling `useMakooComponent()` creates subscriptions for the component status and all attached listeners.
-- `globalListener(name)` subscribes to that standalone listener on first call; repeated calls with the same name reuse the same ref. After that standalone listener is removed and `apply()`d again, call `globalListener(name)` once more: the ref switches to the new listener, while `start` / `stop` / `remove` on the old return value still point to the old listener.
+- `listener(name)` subscribes to that standalone listener on first call; repeated calls with the same name reuse the same ref. After that standalone listener is removed and `apply()`d again, call `listener(name)` once more: the ref switches to the new listener, while `start` / `stop` / `remove` on the old return value still point to the old listener.
 - Subscriptions are released automatically when the component unmounts or its effect scope ends. Releasing subscriptions doesn't stop standalone listeners.
 - `lastError` doesn't trigger updates. When the component fails, its status becomes `failed`, so reading `status` in the template as well is enough to re-render. When a standalone listener's callback fails, its status stays `bound` and only `lastError` is written, so the UI won't update because of it.
 
@@ -85,11 +85,13 @@ Refs such as `status` live on a plain object, and templates only auto-unwrap top
 
 `useMakooComponent()` must be called synchronously inside a Vue app mounted by Makoo, in a component's `setup` or an effect scope. Child components can call it too, and get the same owning component.
 
+In a component mounted by [`injectEach()`](./declarations.md#injecteach), it returns the command and status of that Child Injection only: the command is a `ChildCommand` (`{ name, stop }`, no `start`/`remove`), and `stop()` unmounts this one component while the other matches stay mounted. A Child has no attached listeners, so `attachedListener(name)` always throws `MAKOO_LISTENER_NOT_FOUND`.
+
 | Situation | Error code |
 | --- | --- |
 | Makoo's injection context isn't available: not in an app mounted by Makoo, or not called synchronously in `setup` (for example, in an event handler or `setTimeout`) | `MAKOO_VUE_HOOK_OUTSIDE_COMPONENT` |
 | The injection context is available but there is no effect scope, for example when called in a plugin through `app.runWithContext()` | `MAKOO_VUE_HOOK_OUTSIDE_SCOPE` |
-| `globalListener(name)` can't find a standalone listener | `MAKOO_INJECTION_NOT_FOUND` |
+| `listener(name)` can't find a standalone listener | `MAKOO_INJECTION_NOT_FOUND` |
 
 ## `VuePlugin`
 

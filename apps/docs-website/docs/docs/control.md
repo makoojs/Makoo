@@ -7,12 +7,11 @@ This page shows how to start, stop, and remove an injection, and how to read its
 Get the handles from the Core instance by injection name:
 
 ```ts
-const panel = core.command('panel');
-const panelStatus = core.statusHandle('panel');
+const panel = core.injection('panel');
 
-await panel.stop();               // unmount the component, keep the registration
-panel.start();                    // find the mount target again and mount
-console.log(panelStatus.getSnapshot());
+await panel.command.stop();               // unmount the component, keep the registration
+panel.command.start();                    // find the mount target again and mount
+console.log(panel.statusHandle.getSnapshot());
 ```
 
 Handles can be obtained in any module that can access `core`; they don't need to be passed from where `apply()` is called. If the name doesn't exist, `MAKOO_INJECTION_NOT_FOUND` is thrown.
@@ -23,9 +22,10 @@ Handles can be obtained in any module that can access `core`; they don't need to
 import { gmMenu } from '@makoojs/cli/monkey';
 
 gmMenu.register('Show / hide panel', () => {
-  const status = core.statusHandle('panel').getSnapshot();
-  if (status === 'idle') core.command('panel').start();
-  else void core.command('panel').stop();
+  const panel = core.injection('panel');
+  const status = panel.statusHandle.getSnapshot();
+  if (status === 'idle') panel.command.start();
+  else void panel.command.stop();
 });
 ```
 
@@ -102,7 +102,7 @@ const ready = useAttachedListenerStatus('site-button', (status) => status === 'b
 ## Subscribe to Status Outside a Component
 
 ```ts
-const status = core.statusHandle('panel');
+const status = core.injection('panel').statusHandle;
 const unsubscribe = status.subscribe(() => {
   if (status.getSnapshot() === 'failed') console.warn('panel failed:', status.lastError);
 });
@@ -110,15 +110,36 @@ const unsubscribe = status.subscribe(() => {
 
 The `subscribe()` callback receives no arguments; call `getSnapshot()` inside the callback. When you no longer need it, call the returned `unsubscribe()`.
 
-A component's status handle can also read the status of its attached listeners. `core.statusHandle()` returns a union of the component and standalone listener status handle types, so check with `in` first:
+A component's status handle can also read the status of its attached listeners. Because `core.injection()` also returns Each Injections, narrow by `kind` first:
 
 ```ts
-if ('attachedListenerNames' in status) {
-  for (const name of status.attachedListenerNames) {
-    console.log(name, status.attachedListener(name).getSnapshot());
+const panel = core.injection('panel');
+if (panel.kind === 'component') {
+  for (const name of panel.statusHandle.attachedListenerNames) {
+    console.log(name, panel.statusHandle.attachedListener(name).getSnapshot());
   }
 }
 ```
+
+## Control Each Child Injection
+
+An Each Injection declared with [`injectEach()`](./injection.md#mount-on-every-match) is controlled as a whole through its own handles, and lists its Child Injections in `children`:
+
+```ts
+const badges = core.injection('badges');
+if (badges.kind === 'component-each') {
+  console.log(badges.statusHandle.getSnapshot()); // 'collecting'
+  for (const child of badges.children) {
+    console.log(child.command.name, child.statusHandle.getSnapshot()); // 'badges#1' 'mounted'
+  }
+  await badges.children[0]?.command.stop(); // unmount only the first badge
+}
+```
+
+- `children` is a snapshot in document order. Read it again after the page changes; there is no subscription for Children being added or removed.
+- A stopped or ended Child leaves `children`, and its element doesn't get a component again until the whole Each Injection is stopped and started. A Child command has only `stop`—Children run once and are not registered under a name, so there is nothing to restart or unregister.
+- `badges.command.stop()` unmounts every Child and stops watching for new matches; `start()` mounts on every match again.
+- A failing Child doesn't change the Each Injection's status; check the Child's own `statusHandle.lastError`.
 
 ## Wait for a Stop to Finish
 
@@ -126,27 +147,27 @@ if ('attachedListenerNames' in status) {
 
 ```ts
 try {
-  await core.command('panel').remove();
+  await core.injection('panel').command.remove();
 } catch (error) {
   // Cleanup failed: error is a MakooAggregateError and the injection has been closed
   console.error(error);
 }
 ```
 
-When you only send a stop request and don't care about the result, `void core.command('panel').stop()` is enough; cleanup failures are still printed to the console.
+When you only send a stop request and don't care about the result, `void core.injection('panel').command.stop()` is enough; cleanup failures are still printed to the console.
 
 ## Switch to a Different Configuration
 
 A declaration is fixed at `apply()` time. To change configuration such as the selector, timeout, or props object, remove it first and declare it again:
 
 ```ts
-await core.command('panel').remove();
+await core.injection('panel').command.remove();
 core.apply([
   inject({ name: 'panel', injectAt: '#new-place', adapter: 'vue', component: Panel })
 ]);
 ```
 
-Old handles obtained before removal still point to the old injection; call `core.command('panel')` again to get the new handle.
+Old handles obtained before removal still point to the old injection; call `core.injection('panel')` again to get the new handle.
 
 ## Destroy the Whole Instance
 

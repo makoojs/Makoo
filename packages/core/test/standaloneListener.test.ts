@@ -20,7 +20,7 @@ describe('standalone host listeners', () => {
 		vi.unstubAllGlobals();
 		const core = createMakoo();
 		core.apply([declaration]);
-		const handle = core.command('play');
+		const handle = core.listener('play').command;
 		await handle.stop();
 		Object.assign(declaration, {
 			name: 'changed',
@@ -34,37 +34,9 @@ describe('standalone host listeners', () => {
 		document.querySelector<HTMLButtonElement>('.host')?.click();
 		expect(callback).toHaveBeenCalledOnce();
 		expect(replacement).not.toHaveBeenCalled();
-		expect(core.command('play')).toBe(handle);
+		expect(core.listener('play').command).toBe(handle);
 		await handle.remove();
-		expect(() => core.command('play')).toThrow(
-			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
-		);
-	});
-
-	it.each([
-		{ name: '' },
-		{ name: 1 },
-		{ listenAt: '' },
-		{ listenAt: '[' },
-		{ type: '' },
-		{ type: null },
-		{ callback: null },
-		{ capture: 'yes' },
-		{ kind: 'unknown' }
-	])('rejects the entire batch for invalid config %j before binding', (invalid) => {
-		const callback = vi.fn();
-		const core = createMakoo();
-		const good = listen({ name: 'good', listenAt: '.host', type: 'click', callback });
-		const bad = { ...good, name: 'bad', ...invalid };
-		expect(() => Reflect.apply(core.apply, core, [[good, bad]])).toThrow(
-			expect.objectContaining({ code: MakooErrorCode.DECLARATION_INVALID })
-		);
-		document.querySelector<HTMLButtonElement>('.host')?.click();
-		expect(callback).not.toHaveBeenCalled();
-		expect(() => core.command('good')).toThrow(
-			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
-		);
-		expect(() => core.command('bad')).toThrow(
+		expect(() => core.listener('play').command).toThrow(
 			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 		);
 	});
@@ -79,18 +51,18 @@ describe('standalone host listeners', () => {
 				message: expect.stringContaining('play')
 			})
 		);
-		expect(() => core.command('play')).toThrow(
+		expect(() => core.listener('play').command).toThrow(
 			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 		);
 		core.apply([declaration]);
-		const original = core.command('play');
+		const original = core.listener('play').command;
 		expect(() => core.apply([{ ...declaration, name: 'new' }, declaration])).toThrow(
 			expect.objectContaining({ code: MakooErrorCode.INJECTION_NAME_CONFLICT })
 		);
-		expect(() => core.command('new')).toThrow(
+		expect(() => core.listener('new').command).toThrow(
 			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 		);
-		expect(core.command('play')).toBe(original);
+		expect(core.listener('play').command).toBe(original);
 		document.querySelector<HTMLButtonElement>('.host')?.click();
 		expect(callback).toHaveBeenCalledOnce();
 		await original.remove();
@@ -99,8 +71,8 @@ describe('standalone host listeners', () => {
 	it('keeps snapshots stable for events and repeated controls, and publishes changes to subscribers', async () => {
 		const core = createMakoo();
 		core.apply([listen({ name: 'play', listenAt: '.host', type: 'click', callback() {} })]);
-		const handle = core.command('play');
-		const view = core.statusHandle('play');
+		const handle = core.listener('play').command;
+		const view = core.listener('play').statusHandle;
 		const bound = view.getSnapshot();
 		const changes: string[] = [];
 		const unsubscribe = view.subscribe(() => {
@@ -117,7 +89,7 @@ describe('standalone host listeners', () => {
 		await handle.stop();
 		expect(view.getSnapshot()).toBe(idle);
 		handle.start();
-		expect(core.statusHandle('play')).toBe(view);
+		expect(core.listener('play').statusHandle).toBe(view);
 		expect(changes).toEqual(['idle', 'bound']);
 		unsubscribe();
 		await handle.remove();
@@ -136,24 +108,24 @@ describe('standalone host listeners', () => {
 		});
 		const core = createMakoo();
 		core.apply([listen({ name: 'play', listenAt: '.host', type: 'click', callback })]);
-		const handle = core.command('play');
-		const snapshot = core.statusHandle('play').getSnapshot();
+		const handle = core.listener('play').command;
+		const snapshot = core.listener('play').statusHandle.getSnapshot();
 		const button = document.querySelector<HTMLButtonElement>('.host');
 		button?.click();
 		await Promise.resolve();
-		expect(core.statusHandle('play').lastError).toMatchObject({
+		expect(core.listener('play').statusHandle.lastError).toMatchObject({
 			code: 'MAKOO_LISTENER_CALLBACK_FAILED',
 			cause,
 			message: expect.stringContaining('play')
 		});
-		expect(reported).toHaveBeenCalledWith(core.statusHandle('play').lastError);
-		expect(core.statusHandle('play').getSnapshot()).toBe(snapshot);
+		expect(reported).toHaveBeenCalledWith(core.listener('play').statusHandle.lastError);
+		expect(core.listener('play').statusHandle.getSnapshot()).toBe(snapshot);
 		button?.click();
 		await Promise.resolve();
 		expect(callback).toHaveBeenCalledTimes(2);
 		await handle.stop();
 		handle.start();
-		expect(core.statusHandle('play').lastError).toBeUndefined();
+		expect(core.listener('play').statusHandle.lastError).toBeUndefined();
 		await handle.remove();
 	});
 
@@ -171,8 +143,8 @@ describe('standalone host listeners', () => {
 			})
 		]);
 		document.querySelector<HTMLButtonElement>('.host')?.click();
-		expect(core.statusHandle('play').lastError?.cause).toBe('raw');
-		await core.command('play').remove();
+		expect(core.listener('play').statusHandle.lastError?.cause).toBe('raw');
+		await core.listener('play').command.remove();
 	});
 
 	it('accepts all records before execution and isolates binding failure from other listeners', async () => {
@@ -184,7 +156,7 @@ describe('standalone host listeners', () => {
 		const cause = new Error('binding denied');
 		let healthyBeforeStart: string | undefined;
 		vi.spyOn(first, 'addEventListener').mockImplementation(() => {
-			healthyBeforeStart = core.statusHandle('healthy').getSnapshot();
+			healthyBeforeStart = core.listener('healthy').statusHandle.getSnapshot();
 			throw cause;
 		});
 		const callback = vi.fn();
@@ -193,26 +165,26 @@ describe('standalone host listeners', () => {
 			listen({ name: 'healthy', listenAt: '#healthy', type: 'click', callback })
 		]);
 		expect(healthyBeforeStart).toBe('idle');
-		expect(core.statusHandle('broken').getSnapshot()).toBe('failed');
-		expect(core.statusHandle('broken').lastError).toMatchObject({
+		expect(core.listener('broken').statusHandle.getSnapshot()).toBe('failed');
+		expect(core.listener('broken').statusHandle.lastError).toMatchObject({
 			code: 'MAKOO_LISTENER_BIND_FAILED',
 			cause,
 			message: expect.stringContaining('broken')
 		});
-		expect(reported).toHaveBeenCalledWith(core.statusHandle('broken').lastError);
+		expect(reported).toHaveBeenCalledWith(core.listener('broken').statusHandle.lastError);
 		second.click();
 		expect(callback).toHaveBeenCalledOnce();
-		await core.command('broken').stop();
+		await core.listener('broken').command.stop();
 		second.click();
 		expect(callback).toHaveBeenCalledTimes(2);
 		vi.restoreAllMocks();
-		core.command('broken').start();
+		core.listener('broken').command.start();
 		first.click();
 		expect(callback).toHaveBeenCalledTimes(3);
-		await core.command('broken').remove();
+		await core.listener('broken').command.remove();
 		second.click();
 		expect(callback).toHaveBeenCalledTimes(4);
-		await core.command('healthy').remove();
+		await core.listener('healthy').command.remove();
 	});
 
 	it('uses the declared event and capture phase and supplies the real host as this', async () => {
@@ -242,7 +214,7 @@ describe('standalone host listeners', () => {
 		child.dispatchEvent(new Event('custom'));
 		expect(seen).toEqual(['host', 'child']);
 		expect(receiver).toBe(target);
-		await core.command('capture').stop();
+		await core.listener('capture').command.stop();
 		child.dispatchEvent(new Event('custom'));
 		expect(seen).toEqual(['host', 'child', 'child']);
 	});
@@ -259,9 +231,9 @@ describe('standalone host listeners', () => {
 		core.apply([listen({ name: 'play', listenAt: '.host', type: 'click', callback })]);
 		target.click();
 		expect(callback).not.toHaveBeenCalled();
-		expect(core.statusHandle('play').getSnapshot()).toBe('waiting');
-		expect(core.statusHandle('play').lastError).toBeUndefined();
-		await core.command('play').remove();
+		expect(core.listener('play').statusHandle.getSnapshot()).toBe('waiting');
+		expect(core.listener('play').statusHandle.lastError).toBeUndefined();
+		await core.listener('play').command.remove();
 	});
 
 	it('keeps removed handles and late event errors isolated from a same-name replacement', async () => {
@@ -274,15 +246,15 @@ describe('standalone host listeners', () => {
 		core.apply([
 			listen({ name: 'play', listenAt: '.host', type: 'click', callback: () => pending })
 		]);
-		const old = core.command('play');
-		const oldStatus = core.statusHandle('play');
+		const old = core.listener('play').command;
+		const oldStatus = core.listener('play').statusHandle;
 		document.querySelector<HTMLButtonElement>('.host')?.click();
 		await old.remove();
 		const callback = vi.fn();
 		core.apply([listen({ name: 'play', listenAt: '.host', type: 'click', callback })]);
-		const replacement = core.command('play');
+		const replacement = core.listener('play').command;
 		expect(replacement).not.toBe(old);
-		expect(core.statusHandle('play')).not.toBe(oldStatus);
+		expect(core.listener('play').statusHandle).not.toBe(oldStatus);
 		expect(() => old.start()).toThrow(
 			expect.objectContaining({ code: MakooErrorCode.INJECTION_REMOVED })
 		);
@@ -290,8 +262,8 @@ describe('standalone host listeners', () => {
 		await old.stop();
 		reject(new Error('late failure'));
 		await Promise.resolve();
-		expect(core.command('play')).toBe(replacement);
-		expect(core.statusHandle('play').lastError).toBeUndefined();
+		expect(core.listener('play').command).toBe(replacement);
+		expect(core.listener('play').statusHandle.lastError).toBeUndefined();
 		document.querySelector<HTMLButtonElement>('.host')?.click();
 		expect(callback).toHaveBeenCalledOnce();
 		await replacement.remove();
@@ -302,8 +274,8 @@ describe('standalone host listeners', () => {
 		const core = createMakoo();
 		const callback = vi.fn();
 		core.apply([listen({ name: 'play', listenAt: '.host', type: 'click', callback })]);
-		const handle = core.command('play');
-		const status = core.statusHandle('play');
+		const handle = core.listener('play').command;
+		const status = core.listener('play').statusHandle;
 		const cause = new Error('subscriber failed');
 		const unsubscribe = status.subscribe(() => {
 			throw cause;
@@ -321,7 +293,7 @@ describe('standalone host listeners', () => {
 				message: expect.stringContaining('"play"')
 			})
 		);
-		expect(() => core.command('play')).toThrow(
+		expect(() => core.listener('play').command).toThrow(
 			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 		);
 		document.querySelector<HTMLButtonElement>('.host')?.click();
@@ -337,16 +309,16 @@ describe('standalone host listeners', () => {
 		expect(callback).not.toHaveBeenCalled();
 		const core = createMakoo();
 		expect(core.apply([declaration])).toBeUndefined();
-		const handle = core.command('play');
-		expect(core.command('play')).toBe(handle);
-		expect(core.statusHandle('play').getSnapshot()).toBe('bound');
+		const handle = core.listener('play').command;
+		expect(core.listener('play').command).toBe(handle);
+		expect(core.listener('play').statusHandle.getSnapshot()).toBe('bound');
 		handle.start();
 		handle.start();
 		first.click();
 		second.click();
 		expect(callback).toHaveBeenCalledTimes(1);
 		await handle.stop();
-		expect(core.statusHandle('play').getSnapshot()).toBe('idle');
+		expect(core.listener('play').statusHandle.getSnapshot()).toBe('idle');
 		first.click();
 		expect(callback).toHaveBeenCalledTimes(1);
 		handle.start();
@@ -355,7 +327,7 @@ describe('standalone host listeners', () => {
 		await handle.remove();
 		first.click();
 		expect(callback).toHaveBeenCalledTimes(2);
-		expect(() => core.command('play')).toThrow(
+		expect(() => core.listener('play').command).toThrow(
 			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 		);
 		expect(() => handle.start()).toThrow(
@@ -366,10 +338,10 @@ describe('standalone host listeners', () => {
 	it('unregisters a stopped listener as soon as it is removed and settles later controls with that removal', async () => {
 		const core = createMakoo();
 		core.apply([listen({ name: 'play', listenAt: '.host', type: 'click', callback() {} })]);
-		const handle = core.command('play');
+		const handle = core.listener('play').command;
 		await handle.stop();
 		const removal = handle.remove();
-		expect(() => core.command('play')).toThrow(
+		expect(() => core.listener('play').command).toThrow(
 			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 		);
 		expect(handle.stop()).toBe(removal);

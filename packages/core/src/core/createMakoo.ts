@@ -1,14 +1,20 @@
 import { createAdapterRegistry } from '../adapter/registry';
 import type { MountAdapter } from '../adapter/types';
 import { createComponent } from '../component/component';
-import { validateComponent } from '../component/declaration';
-import type { MakooComponentDeclaration } from '../component/types';
+import { createComponentEach } from '../component/componentEach';
+import { validateComponent, validateComponentEach } from '../component/declaration';
+import type {
+	ComponentEachInjection,
+	ComponentInjection,
+	MakooComponentDeclaration,
+	MakooComponentEachDeclaration
+} from '../component/types';
 import { createDOMObserver, type DOMObserver } from '../dom/observer';
 import { MakooErrorCode } from '../error/ErrorCode';
 import { instanceObserverFailed, MakooAggregateError, MakooError } from '../error/MakooError';
 import { validateListener } from '../listener/declaration';
 import { createListener } from '../listener/listener';
-import type { MakooListenerDeclaration } from '../listener/types';
+import type { ListenerInjection, MakooListenerDeclaration } from '../listener/types';
 import type {
 	Injection,
 	MakooInjectionDeclaration,
@@ -28,7 +34,8 @@ type MakooInstance = {
 
 type PreparedDeclaration =
 	| { kind: 'listener'; config: MakooListenerDeclaration }
-	| { kind: 'component'; config: MakooComponentDeclaration; adapter: MountAdapter };
+	| { kind: 'component'; config: MakooComponentDeclaration; adapter: MountAdapter }
+	| { kind: 'component-each'; config: MakooComponentEachDeclaration; adapter: MountAdapter };
 
 /** Creates an independent Core Instance with no adapters and no injections. */
 export function createMakoo(): MakooRuntime {
@@ -49,8 +56,8 @@ export function createMakoo(): MakooRuntime {
 			assertOpen(makooInstance);
 			applyDeclarations(makooInstance, declarations);
 		},
-		command: (name) => getInjection(makooInstance.injections, name).command,
-		statusHandle: (name) => getInjection(makooInstance.injections, name).statusHandle,
+		injection: (name) => getComponentInjection(makooInstance.injections, name),
+		listener: (name) => getListenerInjection(makooInstance.injections, name),
 		observe: (handler) => {
 			assertOpen(makooInstance);
 			makooInstance.observers.add(handler);
@@ -98,11 +105,21 @@ function prepareDeclarations(
 		}
 		injectionNames.add(name);
 	}
-	return injectionConfigs.map((config) =>
-		config.kind === 'listener'
-			? { kind: 'listener', config }
-			: { kind: 'component', config, adapter: adapters.require(config.adapter) }
-	);
+	return injectionConfigs.map((config): PreparedDeclaration => {
+		if (config.kind === 'listener') return { kind: 'listener', config };
+		if (config.kind === 'component-each') {
+			return {
+				kind: 'component-each',
+				config,
+				adapter: adapters.require(config.adapter)
+			};
+		}
+		return {
+			kind: 'component',
+			config,
+			adapter: adapters.require(config.adapter)
+		};
+	});
 }
 
 function registerInjection(
@@ -114,24 +131,42 @@ function registerInjection(
 	const onDiagnostic = (name: string, error: MakooError) => {
 		notifyObservers(makooInstance, { type: 'diagnostic', name, error });
 	};
-	const injection: Injection =
-		declaration.kind === 'listener'
-			? createListener(
-					declaration.config,
-					dom,
-					() => unregisterInjection(makooInstance, injection),
-					isDisposed,
-					onDiagnostic
-				)
-			: createComponent(
-					declaration.config,
-					declaration.adapter,
-					dom,
-					() => unregisterInjection(makooInstance, injection),
-					isDisposed,
-					(name) => standaloneListener(injections, name),
-					onDiagnostic
-				);
+	const onRemoved = () => unregisterInjection(makooInstance, injection);
+	const listener = (name: string) => getListenerInjection(injections, name);
+	let injection: Injection;
+	switch (declaration.kind) {
+		case 'listener':
+			injection = createListener(
+				declaration.config,
+				dom,
+				onRemoved,
+				isDisposed,
+				onDiagnostic
+			);
+			break;
+		case 'component':
+			injection = createComponent(
+				declaration.config,
+				declaration.adapter,
+				dom,
+				onRemoved,
+				isDisposed,
+				listener,
+				onDiagnostic
+			);
+			break;
+		case 'component-each':
+			injection = createComponentEach(
+				declaration.config,
+				declaration.adapter,
+				dom,
+				onRemoved,
+				isDisposed,
+				listener,
+				onDiagnostic
+			);
+			break;
+	}
 	injections.set(declaration.config.name, injection);
 	return injection;
 }
@@ -199,19 +234,35 @@ function disposeInstance(makooInstance: MakooInstance): Promise<void> {
 	return disposal;
 }
 
-function standaloneListener(injections: ReadonlyMap<string, Injection>, name: string) {
-	const injection = getInjection(injections, name);
-	if (injection.kind !== 'listener') {
+function getInjection(injections: ReadonlyMap<string, Injection>, name: string): Injection {
+	const injection = injections.get(name);
+	if (!injection) {
 		throw new MakooError(`Unknown injection "${name}"`, {
 			code: MakooErrorCode.INJECTION_NOT_FOUND
 		});
 	}
-	return { command: injection.command, statusHandle: injection.statusHandle };
+	return injection;
 }
 
-function getInjection(injections: ReadonlyMap<string, Injection>, name: string): Injection {
-	const injection = injections.get(name);
-	if (!injection) {
+function getComponentInjection(
+	injections: ReadonlyMap<string, Injection>,
+	name: string
+): ComponentInjection | ComponentEachInjection {
+	const injection = getInjection(injections, name);
+	if (injection.kind !== 'component' && injection.kind !== 'component-each') {
+		throw new MakooError(`Unknown injection "${name}"`, {
+			code: MakooErrorCode.INJECTION_NOT_FOUND
+		});
+	}
+	return injection;
+}
+
+function getListenerInjection(
+	injections: ReadonlyMap<string, Injection>,
+	name: string
+): ListenerInjection {
+	const injection = getInjection(injections, name);
+	if (injection.kind !== 'listener') {
 		throw new MakooError(`Unknown injection "${name}"`, {
 			code: MakooErrorCode.INJECTION_NOT_FOUND
 		});
@@ -226,9 +277,14 @@ function validateInjection(input: unknown): MakooInjectionDeclaration {
 				return validateListener(input);
 			case 'component':
 				return validateComponent(input);
+			case 'component-each':
+				return validateComponentEach(input);
 		}
 	}
-	throw new MakooError('Invalid declaration\nkind: Expected listener or component', {
-		code: MakooErrorCode.DECLARATION_INVALID
-	});
+	throw new MakooError(
+		'Invalid declaration\nkind: Expected listener, component, or component-each',
+		{
+			code: MakooErrorCode.DECLARATION_INVALID
+		}
+	);
 }

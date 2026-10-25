@@ -32,12 +32,14 @@ core.apply([
 
 以下 hooks 只能在 Makoo 挂载的 React 组件树中调用，子组件同样可用；否则抛出 `MAKOO_REACT_HOOK_OUTSIDE_COMPONENT`。所有订阅都在组件卸载时自动释放。
 
+在 [`injectEach()`](./declarations.md#injecteach) 挂载的组件中，hooks 只指向这一个子注入：`useComponentCommand()` 返回 `ChildCommand`（`{ name, stop }`，没有 `start`/`remove`），`stop()` 只卸载这一个组件，其他匹配上的组件保持挂载。子注入没有附属监听，因此 `useAttachedListenerStatus()` 总是抛出 `MAKOO_LISTENER_NOT_FOUND`。
+
 | Hook | 返回 | 是否订阅 |
 | --- | --- | --- |
 | [`useComponentCommand()`](#usecomponentcommand) | 所属组件的命令入口 | 否 |
 | [`useComponentStatus()`](#usecomponentstatus) | 组件状态 | 是 |
 | [`useAttachedListenerStatus()`](#useattachedlistenerstatus) | 某个附属监听的状态 | 是 |
-| [`useGlobalListener()`](#usegloballistener) | 独立监听的命令和状态 | 是 |
+| [`useListener()`](#uselistener) | 独立监听的命令和状态 | 是 |
 | [`useComponentStatusHandle()`](#usecomponentstatushandle) | 所属组件的原始状态入口 | 否 |
 
 ```tsx
@@ -86,10 +88,10 @@ function useAttachedListenerStatus<T>(name: string, select: (status: ListenerSta
 
 只订阅所属组件中名为 `name` 的附属监听。`name` 变化时切换订阅。名称不存在时抛出 `MAKOO_LISTENER_NOT_FOUND`。
 
-### `useGlobalListener()`
+### `useListener()`
 
 ```ts
-function useGlobalListener(name: string): ListenerCommand & {
+function useListener(name: string): ListenerCommand & {
   readonly status: ListenerStatus;
   readonly lastError: MakooError | undefined;
 };
@@ -103,7 +105,7 @@ function useGlobalListener(name: string): ListenerCommand & {
 
 ```tsx
 function ShortcutToggle() {
-  const shortcut = useGlobalListener('shortcut');
+  const shortcut = useListener('shortcut');
 
   return (
     <button onClick={() => (shortcut.status === 'idle' ? shortcut.start() : shortcut.stop())}>
@@ -119,7 +121,7 @@ function ShortcutToggle() {
 function useComponentStatusHandle(): ComponentStatusHandle;
 ```
 
-返回所属组件的原始[状态入口](./status.md#状态入口)，与 `core.statusHandle(name)` 相同。取得它不会建立订阅，常用于读取 `lastError`：
+返回所属组件的原始[状态入口](./status.md#状态入口)，与 `core.injection(name).statusHandle` 相同。取得它不会建立订阅，常用于读取 `lastError`：
 
 ```tsx
 const failed = useComponentStatus((status) => status === 'failed');

@@ -1,9 +1,11 @@
 import type {
-	AdapterMountParams,
+	ChildCommand,
+	ChildInjection,
 	ComponentCommand,
+	ComponentInjection,
 	ComponentStatus,
-	ComponentStatusHandle,
 	ListenerCommand,
+	ListenerInjection,
 	ListenerStatus,
 	ListenerStatusHandle,
 	StateView
@@ -22,17 +24,19 @@ import {
 import { VueErrorCode } from './error';
 
 export type VueComponentContext = {
-	readonly command: ComponentCommand;
-	readonly statusHandle: ComponentStatusHandle;
-	readonly globalListener: AdapterMountParams['globalListener'];
+	readonly injection: ComponentInjection | ChildInjection;
+	readonly listener: (name: string) => ListenerInjection;
 	/** Releases of subscriptions still held by this app; drained if mount fails. */
 	readonly subscriptions: Set<() => void>;
 };
 
 export const componentContextKey: InjectionKey<VueComponentContext> = Symbol('makoo-component');
 
-/** The current component's command, plus reactive status refs. */
-export type VueMakooComponent = ComponentCommand & {
+/**
+ * The current component's command, plus reactive status refs.
+ * Inside a Child Injection the command is a {@link ChildCommand}: `stop` only, no `start`/`remove`.
+ */
+export type VueMakooComponent = (ComponentCommand | ChildCommand) & {
 	/** The error that ended the last execution; not reactive. */
 	readonly lastError: MakooError | undefined;
 	/** The component status. */
@@ -47,9 +51,11 @@ export type VueMakooComponent = ComponentCommand & {
 	 * Looks up a standalone listener in the same Core Instance and tracks its status until the
 	 * calling scope is disposed. Repeated calls for the same listener share one status ref.
 	 *
+	 * Flat command methods and a reactive `status` wrap the same bag as `core.listener(name)`.
+	 *
 	 * @throws {@link MakooError} `INJECTION_NOT_FOUND` when no standalone listener has that name.
 	 */
-	globalListener(name: string): VueStandaloneListener;
+	listener(name: string): VueStandaloneListener;
 };
 
 type VueStandaloneListener = ListenerCommand & {
@@ -88,27 +94,35 @@ export function useMakooComponent(): VueMakooComponent {
 			{ code: VueErrorCode.VUE_HOOK_OUTSIDE_SCOPE }
 		);
 	}
-	const { command, statusHandle } = context;
+	const { command, statusHandle } = context.injection;
 	const componentStatus = subscribeState(statusHandle, context.subscriptions);
-	const listeners = new Map(
-		statusHandle.attachedListenerNames.map((name) => [
-			name,
-			subscribeState(statusHandle.attachedListener(name), context.subscriptions)
-		])
-	);
+	const attached: [string, Readonly<Ref<ListenerStatus>>][] =
+		'attachedListener' in statusHandle
+			? statusHandle.attachedListenerNames.map((name) => [
+					name,
+					subscribeState(statusHandle.attachedListener(name), context.subscriptions)
+				])
+			: [];
+	const listeners = new Map(attached);
 	const standaloneListeners = new Map<string, StandaloneSubscription>();
 	onScopeDispose(() => {
 		for (const entry of [...standaloneListeners.values()]) entry.release();
 	});
+	const controls: ComponentCommand | ChildCommand =
+		'remove' in command
+			? {
+					name: command.name,
+					start: command.start,
+					stop: command.stop,
+					remove: command.remove
+				}
+			: { name: command.name, stop: command.stop };
 	return {
-		name: command.name,
+		...controls,
 		status: componentStatus,
 		get lastError() {
 			return statusHandle.lastError;
 		},
-		start: command.start,
-		stop: command.stop,
-		remove: command.remove,
 		attachedListener(name) {
 			const listener = listeners.get(name);
 			if (!listener)
@@ -117,8 +131,8 @@ export function useMakooComponent(): VueMakooComponent {
 				});
 			return listener;
 		},
-		globalListener(name) {
-			const found = context.globalListener(name);
+		listener(name) {
+			const found = context.listener(name);
 			return {
 				name: found.command.name,
 				start: found.command.start,

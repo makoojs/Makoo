@@ -32,12 +32,14 @@ The `props` in the declaration are passed as the component's props.
 
 The following hooks can only be called in a React component tree mounted by Makoo, child components included; otherwise they throw `MAKOO_REACT_HOOK_OUTSIDE_COMPONENT`. All subscriptions are released automatically when the component unmounts.
 
+In a component mounted by [`injectEach()`](./declarations.md#injecteach), the hooks refer to that Child Injection only: `useComponentCommand()` returns a `ChildCommand` (`{ name, stop }`, no `start`/`remove`), and `stop()` unmounts this one component while the other matches stay mounted. A Child has no attached listeners, so `useAttachedListenerStatus()` always throws `MAKOO_LISTENER_NOT_FOUND`.
+
 | Hook | Returns | Subscribes |
 | --- | --- | --- |
 | [`useComponentCommand()`](#usecomponentcommand) | The owning component's command handle | No |
 | [`useComponentStatus()`](#usecomponentstatus) | The component status | Yes |
 | [`useAttachedListenerStatus()`](#useattachedlistenerstatus) | The status of an attached listener | Yes |
-| [`useGlobalListener()`](#usegloballistener) | The command and status of a standalone listener | Yes |
+| [`useListener()`](#uselistener) | The command and status of a standalone listener | Yes |
 | [`useComponentStatusHandle()`](#usecomponentstatushandle) | The owning component's raw status handle | No |
 
 ```tsx
@@ -86,16 +88,16 @@ function useAttachedListenerStatus<T>(name: string, select: (status: ListenerSta
 
 Subscribes only to the attached listener named `name` in the owning component. The subscription switches when `name` changes. Throws `MAKOO_LISTENER_NOT_FOUND` if the name doesn't exist.
 
-### `useGlobalListener()`
+### `useListener()`
 
 ```ts
-function useGlobalListener(name: string): ListenerCommand & {
+function useListener(name: string): ListenerCommand & {
   readonly status: ListenerStatus;
   readonly lastError: MakooError | undefined;
 };
 ```
 
-Finds a standalone listener in the same Core instance, returns its command handle methods, and subscribes to its status. Unmounting the component only releases the subscription and doesn't stop this listener.
+Finds a standalone listener in the same Core instance, returns flat command methods wrapping `core.listener(name)`, and subscribes to its status. Unmounting the component only releases the subscription and doesn't stop this listener.
 
 When no standalone listener is found (the name doesn't exist, belongs to a component, or is only an attached listener), it throws `MAKOO_INJECTION_NOT_FOUND`.
 
@@ -103,7 +105,7 @@ The lookup is repeated on every render. After that standalone listener is remove
 
 ```tsx
 function ShortcutToggle() {
-  const shortcut = useGlobalListener('shortcut');
+  const shortcut = useListener('shortcut');
 
   return (
     <button onClick={() => (shortcut.status === 'idle' ? shortcut.start() : shortcut.stop())}>
@@ -119,7 +121,7 @@ function ShortcutToggle() {
 function useComponentStatusHandle(): ComponentStatusHandle;
 ```
 
-Returns the owning component's raw [status handle](./status.md#status-handle), the same as `core.statusHandle(name)`. Getting it creates no subscription; it is commonly used to read `lastError`:
+Returns the owning component's raw [status handle](./status.md#status-handle), the same as `core.injection(name).statusHandle`. Getting it creates no subscription; it is commonly used to read `lastError`:
 
 ```tsx
 const failed = useComponentStatus((status) => status === 'failed');

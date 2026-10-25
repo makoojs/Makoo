@@ -43,7 +43,7 @@ describe('core disposal', () => {
 		const core = createMakoo();
 		core.useAdapter(adapter(() => ({ mounted: true }), unmount));
 		core.apply([inject({ name: 'panel', injectAt: '#host', adapter: 'plain', component: {} })]);
-		const panel = core.command('panel');
+		const panel = core.injection('panel').command;
 		const disposal = core.dispose();
 		expect(() => panel.start()).toThrow(
 			expect.objectContaining({ code: MakooErrorCode.INSTANCE_DISPOSED })
@@ -55,10 +55,10 @@ describe('core disposal', () => {
 		).toThrow(expect.objectContaining({ code: MakooErrorCode.INSTANCE_DISPOSED }));
 		await disposal;
 		expect(unmount).toHaveBeenCalledOnce();
-		expect(() => core.command('panel')).toThrow(
+		expect(() => core.injection('panel').command).toThrow(
 			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 		);
-		expect(() => core.statusHandle('panel')).toThrow(
+		expect(() => core.injection('panel').statusHandle).toThrow(
 			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 		);
 	});
@@ -114,7 +114,7 @@ describe('core disposal', () => {
 		const core = createMakoo();
 		core.useAdapter(adapter(() => 'handle', unmount));
 		core.apply([inject({ name: 'panel', injectAt: '#host', adapter: 'plain', component: {} })]);
-		const panel = core.command('panel');
+		const panel = core.injection('panel').command;
 		const disposal = core.dispose();
 		const repeated = core.dispose();
 		expect(repeated).toBe(disposal);
@@ -134,8 +134,8 @@ describe('core disposal', () => {
 		});
 		await expect(repeated).rejects.toBeInstanceOf(MakooError);
 		expect(unmount).toHaveBeenCalledOnce();
-		expect(core.command('panel')).toBe(panel);
-		const diagnostic = core.statusHandle('panel').lastError;
+		expect(core.injection('panel').command).toBe(panel);
+		const diagnostic = core.injection('panel').statusHandle.lastError;
 		expect(diagnostic?.code).toBe(MakooErrorCode.INJECTION_CLEANUP_FAILED);
 		expect(() => panel.start()).toThrow(
 			expect.objectContaining({ code: MakooErrorCode.INSTANCE_DISPOSED })
@@ -144,7 +144,7 @@ describe('core disposal', () => {
 			code: MakooErrorCode.INSTANCE_CLEANUP_FAILED
 		});
 		expect(unmount).toHaveBeenCalledOnce();
-		expect(core.statusHandle('panel').lastError).toBe(diagnostic);
+		expect(core.injection('panel').statusHandle.lastError).toBe(diagnostic);
 	});
 
 	it('preserves an earlier execution error when disposal cleanup also fails', async () => {
@@ -161,9 +161,11 @@ describe('core disposal', () => {
 			})
 		);
 		core.apply([inject({ name: 'panel', injectAt: '#host', adapter: 'plain', component: {} })]);
-		const panel = core.command('panel');
-		await vi.waitFor(() => expect(core.statusHandle('panel').getSnapshot()).toBe('failed'));
-		const diagnostic = core.statusHandle('panel').lastError;
+		const panel = core.injection('panel').command;
+		await vi.waitFor(() =>
+			expect(core.injection('panel').statusHandle.getSnapshot()).toBe('failed')
+		);
+		const diagnostic = core.injection('panel').statusHandle.lastError;
 		expect(diagnostic).toMatchObject({
 			code: MakooErrorCode.INJECTION_CLEANUP_FAILED,
 			errors: [
@@ -181,8 +183,8 @@ describe('core disposal', () => {
 			code: MakooErrorCode.INSTANCE_CLEANUP_FAILED,
 			errors: [diagnostic]
 		});
-		expect(core.statusHandle('panel').lastError).toBe(diagnostic);
-		expect(core.command('panel')).toBe(panel);
+		expect(core.injection('panel').statusHandle.lastError).toBe(diagnostic);
+		expect(core.injection('panel').command).toBe(panel);
 	});
 
 	it('continues disposing other injections when one cleanup fails', async () => {
@@ -220,10 +222,10 @@ describe('core disposal', () => {
 		});
 		expect(unmountPanel).toHaveBeenCalledOnce();
 		expect(unmountOther).toHaveBeenCalledOnce();
-		expect(() => core.command('other')).toThrow(
+		expect(() => core.injection('other').command).toThrow(
 			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 		);
-		expect(core.statusHandle('panel').getSnapshot()).toBe('failed');
+		expect(core.injection('panel').statusHandle.getSnapshot()).toBe('failed');
 	});
 
 	it('leaves another core instance running', async () => {
@@ -244,10 +246,10 @@ describe('core disposal', () => {
 		play.click();
 		expect(firstCallback).not.toHaveBeenCalled();
 		expect(secondCallback).toHaveBeenCalledOnce();
-		expect(() => first.command('play')).toThrow(
+		expect(() => first.listener('play').command).toThrow(
 			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
 		);
-		expect(second.statusHandle('play').getSnapshot()).toBe('bound');
-		await second.command('play').remove();
+		expect(second.listener('play').statusHandle.getSnapshot()).toBe('bound');
+		await second.listener('play').command.remove();
 	});
 });
