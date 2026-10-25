@@ -17,12 +17,20 @@ A description of the configuration a component or host listener needs; by itself
 _Avoid_: running instance, mount callback
 
 **Injection** (注入):
-A component or standalone listener that belongs directly to a Core Instance and has its own name and control entry.
+A component, Each Injection, or standalone listener that belongs directly to a Core Instance and has its own name and control entry.
 _Avoid_: generic Task, new product feature, framework component instance
 
 **Component** (组件):
 An injection made of one framework component together with its attached listeners. It may use a standalone listener in the same Core Instance without owning that listener.
 _Avoid_: single mount, framework component instance
+
+**Each Injection** (Each 注入):
+An injection that mounts the same framework component on every host element matching its selector, including elements that start matching while it runs, under one name and one control entry.
+_Avoid_: component group, multi-component, list injection
+
+**Child Injection** (子注入):
+What an Each Injection mounts on one matching element: it has its own command and status handle but no top-level name and no attached listeners, and once it leaves its Each Injection it cannot rejoin.
+_Avoid_: top-level injection, attached listener, framework child component
 
 **Host Listener** (宿主监听):
 An event listener on host page elements, covering both standalone and attached listeners.
@@ -47,7 +55,7 @@ _Avoid_: automatic component detector, injection scheduler
 ### Host elements and execution
 
 **Mount Target** (挂载目标):
-The host page element a component finds through its selector and uses to hold the component container.
+The host page element a component or Child Injection finds through its selector and uses to hold the component container.
 _Avoid_: component container, component root node
 
 **Component Container** (组件容器):
@@ -59,7 +67,7 @@ The actual host page element a given host event binding attaches to.
 _Avoid_: listener selector, component container
 
 **Component Execution** (组件执行):
-One run of a component, starting from waiting for the mount target and ending when this round's mount and attached listener resources have been fully cleaned up.
+One run of a component, starting from waiting for the mount target and ending when this round's mount and attached listener resources have been fully cleaned up. A Child Injection's execution starts at the element it was given and does not wait.
 _Avoid_: the injection itself, generic lifecycle
 
 **Listener Execution** (监听执行):
@@ -85,7 +93,7 @@ A read-only entry for an injection's current status; a component's status handle
 _Avoid_: the status string itself, control action, business store, event bus
 
 **Status** (状态):
-The current run phase of a component: not yet run or stopped, waiting for a target, mounted, or failed.
+The current run phase of a component: not yet run or stopped, waiting for a target, mounted, or failed. A Child Injection uses the same phases. An Each Injection instead is not yet run or stopped, collecting (running, with or without matches), or failed.
 _Avoid_: status handle, listener status, business store
 
 **Listener Status** (监听状态):

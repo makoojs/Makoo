@@ -110,13 +110,36 @@ const unsubscribe = status.subscribe(() => {
 
 The `subscribe()` callback receives no arguments; call `getSnapshot()` inside the callback. When you no longer need it, call the returned `unsubscribe()`.
 
-A component's status handle can also read the status of its attached listeners:
+A component's status handle can also read the status of its attached listeners. Because `core.injection()` also returns Each Injections, narrow by `kind` first:
 
 ```ts
-for (const name of status.attachedListenerNames) {
-  console.log(name, status.attachedListener(name).getSnapshot());
+const panel = core.injection('panel');
+if (panel.kind === 'component') {
+  for (const name of panel.statusHandle.attachedListenerNames) {
+    console.log(name, panel.statusHandle.attachedListener(name).getSnapshot());
+  }
 }
 ```
+
+## Control Each Child Injection
+
+An Each Injection declared with [`injectEach()`](./injection.md#mount-on-every-match) is controlled as a whole through its own handles, and lists its Child Injections in `children`:
+
+```ts
+const badges = core.injection('badges');
+if (badges.kind === 'component-each') {
+  console.log(badges.statusHandle.getSnapshot()); // 'collecting'
+  for (const child of badges.children) {
+    console.log(child.command.name, child.statusHandle.getSnapshot()); // 'badges#1' 'mounted'
+  }
+  await badges.children[0]?.command.stop(); // unmount only the first badge
+}
+```
+
+- `children` is a snapshot in document order. Read it again after the page changes; there is no subscription for Children being added or removed.
+- A stopped or removed Child leaves `children`, and its element doesn't get a component again until the whole Each Injection is stopped and started. Its old handles can't start it again.
+- `badges.command.stop()` unmounts every Child and stops watching for new matches; `start()` mounts on every match again.
+- A failing Child doesn't change the Each Injection's status; check the Child's own `statusHandle.lastError`.
 
 ## Wait for a Stop to Finish
 

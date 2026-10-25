@@ -18,7 +18,7 @@ Takes no arguments. Adapters are registered through [`useAdapter()`](#useadapter
 interface MakooRuntime {
   useAdapter(adapter: MountAdapter): void;
   apply(declarations: readonly MakooInjectionDeclaration[]): void;
-  injection(name: string): ComponentInjection;
+  injection(name: string): ComponentInjection | ComponentEachInjection;
   listener(name: string): ListenerInjection;
   observe(handler: ObservationHandler): () => void;
   dispose(): Promise<void>;
@@ -54,13 +54,13 @@ core.apply([
 
 Order of execution:
 
-1. Check the whole batch in this order: whether the argument is a non-empty array; whether each entry is a component or listener declaration, and whether its attached listeners follow the rules (no duplicate names within the same component, no `reinject`); whether any name conflicts with another item in the batch or an existing injection in the instance; and whether the adapters selected by components are registered.
+1. Check the whole batch in this order: whether the argument is a non-empty array; whether each entry is a component, Each Injection, or listener declaration, and whether its attached listeners follow the rules (no duplicate names within the same component, no `reinject`); whether any name conflicts with another item in the batch or an existing injection in the instance; and whether the adapters selected by components are registered.
 2. If any item fails, an error is thrown synchronously, and nothing in the batch is registered or started.
 3. If all pass, each item is registered, at which point `injection()` / `listener()` can find them; they are then started in array order.
 
 | Situation | Error code |
 | --- | --- |
-| The argument is not a non-empty array, an entry is not a component or listener declaration, or an attached listener sets `reinject` | `MAKOO_DECLARATION_INVALID` |
+| The argument is not a non-empty array, an entry is not a component, Each Injection, or listener declaration, or an attached listener sets `reinject` | `MAKOO_DECLARATION_INVALID` |
 | A name duplicates another item in the batch or an existing injection in the instance | `MAKOO_INJECTION_NAME_CONFLICT` |
 | The adapter selected by a component is not registered | `MAKOO_ADAPTER_NOT_FOUND` |
 | The instance has been disposed | `MAKOO_INSTANCE_DISPOSED` |
@@ -69,7 +69,7 @@ Order of execution:
 
 ### `injection()`
 
-Gets a component injection by name. The returned object contains the [command handle](./status.md#command-handle) `command` and the [status handle](./status.md#status-handle) `statusHandle`.
+Gets a component or an Each Injection by name. The returned object contains the [command handle](./status.md#command-handle) `command` and the [status handle](./status.md#status-handle) `statusHandle`; use `kind` to tell which one it is.
 
 ```ts
 interface ComponentInjection {
@@ -77,6 +77,15 @@ interface ComponentInjection {
   readonly command: ComponentCommand;
   readonly statusHandle: ComponentStatusHandle;
 }
+
+interface ComponentEachInjection {
+  readonly kind: 'component-each';
+  readonly command: ComponentCommand;
+  readonly statusHandle: ComponentEachStatusHandle;
+  readonly children: readonly ChildInjection[];
+}
+
+type ChildInjection = ComponentInjection;
 ```
 
 ```ts
@@ -85,6 +94,19 @@ await panel.command.stop();
 panel.command.start();
 console.log(panel.statusHandle.getSnapshot()); // 'waiting' | 'mounted' | ...
 ```
+
+Members that only exist on one kind, such as a component's `attachedListener()` or an Each Injection's `children`, are available after narrowing by `kind`:
+
+```ts
+const badges = core.injection('badges');
+if (badges.kind === 'component-each') {
+  for (const child of badges.children) {
+    console.log(child.command.name, child.statusHandle.getSnapshot()); // 'badges#1' 'mounted'
+  }
+}
+```
+
+`children` lists the live Child Injections in document order of their elements. Each read returns a new array; the entries in it are the same objects across reads. A Child entry is shaped like a component injection, with its own `command` and `statusHandle` and no attached listeners. Its `command.name` is a display name like `badges#1`, not a name that `injection()` can look up. After a Child is stopped, removed, or ends, it leaves `children`: its `stop()` and `remove()` still resolve, its status handle stays readable, and its `start()` throws `MAKOO_INJECTION_REMOVED`.
 
 Throws `MAKOO_INJECTION_NOT_FOUND` if the name doesn't exist or belongs to a standalone listener. Repeated calls for the same injection return the same object. The object is bound to the particular injection it was obtained for: after that injection is removed, the old object doesn't act on a same-named injection registered later.
 

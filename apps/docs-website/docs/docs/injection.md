@@ -41,7 +41,7 @@ core.apply([
 2. Run `document.querySelector('your selector')` in the console and confirm that it returns this element.
 3. Put the selector in `injectAt`.
 
-Core uses the first matching element and appends a `div` to its **end** as the component container. To make the component appear at the start of an element or next to it, choose its parent element as the mount target and adjust the position with CSS.
+Core uses the first matching element and appends a `div` to its **end** as the component container. To mount on every matching element, see [Mount on Every Match](#mount-on-every-match). To make the component appear at the start of an element or next to it, choose its parent element as the mount target and adjust the position with CSS.
 
 Components that are not tied to a specific position, such as floating panels, can mount to `body` and use `position: fixed` in their styles.
 
@@ -90,6 +90,45 @@ After a timeout, the component status becomes `failed` and the error code of `la
 
 When a single-page app switches views or partially refreshes a list, it may remove the mount target and create a new one. By default the component ends along with it; to make it remount on the new element, enable `reinject`; see [Handle Node Replacement](./reinject.md).
 
+## Mount on Every Match
+
+When the same component belongs on many elements, such as a badge next to every comment author, declare it with `injectEach()` instead of `inject()`:
+
+::: code-group
+```ts [Vue]
+import { createMakoo, injectEach } from '@makoojs/core';
+import { createVueAdapter } from '@makoojs/vue';
+import Badge from './Badge.vue';
+
+const core = createMakoo();
+core.useAdapter(createVueAdapter());
+core.apply([
+  injectEach({ name: 'badges', injectAt: '.comment .author', adapter: 'vue', component: Badge })
+]);
+```
+```ts [React]
+import { createMakoo, injectEach } from '@makoojs/core';
+import { createReactAdapter } from '@makoojs/react';
+import Badge from './Badge';
+
+const core = createMakoo();
+core.useAdapter(createReactAdapter());
+core.apply([
+  injectEach({ name: 'badges', injectAt: '.comment .author', adapter: 'react', component: Badge })
+]);
+```
+:::
+
+Every matching element gets its own component, called a Child Injection. Compared with `inject()`:
+
+- All current matches are mounted, in document order. Elements that match later, such as comments loaded by scrolling, are mounted too while the Each Injection is running.
+- There is no `timeout`. When nothing matches yet, the status stays `collecting` and Core keeps watching; it never fails with `MAKOO_TARGET_WAIT_TIMEOUT`.
+- There is no `reinject`. When the host removes an element, its component ends; when a matching element is inserted, it gets a new component.
+- There are no attached listeners. Use a [standalone listener](./listeners.md) for host events.
+- Every component receives the same `props` object.
+
+Inside each component, `useMakooComponent()` and the React hooks refer to that one component, so a close button only closes its own badge. To control the components from outside, see [Control Each Child Injection](./control.md#control-each-child-injection).
+
 ## Use Vue and React Together
 
 Register both adapters and let each component choose:
@@ -119,5 +158,5 @@ When you need to listen to elements of the host page, prefer [attached listeners
 
 ## Reference
 
-- [All fields of `inject()`](../api/declarations.md#inject)
+- [All fields of `inject()`](../api/declarations.md#inject) / [`injectEach()`](../api/declarations.md#injecteach)
 - [Vue API](../api/vue.md) / [React API](../api/react.md)

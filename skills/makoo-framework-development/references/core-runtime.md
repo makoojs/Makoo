@@ -18,7 +18,8 @@ Between two reentry points, runtime state does not change.
 
 - Re-check cancellation or target validity immediately after a reentry point, and only there. A check with no reentry point since the previous check is redundant.
 - Component executions re-check `signal.aborted` at three points: after the `waiting` notification, after `mount`, and after each attached listener starts.
-- Stale callbacks are filtered by their owner. `component.ts` and `listener.ts` compare the execution slot with the calling execution; the execution itself only stops its own work.
+- Stale callbacks are filtered by their owner. `component.ts` and `listener.ts` compare the execution slot with the calling execution; a Child in `componentEach.ts` has only one execution and filters by its `phase`. The execution itself only stops its own work.
+- Each Injection collection re-checks the group intent after every Child start, because a Child's adapter `mount` can stop or remove the group.
 - Cancellation is the execution's `AbortSignal`. Derive "cancelled" and "cleanup started" from `signal.aborted`.
 - Listener executions keep `phase` because a parent stop marks children `cancelled` before aborting each one across `await`s. A MutationObserver delivery can land in that window.
 - Commit the slot before notifying subscribers, so a reentrant Command sees the settled result.

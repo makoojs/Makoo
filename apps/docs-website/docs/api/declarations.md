@@ -1,6 +1,6 @@
 # Declarations
 
-The APIs on this page are imported from `@makoojs/core`. `inject()` and `listen()` only create declaration objects; they don't access the DOM, register, or start anything. Declarations are validated and run only after they are passed to [`core.apply()`](./instance.md#apply).
+The APIs on this page are imported from `@makoojs/core`. `inject()`, `injectEach()`, and `listen()` only create declaration objects; they don't access the DOM, register, or start anything. Declarations are validated and run only after they are passed to [`core.apply()`](./instance.md#apply).
 
 ## `inject()`
 
@@ -56,6 +56,51 @@ Core uses the first element matching `injectAt` as the mount target, appends a `
 
 Makoo doesn't copy or freeze `props`. Vue shallow-copies root props, so for the component to see outside changes, pass a `reactive()` or `ref()` as a property of `props`, for example `props: { state }`.
 
+## `injectEach()`
+
+Declares an Each Injection: mounts the same framework component on every element matching `injectAt`, including elements that match later.
+
+```ts
+function injectEach<TComponent = unknown, TProps = unknown>(
+  input: MakooComponentEachInput<TComponent, TProps>
+): MakooComponentEachDeclaration<TComponent, TProps>;
+```
+
+```ts
+import { injectEach } from '@makoojs/core';
+import Badge from './Badge.vue';
+
+const badges = injectEach({
+  name: 'badges',
+  injectAt: '.comment .author',
+  adapter: 'vue',
+  component: Badge,
+  props: { compact: true }
+});
+```
+
+### `MakooComponentEachInput`
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `string` | Required | Injection name, unique among the top-level injections of the same Core instance |
+| `injectAt` | `string` | Required | CSS selector; every matching element gets its own Child Injection |
+| `adapter` | `string` | Required | Name of a registered adapter, such as `'vue'` or `'react'` |
+| `component` | `TComponent` | Required | The framework component to mount on each element |
+| `props` | `TProps` | `undefined` | Props passed as-is to every mounted component; all of them receive the same object |
+
+`injectEach()` has no `timeout`, `reinject`, or `listeners`.
+
+### Matching and Mounting
+
+- On start, every current match is mounted in document order. While running, elements that start matching later are mounted too, until the Each Injection is stopped or removed.
+- There is no wait timeout: when nothing matches, the status stays `collecting` instead of failing.
+- Each element gets its own component container at its end, exactly like `inject()`. An element is mounted at most once per run.
+- A Child Injection that is stopped, removed, or fails is not remounted on the same element until the Each Injection is stopped and started again. When its element leaves the page, the Child ends with `failed`; if that element or a new matching element is inserted later, a new Child is mounted.
+- A Child Injection's failure doesn't affect the Each Injection or other Children.
+
+To control the Children, see [`injection()`](./instance.md#injection) and [Each Injection Status](./status.md#componenteachstatus).
+
 ## `listen()`
 
 Declares a host listener: binds a native event on an element of the host page.
@@ -105,6 +150,10 @@ type MakooComponentDeclaration<TComponent = unknown, TProps = unknown> = Readonl
   MakooComponentInput<TComponent, TProps> & { kind: 'component' }
 >;
 
+type MakooComponentEachDeclaration<TComponent = unknown, TProps = unknown> = Readonly<
+  MakooComponentEachInput<TComponent, TProps> & { kind: 'component-each' }
+>;
+
 type MakooListenerDeclaration = Readonly<MakooListenerInput & { kind: 'listener' }>;
 ```
 
@@ -113,7 +162,10 @@ type MakooListenerDeclaration = Readonly<MakooListenerInput & { kind: 'listener'
 The element type of the array accepted by `apply()`:
 
 ```ts
-type MakooInjectionDeclaration = MakooListenerDeclaration | MakooComponentDeclaration;
+type MakooInjectionDeclaration =
+  | MakooListenerDeclaration
+  | MakooComponentDeclaration
+  | MakooComponentEachDeclaration;
 ```
 
 Declarations are fixed at `apply()` time; modifying the original object afterwards doesn't affect registered injections. To change selectors, timeouts, or other settings, `remove()` first and then `apply()` the new declaration.

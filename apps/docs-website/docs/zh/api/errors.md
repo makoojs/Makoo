@@ -57,7 +57,7 @@ class MakooAggregateError extends MakooError {
 
 | 常量 | 含义 |
 | --- | --- |
-| `DECLARATION_INVALID` | `apply()` 收到空数组、某一项不是组件或监听声明，或附属监听设置了 `reinject` |
+| `DECLARATION_INVALID` | `apply()` 收到空数组、某一项不是组件、Each 注入或监听声明，或附属监听设置了 `reinject` |
 | `INJECTION_NAME_CONFLICT` | 注入名称重复，或同一组件内附属监听重名 |
 | `ADAPTER_NAME_CONFLICT` | 同名适配器已注册 |
 | `ADAPTER_NOT_FOUND` | 组件选择的适配器未注册 |

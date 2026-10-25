@@ -38,7 +38,7 @@ status.subscribe(() => console.log('panel:', status.getSnapshot(), status.lastEr
 
 | 错误码 | 处理 |
 | --- | --- |
-| `MAKOO_DECLARATION_INVALID` | 确认传给 `apply()` 的是非空数组，每一项都由 `inject()` 或 `listen()` 创建，且附属监听没有设置 `reinject` |
+| `MAKOO_DECLARATION_INVALID` | 确认传给 `apply()` 的是非空数组，每一项都由 `inject()`、`injectEach()` 或 `listen()` 创建，且附属监听没有设置 `reinject` |
 | `MAKOO_INJECTION_NAME_CONFLICT` | 换一个名称，或先 `await` 已有同名注入的 `remove()`，名称在清理完成后才释放；清理失败的注入会一直占用名称，需要刷新页面 |
 | `MAKOO_ADAPTER_NOT_FOUND` | 在 `apply()` 之前调用 `core.useAdapter()`，并核对 `adapter` 名称 |
 

@@ -18,7 +18,7 @@ function createMakoo(): MakooRuntime;
 interface MakooRuntime {
   useAdapter(adapter: MountAdapter): void;
   apply(declarations: readonly MakooInjectionDeclaration[]): void;
-  injection(name: string): ComponentInjection;
+  injection(name: string): ComponentInjection | ComponentEachInjection;
   listener(name: string): ListenerInjection;
   observe(handler: ObservationHandler): () => void;
   dispose(): Promise<void>;
@@ -54,13 +54,13 @@ core.apply([
 
 执行顺序：
 
-1. 按以下顺序检查整批声明：参数是否为非空数组；每一项是否为组件或监听声明，其中附属监听是否符合规则（在同一组件内不能重名，不能设置 `reinject`）；名称是否与批内其他项或实例中已有的注入冲突；组件选择的适配器是否已注册。
+1. 按以下顺序检查整批声明：参数是否为非空数组；每一项是否为组件、Each 注入或监听声明，其中附属监听是否符合规则（在同一组件内不能重名，不能设置 `reinject`）；名称是否与批内其他项或实例中已有的注入冲突；组件选择的适配器是否已注册。
 2. 任一项不通过时同步抛出错误，整批都不登记、不启动。
 3. 全部通过后登记每一项，此时 `injection()` / `listener()` 已能查到它们；随后按数组顺序启动。
 
 | 情况 | 错误码 |
 | --- | --- |
-| 参数不是非空数组，某一项不是组件或监听声明，或附属监听设置了 `reinject` | `MAKOO_DECLARATION_INVALID` |
+| 参数不是非空数组，某一项不是组件、Each 注入或监听声明，或附属监听设置了 `reinject` | `MAKOO_DECLARATION_INVALID` |
 | 名称与批内其他项或实例中已有注入重复 | `MAKOO_INJECTION_NAME_CONFLICT` |
 | 组件选择的适配器未注册 | `MAKOO_ADAPTER_NOT_FOUND` |
 | 实例已销毁 | `MAKOO_INSTANCE_DISPOSED` |
@@ -69,7 +69,7 @@ core.apply([
 
 ### `injection()`
 
-按名称取得组件注入。返回的对象包含[命令入口](./status.md#命令入口) `command` 和[状态入口](./status.md#状态入口) `statusHandle`。
+按名称取得组件或 Each 注入。返回的对象包含[命令入口](./status.md#命令入口) `command` 和[状态入口](./status.md#状态入口) `statusHandle`；用 `kind` 区分是哪一种。
 
 ```ts
 interface ComponentInjection {
@@ -77,6 +77,15 @@ interface ComponentInjection {
   readonly command: ComponentCommand;
   readonly statusHandle: ComponentStatusHandle;
 }
+
+interface ComponentEachInjection {
+  readonly kind: 'component-each';
+  readonly command: ComponentCommand;
+  readonly statusHandle: ComponentEachStatusHandle;
+  readonly children: readonly ChildInjection[];
+}
+
+type ChildInjection = ComponentInjection;
 ```
 
 ```ts
@@ -85,6 +94,19 @@ await panel.command.stop();
 panel.command.start();
 console.log(panel.statusHandle.getSnapshot()); // 'waiting' | 'mounted' | ...
 ```
+
+只有某一种才有的成员，例如组件的 `attachedListener()`、Each 注入的 `children`，需要先按 `kind` 收窄：
+
+```ts
+const badges = core.injection('badges');
+if (badges.kind === 'component-each') {
+  for (const child of badges.children) {
+    console.log(child.command.name, child.statusHandle.getSnapshot()); // 'badges#1' 'mounted'
+  }
+}
+```
+
+`children` 按元素的文档顺序列出存活的子注入。每次读取都返回一个新数组，数组中的条目在多次读取间是同一个对象。子注入条目的形状与组件注入相同，有自己的 `command` 和 `statusHandle`，没有附属监听。它的 `command.name` 是 `badges#1` 这样的展示名称，不能用 `injection()` 查找。子注入被停止、移除或结束后会离开 `children`：它的 `stop()` 和 `remove()` 仍然兑现，状态入口仍可读取，`start()` 抛出 `MAKOO_INJECTION_REMOVED`。
 
 名称不存在或属于独立监听时抛出 `MAKOO_INJECTION_NOT_FOUND`。对同一个注入重复调用，得到的是同一个对象。这个对象绑定的是取得时的那一个注入：注入被移除后，即使之后登记了同名注入，旧对象也不会作用到新注入上。
 

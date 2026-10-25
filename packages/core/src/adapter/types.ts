@@ -5,7 +5,10 @@ import type { ListenerInjection } from '../listener/types';
 export interface AdapterMountParams<TComponent = unknown, TProps = unknown> {
 	/** The `component` from the declaration, unchanged. */
 	component: TComponent;
-	/** The component injection being mounted; same object as `core.injection(name)`. */
+	/**
+	 * The component injection being mounted; same object as `core.injection(name)`, or, for a
+	 * Child Injection, its entry in the Each Injection's `children`.
+	 */
 	injection: ComponentInjection;
 	/** The `props` from the declaration, unchanged. */
 	props: TProps | undefined;
