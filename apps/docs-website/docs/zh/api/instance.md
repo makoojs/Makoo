@@ -85,7 +85,11 @@ interface ComponentEachInjection {
   readonly children: readonly ChildInjection[];
 }
 
-type ChildInjection = ComponentInjection;
+interface ChildInjection {
+  readonly kind: 'component';
+  readonly command: { readonly name: string; stop(): Promise<void> };
+  readonly statusHandle: ChildStatusHandle;
+}
 ```
 
 ```ts
@@ -106,7 +110,7 @@ if (badges.kind === 'component-each') {
 }
 ```
 
-`children` 按元素的文档顺序列出存活的子注入。每次读取都返回一个新数组，数组中的条目在多次读取间是同一个对象。子注入条目的形状与组件注入相同，有自己的 `command` 和 `statusHandle`，没有附属监听。它的 `command.name` 是 `badges#1` 这样的展示名称，不能用 `injection()` 查找。子注入被停止、移除或结束后会离开 `children`：它的 `stop()` 和 `remove()` 仍然兑现，状态入口仍可读取，`start()` 抛出 `MAKOO_INJECTION_REMOVED`。
+`children` 按元素的文档顺序列出存活的子注入。每次读取都返回一个新数组，数组中的条目在多次读取间是同一个对象。子注入条目的 `kind` 为 `'component'`，`command` 只有 `{ name, stop }`，`statusHandle` 是 `ChildStatusHandle`（状态和 `lastError`，没有附属监听成员）。它的 `command.name` 是 `badges#1` 这样的展示名称，不能用 `injection()` 查找。子注入被停止或结束后会离开 `children`：`stop()` 仍然兑现，状态入口仍可读取。
 
 名称不存在或属于独立监听时抛出 `MAKOO_INJECTION_NOT_FOUND`。对同一个注入重复调用，得到的是同一个对象。这个对象绑定的是取得时的那一个注入：注入被移除后，即使之后登记了同名注入，旧对象也不会作用到新注入上。
 

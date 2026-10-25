@@ -232,31 +232,12 @@ function startChild(each: ComponentEach, element: Element): void {
 		kind: 'component',
 		command: Object.freeze({
 			name,
-			start: () => {
-				if (each.isDisposed()) {
-					throw new MakooError('Core instance is disposed', {
-						code: MakooErrorCode.INSTANCE_DISPOSED
-					});
-				}
-				if (child.phase === 'ended') {
-					throw new MakooError(`Injection "${name}" was removed`, {
-						code: MakooErrorCode.INJECTION_REMOVED
-					});
-				}
-			},
-			stop: () => stopChild(each, child),
-			remove: () => stopChild(each, child)
+			stop: () => stopChild(each, child)
 		}),
 		statusHandle: Object.freeze({
 			...state.view,
 			get lastError() {
 				return child.lastError;
-			},
-			attachedListenerNames: Object.freeze([]),
-			attachedListener: (listenerName: string) => {
-				throw new MakooError(`Unknown listener "${listenerName}" in "${name}"`, {
-					code: MakooErrorCode.LISTENER_NOT_FOUND
-				});
 			}
 		})
 	};

@@ -31,8 +31,8 @@
 | `MakooComponentEachInput`, `MakooComponentEachDeclaration` | [Declarations](./declarations.md#makoocomponenteachinput) |
 | `MakooListenerInput`, `MakooListenerDeclaration` | [Declarations](./declarations.md#makoolistenerinput) |
 | `MakooInjectionDeclaration` | [Declarations](./declarations.md#makooinjectiondeclaration) |
-| `ComponentCommand`, `ListenerCommand`, `InjectionCommand` | [Commands and Status](./status.md#command-handle) |
-| `ComponentStatusHandle`, `ComponentEachStatusHandle`, `ListenerStatusHandle`, `InjectionStatusHandle` | [Commands and Status](./status.md#status-handle) |
+| `ComponentCommand`, `ChildCommand`, `ListenerCommand`, `InjectionCommand` | [Commands and Status](./status.md#command-handle) |
+| `ComponentStatusHandle`, `ComponentEachStatusHandle`, `ChildStatusHandle`, `ListenerStatusHandle`, `InjectionStatusHandle` | [Commands and Status](./status.md#status-handle) |
 | `ComponentStatus`, `ComponentEachStatus`, `ListenerStatus` | [Commands and Status](./status.md#status-values) |
 | `StateView` | [Commands and Status](./status.md#stateview) |
 | `ObservationNotice`, `ObservationHandler` | [Commands and Status](./status.md#instance-observation) |

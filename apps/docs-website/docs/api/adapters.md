@@ -31,7 +31,7 @@ Core only stores the mount handle without reading its contents, and passes it ba
 ```ts
 interface AdapterMountParams<TComponent = unknown, TProps = unknown> {
   component: TComponent;
-  injection: ComponentInjection;
+  injection: ComponentInjection | ChildInjection;
   props: TProps | undefined;
   container: HTMLElement;
   listener(name: string): ListenerInjection;
@@ -43,7 +43,7 @@ interface AdapterMountParams<TComponent = unknown, TProps = unknown> {
 | `component` | The `component` from the declaration |
 | `props` | The `props` from the declaration, or `undefined` if not provided |
 | `container` | The component container Core created for this mount |
-| `injection` | The owning component's injection object, containing the command handle `command` and the status handle `statusHandle`; the same object `core.injection(name)` returns. For a Child Injection of an Each Injection, it is that Child's entry in `children` |
+| `injection` | The owning component's injection object, containing the command handle `command` and the status handle `statusHandle`; the same object `core.injection(name)` returns. For a Child Injection of an Each Injection it is that Child's entry in `children`, whose `command` is a `ChildCommand` (`{ name, stop }`) |
 | `listener(name)` | Finds a standalone listener in the same instance and returns `{ command, statusHandle }` |
 
 `listener(name)` throws `MAKOO_INJECTION_NOT_FOUND` when the name doesn't exist, belongs to a component, or is only an attached listener.

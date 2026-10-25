@@ -32,7 +32,7 @@ The `props` in the declaration are passed as the component's props.
 
 The following hooks can only be called in a React component tree mounted by Makoo, child components included; otherwise they throw `MAKOO_REACT_HOOK_OUTSIDE_COMPONENT`. All subscriptions are released automatically when the component unmounts.
 
-In a component mounted by [`injectEach()`](./declarations.md#injecteach), the hooks refer to that Child Injection only: `useComponentCommand().stop()` unmounts this one component, and the other matches stay mounted. A Child has no attached listeners, so `useAttachedListenerStatus()` always throws `MAKOO_LISTENER_NOT_FOUND`.
+In a component mounted by [`injectEach()`](./declarations.md#injecteach), the hooks refer to that Child Injection only: `useComponentCommand()` returns a `ChildCommand` (`{ name, stop }`, no `start`/`remove`), and `stop()` unmounts this one component while the other matches stay mounted. A Child has no attached listeners, so `useAttachedListenerStatus()` always throws `MAKOO_LISTENER_NOT_FOUND`.
 
 | Hook | Returns | Subscribes |
 | --- | --- | --- |

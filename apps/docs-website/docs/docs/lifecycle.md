@@ -99,7 +99,7 @@ Stop collecting → stop each Child in turn → status idle
 
 - There is no wait budget. With no matches, the Each Injection stays `collecting` and keeps watching.
 - Each Child runs the round described above without the search step: container → adapter mount → `mounted`, then the same validity checks and cleanup order. A Child has no attached listeners and no reinjection.
-- An element is mounted at most once per run. A Child that is stopped, removed, or fails is not remounted on that element until the Each Injection is stopped and started again.
+- An element is mounted at most once per run. A Child that is stopped or fails is not remounted on that element until the Each Injection is stopped and started again.
 - When a Child's element leaves the page, the Child ends with `failed` (`MAKOO_MOUNT_TARGET_DETACHED`). The element is not blocked: if it or a replacement is inserted again, a new Child is mounted.
 - Child endings never change the Each Injection's status. The Each Injection only becomes `failed` when collection itself fails (for example, an invalid selector) or when stopping the Children fails to clean up; the latter closes it, like any injection.
 

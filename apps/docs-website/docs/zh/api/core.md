@@ -31,8 +31,8 @@
 | `MakooComponentEachInput`、`MakooComponentEachDeclaration` | [声明](./declarations.md#makoocomponenteachinput) |
 | `MakooListenerInput`、`MakooListenerDeclaration` | [声明](./declarations.md#makoolistenerinput) |
 | `MakooInjectionDeclaration` | [声明](./declarations.md#makooinjectiondeclaration) |
-| `ComponentCommand`、`ListenerCommand`、`InjectionCommand` | [命令与状态](./status.md#命令入口) |
-| `ComponentStatusHandle`、`ComponentEachStatusHandle`、`ListenerStatusHandle`、`InjectionStatusHandle` | [命令与状态](./status.md#状态入口) |
+| `ComponentCommand`、`ChildCommand`、`ListenerCommand`、`InjectionCommand` | [命令与状态](./status.md#命令入口) |
+| `ComponentStatusHandle`、`ComponentEachStatusHandle`、`ChildStatusHandle`、`ListenerStatusHandle`、`InjectionStatusHandle` | [命令与状态](./status.md#状态入口) |
 | `ComponentStatus`、`ComponentEachStatus`、`ListenerStatus` | [命令与状态](./status.md#状态值) |
 | `StateView` | [命令与状态](./status.md#stateview) |
 | `ObservationNotice`、`ObservationHandler` | [命令与状态](./status.md#实例观察) |

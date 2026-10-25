@@ -1,7 +1,9 @@
 export type { AdapterMountParams, MountAdapter } from './adapter/types';
 export { inject, injectEach } from './component/declaration';
 export type {
+	ChildCommand,
 	ChildInjection,
+	ChildStatusHandle,
 	ComponentCommand,
 	ComponentEachInjection,
 	ComponentEachStatus,

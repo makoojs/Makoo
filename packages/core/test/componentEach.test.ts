@@ -189,7 +189,7 @@ describe('injectEach', () => {
 		expect(badges.children[0]).toBe(child);
 	});
 
-	it('drops an ended child from later snapshots; stale stop/remove stay idle and start throws', async () => {
+	it('drops an ended child from later snapshots; stale stop stays idempotent', async () => {
 		addBadge('a');
 		addBadge('b');
 		const core = createMakoo();
@@ -208,10 +208,7 @@ describe('injectEach', () => {
 		expect(badges.children[0]).toBe(second);
 		expect(badges.statusHandle.getSnapshot()).toBe('collecting');
 		await first.command.stop();
-		await first.command.remove();
-		expect(() => first.command.start()).toThrow(
-			expect.objectContaining({ code: MakooErrorCode.INJECTION_REMOVED })
-		);
+		expect(Object.keys(first.command).sort()).toEqual(['name', 'stop']);
 		expect(first.statusHandle.getSnapshot()).toBe('idle');
 	});
 
@@ -259,9 +256,8 @@ describe('injectEach', () => {
 		expect(badges.children).toHaveLength(0);
 		expect(mount).toHaveBeenCalledOnce();
 		expect(host.querySelector('div')).toBeNull();
-		expect(() => child.command.start()).toThrow(
-			expect.objectContaining({ code: MakooErrorCode.INJECTION_REMOVED })
-		);
+		expect(child.command).not.toHaveProperty('start');
+		expect(child.command).not.toHaveProperty('remove');
 		expect(mount).toHaveBeenCalledOnce();
 		expect(badges.statusHandle.getSnapshot()).toBe('collecting');
 	});
