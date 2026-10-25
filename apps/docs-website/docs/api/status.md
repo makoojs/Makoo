@@ -2,7 +2,7 @@
 
 Every top-level injection (component, Each Injection, or standalone listener) has two handles: the command handle starts, stops, and removes it, and the status handle reads and subscribes to its status. Outside components, a component or Each Injection is looked up with [`core.injection(name)`](./instance.md#injection) and a standalone listener with [`core.listener(name)`](./instance.md#listener); each returns an object whose `command` and `statusHandle` are these two handles; inside components, the same handles are available through the [Vue](./vue.md) or [React](./react.md) APIs.
 
-Each Child Injection in an Each Injection's `children` also has its own command handle and status handle, shaped like a component's. Attached listeners have no command handle of their own; their status can only be read through the owning component's status handle.
+Each Child Injection in an Each Injection's `children` also has its own command handle and status handle. Attached listeners have no command handle of their own; their status can only be read through the owning component's status handle.
 
 ## Command Handle
 
@@ -66,11 +66,11 @@ An Each Injection uses the same `ComponentCommand`, applied to the whole group:
 - `remove()` does the same, then unregisters the Each Injection.
 - After a stop, the next `start()` mounts again on every match, including elements whose Child was stopped or failed in the previous run.
 
-A Child Injection's command handle acts on that Child only:
+A Child Injection's command handle is a `ChildCommand` (`{ name, stop() }`) that acts on that Child only:
 
-- `stop()` and `remove()` both unmount it and take it out of `children`; its element isn't mounted again in this run of the Each Injection. Neither of them unregisters anything.
-- `start()` does nothing while the Child is in `children`, and throws `MAKOO_INJECTION_REMOVED` once the Child has left; the Each Injection mounts new Children by itself.
-- If the Child fails to clean up, its own `stop()` / `remove()` reject with `MAKOO_INJECTION_CLEANUP_FAILED`; the Each Injection keeps running.
+- `stop()` unmounts it and takes it out of `children`; its element isn't mounted again in this run of the Each Injection. It is idempotent for an already-ended Child.
+- There is no `start()` or `remove()`: a Child runs once, the Each Injection mounts new Children by itself, and the Child is not registered under a top-level name, so there is nothing to restart or unregister.
+- If the Child fails to clean up, `stop()` rejects with `MAKOO_INJECTION_CLEANUP_FAILED`; the Each Injection keeps running.
 
 ## Status Handle
 
@@ -85,6 +85,10 @@ interface ComponentEachStatusHandle extends StateView<ComponentEachStatus> {
   readonly lastError: MakooError | undefined;
 }
 
+interface ChildStatusHandle extends StateView<ComponentStatus> {
+  readonly lastError: MakooError | undefined;
+}
+
 interface ListenerStatusHandle extends StateView<ListenerStatus> {
   readonly lastError: MakooError | undefined;
 }
@@ -95,7 +99,7 @@ type InjectionStatusHandle =
   | ListenerStatusHandle;
 ```
 
-A Child Injection's status handle is a `ComponentStatusHandle` whose `attachedListenerNames` is empty.
+A Child Injection's status handle is a `ChildStatusHandle`: the same `ComponentStatus` view and `lastError`, without the attached-listener members.
 
 | Member | Description |
 | --- | --- |
@@ -147,7 +151,7 @@ type ComponentStatus = 'idle' | 'waiting' | 'mounted' | 'failed';
 
 `mounted` doesn't mean all attached listeners are bound. On the initial mount, attached listeners may still be `waiting`; read their status separately.
 
-A Child Injection uses `ComponentStatus` too: it is `waiting` while mounting, `mounted` afterwards, `idle` after it is stopped or removed, and `failed` when mounting fails or its element leaves the page (`MAKOO_MOUNT_TARGET_DETACHED`).
+A Child Injection uses `ComponentStatus` too: it is `waiting` while mounting, `mounted` afterwards, `idle` after it is stopped, and `failed` when mounting fails or its element leaves the page (`MAKOO_MOUNT_TARGET_DETACHED`).
 
 ### `ComponentEachStatus`
 

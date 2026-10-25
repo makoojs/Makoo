@@ -1,4 +1,6 @@
 import type {
+	ChildCommand,
+	ChildInjection,
 	ComponentCommand,
 	ComponentInjection,
 	ComponentStatus,
@@ -22,7 +24,7 @@ import {
 import { VueErrorCode } from './error';
 
 export type VueComponentContext = {
-	readonly injection: ComponentInjection;
+	readonly injection: ComponentInjection | ChildInjection;
 	readonly listener: (name: string) => ListenerInjection;
 	/** Releases of subscriptions still held by this app; drained if mount fails. */
 	readonly subscriptions: Set<() => void>;
@@ -30,8 +32,11 @@ export type VueComponentContext = {
 
 export const componentContextKey: InjectionKey<VueComponentContext> = Symbol('makoo-component');
 
-/** The current component's command, plus reactive status refs. */
-export type VueMakooComponent = ComponentCommand & {
+/**
+ * The current component's command, plus reactive status refs.
+ * Inside a Child Injection the command is a {@link ChildCommand}: `stop` only, no `start`/`remove`.
+ */
+export type VueMakooComponent = (ComponentCommand | ChildCommand) & {
 	/** The error that ended the last execution; not reactive. */
 	readonly lastError: MakooError | undefined;
 	/** The component status. */
@@ -91,25 +96,33 @@ export function useMakooComponent(): VueMakooComponent {
 	}
 	const { command, statusHandle } = context.injection;
 	const componentStatus = subscribeState(statusHandle, context.subscriptions);
-	const listeners = new Map(
-		statusHandle.attachedListenerNames.map((name) => [
-			name,
-			subscribeState(statusHandle.attachedListener(name), context.subscriptions)
-		])
-	);
+	const attached: [string, Readonly<Ref<ListenerStatus>>][] =
+		'attachedListener' in statusHandle
+			? statusHandle.attachedListenerNames.map((name) => [
+					name,
+					subscribeState(statusHandle.attachedListener(name), context.subscriptions)
+				])
+			: [];
+	const listeners = new Map(attached);
 	const standaloneListeners = new Map<string, StandaloneSubscription>();
 	onScopeDispose(() => {
 		for (const entry of [...standaloneListeners.values()]) entry.release();
 	});
+	const controls: ComponentCommand | ChildCommand =
+		'remove' in command
+			? {
+					name: command.name,
+					start: command.start,
+					stop: command.stop,
+					remove: command.remove
+				}
+			: { name: command.name, stop: command.stop };
 	return {
-		name: command.name,
+		...controls,
 		status: componentStatus,
 		get lastError() {
 			return statusHandle.lastError;
 		},
-		start: command.start,
-		stop: command.stop,
-		remove: command.remove,
 		attachedListener(name) {
 			const listener = listeners.get(name);
 			if (!listener)

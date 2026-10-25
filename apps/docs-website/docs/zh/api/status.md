@@ -2,7 +2,7 @@
 
 每个顶层注入（组件、Each 注入或独立监听）都有两个入口：命令入口负责启动、停止和移除，状态入口负责读取和订阅状态。在组件外，组件和 Each 注入通过 [`core.injection(name)`](./instance.md#injection)、独立监听通过 [`core.listener(name)`](./instance.md#listener) 取得一个对象，它的 `command` 和 `statusHandle` 就是这两个入口；组件内通过 [Vue](./vue.md) 或 [React](./react.md) 的 API 取得同样的入口。
 
-Each 注入 `children` 中的每个子注入也有自己的命令入口和状态入口，形状与组件的相同。附属监听没有自己的命令入口，只能通过所属组件的状态入口读取状态。
+Each 注入 `children` 中的每个子注入也有自己的命令入口和状态入口。附属监听没有自己的命令入口，只能通过所属组件的状态入口读取状态。
 
 ## 命令入口
 
@@ -66,11 +66,11 @@ Each 注入使用同样的 `ComponentCommand`，作用于整组：
 - `remove()` 同上，之后注销 Each 注入。
 - 停止后再次 `start()`，会在每个匹配上重新挂载，包括上一轮中子注入被停止或失败的元素。
 
-子注入的命令入口只作用于这一个子注入：
+子注入的命令入口是一个 `ChildCommand`（`{ name, stop() }`），只作用于这一个子注入：
 
-- `stop()` 和 `remove()` 都会卸载它并把它移出 `children`；在 Each 注入的这一轮运行中，它的元素不会再被挂载。两者都不会注销任何东西。
-- 子注入还在 `children` 中时，`start()` 不做任何事；离开后 `start()` 抛出 `MAKOO_INJECTION_REMOVED`。新的子注入由 Each 注入自行挂载。
-- 子注入清理失败时，它自己的 `stop()` / `remove()` 以 `MAKOO_INJECTION_CLEANUP_FAILED` 拒绝；Each 注入继续运行。
+- `stop()` 卸载它并把它移出 `children`；在 Each 注入的这一轮运行中，它的元素不会再被挂载。对已结束的子注入重复调用是幂等的。
+- 没有 `start()` 和 `remove()`：子注入只执行一次，新的子注入由 Each 注入自行挂载，子注入也不在顶层名称下注册，没有可重启或可注销的东西。
+- 子注入清理失败时，`stop()` 以 `MAKOO_INJECTION_CLEANUP_FAILED` 拒绝；Each 注入继续运行。
 
 ## 状态入口
 
@@ -85,6 +85,10 @@ interface ComponentEachStatusHandle extends StateView<ComponentEachStatus> {
   readonly lastError: MakooError | undefined;
 }
 
+interface ChildStatusHandle extends StateView<ComponentStatus> {
+  readonly lastError: MakooError | undefined;
+}
+
 interface ListenerStatusHandle extends StateView<ListenerStatus> {
   readonly lastError: MakooError | undefined;
 }
@@ -95,7 +99,7 @@ type InjectionStatusHandle =
   | ListenerStatusHandle;
 ```
 
-子注入的状态入口是一个 `attachedListenerNames` 为空的 `ComponentStatusHandle`。
+子注入的状态入口是一个 `ChildStatusHandle`：同样的 `ComponentStatus` 状态和 `lastError`，没有附属监听相关成员。
 
 | 成员 | 说明 |
 | --- | --- |
@@ -147,7 +151,7 @@ type ComponentStatus = 'idle' | 'waiting' | 'mounted' | 'failed';
 
 `mounted` 不代表附属监听都已绑定。初次挂载时附属监听可能仍处于 `waiting`，请分别读取它们的状态。
 
-子注入同样使用 `ComponentStatus`：挂载过程中为 `waiting`，之后为 `mounted`，被停止或移除后为 `idle`，挂载失败或元素离开页面（`MAKOO_MOUNT_TARGET_DETACHED`）时为 `failed`。
+子注入同样使用 `ComponentStatus`：挂载过程中为 `waiting`，之后为 `mounted`，被停止后为 `idle`，挂载失败或元素离开页面（`MAKOO_MOUNT_TARGET_DETACHED`）时为 `failed`。
 
 ### `ComponentEachStatus`
 

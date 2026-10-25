@@ -85,7 +85,11 @@ interface ComponentEachInjection {
   readonly children: readonly ChildInjection[];
 }
 
-type ChildInjection = ComponentInjection;
+interface ChildInjection {
+  readonly kind: 'component';
+  readonly command: { readonly name: string; stop(): Promise<void> };
+  readonly statusHandle: ChildStatusHandle;
+}
 ```
 
 ```ts
@@ -106,7 +110,7 @@ if (badges.kind === 'component-each') {
 }
 ```
 
-`children` lists the live Child Injections in document order of their elements. Each read returns a new array; the entries in it are the same objects across reads. A Child entry is shaped like a component injection, with its own `command` and `statusHandle` and no attached listeners. Its `command.name` is a display name like `badges#1`, not a name that `injection()` can look up. After a Child is stopped, removed, or ends, it leaves `children`: its `stop()` and `remove()` still resolve, its status handle stays readable, and its `start()` throws `MAKOO_INJECTION_REMOVED`.
+`children` lists the live Child Injections in document order of their elements. Each read returns a new array; the entries in it are the same objects across reads. A Child entry has `kind: 'component'`, a `command` limited to `{ name, stop }`, and a `ChildStatusHandle` (status view plus `lastError`, no attached-listener members). Its `command.name` is a display name like `badges#1`, not a name that `injection()` can look up. After a Child is stopped or ends, it leaves `children`: `stop()` still resolves and the status handle stays readable.
 
 Throws `MAKOO_INJECTION_NOT_FOUND` if the name doesn't exist or belongs to a standalone listener. Repeated calls for the same injection return the same object. The object is bound to the particular injection it was obtained for: after that injection is removed, the old object doesn't act on a same-named injection registered later.
 

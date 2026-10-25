@@ -137,7 +137,7 @@ if (badges.kind === 'component-each') {
 ```
 
 - `children` is a snapshot in document order. Read it again after the page changes; there is no subscription for Children being added or removed.
-- A stopped or removed Child leaves `children`, and its element doesn't get a component again until the whole Each Injection is stopped and started. Its old handles can't start it again.
+- A stopped or ended Child leaves `children`, and its element doesn't get a component again until the whole Each Injection is stopped and started. A Child command has only `stop`—Children run once and are not registered under a name, so there is nothing to restart or unregister.
 - `badges.command.stop()` unmounts every Child and stops watching for new matches; `start()` mounts on every match again.
 - A failing Child doesn't change the Each Injection's status; check the Child's own `statusHandle.lastError`.
 

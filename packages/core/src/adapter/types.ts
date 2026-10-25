@@ -1,4 +1,4 @@
-import type { ComponentInjection } from '../component/types';
+import type { ChildInjection, ComponentInjection } from '../component/types';
 import type { ListenerInjection } from '../listener/types';
 
 /** What Core passes to {@link MountAdapter.mount} for one component execution. */
@@ -6,10 +6,11 @@ export interface AdapterMountParams<TComponent = unknown, TProps = unknown> {
 	/** The `component` from the declaration, unchanged. */
 	component: TComponent;
 	/**
-	 * The component injection being mounted; same object as `core.injection(name)`, or, for a
-	 * Child Injection, its entry in the Each Injection's `children`.
+	 * The component injection being mounted; same object as `core.injection(name)` for a
+	 * top-level injection, or the Child bag (without `start`/`remove`) for a mount under an
+	 * Each Injection.
 	 */
-	injection: ComponentInjection;
+	injection: ComponentInjection | ChildInjection;
 	/** The `props` from the declaration, unchanged. */
 	props: TProps | undefined;
 	/** The component container Core created inside the mount target; Core removes it after unmount. */

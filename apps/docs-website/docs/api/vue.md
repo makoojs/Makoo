@@ -85,7 +85,7 @@ Refs such as `status` live on a plain object, and templates only auto-unwrap top
 
 `useMakooComponent()` must be called synchronously inside a Vue app mounted by Makoo, in a component's `setup` or an effect scope. Child components can call it too, and get the same owning component.
 
-In a component mounted by [`injectEach()`](./declarations.md#injecteach), it returns the command and status of that Child Injection only: `stop()` unmounts this one component, and the other matches stay mounted. A Child has no attached listeners, so `attachedListener(name)` always throws `MAKOO_LISTENER_NOT_FOUND`.
+In a component mounted by [`injectEach()`](./declarations.md#injecteach), it returns the command and status of that Child Injection only: the command is a `ChildCommand` (`{ name, stop }`, no `start`/`remove`), and `stop()` unmounts this one component while the other matches stay mounted. A Child has no attached listeners, so `attachedListener(name)` always throws `MAKOO_LISTENER_NOT_FOUND`.
 
 | Situation | Error code |
 | --- | --- |

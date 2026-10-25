@@ -85,7 +85,7 @@ type VueMakooComponent = ComponentCommand & {
 
 `useMakooComponent()` 必须在 Makoo 挂载的 Vue app 内、组件 `setup` 或 effect scope 中同步调用。子组件也可以调用，取得的是同一个所属组件。
 
-在 [`injectEach()`](./declarations.md#injecteach) 挂载的组件中，它只返回这一个子注入的命令和状态：`stop()` 只卸载这一个组件，其他匹配上的组件保持挂载。子注入没有附属监听，因此 `attachedListener(name)` 总是抛出 `MAKOO_LISTENER_NOT_FOUND`。
+在 [`injectEach()`](./declarations.md#injecteach) 挂载的组件中，它只返回这一个子注入的命令和状态：命令是 `ChildCommand`（`{ name, stop }`，没有 `start`/`remove`），`stop()` 只卸载这一个组件，其他匹配上的组件保持挂载。子注入没有附属监听，因此 `attachedListener(name)` 总是抛出 `MAKOO_LISTENER_NOT_FOUND`。
 
 | 情况 | 错误码 |
 | --- | --- |

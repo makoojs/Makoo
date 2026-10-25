@@ -31,7 +31,7 @@ Core 只保存挂载句柄，不读取其内容，卸载时原样交回给 `unmo
 ```ts
 interface AdapterMountParams<TComponent = unknown, TProps = unknown> {
   component: TComponent;
-  injection: ComponentInjection;
+  injection: ComponentInjection | ChildInjection;
   props: TProps | undefined;
   container: HTMLElement;
   listener(name: string): ListenerInjection;
@@ -43,7 +43,7 @@ interface AdapterMountParams<TComponent = unknown, TProps = unknown> {
 | `component` | 声明中的 `component` |
 | `props` | 声明中的 `props`，未提供时为 `undefined` |
 | `container` | Core 为这次挂载创建的组件容器 |
-| `injection` | 所属组件的注入对象，包含命令入口 `command` 和状态入口 `statusHandle`；与 `core.injection(name)` 返回的是同一个对象。对 Each 注入的子注入而言，它是这个子注入在 `children` 中的条目 |
+| `injection` | 所属组件的注入对象，包含命令入口 `command` 和状态入口 `statusHandle`；与 `core.injection(name)` 返回的是同一个对象。对 Each 注入的子注入而言，它是这个子注入在 `children` 中的条目，`command` 是 `ChildCommand`（`{ name, stop }`） |
 | `listener(name)` | 查找同一实例中的独立监听，返回 `{ command, statusHandle }` |
 
 `listener(name)` 在名称不存在、名称属于组件或只是附属监听时，抛出 `MAKOO_INJECTION_NOT_FOUND`。

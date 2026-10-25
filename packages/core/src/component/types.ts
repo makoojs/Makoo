@@ -3,10 +3,37 @@ import type { ListenerStatus, MakooListenerDeclaration } from '../listener/types
 import type { StateView } from '../state/types';
 
 /**
- * One Child Injection under an Each Injection. Not registered in the top-level name map.
- * Shaped like a component injection so adapter mount params and in-component hooks bind to it.
+ * Control entry bound to one Child Injection. Children run once: there is no `start` to call,
+ * and `stop` is the only external control—ended children cannot re-enter the group.
  */
-export type ChildInjection = ComponentInjection;
+export interface ChildCommand {
+	/** The child display name (`<group>#<sequence>`); not a lookup key. */
+	readonly name: string;
+	/**
+	 * Stops the child and unmounts it. The element is skipped for the rest of the group run.
+	 * Idempotent for an already-ended child.
+	 *
+	 * @returns A promise that settles when cleanup finishes; it rejects with a
+	 * `MakooAggregateError` (`INJECTION_CLEANUP_FAILED`) when cleanup fails.
+	 */
+	stop(): Promise<void>;
+}
+
+/**
+ * One Child Injection under an Each Injection. Not registered in the top-level name map, so
+ * there is no `remove` to unregister it.
+ */
+export type ChildInjection = {
+	readonly kind: 'component';
+	readonly command: ChildCommand;
+	readonly statusHandle: ChildStatusHandle;
+};
+
+/** Read-only status of one Child Injection. */
+export interface ChildStatusHandle extends StateView<ComponentStatus> {
+	/** The error that ended the child; reading it does not subscribe. */
+	readonly lastError: MakooError | undefined;
+}
 
 /** Control entry bound to one component; it never controls a later component with the same name. */
 export interface ComponentCommand {

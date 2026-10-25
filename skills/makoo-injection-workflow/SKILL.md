@@ -102,7 +102,7 @@ inject({
 
 `capture` defaults to `false`. Set it to `true` to run during the DOM capture phase. Attached listeners inherit the component's `reinject` and must not set their own. Keep callbacks in browser-compatible modules.
 
-Inside a mounted component, read attached or same-instance standalone listener status through the framework helpers (`attachedListener` / `listener`, or the React `useListener` equivalent). Control the component with `start` / `stop` / `remove` from `useMakooComponent()` or `useComponentCommand()`, or with `core.injection(name)` / `core.listener(name)` outside the component.
+Inside a mounted component, read attached or same-instance standalone listener status through the framework helpers (`attachedListener` / `listener`, or the React `useListener` equivalent). Control the component with `start` / `stop` / `remove` from `useMakooComponent()` or `useComponentCommand()`, or with `core.injection(name)` / `core.listener(name)` outside the component. Inside an Each Child the command is a `ChildCommand` (`{ name, stop }`): no `start`, `remove`, or attached-listener members.
 
 ## How To Choose The React / Vue Adapter
 

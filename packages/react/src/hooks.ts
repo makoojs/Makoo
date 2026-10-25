@@ -1,4 +1,7 @@
 import type {
+	ChildCommand,
+	ChildInjection,
+	ChildStatusHandle,
 	ComponentCommand,
 	ComponentInjection,
 	ComponentStatus,
@@ -8,12 +11,12 @@ import type {
 	ListenerStatus,
 	StateView
 } from '@makoojs/core';
-import { MakooError } from '@makoojs/core';
+import { MakooError, MakooErrorCode } from '@makoojs/core';
 import { createContext, useContext, useMemo, useSyncExternalStore } from 'react';
 import { ReactErrorCode } from './error';
 
 type MakooComponentContextValue = {
-	injection: ComponentInjection;
+	injection: ComponentInjection | ChildInjection;
 	listener: (name: string) => ListenerInjection;
 };
 
@@ -27,17 +30,18 @@ type ReactStandaloneListener = ListenerCommand & {
 export const MakooComponentContext = createContext<MakooComponentContextValue | null>(null);
 
 /**
- * Returns the stable command for this mount.
+ * Returns the stable command for this mount: a full `ComponentCommand` for a top-level
+ * injection, or a `ChildCommand` (`{ name, stop }`) inside an Each Child.
  *
  * Every Makoo hook throws a {@link MakooError} with `REACT_HOOK_OUTSIDE_COMPONENT` when called
  * outside a component tree mounted by the React adapter.
  */
-export function useComponentCommand(): ComponentCommand {
+export function useComponentCommand(): ComponentCommand | ChildCommand {
 	return useComponentContext().injection.command;
 }
 
 /** Returns the raw status handle for this mount; reading it, including lastError, does not subscribe. */
-export function useComponentStatusHandle(): ComponentStatusHandle {
+export function useComponentStatusHandle(): ComponentStatusHandle | ChildStatusHandle {
 	return useComponentContext().injection.statusHandle;
 }
 
@@ -63,8 +67,14 @@ export function useAttachedListenerStatus<T>(
 	select: (status: ListenerStatus) => T
 ): T;
 export function useAttachedListenerStatus<T>(name: string, select?: (status: ListenerStatus) => T) {
-	const { statusHandle } = useComponentContext().injection;
-	return useSelectedSnapshot(statusHandle.attachedListener(name), select);
+	const { command, statusHandle } = useComponentContext().injection;
+	const view = 'attachedListener' in statusHandle ? statusHandle.attachedListener(name) : null;
+	if (!view) {
+		throw new MakooError(`Unknown listener "${name}" in "${command.name}"`, {
+			code: MakooErrorCode.LISTENER_NOT_FOUND
+		});
+	}
+	return useSelectedSnapshot(view, select);
 }
 
 /**

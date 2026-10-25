@@ -32,7 +32,7 @@ core.apply([
 
 以下 hooks 只能在 Makoo 挂载的 React 组件树中调用，子组件同样可用；否则抛出 `MAKOO_REACT_HOOK_OUTSIDE_COMPONENT`。所有订阅都在组件卸载时自动释放。
 
-在 [`injectEach()`](./declarations.md#injecteach) 挂载的组件中，hooks 只指向这一个子注入：`useComponentCommand().stop()` 只卸载这一个组件，其他匹配上的组件保持挂载。子注入没有附属监听，因此 `useAttachedListenerStatus()` 总是抛出 `MAKOO_LISTENER_NOT_FOUND`。
+在 [`injectEach()`](./declarations.md#injecteach) 挂载的组件中，hooks 只指向这一个子注入：`useComponentCommand()` 返回 `ChildCommand`（`{ name, stop }`，没有 `start`/`remove`），`stop()` 只卸载这一个组件，其他匹配上的组件保持挂载。子注入没有附属监听，因此 `useAttachedListenerStatus()` 总是抛出 `MAKOO_LISTENER_NOT_FOUND`。
 
 | Hook | 返回 | 是否订阅 |
 | --- | --- | --- |
