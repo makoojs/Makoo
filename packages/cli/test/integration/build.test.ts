@@ -19,7 +19,7 @@ beforeAll(async () => {
 		process.execPath,
 		[
 			path.join(repoRoot, 'node_modules/tsup/dist/cli-default.js'),
-			'packages/cli/src/cli/bin.ts',
+			'packages/cli/src/commands/bin.ts',
 			'--no-config',
 			'--format',
 			'esm',

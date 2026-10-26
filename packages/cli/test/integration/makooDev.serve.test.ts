@@ -2,11 +2,15 @@ import path from 'node:path';
 import type { MakooRuntime } from '@makoojs/core';
 import { createServer, createServerModuleRunner, type ViteDevServer } from 'vite';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { DevTerminal } from '../../src/cli/commands/dev/DevTerminal';
-import { devCommand } from '../../src/cli/commands/dev/dev';
-import type { DevSession } from '../../src/session/DevSession';
-import type { RuntimeInjection, RuntimeNotice, RuntimeOpen } from '../../src/session/types';
+import { devCommand } from '../../src/commands/dev';
+import { DevTerminal } from '../../src/tui/DevTerminal';
 import { makooDev } from '../../src/vite/makooDev';
+import type {
+	DevSession,
+	RuntimeInjection,
+	RuntimeNotice,
+	RuntimeOpen
+} from '../../src/vite/session';
 import { cleanupTempProjects, trackProject } from '../utils/tempProject';
 
 const repoRoot = path.resolve(__dirname, '../../../..');

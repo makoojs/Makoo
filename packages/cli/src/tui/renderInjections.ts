@@ -5,8 +5,8 @@ import type {
 	RuntimeSnapshot,
 	SerializedDiagnostic,
 	SerializedMakooError
-} from '../../session/types';
-import { ansi, colorize } from '../terminalColor';
+} from '../vite/session';
+import { ansi, colorize } from './terminalColor';
 
 type InjectionStatus = ComponentStatus | ListenerStatus;
 

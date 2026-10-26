@@ -1,11 +1,10 @@
 import { emitKeypressEvents, type Key } from 'node:readline';
 import { createLogUpdate } from 'log-update';
 import type { LogErrorOptions, Logger, LogOptions, ViteDevServer } from 'vite';
-import type { DevSession } from '../../../session/DevSession';
-import type { RuntimeSnapshot } from '../../../session/types';
-import { bindDevSession, type InlineConfigWithSession } from '../../../vite/makooDev';
-import { renderInjectionsTable } from '../../injections/renderInjections';
-import { ansi, colorize } from '../../terminalColor';
+import { bindDevSession, type InlineConfigWithSession } from '../vite/makooDev';
+import type { DevSession, RuntimeSnapshot } from '../vite/session';
+import { renderInjectionsTable } from './renderInjections';
+import { ansi, colorize } from './terminalColor';
 
 const ENTER_ALT_SCREEN = '\x1B[?1049h';
 const LEAVE_ALT_SCREEN = '\x1B[?1049l';

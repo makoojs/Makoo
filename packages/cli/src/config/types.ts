@@ -76,6 +76,23 @@ export type AppConfig = {
 	description?: string;
 };
 
+/** The validated part of the Makoo configuration; unknown top-level fields are rejected. */
+export type CliConfig = {
+	/** Path of the userscript entry file, resolved relative to `root`. */
+	entry: string;
+	app: AppConfig;
+	/** Required; may be an empty object. */
+	monkey: MonkeyConfig;
+};
+
+/** Options for `makoo()`. */
+export type MakooConfig = CliConfig & {
+	/** Project root. Defaults to the current working directory. */
+	root?: string;
+};
+
+export type MonkeyUserscriptOption = NonNullable<MonkeyOption['userscript']>;
+
 export type ResolvedMonkeyServerConfig = {
 	open: boolean;
 	prefix: string | ((name: string) => string) | false;
@@ -103,26 +120,9 @@ export type ResolvedMonkeyConfig = Omit<
 	build: ResolvedMonkeyBuildConfig;
 };
 
-/** The validated part of the Makoo configuration; unknown top-level fields are rejected. */
-export type CliConfig = {
-	/** Path of the userscript entry file, resolved relative to `root`. */
-	entry: string;
-	app: AppConfig;
-	/** Required; may be an empty object. */
-	monkey: MonkeyConfig;
-};
-
-/** Options for `makoo()`. */
-export type MakooConfig = CliConfig & {
-	/** Project root. Defaults to the current working directory. */
-	root?: string;
-};
-
 export type ResolvedMakooConfig = {
 	root: string;
 	entry: string;
 	app: AppConfig;
 	monkey: ResolvedMonkeyConfig;
 };
-
-export type MonkeyUserscriptOption = NonNullable<MonkeyOption['userscript']>;

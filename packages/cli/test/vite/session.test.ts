@@ -1,7 +1,7 @@
 import type { NormalizedHotChannelClient } from 'vite';
 import { describe, expect, it, vi } from 'vitest';
-import { DevSession } from '../../src/session/DevSession';
-import type { InjectionSnapshot, SerializedDiagnostic } from '../../src/session/types';
+import type { InjectionSnapshot, SerializedDiagnostic } from '../../src/vite/session';
+import { DevSession } from '../../src/vite/session';
 
 function createClient(): NormalizedHotChannelClient {
 	return {} as NormalizedHotChannelClient;

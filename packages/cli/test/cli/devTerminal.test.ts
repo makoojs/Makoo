@@ -1,9 +1,9 @@
 import { PassThrough } from 'node:stream';
 import type { Logger, NormalizedHotChannelClient, ViteDevServer } from 'vite';
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
-import { DevTerminal } from '../../src/cli/commands/dev/DevTerminal';
-import { DevSession } from '../../src/session/DevSession';
+import { DevTerminal } from '../../src/tui/DevTerminal';
 import { bindDevSession, type InlineConfigWithSession } from '../../src/vite/makooDev';
+import { DevSession } from '../../src/vite/session';
 
 const { clear, render } = vi.hoisted(() => ({
 	clear: vi.fn(),

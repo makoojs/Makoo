@@ -5,9 +5,6 @@ import type { MakooConfig } from '../config/types';
 
 /**
  * Creates the Vite plugins that build the userscript and serve its dev install entry.
- *
- * @throws `MakooError` with `CLI_CONFIG_INVALID` when `entry`, `app`, or the top-level fields
- * are invalid; the message lists one `path: reason` per line.
  */
 export function makoo(options: MakooConfig): Plugin[] {
 	const { root, ...config } = options;

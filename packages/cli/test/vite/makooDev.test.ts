@@ -1,8 +1,8 @@
 import type { NormalizedHotChannelClient } from 'vite';
 import { describe, expect, it, vi } from 'vitest';
-import type { DevSession } from '../../src/session/DevSession';
 import { makoo } from '../../src/vite/makoo';
 import { bindDevSession, makooDev } from '../../src/vite/makooDev';
+import type { DevSession } from '../../src/vite/session';
 
 function getHookHandler<T extends (...args: never[]) => unknown>(
 	hook: T | { handler: T } | undefined

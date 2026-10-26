@@ -1,6 +1,6 @@
 import type { InlineConfig, Plugin } from 'vite';
-import { DevSession } from '../session/DevSession';
-import type { RuntimeInjection, RuntimeNotice, RuntimeOpen } from '../session/types';
+import type { RuntimeInjection, RuntimeNotice, RuntimeOpen } from './session';
+import { DevSession } from './session';
 
 const VIRTUAL_CORE_ID = '\0virtual:makoo-dev';
 const CORE_PACKAGE = '@makoojs/core';

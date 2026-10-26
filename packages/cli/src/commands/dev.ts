@@ -1,6 +1,6 @@
 import { createServer, type InlineConfig } from 'vite';
-import { loadCliVersion } from '../../version';
-import { DevTerminal } from './DevTerminal';
+import { DevTerminal } from '../tui/DevTerminal';
+import { loadCliVersion } from './version';
 
 export async function devCommand(config?: InlineConfig): Promise<void> {
 	const server = await createServer(config);
