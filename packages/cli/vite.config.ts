@@ -1,4 +1,4 @@
-﻿import { resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
 import dts from 'vite-plugin-dts';
 
@@ -21,9 +21,8 @@ export default defineConfig({
 				'vite',
 				'vite-plugin-monkey',
 				'vite-plugin-monkey/dist/client',
-				'node:fs',
-				'node:path',
-				'node:process'
+				/^devframe(\/.*)?$/,
+				/^node:/
 			]
 		}
 	},

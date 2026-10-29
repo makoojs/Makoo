@@ -17,6 +17,22 @@ function getHookHandler<T extends (...args: never[]) => unknown>(
 }
 
 describe('makooDev', () => {
+	it('rejects invalid bridge options at call time', () => {
+		expect(() => makooDev({ port: 0 })).toThrow();
+		expect(() => makooDev({ port: 65536 })).toThrow();
+		expect(() => makooDev({ port: 1.5 })).toThrow();
+		expect(() => makooDev({ port: Number.NaN })).toThrow();
+		expect(() => makooDev({ host: '' })).toThrow();
+		expect(() => makooDev({ host: 'example.com' })).toThrow();
+		expect(() => makooDev({ host: '*.example.com' })).toThrow();
+
+		expect(() => makooDev()).not.toThrow();
+		expect(() => makooDev({ port: 8080 })).not.toThrow();
+		expect(() => makooDev({ host: 'localhost' })).not.toThrow();
+		expect(() => makooDev({ host: '::1' })).not.toThrow();
+		expect(() => makooDev({ host: '192.168.1.10' })).not.toThrow();
+	});
+
 	it('keeps sessions isolated between dev server instances', () => {
 		const first = makooDev().api.session as DevSession;
 		const second = makooDev().api.session as DevSession;
@@ -84,7 +100,8 @@ describe('makooDev', () => {
 			{} as never,
 			{
 				environments: { client: { hot: { on: clientOn } }, ssr: { hot: { on: ssrOn } } },
-				config: { inlineConfig: {} }
+				config: { inlineConfig: {} },
+				httpServer: { once: vi.fn() }
 			} as never
 		);
 
@@ -142,7 +159,8 @@ describe('makooDev', () => {
 			{} as never,
 			{
 				environments: {},
-				config: { inlineConfig: { [bindDevSession]: bind } }
+				config: { inlineConfig: { [bindDevSession]: bind } },
+				httpServer: { once: vi.fn() }
 			} as never
 		);
 

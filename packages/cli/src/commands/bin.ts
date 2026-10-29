@@ -142,7 +142,7 @@ cli.command('preview [root]', 'Preview the built userscript')
 	);
 
 cli.help();
-cli.version(await loadCliVersion(null));
+cli.version(await loadCliVersion());
 
 process.on('unhandledRejection', (err) => {
 	if (err instanceof MakooError) {

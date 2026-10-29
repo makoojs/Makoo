@@ -1,4 +1,7 @@
-import type { InlineConfig, Plugin } from 'vite';
+import { isIP } from 'node:net';
+import type { InlineConfig, Plugin, ViteDevServer } from 'vite';
+import { type BridgeAddress, type DevBridge, startDevBridge } from '../bridge/server';
+import { RuntimeStore } from '../bridge/store';
 import type { RuntimeInjection, RuntimeNotice, RuntimeOpen } from './session';
 import { DevSession } from './session';
 
@@ -15,6 +18,33 @@ export const bindDevSession = Symbol('makooDev.bindSession');
 export type InlineConfigWithSession = InlineConfig & {
 	[bindDevSession]?: (session: DevSession) => void;
 };
+
+export type MakooDevOptions = {
+	/** Bridge listen port, fixed (no scanning). Default 9999. */
+	port?: number;
+	/** Bridge listen host: an IPv4/IPv6 literal or 'localhost'. Default '127.0.0.1'. */
+	host?: string;
+};
+
+function resolveBridgeAddress(options: MakooDevOptions): BridgeAddress {
+	const port = options.port ?? 9999;
+	const host = options.host ?? '127.0.0.1';
+	if (!Number.isInteger(port) || port < 1 || port > 65535) {
+		throw new Error(
+			`makooDev: invalid port ${String(options.port)}; expected an integer between 1 and 65535.`
+		);
+	}
+	if (host !== 'localhost' && isIP(host) === 0) {
+		throw new Error(
+			`makooDev: invalid host ${JSON.stringify(options.host)}; expected an IPv4/IPv6 literal or 'localhost'.`
+		);
+	}
+	return { host, port };
+}
+
+function isLoopbackHost(host: string): boolean {
+	return host === 'localhost' || host === '::1' || host.startsWith('127.');
+}
 
 // The wrapper only reads public Status Handles and Instance Observation; it never starts, stops, or removes injections.
 // HMR cleanup is left to Vite on purpose (ADR 0004).
@@ -115,9 +145,39 @@ export function createMakoo() {
  * Reports the Core Instances on the page, and the status and errors of each injection, to the
  * `makoo dev` terminal. Only active in the dev server; it never controls injections.
  */
-export function makooDev(): Plugin {
+export function makooDev(options: MakooDevOptions = {}): Plugin {
+	const address = resolveBridgeAddress(options);
 	let resolvedCoreId: string | null = null;
 	const session = new DevSession();
+	const store = new RuntimeStore();
+	let bridge: Promise<DevBridge> | undefined;
+
+	const startBridge = async (server: ViteDevServer) => {
+		try {
+			bridge = startDevBridge(store, address);
+			await bridge;
+		} catch (error) {
+			bridge = undefined;
+			// devframe rejects a failed bind with code DF0052 wrapping EADDRINUSE.
+			const code = (error as { code?: unknown })?.code;
+			const logger = server.config.logger;
+			if (code === 'EADDRINUSE' || code === 'DF0052') {
+				logger.warn(
+					`[makoo] port ${address.port} on ${address.host} is already in use; the makooDev bridge was not started. Configure another port with makooDev({ port }).`
+				);
+			} else {
+				logger.warn(
+					`[makoo] the makooDev bridge failed to start (${error instanceof Error ? error.message : String(error)}); continuing without it.`
+				);
+			}
+			return;
+		}
+		if (!isLoopbackHost(address.host)) {
+			server.config.logger.warn(
+				`[makoo] the makooDev bridge is listening on ${address.host}:${address.port}, reachable beyond this machine; access is protected by token only.`
+			);
+		}
+	};
 
 	return {
 		name: 'makoo:dev',
@@ -168,6 +228,26 @@ export function makooDev(): Plugin {
 					session.disconnect(client);
 				});
 			}
+
+			const { httpServer } = server;
+			if (httpServer) {
+				// listening event is active when the old instance be killed
+				httpServer.once('listening', () => {
+					void startBridge(server);
+				});
+			} else {
+				// middleware mode
+				void startBridge(server);
+			}
+		},
+		// Runs once per environment; nulling `bridge` before awaiting keeps it idempotent.
+		async closeBundle() {
+			const pending = bridge;
+			bridge = undefined;
+			await pending?.then(
+				(started) => started.close(),
+				() => {}
+			);
 		}
 	};
 }
