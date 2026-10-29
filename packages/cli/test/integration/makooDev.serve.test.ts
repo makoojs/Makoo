@@ -401,7 +401,7 @@ describe('makooDev serve integration', () => {
 describe('devCommand serve integration', () => {
 	it('serves the supplied project root and keeps serving after a restart', async () => {
 		const root = await trackProject({ 'index.html': '<h1>real dev project</h1>' });
-		const start = vi.spyOn(DevTerminal.prototype, 'start');
+		const activate = vi.spyOn(DevTerminal.prototype, 'activate');
 		let liveServer: ViteDevServer | undefined;
 		vi.stubEnv('CI', 'true');
 		try {
@@ -429,7 +429,7 @@ describe('devCommand serve integration', () => {
 			if (!restartedUrl) throw new Error('devCommand did not resume listening');
 			expect(await (await fetch(restartedUrl)).text()).toContain('real dev project');
 		} finally {
-			const terminal = start.mock.contexts[0];
+			const terminal = activate.mock.contexts[0];
 			if (terminal instanceof DevTerminal) terminal.close();
 			await liveServer?.close();
 			vi.restoreAllMocks();

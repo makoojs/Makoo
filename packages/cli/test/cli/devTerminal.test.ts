@@ -12,6 +12,9 @@ const { clear, render } = vi.hoisted(() => ({
 vi.mock('log-update', () => ({
 	createLogUpdate: vi.fn(() => Object.assign(render, { clear }))
 }));
+vi.mock('../../src/commands/version', () => ({
+	loadCliVersion: vi.fn(async () => '0.4.1')
+}));
 
 let input: PassThrough & { isTTY: boolean; isRaw: boolean; setRawMode: ReturnType<typeof vi.fn> };
 let output: PassThrough & { isTTY: boolean };
@@ -58,8 +61,14 @@ beforeEach(() => {
 		bindCLIShortcuts: vi.fn(),
 		resolvedUrls: { local: ['http://localhost:5174/'], network: [] }
 	} as unknown as ViteDevServer;
-	terminal = new DevTerminal(server, '0.4.1');
+	terminal = new DevTerminal(server, session);
 });
+
+async function start() {
+	await server.listen();
+	await terminal.showHome();
+	terminal.activate();
+}
 
 afterEach(() => {
 	terminal.close();
@@ -72,7 +81,7 @@ afterEach(() => {
 
 describe('DevTerminal', () => {
 	it('recovers from a failed restart and accepts the next shortcut', async () => {
-		await terminal.start();
+		await start();
 		vi.mocked(server.restart).mockRejectedValue(new Error('restart failed'));
 		input.write('r');
 		await vi.waitFor(() =>
@@ -84,7 +93,7 @@ describe('DevTerminal', () => {
 	});
 
 	it('ignores repeated shortcuts while restarting and still handles Ctrl+C', async () => {
-		await terminal.start();
+		await start();
 		let finish!: () => void;
 		vi.mocked(server.restart).mockImplementation(
 			() =>
@@ -104,7 +113,7 @@ describe('DevTerminal', () => {
 	});
 
 	it('reports omitted logs and flushes only the retained messages', async () => {
-		await terminal.start();
+		await start();
 		for (let i = 0; i < 1001; i += 1) logger.info(`log-${i}`);
 		input.write('l');
 		expect(warn).toHaveBeenCalledWith('[makoo] 1 earlier dev logs omitted.');
@@ -113,7 +122,7 @@ describe('DevTerminal', () => {
 		expect(info).toHaveBeenCalledWith('log-1000', undefined);
 	});
 	it('draws current session data on the home without printing connection logs', async () => {
-		await terminal.start();
+		await start();
 		expect(String(render.mock.calls.at(-1)?.[0])).toContain('Makoo v0.4.1');
 		expect(String(render.mock.calls.at(-1)?.[0])).toContain('Waiting for a browser runtime');
 		session.open(client, { runtimeId: 1 });
@@ -126,7 +135,7 @@ describe('DevTerminal', () => {
 	});
 
 	it('buffers logs and errors until l opens the logs, then returns home with l', async () => {
-		await terminal.start();
+		await start();
 		logger.info('compile finished', { clear: true });
 		logger.error('compile failed', { clear: true });
 		expect(info).not.toHaveBeenCalled();
@@ -142,7 +151,7 @@ describe('DevTerminal', () => {
 
 	it('selects runtimes with n and keeps the selection in range after disconnect', async () => {
 		const secondClient = {} as NormalizedHotChannelClient;
-		await terminal.start();
+		await start();
 		session.open(client, { runtimeId: 1 });
 		session.open(secondClient, { runtimeId: 1 });
 		input.write('t');
@@ -165,7 +174,7 @@ describe('DevTerminal', () => {
 		{ from: 'logs' as const, key: 'h', expected: '' },
 		{ from: 'logs' as const, key: '\x1b', expected: '' }
 	])('returns from help to $from using $key', async ({ from, key, expected }) => {
-		await terminal.start();
+		await start();
 		terminal.show(from);
 		input.write('h');
 		expect(String(render.mock.calls.at(-1)?.[0])).toContain('Press h or Esc to return.');
@@ -187,7 +196,7 @@ describe('DevTerminal', () => {
 	});
 
 	it('restarts on the home and listens only to the replacement session', async () => {
-		await terminal.start();
+		await start();
 		const nextSession = new DevSession();
 		vi.mocked(server.restart).mockImplementation(async () => {
 			expect(String(render.mock.calls.at(-1)?.[0])).toContain('Restarting…');
@@ -210,7 +219,7 @@ describe('DevTerminal', () => {
 	});
 
 	it('opens the installation page without replacing the configured open path', async () => {
-		await terminal.start();
+		await start();
 		vi.mocked(server.openBrowser).mockImplementation(() => {
 			expect(server.config.server.open).toBe('/app/');
 		});
@@ -222,8 +231,8 @@ describe('DevTerminal', () => {
 	it('prints connection changes and streams logs when output is not interactive', async () => {
 		terminal.close();
 		output.isTTY = false;
-		terminal = new DevTerminal(server, '0.4.1');
-		await terminal.start();
+		terminal = new DevTerminal(server, session);
+		await start();
 		session.open(client, { runtimeId: 1 });
 		expect(info).toHaveBeenLastCalledWith(
 			expect.stringContaining('1 browser runtime connected'),
@@ -238,11 +247,12 @@ describe('DevTerminal', () => {
 		expect(input.setRawMode).not.toHaveBeenCalled();
 	});
 
-	it('keeps Vite shortcuts when makooDev is not configured', async () => {
+	it('keeps Vite shortcuts when no store is supplied', async () => {
 		terminal.close();
-		server.config = { ...server.config, plugins: [] };
-		terminal = new DevTerminal(server, '0.4.1');
-		await terminal.start();
+		delete server.config.inlineConfig.customLogger;
+		delete (server.config.inlineConfig as InlineConfigWithSession)[bindDevSession];
+		terminal = new DevTerminal(server);
+		await start();
 		expect(server.bindCLIShortcuts).toHaveBeenCalledWith({ print: true });
 		expect(
 			(server.config.inlineConfig as InlineConfigWithSession)[bindDevSession]
@@ -251,7 +261,7 @@ describe('DevTerminal', () => {
 	});
 
 	it('restores terminal input and logging and unsubscribes on close', async () => {
-		await terminal.start();
+		await start();
 		logger.info('buffered log');
 		terminal.close();
 		expect(logger.info).toBe(info);
@@ -261,12 +271,5 @@ describe('DevTerminal', () => {
 		render.mockClear();
 		session.open(client, { runtimeId: 1 });
 		expect(render).not.toHaveBeenCalled();
-	});
-
-	it('restores the logger and closes the server if startup fails', async () => {
-		vi.mocked(server.listen).mockRejectedValue(new Error('port occupied'));
-		await expect(terminal.start()).rejects.toThrow('port occupied');
-		expect(logger.info).toBe(info);
-		expect(server.close).toHaveBeenCalledOnce();
 	});
 });

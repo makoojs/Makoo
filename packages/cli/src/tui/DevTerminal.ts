@@ -1,8 +1,9 @@
 import { emitKeypressEvents, type Key } from 'node:readline';
 import { createLogUpdate } from 'log-update';
 import type { LogErrorOptions, Logger, LogOptions, ViteDevServer } from 'vite';
+import { loadCliVersion } from '../commands/version';
 import { bindDevSession, type InlineConfigWithSession } from '../vite/makooDev';
-import type { DevSession, RuntimeSnapshot } from '../vite/session';
+import type { RuntimeSnapshot } from '../vite/session';
 import { renderInjectionsTable } from './renderInjections';
 import { ansi, colorize } from './terminalColor';
 
@@ -15,11 +16,17 @@ type BufferedLog =
 	| { type: 'info' | 'warn' | 'warnOnce'; message: string; options?: LogOptions }
 	| { type: 'error'; message: string; options?: LogErrorOptions };
 
+/** The slice of a runtime store the terminal reads; DevSession and RuntimeStore both satisfy it. */
+export type RuntimeSource = {
+	getRuntimeSnapshots(): RuntimeSnapshot[];
+	subscribe(onChange: () => void): () => void;
+};
+
 export class DevTerminal {
 	public readonly interactive = Boolean(
 		process.stdin.isTTY && process.stdout.isTTY && !process.env.CI
 	);
-	private session: DevSession | undefined;
+	private store: RuntimeSource | undefined;
 	private unsubscribe: (() => void) | undefined;
 	private currentView: DevView = 'logs';
 	private previousView: DevView = 'home';
@@ -40,14 +47,22 @@ export class DevTerminal {
 	private readonly originalWarnOnce: Logger['warnOnce'];
 	private readonly originalError: Logger['error'];
 	private readonly originalClearScreen: Logger['clearScreen'];
+	private cliVersion = '';
+	// Kicked off at construction so the fs walk overlaps server.listen();
+	// showHome only awaits the result instead of starting the walk then.
+	private readonly cliVersionReady = loadCliVersion().then(
+		(v) => {
+			this.cliVersion = v;
+		},
+		() => {
+			this.cliVersion = '0.0.0';
+		}
+	);
 
 	public constructor(
 		private readonly server: ViteDevServer,
-		private readonly cliVersion: string
+		store?: RuntimeSource
 	) {
-		this.session = server.config.plugins.find(
-			(plugin) => plugin.name === 'makoo:dev'
-		)?.api?.session;
 		this.logger = server.config.logger;
 		this.originalInfo = this.logger.info;
 		this.originalWarn = this.logger.warn;
@@ -64,55 +79,54 @@ export class DevTerminal {
 		this.logger.clearScreen = (type) => {
 			if (this.currentView === 'logs') this.originalClearScreen.call(this.logger, type);
 		};
-	}
 
-	public async start(): Promise<void> {
 		process.once('exit', this.close);
-		if (this.session) {
+		if (store) {
 			// Vite reuses inlineConfig when a restart creates the next server.
 			this.server.config.inlineConfig.customLogger = this.logger;
 			(this.server.config.inlineConfig as InlineConfigWithSession)[bindDevSession] =
 				this.attachSession;
-			this.attachSession(this.session);
+			this.attachSession(store);
 			process.once('SIGINT', this.shutdown);
-		}
-
-		try {
-			await this.server.listen();
-			this.ready = true;
-			if (!this.session) {
-				this.logger.info(this.renderBanner());
-				this.server.bindCLIShortcuts({ print: true });
-				return;
-			}
-			if (this.interactive) {
-				this.show('home');
-				this.bindShortcuts();
-			} else {
-				const runtimes = this.session.getRuntimeSnapshots();
-				this.runtimeCount = runtimes.length;
-				this.logger.info(this.renderHome(runtimes));
-			}
-		} catch (error) {
-			this.close();
-			await this.server.close();
-			throw error;
 		}
 	}
 
-	public attachSession = (session: DevSession): void => {
+	public async showHome(): Promise<void> {
+		await this.cliVersionReady;
+		this.ready = true;
+		if (!this.store) {
+			this.logger.info(this.renderBanner());
+			return;
+		}
+		if (this.interactive) {
+			this.show('home');
+		} else {
+			const runtimes = this.store.getRuntimeSnapshots();
+			this.runtimeCount = runtimes.length;
+			this.logger.info(this.renderHome(runtimes));
+		}
+	}
+
+	public activate(): void {
+		if (!this.store) {
+			this.server.bindCLIShortcuts({ print: true });
+			return;
+		}
+		if (this.interactive) this.bindShortcuts();
+	}
+
+	public attachSession = (store: RuntimeSource): void => {
 		this.unsubscribe?.();
-		this.session = session;
+		this.store = store;
 		this.selectedRuntime = 0;
-		// New session subscription refresh method
-		this.unsubscribe = session.subscribe(this.refresh);
+		this.unsubscribe = store.subscribe(this.refresh);
 		this.refresh();
 	};
 
-	// Session events, navigation and new logs all redraw through this entry point.
+	// Store events, navigation and new logs all redraw through this entry point.
 	public refresh = (): void => {
-		if (!this.ready || this.closed || !this.session) return;
-		const runtimes = this.session.getRuntimeSnapshots();
+		if (!this.ready || this.closed || !this.store) return;
+		const runtimes = this.store.getRuntimeSnapshots();
 		this.selectedRuntime = runtimes.length === 0 ? 0 : this.selectedRuntime % runtimes.length;
 		if (!this.interactive) {
 			if (this.runtimeCount !== runtimes.length) {
