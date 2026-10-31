@@ -1,4 +1,4 @@
-import type { ComponentStatus, ListenerStatus } from '@makoojs/core';
+import type { ComponentEachStatus, ComponentStatus, ListenerStatus } from '@makoojs/core';
 
 /** Transport endpoint handed to the page runtime; token travels in the ws query. */
 export type DevEndpoint = {
@@ -18,6 +18,12 @@ export type AttachedListenerSnapshot = {
 	status: ListenerStatus;
 };
 
+/** One anonymous Child Injection under an Each Injection, in document order. */
+export type ChildSnapshot = {
+	status: ComponentStatus;
+	lastError?: SerializedMakooError;
+};
+
 export type InjectionSnapshot =
 	| {
 			name: string;
@@ -25,6 +31,13 @@ export type InjectionSnapshot =
 			status: ComponentStatus;
 			lastError?: SerializedMakooError;
 			attachedListeners: AttachedListenerSnapshot[];
+	  }
+	| {
+			name: string;
+			kind: 'component-each';
+			status: ComponentEachStatus;
+			lastError?: SerializedMakooError;
+			children: ChildSnapshot[];
 	  }
 	| {
 			name: string;
@@ -45,6 +58,8 @@ export type PageRuntimeRow = {
 	injections: InjectionSnapshot[];
 	diagnostics: SerializedDiagnostic[];
 };
+
+export const SUBMIT_PAGE_RPC = 'makoo:submit-page';
 
 declare module 'devframe' {
 	interface DevframeRpcServerFunctions {

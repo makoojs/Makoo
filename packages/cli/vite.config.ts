@@ -9,7 +9,8 @@ export default defineConfig({
 		lib: {
 			entry: {
 				index: resolve(import.meta.dirname, 'src/index.ts'),
-				'monkey/index': resolve(import.meta.dirname, 'src/monkey/index.ts')
+				'monkey/index': resolve(import.meta.dirname, 'src/monkey/index.ts'),
+				'bridge/runtime': resolve(import.meta.dirname, 'src/bridge/runtime.ts')
 			},
 			formats: ['es', 'cjs'],
 			fileName: (format, entryName) => `${entryName}.${format === 'es' ? 'js' : 'cjs'}`

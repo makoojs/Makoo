@@ -66,11 +66,13 @@ function fakeDeps() {
 	const stores = new Map<ViteDevServer, RuntimeSource>();
 	const deps = {
 		address: { host: '127.0.0.1', port: 18120 },
+		runtimeFile: '/test/bridge/runtime.js',
 		startBridge: vi.fn(async (_store: RuntimeStore) => bridge),
 		createTerminal: vi.fn(async (server: ViteDevServer, store: RuntimeSource) => {
 			stores.set(server, store);
 			return terminal as unknown as DevTerminal;
-		})
+		}),
+		resolveDevframeClient: vi.fn(() => '/test/node_modules/devframe/client/index.mjs')
 	};
 	return { deps, terminal, bridge, stores };
 }
@@ -259,7 +261,7 @@ describe('makooDev terminal takeover', () => {
 		expect(server.bindCLIShortcuts).toBe(originalBindCLIShortcuts);
 	});
 
-	it('serves a passthrough virtual module for the public Core entry', async () => {
+	it('serves a passthrough virtual module while the bridge is not up', async () => {
 		const { deps } = fakeDeps();
 		const plugin = createMakooDev(deps);
 		const ctx = {
@@ -273,6 +275,147 @@ describe('makooDev terminal takeover', () => {
 			'export * from "/resolved/@makoojs/core.js";'
 		);
 		expect(await callHook(plugin, 'load', {}, '/unrelated')).toBeNull();
+	});
+
+	it('serves the instrumented thin wrapper once the bridge is up', async () => {
+		const { deps, bridge } = fakeDeps();
+		const plugin = createMakooDev(deps);
+		const ctx = {
+			resolve: vi.fn().mockResolvedValue({ id: '/resolved/@makoojs/core.js' })
+		};
+		await callHook(plugin, 'resolveId', ctx, '@makoojs/core', '/project/src/main.ts', {
+			isEntry: false
+		});
+		const { server, emitListening } = fakeServer();
+		callHook(plugin, 'configureServer', {}, server);
+		emitListening();
+		await vi.waitFor(() => expect(deps.startBridge).toHaveBeenCalledOnce());
+
+		const source = await callHook(plugin, 'load', {}, '\0virtual:makoo-dev');
+
+		expect(source).toContain('export * from "/resolved/@makoojs/core.js";');
+		expect(source).toContain(
+			'import { createMakoo as __makooBaseCreateMakoo } from "/resolved/@makoojs/core.js";'
+		);
+		expect(source).toContain(
+			'import { instrument as __makooInstrument } from "/test/bridge/runtime.js";'
+		);
+		expect(source).toContain(
+			`export const createMakoo = __makooInstrument(__makooBaseCreateMakoo, ${JSON.stringify(bridge.endpoint)});`
+		);
+	});
+
+	it('waits for an in-flight bridge launch before generating the module', async () => {
+		const { deps, bridge } = fakeDeps();
+		let resolveBridge!: (value: DevBridge) => void;
+		deps.startBridge.mockImplementation(
+			() =>
+				new Promise<DevBridge>((resolve) => {
+					resolveBridge = resolve;
+				})
+		);
+		const plugin = createMakooDev(deps);
+		const ctx = {
+			resolve: vi.fn().mockResolvedValue({ id: '/resolved/@makoojs/core.js' })
+		};
+		await callHook(plugin, 'resolveId', ctx, '@makoojs/core', '/project/src/main.ts', {
+			isEntry: false
+		});
+		const { server, emitListening } = fakeServer();
+		callHook(plugin, 'configureServer', {}, server);
+		emitListening();
+		await vi.waitFor(() => expect(deps.startBridge).toHaveBeenCalledOnce());
+
+		const pending = callHook(plugin, 'load', {}, '\0virtual:makoo-dev');
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		resolveBridge(bridge);
+
+		expect(await pending).toContain('__makooInstrument');
+	});
+
+	it('falls back to passthrough when the bridge fails to start', async () => {
+		const { deps } = fakeDeps();
+		deps.startBridge.mockRejectedValueOnce(new Error('bind failed'));
+		const plugin = createMakooDev(deps);
+		const ctx = {
+			resolve: vi.fn().mockResolvedValue({ id: '/resolved/@makoojs/core.js' })
+		};
+		await callHook(plugin, 'resolveId', ctx, '@makoojs/core', '/project/src/main.ts', {
+			isEntry: false
+		});
+		const { server, emitListening } = fakeServer();
+		callHook(plugin, 'configureServer', {}, server);
+		emitListening();
+		await vi.waitFor(() =>
+			expect(server.config.logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('failed to start')
+			)
+		);
+
+		expect(await callHook(plugin, 'load', {}, '\0virtual:makoo-dev')).toBe(
+			'export * from "/resolved/@makoojs/core.js";'
+		);
+	});
+
+	it('excludes devframe/client from dep optimization', () => {
+		const { deps } = fakeDeps();
+		const plugin = createMakooDev(deps);
+
+		expect(callHook(plugin, 'config', {})).toEqual({
+			optimizeDeps: { exclude: ['devframe/client'] }
+		});
+	});
+
+	it('resolves devframe/client through the injected package-slot resolver', async () => {
+		const { deps } = fakeDeps();
+		const plugin = createMakooDev(deps);
+
+		expect(
+			await callHook(plugin, 'resolveId', {}, 'devframe/client', deps.runtimeFile, {})
+		).toBe('/test/node_modules/devframe/client/index.mjs');
+		expect(deps.resolveDevframeClient).toHaveBeenCalledOnce();
+	});
+
+	it('leaves devframe/client imports outside the runtime module alone', async () => {
+		const { deps } = fakeDeps();
+		const plugin = createMakooDev(deps);
+
+		expect(
+			await callHook(
+				plugin,
+				'resolveId',
+				{},
+				'devframe/client',
+				'/project/src/user-code.ts',
+				{}
+			)
+		).toBeNull();
+		expect(deps.resolveDevframeClient).not.toHaveBeenCalled();
+	});
+
+	it('degrades to passthrough and warns when devframe/client cannot be resolved', async () => {
+		const { deps, bridge } = fakeDeps();
+		deps.resolveDevframeClient.mockImplementation(() => {
+			throw new Error('not found');
+		});
+		const plugin = createMakooDev(deps);
+		const ctx = {
+			resolve: vi.fn().mockResolvedValue({ id: '/resolved/@makoojs/core.js' })
+		};
+		await callHook(plugin, 'resolveId', ctx, '@makoojs/core', '/project/src/main.ts', {
+			isEntry: false
+		});
+		const { server, emitListening } = fakeServer();
+		callHook(plugin, 'configureServer', {}, server);
+		emitListening();
+		await vi.waitFor(() => expect(deps.startBridge).toHaveBeenCalledOnce());
+
+		expect(await callHook(plugin, 'load', {}, '\0virtual:makoo-dev')).toBe(
+			'export * from "/resolved/@makoojs/core.js";'
+		);
+		expect(server.config.logger.warn).toHaveBeenCalledWith(
+			expect.stringContaining('devframe/client')
+		);
 	});
 
 	it('closes the bridge and terminal once across repeated closeBundle calls', async () => {

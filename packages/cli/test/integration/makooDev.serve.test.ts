@@ -1,3 +1,5 @@
+import { createRequire } from 'node:module';
+import { resolve } from 'node:path';
 import type { ViteDevServer } from 'vite';
 import { createServer } from 'vite';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -6,20 +8,10 @@ import { devCommand } from '../../src/commands/dev';
 import type { RuntimeSource } from '../../src/tui/DevTerminal';
 import { DevTerminal } from '../../src/tui/DevTerminal';
 import { createMakooDev, makooDev } from '../../src/vite/makooDev';
+import { bridgeReachable } from '../utils/bridge';
 import { cleanupTempProjects, trackProject } from '../utils/tempProject';
 
 let server: ViteDevServer | undefined;
-
-async function bridgeReachable(port: number): Promise<boolean> {
-	try {
-		const response = await fetch(`http://127.0.0.1:${port}/__connection.json`, {
-			signal: AbortSignal.timeout(1000)
-		});
-		return response.ok;
-	} catch {
-		return false;
-	}
-}
 
 function fakeTerminalDeps(port: number) {
 	const terminals: { server: ViteDevServer; store: RuntimeSource }[] = [];
@@ -30,11 +22,13 @@ function fakeTerminalDeps(port: number) {
 	};
 	const deps = {
 		address: { host: '127.0.0.1', port },
+		runtimeFile: resolve(import.meta.dirname, '../../src/bridge/runtime.ts'),
 		startBridge: vi.fn(startDevBridge),
 		createTerminal: vi.fn(async (server: ViteDevServer, store: RuntimeSource) => {
 			terminals.push({ server, store });
 			return terminal as unknown as DevTerminal;
-		})
+		}),
+		resolveDevframeClient: () => createRequire(import.meta.url).resolve('devframe/client')
 	};
 	return { deps, terminal, terminals };
 }

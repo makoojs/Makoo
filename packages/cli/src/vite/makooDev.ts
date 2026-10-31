@@ -1,11 +1,15 @@
+import { createRequire } from 'node:module';
 import { isIP } from 'node:net';
+import { join } from 'node:path';
 import type { InlineConfig, Plugin, ViteDevServer } from 'vite';
+import type { DevEndpoint } from '../bridge/protocol';
 import { type BridgeAddress, type DevBridge, startDevBridge } from '../bridge/server';
 import { RuntimeStore } from '../bridge/store';
 import type { DevTerminal, RuntimeSource } from '../tui/DevTerminal';
 
 const VIRTUAL_CORE_ID = '\0virtual:makoo-dev';
 const CORE_PACKAGE = '@makoojs/core';
+const DEVFRAME_CLIENT_PACKAGE = 'devframe/client';
 const PLUGIN_NAME = 'makoo:dev';
 
 export type MakooDevOptions = {
@@ -17,8 +21,16 @@ export type MakooDevOptions = {
 
 export type MakooDevDeps = {
 	address: BridgeAddress;
+	/**
+	 * Absolute path to the page-side instrument module imported by the virtual
+	 * module; undefined = instrumentation unavailable, the module stays a pure
+	 * re-export of core.
+	 */
+	runtimeFile: string | undefined;
 	startBridge: (store: RuntimeStore, address: BridgeAddress) => Promise<DevBridge>;
 	createTerminal: (server: ViteDevServer, store: RuntimeSource) => Promise<DevTerminal>;
+	/** Resolves 'devframe/client' to an absolute path; throws when unresolvable. */
+	resolveDevframeClient: () => string;
 };
 
 // CLI-driven state rides on inlineConfig: Vite keeps that object across a
@@ -46,9 +58,23 @@ function isLoopbackHost(host: string): boolean {
 	return host === 'localhost' || host === '::1' || host.startsWith('127.');
 }
 
-// A pure forward until the page runtime (ticket 04) wraps createMakoo.
-function buildVirtualModuleSource(resolvedCoreId: string): string {
+function buildPassthroughSource(resolvedCoreId: string): string {
 	return `export * from ${JSON.stringify(resolvedCoreId)};`;
+}
+
+// Thin wrapper: re-export everything, then shadow createMakoo with the instrumented one.
+function buildVirtualModuleSource(
+	resolvedCoreId: string,
+	runtimeFile: string,
+	endpoint: DevEndpoint
+): string {
+	const core = JSON.stringify(resolvedCoreId);
+	return [
+		`export * from ${core};`,
+		`import { createMakoo as __makooBaseCreateMakoo } from ${core};`,
+		`import { instrument as __makooInstrument } from ${JSON.stringify(runtimeFile)};`,
+		`export const createMakoo = __makooInstrument(__makooBaseCreateMakoo, ${JSON.stringify(endpoint)});`
+	].join('\n');
 }
 
 export function createMakooDev(deps: MakooDevDeps): Plugin {
@@ -58,6 +84,20 @@ export function createMakooDev(deps: MakooDevDeps): Plugin {
 	let resolvedCoreId: string | null = null;
 	let bridge: Promise<DevBridge> | undefined;
 	let disabled = false;
+	let devServer: ViteDevServer | undefined;
+	// undefined = not tried yet; null = resolution failed (degrade to passthrough).
+	let devframeClientId: string | null | undefined;
+
+	const resolveDevframeClientId = (): string | null => {
+		if (devframeClientId === undefined) {
+			try {
+				devframeClientId = deps.resolveDevframeClient();
+			} catch {
+				devframeClientId = null;
+			}
+		}
+		return devframeClientId;
+	};
 
 	const launchBridge = async (server: ViteDevServer) => {
 		try {
@@ -107,6 +147,14 @@ export function createMakooDev(deps: MakooDevDeps): Plugin {
 		name: PLUGIN_NAME,
 		apply: 'serve',
 		enforce: 'pre',
+		config() {
+			return {
+				// The bare specifier only appears inside our runtime module, whose
+				// resolveId already returns an absolute path; exclusion is a belt for
+				// the scanner paths that bypass this plugin's resolution.
+				optimizeDeps: { exclude: [DEVFRAME_CLIENT_PACKAGE] }
+			};
+		},
 		configResolved(config) {
 			const first = config.plugins.findIndex((p) => p.name === PLUGIN_NAME);
 			// Check if there are any extra makoodev plugins running.
@@ -118,7 +166,16 @@ export function createMakooDev(deps: MakooDevDeps): Plugin {
 			}
 		},
 		async resolveId(source, importer, options) {
-			if (disabled || source !== CORE_PACKAGE) {
+			if (disabled) {
+				return null;
+			}
+			// devframe is a cli dependency, not the user's: pinning our own import of it
+			// to this package's slot keeps the page on the same version as the bridge,
+			// while leaving the user's own devframe imports to normal resolution.
+			if (source === DEVFRAME_CLIENT_PACKAGE && importer === deps.runtimeFile) {
+				return resolveDevframeClientId();
+			}
+			if (source !== CORE_PACKAGE) {
 				return null;
 			}
 
@@ -133,17 +190,33 @@ export function createMakooDev(deps: MakooDevDeps): Plugin {
 			resolvedCoreId = resolved.id;
 			return VIRTUAL_CORE_ID;
 		},
-		load(id) {
-			if (disabled || id !== VIRTUAL_CORE_ID) {
+		async load(id) {
+			if (disabled || id !== VIRTUAL_CORE_ID || resolvedCoreId === null) {
 				return null;
 			}
-			if (!resolvedCoreId) {
-				return null;
+			// Wait for the bridge startup result: an in-flight launch settles before
+			// the module source is generated; failure degrades to a pure forward.
+			const started = await bridge?.catch(() => undefined);
+			if (started === undefined) {
+				return buildPassthroughSource(resolvedCoreId);
 			}
-			return buildVirtualModuleSource(resolvedCoreId);
+			if (deps.runtimeFile === undefined) {
+				devServer?.config.logger.warn(
+					'[makoo] the page runtime module could not be located; serving @makoojs/core without instrumentation.'
+				);
+				return buildPassthroughSource(resolvedCoreId);
+			}
+			if (resolveDevframeClientId() === null) {
+				devServer?.config.logger.warn(
+					'[makoo] devframe/client could not be resolved; serving @makoojs/core without instrumentation.'
+				);
+				return buildPassthroughSource(resolvedCoreId);
+			}
+			return buildVirtualModuleSource(resolvedCoreId, deps.runtimeFile, started.endpoint);
 		},
 		configureServer(server) {
 			if (disabled) return;
+			devServer = server;
 			const { httpServer } = server;
 			if (!httpServer) {
 				server.config.logger.warn(
@@ -227,9 +300,23 @@ export function createMakooDev(deps: MakooDevDeps): Plugin {
  * `makoo dev` terminal. Only active in the dev server; it never controls injections.
  */
 export function makooDev(options: MakooDevOptions = {}): Plugin {
+	// The module's own directory locates both the sibling instrument module
+	// (dist/bridge/runtime.js) and, via createRequire, this package's devframe
+	// dependency slot. import.meta.dirname covers ESM (Node >= 20.11); the cjs
+	// bundle has import.meta = {} but a real __dirname. A runtime with neither
+	// degrades to passthrough.
+	const moduleDir =
+		import.meta.dirname ?? (typeof __dirname !== 'undefined' ? __dirname : undefined);
 	return createMakooDev({
 		address: resolveBridgeAddress(options),
+		runtimeFile: moduleDir === undefined ? undefined : join(moduleDir, 'bridge/runtime.js'),
 		startBridge: startDevBridge,
+		resolveDevframeClient: () => {
+			if (moduleDir === undefined) {
+				throw new Error('module location unavailable');
+			}
+			return createRequire(join(moduleDir, 'index.js')).resolve(DEVFRAME_CLIENT_PACKAGE);
+		},
 		// The TUI (and its log-update dependency) is imported lazily so
 		// build/preview and plugin-less paths never load it.
 		createTerminal: async (server, store) => {

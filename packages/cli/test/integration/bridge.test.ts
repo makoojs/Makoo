@@ -7,6 +7,7 @@ import type { InjectionSnapshot } from '../../src/bridge/protocol';
 import { startDevBridge } from '../../src/bridge/server';
 import { RuntimeStore } from '../../src/bridge/store';
 import { makooDev } from '../../src/vite/makooDev';
+import { bridgeReachable } from '../utils/bridge';
 
 (globalThis as Record<string, unknown>).location ??= new URL('http://127.0.0.1/');
 
@@ -27,17 +28,6 @@ function pageClient(port: number, token?: string) {
 		simpleAuth: false,
 		webmcp: false
 	});
-}
-
-async function bridgeReachable(port: number): Promise<boolean> {
-	try {
-		const response = await fetch(`http://127.0.0.1:${port}/__connection.json`, {
-			signal: AbortSignal.timeout(1000)
-		});
-		return response.ok;
-	} catch {
-		return false;
-	}
 }
 
 // devframe persists the first token it sees process-wide under __DEVFRAME_*

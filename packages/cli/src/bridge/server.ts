@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import type { DevframeNodeContext } from 'devframe';
 import type { DevframeAuthHandler } from 'devframe/node/auth';
 import { loadCliVersion } from '../commands/version';
-import type { DevEndpoint, PageRuntimeRow } from './protocol';
+import { type DevEndpoint, type PageRuntimeRow, SUBMIT_PAGE_RPC } from './protocol';
 import type { RuntimeStore } from './store';
 
 export type BridgeAddress = {
@@ -34,7 +34,7 @@ export async function startDevBridge(
 	let context: DevframeNodeContext | undefined;
 
 	const submitPage = defineRpcFunction({
-		name: 'makoo:submit-page',
+		name: SUBMIT_PAGE_RPC,
 		type: 'action',
 		handler: (rows: PageRuntimeRow[]) => {
 			// getCurrentRpcSession is the handler's only handle on the caller;
