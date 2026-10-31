@@ -14,8 +14,8 @@
 .hero .install-command { width: min(100%, 420px); background: color-mix(in srgb, var(--makoo-surface) 55%, transparent); box-shadow: none; }
 .hero .copy-command > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 .eyebrow { margin: 0 0 24px; color: var(--makoo-accent-bright); font: 400 12px/1.7 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; }
-.makoo-home-shell .hero h1 { max-width: 15ch; margin: 0; font-size: clamp(44px, 4.3vw, 68px); font-weight: 450; line-height: 1.14; letter-spacing: -.045em; }
-.makoo-home-shell .hero h1:lang(zh) { max-width: none; font-size: clamp(38px, 4.1vw, 64px); font-weight: 400; letter-spacing: -.035em; line-height: 1.32; }
+.makoo-home-shell .hero h1 { margin: 0; font-size: clamp(24px, calc(3.1vw - 5px), 40px); font-weight: 450; line-height: 1.14; letter-spacing: -.045em; }
+.makoo-home-shell .hero h1:lang(zh) { font-size: clamp(30px, 3vw, 44px); font-weight: 400; letter-spacing: -.035em; line-height: 1.32; }
 .hero-title-line { display: block; white-space: nowrap; }
 .hero-lead { max-width: 42ch; margin: 28px 0 0; color: var(--makoo-muted); font-size: clamp(17px, 1.55vw, 22px); line-height: 1.75; white-space: pre-line; text-wrap: pretty; }
 .hero-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
@@ -42,16 +42,17 @@
 @media (max-width: 1168px) { .site-footer { margin: 0 24px; } }
 @media (min-width: 768px) and (max-width: 959px) {
 	.hero { width: calc(100% - 64px); grid-template-columns: 55% 45%; min-height: 620px; }
-	.makoo-home-shell .hero h1 { font-size: 44px; }
-	.makoo-home-shell .hero h1:lang(zh) { font-size: 36px; }
+	.makoo-home-shell .hero h1 { font-size: 25px; }
+	.makoo-home-shell .hero h1:lang(zh) { font-size: 30px; }
 	.hero-art { width: 158%; height: 500px; margin-left: -32%; }
 	.hero .eyebrow { font-size: 14px; }
 }
 @media (max-width: 767px) {
 	.hero { display: flex; flex-direction: column; align-items: stretch; width: calc(100% - 40px); min-height: 0; padding: 52px 0 8px; }
 	.hero-copy { padding: 0; }
-	.makoo-home-shell .hero h1 { max-width: 16ch; font-size: clamp(38px, 7.8vw, 54px); }
-	.makoo-home-shell .hero h1:lang(zh) { font-size: clamp(28px, 7.9vw, 48px); letter-spacing: -.04em; }
+	.makoo-home-shell .hero h1 { font-size: clamp(28px, 7.8vw, 40px); }
+	.makoo-home-shell .hero h1:lang(zh) { font-size: clamp(26px, 7.9vw, 40px); letter-spacing: -.04em; }
+	.hero-title-line { white-space: normal; }
 	.hero .eyebrow { font-size: 14px; }
 	.hero-lead { font-size: 16px; }
 	.hero .hero-actions { margin-top: 28px; }
