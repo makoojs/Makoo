@@ -1,403 +1,141 @@
-import path from 'node:path';
-import type { MakooRuntime } from '@makoojs/core';
-import { createServer, createServerModuleRunner, type ViteDevServer } from 'vite';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { DevTerminal } from '../../src/cli/commands/dev/DevTerminal';
-import { devCommand } from '../../src/cli/commands/dev/dev';
-import type { DevSession } from '../../src/session/DevSession';
-import type { RuntimeInjection, RuntimeNotice, RuntimeOpen } from '../../src/session/types';
-import { makooDev } from '../../src/vite/makooDev';
+import { createRequire } from 'node:module';
+import { resolve } from 'node:path';
+import type { ViteDevServer } from 'vite';
+import { createServer } from 'vite';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { startDevBridge } from '../../src/bridge/server';
+import { devCommand } from '../../src/commands/dev';
+import type { RuntimeSource } from '../../src/tui/DevTerminal';
+import { DevTerminal } from '../../src/tui/DevTerminal';
+import { createMakooDev, makooDev } from '../../src/vite/makooDev';
+import { bridgeReachable } from '../utils/bridge';
 import { cleanupTempProjects, trackProject } from '../utils/tempProject';
 
-const repoRoot = path.resolve(__dirname, '../../../..');
-const coreEntry = path.join(repoRoot, 'packages/core/src/index.ts');
+let server: ViteDevServer | undefined;
 
-type WireMessage =
-	| ({ type: 'open' } & RuntimeOpen)
-	| ({ type: 'injection' } & RuntimeInjection)
-	| ({ type: 'notice' } & RuntimeNotice);
+function fakeTerminalDeps(port: number) {
+	const terminals: { server: ViteDevServer; store: RuntimeSource }[] = [];
+	const terminal = {
+		showHome: vi.fn(async () => {}),
+		activate: vi.fn(),
+		close: vi.fn()
+	};
+	const deps = {
+		address: { host: '127.0.0.1', port },
+		runtimeFile: resolve(import.meta.dirname, '../../src/bridge/runtime.ts'),
+		startBridge: vi.fn(startDevBridge),
+		createTerminal: vi.fn(async (server: ViteDevServer, store: RuntimeSource) => {
+			terminals.push({ server, store });
+			return terminal as unknown as DevTerminal;
+		}),
+		resolveDevframeClient: () => createRequire(import.meta.url).resolve('devframe/client')
+	};
+	return { deps, terminal, terminals };
+}
 
-let server: Awaited<ReturnType<typeof createServer>>;
-let runner: ReturnType<typeof createServerModuleRunner>;
-let entry: {
-	applyPanelAndListener(): MakooRuntime;
-	applyBrokenPanel(): void;
-	applyPanelRemovingLaterListener(): void;
-	applyWithThrowingSubscriber(): MakooRuntime;
-	applyPanelFailingCleanup(): MakooRuntime;
-};
-let messages: WireMessage[];
-let session: DevSession;
+afterEach(async () => {
+	await server?.close();
+	server = undefined;
+	vi.restoreAllMocks();
+	await cleanupTempProjects();
+});
 
-describe('makooDev serve integration', () => {
-	beforeEach(async () => {
-		const root = await trackProject({
-			'src/main.ts': `
-				import { createMakoo, inject, listen } from '@makoojs/core';
-
-				function host(id, tag = 'div') {
-					const element = document.createElement(tag);
-					element.id = id;
-					document.body.append(element);
-					return element;
-				}
-
-				const plainAdapter = { name: 'plain', mount: () => 'handle', unmount: () => {} };
-
-				export function applyPanelAndListener() {
-					host('panel-host');
-					host('play', 'button');
-					const core = createMakoo();
-					core.useAdapter(plainAdapter);
-					core.apply([
-						inject({
-							name: 'panel',
-							injectAt: '#panel-host',
-							adapter: 'plain',
-							component: {},
-							listeners: [
-								listen({ name: 'hover', listenAt: '#panel-host', type: 'mouseenter', callback() {} })
-							]
-						}),
-						listen({ name: 'play-click', listenAt: '#play', type: 'click', callback() {} })
-					]);
-					return core;
-				}
-
-				export function applyPanelRemovingLaterListener() {
-					host('panel-host');
-					host('play', 'button');
-					const core = createMakoo();
-					core.useAdapter({
-						name: 'remover',
-						mount: () => {
-							void core.listener('play-click').command.remove();
-							return 'handle';
-						},
-						unmount: () => {}
-					});
-					core.apply([
-						inject({ name: 'panel', injectAt: '#panel-host', adapter: 'remover', component: {} }),
-						listen({ name: 'play-click', listenAt: '#play', type: 'click', callback() {} })
-					]);
-				}
-
-				export function applyWithThrowingSubscriber() {
-					host('play', 'button');
-					const core = createMakoo();
-					core.apply([listen({ name: 'play-click', listenAt: '#play', type: 'click', callback() {} })]);
-					core.listener('play-click').statusHandle.subscribe(() => {
-						throw new Error('subscriber exploded');
-					});
-					return core;
-				}
-
-				export function applyPanelFailingCleanup() {
-					host('panel-host');
-					const core = createMakoo();
-					core.useAdapter({
-						name: 'sticky',
-						mount: () => 'handle',
-						unmount: () => {
-							throw new Error('unmount exploded');
-						}
-					});
-					core.apply([inject({ name: 'sticky', injectAt: '#panel-host', adapter: 'sticky', component: {} })]);
-					return core;
-				}
-
-				export function applyBrokenPanel() {
-					host('panel-host');
-					const core = createMakoo();
-					core.useAdapter({
-						name: 'exploding',
-						mount: () => {
-							throw new Error('adapter exploded');
-						},
-						unmount: () => {}
-					});
-					core.apply([
-						inject({ name: 'broken', injectAt: '#panel-host', adapter: 'exploding', component: {} })
-					]);
-				}
-			`
-		});
-
-		const devPlugin = makooDev();
-		session = devPlugin.api.session;
+describe('makooDev terminal lifecycle', () => {
+	it('stays fully off in middleware mode', async () => {
+		const { deps } = fakeTerminalDeps(18116);
 		server = await createServer({
-			root,
 			configFile: false,
+			root: process.cwd(),
 			logLevel: 'silent',
 			server: { middlewareMode: true },
-			appType: 'custom',
+			plugins: [createMakooDev(deps)]
+		});
+
+		expect(deps.startBridge).not.toHaveBeenCalled();
+		expect(deps.createTerminal).not.toHaveBeenCalled();
+		expect(await bridgeReachable(18116)).toBe(false);
+	});
+
+	it('does not create a terminal for a programmatic listen', async () => {
+		const { deps } = fakeTerminalDeps(18117);
+		server = await createServer({
+			configFile: false,
+			root: process.cwd(),
+			logLevel: 'silent',
+			server: { host: '127.0.0.1', port: 0 },
+			plugins: [createMakooDev(deps)]
+		});
+		await server.listen();
+
+		await vi.waitFor(async () => expect(await bridgeReachable(18117)).toBe(true));
+		expect(deps.createTerminal).not.toHaveBeenCalled();
+	});
+
+	it('takes over the terminal when the CLI calls printUrls and bindCLIShortcuts', async () => {
+		const { deps, terminal, terminals } = fakeTerminalDeps(18118);
+		let facade: ViteDevServer | undefined;
+		server = await createServer({
+			configFile: false,
+			root: process.cwd(),
+			logLevel: 'silent',
+			server: { host: '127.0.0.1', port: 0 },
 			plugins: [
-				devPlugin,
+				createMakooDev(deps),
 				{
-					name: 'makoo-test-core-resolve',
-					resolveId(source) {
-						if (source === '@makoojs/core') {
-							return coreEntry;
-						}
+					name: 'capture-facade',
+					configureServer(s) {
+						facade = s;
 					}
 				}
 			]
 		});
-		runner = createServerModuleRunner(server.environments.ssr);
+		await server.listen();
 
-		messages = [];
-		const hot = server.environments.ssr.hot;
-		hot.on('makoo:runtime:open', (data) =>
-			messages.push({ type: 'open', ...(data as RuntimeOpen) })
-		);
-		hot.on('makoo:runtime:injection', (data) =>
-			messages.push({ type: 'injection', ...(data as RuntimeInjection) })
-		);
-		hot.on('makoo:runtime:notice', (data) =>
-			messages.push({ type: 'notice', ...(data as RuntimeNotice) })
-		);
-		entry = await runner.import('/src/main.ts');
-	});
+		// createServer() returns a different object than the one plugins see in
+		// configureServer, but calls on it dispatch to the same overrides.
+		server.printUrls();
+		server.bindCLIShortcuts({ print: true });
 
-	afterEach(async () => {
-		await runner?.close();
-		await server?.close();
-		vi.restoreAllMocks();
-		document.body.replaceChildren();
-		await cleanupTempProjects();
-	});
-
-	it('opens the runtime and pushes each applied Injection with its real phase', () => {
-		entry.applyPanelAndListener();
-		expect(messages).toEqual([
-			{ type: 'open', runtimeId: 1 },
-			{
-				type: 'injection',
-				runtimeId: 1,
-				injection: {
-					name: 'panel',
-					kind: 'component',
-					status: 'mounted',
-					attachedListeners: [{ name: 'hover', status: 'bound' }]
-				}
-			},
-			{
-				type: 'injection',
-				runtimeId: 1,
-				injection: { name: 'play-click', kind: 'standalone-listener', status: 'bound' }
-			}
-		]);
-		expect(session.getRuntimeSnapshots()).toEqual([
-			{
-				clientId: 1,
-				runtimeId: 1,
-				injections: [
-					{
-						name: 'panel',
-						kind: 'component',
-						status: 'mounted',
-						attachedListeners: [{ name: 'hover', status: 'bound' }]
-					},
-					{ name: 'play-click', kind: 'standalone-listener', status: 'bound' }
-				],
-				diagnostics: []
-			}
-		]);
-	});
-
-	it('streams a later failure with its lastError code and message', async () => {
-		entry.applyBrokenPanel();
-		await vi.waitFor(() => expect(messages).toHaveLength(3));
-		expect(messages).toEqual([
-			{ type: 'open', runtimeId: 1 },
-			{
-				type: 'injection',
-				runtimeId: 1,
-				injection: {
-					name: 'broken',
-					kind: 'component',
-					status: 'waiting',
-					attachedListeners: []
-				}
-			},
-			{
-				type: 'injection',
-				runtimeId: 1,
-				injection: {
-					name: 'broken',
-					kind: 'component',
-					status: 'failed',
-					lastError: {
-						code: 'MAKOO_MOUNT_FAILED',
-						message: 'Failed to mount "broken"',
-						cause: 'adapter exploded'
-					},
-					attachedListeners: []
-				}
-			}
-		]);
-		expect(session.getRuntimeSnapshots()[0]?.injections).toEqual([
-			{
-				name: 'broken',
-				kind: 'component',
-				status: 'failed',
-				lastError: {
-					code: 'MAKOO_MOUNT_FAILED',
-					message: 'Failed to mount "broken"',
-					cause: 'adapter exploded'
-				},
-				attachedListeners: []
-			}
-		]);
-	});
-
-	it('forwards injection-removed and instance-disposed after the phase reaches idle', async () => {
-		const core = entry.applyPanelAndListener();
-		messages = [];
-		await core.listener('play-click').command.remove();
-		expect(messages).toEqual([
-			{
-				type: 'injection',
-				runtimeId: 1,
-				injection: { name: 'play-click', kind: 'standalone-listener', status: 'idle' }
-			},
-			{
-				type: 'notice',
-				runtimeId: 1,
-				notice: { type: 'injection-removed', name: 'play-click' }
-			}
-		]);
-		expect(
-			session.getRuntimeSnapshots()[0]?.injections.map((injection) => injection.name)
-		).toEqual(['panel']);
-		messages = [];
-		await core.dispose();
-		const panel = (status: string, hover: string) => ({
-			type: 'injection',
-			runtimeId: 1,
-			injection: {
-				name: 'panel',
-				kind: 'component',
-				status,
-				attachedListeners: [{ name: 'hover', status: hover }]
-			}
+		await vi.waitFor(() => {
+			expect(terminal.showHome).toHaveBeenCalledOnce();
+			expect(terminal.activate).toHaveBeenCalledOnce();
 		});
-		expect(messages).toEqual([
-			panel('mounted', 'idle'),
-			panel('idle', 'idle'),
-			{ type: 'notice', runtimeId: 1, notice: { type: 'injection-removed', name: 'panel' } },
-			{ type: 'notice', runtimeId: 1, notice: { type: 'instance-disposed' } }
-		]);
-		expect(session.getRuntimeSnapshots()).toEqual([]);
-		expect(session.isEmpty()).toBe(false);
+		expect(terminals).toHaveLength(1);
+		expect(terminals[0]?.server).toBe(facade);
+		expect(terminals[0]?.store.getRuntimeSnapshots()).toEqual([]);
 	});
 
-	it('clears only the CLI session when the page client disconnects', async () => {
-		const core = entry.applyPanelAndListener();
-		expect(session.getRuntimeSnapshots()).toHaveLength(1);
-		messages = [];
-
-		await runner.close();
-
-		expect(session.isEmpty()).toBe(true);
-		expect(session.getRuntimeSnapshots()).toEqual([]);
-		expect(messages).toEqual([]);
-		expect(core.injection('panel').statusHandle.getSnapshot()).toBe('mounted');
-		expect(core.listener('play-click').statusHandle.getSnapshot()).toBe('bound');
-	});
-
-	it('keeps an Injection retained by a cleanup failure visible as failed', async () => {
-		vi.spyOn(console, 'error').mockImplementation(() => {});
-		const core = entry.applyPanelFailingCleanup();
-		messages = [];
-		await expect(core.injection('sticky').command.remove()).rejects.toMatchObject({
-			code: 'MAKOO_INJECTION_CLEANUP_FAILED'
+	it('re-takes over automatically after a restart that a CLI once drove', async () => {
+		const { deps, terminal, terminals } = fakeTerminalDeps(18119);
+		server = await createServer({
+			configFile: false,
+			root: process.cwd(),
+			logLevel: 'silent',
+			server: { host: '127.0.0.1', port: 0 },
+			plugins: [createMakooDev(deps)]
 		});
+		await server.listen();
+		server.printUrls();
+		server.bindCLIShortcuts({ print: true });
+		await vi.waitFor(() => expect(deps.createTerminal).toHaveBeenCalledOnce());
 
-		expect(messages.some((message) => message.type === 'notice')).toBe(false);
-		expect(session.getRuntimeSnapshots()[0]?.injections).toEqual([
-			{
-				name: 'sticky',
-				kind: 'component',
-				status: 'failed',
-				lastError: {
-					code: 'MAKOO_INJECTION_CLEANUP_FAILED',
-					message: 'Cleanup failed for "sticky"\nFailed to unmount "sticky"'
-				},
-				attachedListeners: []
-			}
-		]);
-	});
+		await server.restart();
 
-	it('skips an Injection that an earlier mount in the same batch already removed', () => {
-		entry.applyPanelRemovingLaterListener();
-		expect(messages).toEqual([
-			{ type: 'open', runtimeId: 1 },
-			{
-				type: 'notice',
-				runtimeId: 1,
-				notice: { type: 'injection-removed', name: 'play-click' }
-			},
-			{
-				type: 'injection',
-				runtimeId: 1,
-				injection: {
-					name: 'panel',
-					kind: 'component',
-					status: 'mounted',
-					attachedListeners: []
-				}
-			}
-		]);
-	});
-
-	it('forwards a diagnostic as a notice beside the real phase change', async () => {
-		vi.spyOn(console, 'error').mockImplementation(() => {});
-		const core = entry.applyWithThrowingSubscriber();
-		messages = [];
-		await core.listener('play-click').command.stop();
-		expect(messages).toEqual([
-			{
-				type: 'injection',
-				runtimeId: 1,
-				injection: { name: 'play-click', kind: 'standalone-listener', status: 'idle' }
-			},
-			{
-				type: 'notice',
-				runtimeId: 1,
-				notice: {
-					type: 'diagnostic',
-					name: 'play-click',
-					error: {
-						code: 'MAKOO_STATE_SUBSCRIBER_FAILED',
-						message: 'State subscriber of "play-click" failed',
-						cause: 'subscriber exploded'
-					}
-				}
-			}
-		]);
-		const [runtime] = session.getRuntimeSnapshots();
-		expect(runtime?.injections).toEqual([
-			{ name: 'play-click', kind: 'standalone-listener', status: 'idle' }
-		]);
-		expect(runtime?.diagnostics).toEqual([
-			{
-				type: 'diagnostic',
-				name: 'play-click',
-				error: {
-					code: 'MAKOO_STATE_SUBSCRIBER_FAILED',
-					message: 'State subscriber of "play-click" failed',
-					cause: 'subscriber exploded'
-				}
-			}
-		]);
+		await vi.waitFor(() => expect(deps.createTerminal).toHaveBeenCalledTimes(2));
+		await vi.waitFor(() => {
+			expect(terminal.showHome).toHaveBeenCalledTimes(2);
+			expect(terminal.activate).toHaveBeenCalledTimes(2);
+		});
+		// The plugin-owned store is shared across restarts.
+		expect(terminals[1]?.store).toBe(terminals[0]?.store);
+		await vi.waitFor(async () => expect(await bridgeReachable(18119)).toBe(true));
 	});
 });
 
 describe('devCommand serve integration', () => {
 	it('serves the supplied project root and keeps serving after a restart', async () => {
 		const root = await trackProject({ 'index.html': '<h1>real dev project</h1>' });
-		const start = vi.spyOn(DevTerminal.prototype, 'start');
+		const activate = vi.spyOn(DevTerminal.prototype, 'activate');
 		let liveServer: ViteDevServer | undefined;
 		vi.stubEnv('CI', 'true');
 		try {
@@ -424,8 +162,10 @@ describe('devCommand serve integration', () => {
 			const restartedUrl = liveServer.resolvedUrls?.local[0];
 			if (!restartedUrl) throw new Error('devCommand did not resume listening');
 			expect(await (await fetch(restartedUrl)).text()).toContain('real dev project');
+			// dev.ts drives the plugin's overrides once; the restart takes over on its own.
+			await vi.waitFor(() => expect(activate).toHaveBeenCalledTimes(2));
 		} finally {
-			const terminal = start.mock.contexts[0];
+			const terminal = activate.mock.contexts[0];
 			if (terminal instanceof DevTerminal) terminal.close();
 			await liveServer?.close();
 			vi.restoreAllMocks();

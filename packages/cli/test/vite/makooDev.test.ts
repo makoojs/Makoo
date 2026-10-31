@@ -1,8 +1,10 @@
-import type { NormalizedHotChannelClient } from 'vite';
+import type { ViteDevServer } from 'vite';
 import { describe, expect, it, vi } from 'vitest';
-import type { DevSession } from '../../src/session/DevSession';
+import type { DevBridge } from '../../src/bridge/server';
+import type { RuntimeStore } from '../../src/bridge/store';
+import type { DevTerminal, RuntimeSource } from '../../src/tui/DevTerminal';
 import { makoo } from '../../src/vite/makoo';
-import { bindDevSession, makooDev } from '../../src/vite/makooDev';
+import { createMakooDev, makooDev } from '../../src/vite/makooDev';
 
 function getHookHandler<T extends (...args: never[]) => unknown>(
 	hook: T | { handler: T } | undefined
@@ -16,13 +18,80 @@ function getHookHandler<T extends (...args: never[]) => unknown>(
 	return hook.handler;
 }
 
+function callHook(plugin: object, name: string, thisArg: object, ...args: unknown[]) {
+	const hook = getHookHandler((plugin as Record<string, never>)[name] as never);
+	if (!hook) throw new Error(`expected ${name} hook`);
+	return (hook as (...a: unknown[]) => unknown).call(thisArg, ...args);
+}
+
+function fakeLogger() {
+	return {
+		info: vi.fn(),
+		error: vi.fn(),
+		warn: vi.fn(),
+		warnOnce: vi.fn(),
+		clearScreen: vi.fn(),
+		hasWarned: false,
+		hasErrorLogged: vi.fn(() => false)
+	};
+}
+
+function fakeServer({ httpServer = true, inlineConfig = {} } = {}) {
+	const listeners = new Map<string, () => void>();
+	const server = {
+		httpServer: httpServer
+			? {
+					once: vi.fn((event: string, cb: () => void) => listeners.set(event, cb))
+				}
+			: null,
+		printUrls: vi.fn(),
+		bindCLIShortcuts: vi.fn(),
+		config: { logger: fakeLogger(), inlineConfig }
+	} as unknown as ViteDevServer & {
+		config: { logger: ReturnType<typeof fakeLogger> };
+	};
+	return { server, emitListening: () => listeners.get('listening')?.() };
+}
+
+function fakeDeps() {
+	const terminal = {
+		showHome: vi.fn(async () => {}),
+		activate: vi.fn(),
+		close: vi.fn()
+	};
+	const bridge: DevBridge = {
+		endpoint: { host: '127.0.0.1', port: 18120, token: 't' },
+		close: vi.fn(async () => {})
+	};
+	const stores = new Map<ViteDevServer, RuntimeSource>();
+	const deps = {
+		address: { host: '127.0.0.1', port: 18120 },
+		runtimeFile: '/test/bridge/runtime.js',
+		startBridge: vi.fn(async (_store: RuntimeStore) => bridge),
+		createTerminal: vi.fn(async (server: ViteDevServer, store: RuntimeSource) => {
+			stores.set(server, store);
+			return terminal as unknown as DevTerminal;
+		}),
+		resolveDevframeClient: vi.fn(() => '/test/node_modules/devframe/client/index.mjs')
+	};
+	return { deps, terminal, bridge, stores };
+}
+
 describe('makooDev', () => {
-	it('keeps sessions isolated between dev server instances', () => {
-		const first = makooDev().api.session as DevSession;
-		const second = makooDev().api.session as DevSession;
-		first.open({} as NormalizedHotChannelClient, { runtimeId: 1 });
-		expect(first.getRuntimeSnapshots()).toHaveLength(1);
-		expect(second.getRuntimeSnapshots()).toEqual([]);
+	it('rejects invalid bridge options at call time', () => {
+		expect(() => makooDev({ port: 0 })).toThrow();
+		expect(() => makooDev({ port: 65536 })).toThrow();
+		expect(() => makooDev({ port: 1.5 })).toThrow();
+		expect(() => makooDev({ port: Number.NaN })).toThrow();
+		expect(() => makooDev({ host: '' })).toThrow();
+		expect(() => makooDev({ host: 'example.com' })).toThrow();
+		expect(() => makooDev({ host: '*.example.com' })).toThrow();
+
+		expect(() => makooDev()).not.toThrow();
+		expect(() => makooDev({ port: 8080 })).not.toThrow();
+		expect(() => makooDev({ host: 'localhost' })).not.toThrow();
+		expect(() => makooDev({ host: '::1' })).not.toThrow();
+		expect(() => makooDev({ host: '192.168.1.10' })).not.toThrow();
 	});
 
 	it('leaves makoo() responsible only for vite-plugin-monkey', () => {
@@ -67,85 +136,301 @@ describe('makooDev', () => {
 			await resolveId.call(ctx as never, '@makoojs/core', undefined, { isEntry: false })
 		).toBeNull();
 	});
+});
 
-	it('updates the DevSession from clients of every Vite environment', () => {
-		const plugin = makooDev();
-		const configureServer = getHookHandler(plugin.configureServer);
-		if (!configureServer) {
-			throw new Error('expected configureServer hook');
-		}
-		const session = plugin.api?.session as DevSession;
-		const onChange = vi.fn();
-		session.subscribe(onChange);
+describe('makooDev terminal takeover', () => {
+	it('warns and no-ops when registered a second time', () => {
+		const { deps } = fakeDeps();
+		const first = createMakooDev(deps);
+		const second = createMakooDev(deps);
+		const warn = vi.fn();
+		const config = { plugins: [first, second], logger: { warn } };
+		callHook(first, 'configResolved', {}, config);
+		callHook(second, 'configResolved', {}, config);
 
-		const clientOn = vi.fn();
-		const ssrOn = vi.fn();
-		configureServer.call(
-			{} as never,
-			{
-				environments: { client: { hot: { on: clientOn } }, ssr: { hot: { on: ssrOn } } },
-				config: { inlineConfig: {} }
-			} as never
-		);
+		expect(warn).toHaveBeenCalledOnce();
+		expect(String(warn.mock.calls[0]?.[0])).toContain('more than once');
 
-		const getListener = (on: typeof clientOn, name: string) => {
-			const listener = on.mock.calls.find(([event]) => event === name)?.[1] as
-				| ((payload: unknown, client: unknown) => void)
-				| undefined;
-			if (!listener) throw new Error(`expected ${name} listener`);
-			return listener;
-		};
-
-		const page = {};
-		getListener(clientOn, 'makoo:runtime:open')({ runtimeId: 1 }, page);
-		getListener(clientOn, 'makoo:runtime:injection')(
-			{
-				runtimeId: 1,
-				injection: { name: 'play-click', kind: 'standalone-listener', status: 'bound' }
-			},
-			page
-		);
-		getListener(clientOn, 'makoo:runtime:notice')(
-			{
-				runtimeId: 1,
-				notice: { type: 'diagnostic', error: { code: 'MAKOO_X', message: 'x' } }
-			},
-			page
-		);
-		expect(session.getRuntimeSnapshots()).toEqual([
-			{
-				clientId: 1,
-				runtimeId: 1,
-				injections: [{ name: 'play-click', kind: 'standalone-listener', status: 'bound' }],
-				diagnostics: [{ type: 'diagnostic', error: { code: 'MAKOO_X', message: 'x' } }]
-			}
-		]);
-		expect(onChange).toHaveBeenCalledTimes(3);
-
-		const runner = {};
-		getListener(ssrOn, 'makoo:runtime:open')({ runtimeId: 1 }, runner);
-		expect(session.getRuntimeSnapshots()).toHaveLength(2);
-
-		getListener(clientOn, 'vite:client:disconnect')(undefined, page);
-		getListener(ssrOn, 'vite:client:disconnect')(undefined, runner);
-		expect(session.isEmpty()).toBe(true);
-		expect(session.getRuntimeSnapshots()).toEqual([]);
+		const { server, emitListening } = fakeServer();
+		const originalPrintUrls = server.printUrls;
+		callHook(second, 'configureServer', {}, server);
+		expect(server.printUrls).toBe(originalPrintUrls);
+		emitListening();
+		expect(deps.startBridge).not.toHaveBeenCalled();
 	});
 
-	it('rebinds the DevSession when Vite restarts from inlineConfig', () => {
-		const plugin = makooDev();
-		const configureServer = getHookHandler(plugin.configureServer);
-		if (!configureServer) throw new Error('expected configureServer hook');
+	it('takes over printUrls and bindCLIShortcuts only once a CLI drives them', async () => {
+		const { deps, terminal } = fakeDeps();
+		const plugin = createMakooDev(deps);
+		const { server, emitListening } = fakeServer();
+		const originalPrintUrls = server.printUrls;
+		callHook(plugin, 'configureServer', {}, server);
 
-		const bind = vi.fn();
-		configureServer.call(
-			{} as never,
-			{
-				environments: {},
-				config: { inlineConfig: { [bindDevSession]: bind } }
-			} as never
+		expect(server.printUrls).not.toBe(originalPrintUrls);
+
+		// A programmatic listen never touches the terminal.
+		emitListening();
+		await vi.waitFor(() => expect(deps.startBridge).toHaveBeenCalledOnce());
+		expect(deps.createTerminal).not.toHaveBeenCalled();
+
+		server.printUrls();
+		await vi.waitFor(() => expect(terminal.showHome).toHaveBeenCalledOnce());
+		server.bindCLIShortcuts();
+		await vi.waitFor(() => expect(terminal.activate).toHaveBeenCalledOnce());
+	});
+
+	it('takes the terminal back over on a restart once a CLI drove it', async () => {
+		const { deps, terminal } = fakeDeps();
+		const plugin = createMakooDev(deps);
+		// A restart keeps the same inlineConfig object.
+		const inlineConfig = {};
+		const { server: first } = fakeServer({ inlineConfig });
+		callHook(plugin, 'configureServer', {}, first);
+		first.bindCLIShortcuts();
+		await vi.waitFor(() => expect(terminal.activate).toHaveBeenCalledOnce());
+
+		const { server: next, emitListening } = fakeServer({ inlineConfig });
+		callHook(plugin, 'configureServer', {}, next);
+		emitListening();
+		await vi.waitFor(() => expect(deps.createTerminal).toHaveBeenCalledTimes(2));
+		expect(deps.createTerminal.mock.calls[1]?.[0]).toBe(next);
+		await vi.waitFor(() => {
+			expect(terminal.showHome).toHaveBeenCalledOnce();
+			expect(terminal.activate).toHaveBeenCalledTimes(2);
+		});
+	});
+
+	it('does not take over on an unrelated server that never met the CLI', async () => {
+		const { deps } = fakeDeps();
+		const plugin = createMakooDev(deps);
+		const { server: first } = fakeServer();
+		callHook(plugin, 'configureServer', {}, first);
+		first.bindCLIShortcuts();
+		await vi.waitFor(() => expect(deps.createTerminal).toHaveBeenCalledOnce());
+
+		// A second server with its own inlineConfig must not inherit the flag.
+		const { server: next, emitListening } = fakeServer();
+		callHook(plugin, 'configureServer', {}, next);
+		emitListening();
+		await vi.waitFor(() => expect(deps.startBridge).toHaveBeenCalledOnce());
+		expect(deps.createTerminal).toHaveBeenCalledOnce();
+	});
+
+	it('yields with a warning when another plugin replaced the takeover methods', async () => {
+		const { deps, terminal } = fakeDeps();
+		const plugin = createMakooDev(deps);
+		const { server: first } = fakeServer();
+		callHook(plugin, 'configureServer', {}, first);
+		first.bindCLIShortcuts();
+		await vi.waitFor(() => expect(deps.createTerminal).toHaveBeenCalledOnce());
+
+		// A new server instance after a restart: a later plugin claims printUrls.
+		const { server: next, emitListening } = fakeServer({
+			inlineConfig: first.config.inlineConfig
+		});
+		const originalBind = next.bindCLIShortcuts;
+		callHook(plugin, 'configureServer', {}, next);
+		next.printUrls = vi.fn();
+
+		emitListening();
+		await vi.waitFor(() => expect(next.config.logger.warn).toHaveBeenCalledOnce());
+		// The surviving half of our override is handed back before yielding.
+		expect(next.bindCLIShortcuts).toBe(originalBind);
+		expect(String(next.config.logger.warn.mock.calls[0]?.[0])).toContain(
+			'printUrls/bindCLIShortcuts'
+		);
+		// The bridge still starts, but the terminal does not re-take over.
+		expect(deps.startBridge).toHaveBeenCalledOnce();
+		expect(deps.createTerminal).toHaveBeenCalledOnce();
+		expect(terminal.showHome).not.toHaveBeenCalled();
+		expect(terminal.activate).toHaveBeenCalledOnce();
+	});
+
+	it('warns and stays fully off in middleware mode', () => {
+		const { deps } = fakeDeps();
+		const plugin = createMakooDev(deps);
+		const { server } = fakeServer({ httpServer: false });
+		const originalPrintUrls = server.printUrls;
+		const originalBindCLIShortcuts = server.bindCLIShortcuts;
+		callHook(plugin, 'configureServer', {}, server);
+
+		expect(server.config.logger.warn).toHaveBeenCalledOnce();
+		expect(deps.startBridge).not.toHaveBeenCalled();
+		expect(deps.createTerminal).not.toHaveBeenCalled();
+		expect(server.printUrls).toBe(originalPrintUrls);
+		expect(server.bindCLIShortcuts).toBe(originalBindCLIShortcuts);
+	});
+
+	it('serves a passthrough virtual module while the bridge is not up', async () => {
+		const { deps } = fakeDeps();
+		const plugin = createMakooDev(deps);
+		const ctx = {
+			resolve: vi.fn().mockResolvedValue({ id: '/resolved/@makoojs/core.js' })
+		};
+		await callHook(plugin, 'resolveId', ctx, '@makoojs/core', '/project/src/main.ts', {
+			isEntry: false
+		});
+
+		expect(await callHook(plugin, 'load', {}, '\0virtual:makoo-dev')).toBe(
+			'export * from "/resolved/@makoojs/core.js";'
+		);
+		expect(await callHook(plugin, 'load', {}, '/unrelated')).toBeNull();
+	});
+
+	it('serves the instrumented thin wrapper once the bridge is up', async () => {
+		const { deps, bridge } = fakeDeps();
+		const plugin = createMakooDev(deps);
+		const ctx = {
+			resolve: vi.fn().mockResolvedValue({ id: '/resolved/@makoojs/core.js' })
+		};
+		await callHook(plugin, 'resolveId', ctx, '@makoojs/core', '/project/src/main.ts', {
+			isEntry: false
+		});
+		const { server, emitListening } = fakeServer();
+		callHook(plugin, 'configureServer', {}, server);
+		emitListening();
+		await vi.waitFor(() => expect(deps.startBridge).toHaveBeenCalledOnce());
+
+		const source = await callHook(plugin, 'load', {}, '\0virtual:makoo-dev');
+
+		expect(source).toContain('export * from "/resolved/@makoojs/core.js";');
+		expect(source).toContain(
+			'import { createMakoo as __makooBaseCreateMakoo } from "/resolved/@makoojs/core.js";'
+		);
+		expect(source).toContain(
+			'import { instrument as __makooInstrument } from "/test/bridge/runtime.js";'
+		);
+		expect(source).toContain(
+			`export const createMakoo = __makooInstrument(__makooBaseCreateMakoo, ${JSON.stringify(bridge.endpoint)});`
+		);
+	});
+
+	it('waits for an in-flight bridge launch before generating the module', async () => {
+		const { deps, bridge } = fakeDeps();
+		let resolveBridge!: (value: DevBridge) => void;
+		deps.startBridge.mockImplementation(
+			() =>
+				new Promise<DevBridge>((resolve) => {
+					resolveBridge = resolve;
+				})
+		);
+		const plugin = createMakooDev(deps);
+		const ctx = {
+			resolve: vi.fn().mockResolvedValue({ id: '/resolved/@makoojs/core.js' })
+		};
+		await callHook(plugin, 'resolveId', ctx, '@makoojs/core', '/project/src/main.ts', {
+			isEntry: false
+		});
+		const { server, emitListening } = fakeServer();
+		callHook(plugin, 'configureServer', {}, server);
+		emitListening();
+		await vi.waitFor(() => expect(deps.startBridge).toHaveBeenCalledOnce());
+
+		const pending = callHook(plugin, 'load', {}, '\0virtual:makoo-dev');
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		resolveBridge(bridge);
+
+		expect(await pending).toContain('__makooInstrument');
+	});
+
+	it('falls back to passthrough when the bridge fails to start', async () => {
+		const { deps } = fakeDeps();
+		deps.startBridge.mockRejectedValueOnce(new Error('bind failed'));
+		const plugin = createMakooDev(deps);
+		const ctx = {
+			resolve: vi.fn().mockResolvedValue({ id: '/resolved/@makoojs/core.js' })
+		};
+		await callHook(plugin, 'resolveId', ctx, '@makoojs/core', '/project/src/main.ts', {
+			isEntry: false
+		});
+		const { server, emitListening } = fakeServer();
+		callHook(plugin, 'configureServer', {}, server);
+		emitListening();
+		await vi.waitFor(() =>
+			expect(server.config.logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('failed to start')
+			)
 		);
 
-		expect(bind).toHaveBeenCalledWith(plugin.api?.session);
+		expect(await callHook(plugin, 'load', {}, '\0virtual:makoo-dev')).toBe(
+			'export * from "/resolved/@makoojs/core.js";'
+		);
+	});
+
+	it('excludes devframe/client from dep optimization', () => {
+		const { deps } = fakeDeps();
+		const plugin = createMakooDev(deps);
+
+		expect(callHook(plugin, 'config', {})).toEqual({
+			optimizeDeps: { exclude: ['devframe/client'] }
+		});
+	});
+
+	it('resolves devframe/client through the injected package-slot resolver', async () => {
+		const { deps } = fakeDeps();
+		const plugin = createMakooDev(deps);
+
+		expect(
+			await callHook(plugin, 'resolveId', {}, 'devframe/client', deps.runtimeFile, {})
+		).toBe('/test/node_modules/devframe/client/index.mjs');
+		expect(deps.resolveDevframeClient).toHaveBeenCalledOnce();
+	});
+
+	it('leaves devframe/client imports outside the runtime module alone', async () => {
+		const { deps } = fakeDeps();
+		const plugin = createMakooDev(deps);
+
+		expect(
+			await callHook(
+				plugin,
+				'resolveId',
+				{},
+				'devframe/client',
+				'/project/src/user-code.ts',
+				{}
+			)
+		).toBeNull();
+		expect(deps.resolveDevframeClient).not.toHaveBeenCalled();
+	});
+
+	it('degrades to passthrough and warns when devframe/client cannot be resolved', async () => {
+		const { deps, bridge } = fakeDeps();
+		deps.resolveDevframeClient.mockImplementation(() => {
+			throw new Error('not found');
+		});
+		const plugin = createMakooDev(deps);
+		const ctx = {
+			resolve: vi.fn().mockResolvedValue({ id: '/resolved/@makoojs/core.js' })
+		};
+		await callHook(plugin, 'resolveId', ctx, '@makoojs/core', '/project/src/main.ts', {
+			isEntry: false
+		});
+		const { server, emitListening } = fakeServer();
+		callHook(plugin, 'configureServer', {}, server);
+		emitListening();
+		await vi.waitFor(() => expect(deps.startBridge).toHaveBeenCalledOnce());
+
+		expect(await callHook(plugin, 'load', {}, '\0virtual:makoo-dev')).toBe(
+			'export * from "/resolved/@makoojs/core.js";'
+		);
+		expect(server.config.logger.warn).toHaveBeenCalledWith(
+			expect.stringContaining('devframe/client')
+		);
+	});
+
+	it('closes the bridge and terminal once across repeated closeBundle calls', async () => {
+		const { deps, terminal, bridge } = fakeDeps();
+		const plugin = createMakooDev(deps);
+		const { server, emitListening } = fakeServer();
+		callHook(plugin, 'configureServer', {}, server);
+		emitListening();
+		server.printUrls();
+		await vi.waitFor(() => expect(terminal.showHome).toHaveBeenCalledOnce());
+
+		await callHook(plugin, 'closeBundle', {});
+		await callHook(plugin, 'closeBundle', {});
+
+		expect(terminal.close).toHaveBeenCalledOnce();
+		expect(bridge.close).toHaveBeenCalledOnce();
 	});
 });

@@ -8,4 +8,4 @@ export type {
 	MonkeyServerConfig
 } from './config/types';
 export { makoo } from './vite/makoo';
-export { makooDev } from './vite/makooDev';
+export { type MakooDevOptions, makooDev } from './vite/makooDev';

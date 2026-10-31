@@ -13,6 +13,7 @@
       "vite/client"
     ],
     "moduleResolution": "bundler",
+    "skipLibCheck": true,
     "allowImportingTsExtensions": true,
     "isolatedModules": true,
     "moduleDetection": "force",

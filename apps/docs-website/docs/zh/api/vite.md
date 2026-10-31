@@ -49,10 +49,29 @@ export default defineConfig({
 ## `makooDev()`
 
 ```ts
-function makooDev(): Plugin;
+function makooDev(options?: MakooDevOptions): Plugin;
+
+type MakooDevOptions = {
+	port?: number;
+	host?: string;
+};
 ```
 
-在开发终端中显示页面上 Core 实例的连接情况、每个注入的状态和错误，无需参数。与 `makoo()` 一起放进 `plugins`，然后用 `makoo dev` 启动；只在开发服务中生效，不影响构建产物。
+在开发终端中显示页面上 Core 实例的连接情况、每个注入的状态和错误。与 `makoo()` 一起放进 `plugins`，用 `makoo dev` 或 `vite` 启动都会接管终端；只在开发服务中生效，不影响构建产物。
+
+页面通过一个独立的桥接服务向终端上报状态，不经过 Vite 的端口：
+
+| 选项 | 默认值 | 说明 |
+| --- | --- | --- |
+| `port` | `9999` | 桥接服务的固定端口，1 到 65535 的整数；被占用时不会改用其他端口 |
+| `host` | `'127.0.0.1'` | 桥接服务的监听地址，IPv4/IPv6 字面量或 `'localhost'` |
+
+`port` 或 `host` 不合法时，调用 `makooDev()` 就会抛错。开发服务重启前后，桥接地址保持不变。
+
+- 桥接端口被占用时，终端打印警告并且不启动桥接服务；Vite 服务照常运行，终端不会显示注入。用 `makooDev({ port })` 换一个端口。
+- `host` 不是本机回环地址时，其他机器也能访问桥接服务，只靠 token 保护，启动时终端会打印警告。
+- 不支持中间件模式（`server.middlewareMode`）：插件打印警告，桥接服务和终端都不启动。
+- 多次注册 `makooDev()` 时只有第一个生效，并打印警告。
 
 `makooDev()` 只读取状态入口和实例观察并上报，不会启动、停止或移除注入，也不处理热更新。
 
@@ -187,7 +206,7 @@ type MonkeyBuildConfig = {
 
 `monkey.userscript` 的类型不包含 `name`、`version`、`description`；运行时传入也会被 `app` 的同名字段覆盖，不会报错。
 
-`app`、`entry` 等字段在启动时校验，失败时抛出 `MAKOO_CLI_CONFIG_INVALID`，消息每行一个 `字段路径: 原因`。`entry`、`app.name`、`app.version` 必须是非空字符串，顶层（`root`、`entry`、`app`、`monkey` 之外）和 `app` 中的未知字段会被拒绝；`monkey` 中的其他字段原样交给 vite-plugin-monkey。
+这些字段只由 TypeScript 类型约束，运行时不做校验；开启类型检查后，`vite.config.ts` 中缺少或拼错的字段会被提示出来。`monkey` 中上面没有列出的字段原样交给 vite-plugin-monkey。
 
 ### 由 vite-plugin-monkey 决定的设置
 

@@ -19,7 +19,7 @@ beforeAll(async () => {
 		process.execPath,
 		[
 			path.join(repoRoot, 'node_modules/tsup/dist/cli-default.js'),
-			'packages/cli/src/cli/bin.ts',
+			'packages/cli/src/commands/bin.ts',
 			'--no-config',
 			'--format',
 			'esm',
@@ -86,6 +86,8 @@ describe('CLI build integration', () => {
 		expect(script).toMatch(/\/\/ @name\s+build-script/);
 		expect(script).toMatch(/\/\/ @version\s+0\.0\.7/);
 		expect(script).toContain('manual-main-staging');
-		expect(script).not.toMatch(/makoo:runtime:open|makoo:runtime:event|virtual:makoo-dev/);
+		expect(script).not.toMatch(
+			/virtual:makoo-dev|devframe|makoo:submit-page|__connection\.json/
+		);
 	});
 });

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { renderInjectionsTable } from '../../src/cli/injections/renderInjections';
-import { ansi } from '../../src/cli/terminalColor';
-import type { RuntimeSnapshot } from '../../src/session/types';
+import type { RuntimeSnapshot } from '../../src/bridge/store';
+import { renderInjectionsTable } from '../../src/tui/renderInjections';
+import { ansi } from '../../src/tui/terminalColor';
 
 function removeColor(value: string): string {
 	for (const code of Object.values(ansi)) value = value.replaceAll(code, '');

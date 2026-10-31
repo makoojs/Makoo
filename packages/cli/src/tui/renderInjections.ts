@@ -1,24 +1,33 @@
 import { stripVTControlCharacters } from 'node:util';
-import type { ComponentStatus, ListenerStatus } from '@makoojs/core';
+import type { ComponentEachStatus, ComponentStatus, ListenerStatus } from '@makoojs/core';
 import type {
 	InjectionSnapshot,
-	RuntimeSnapshot,
 	SerializedDiagnostic,
 	SerializedMakooError
-} from '../../session/types';
-import { ansi, colorize } from '../terminalColor';
+} from '../bridge/protocol';
+import type { RuntimeSnapshot } from '../bridge/store';
+import { ansi, colorize } from './terminalColor';
 
-type InjectionStatus = ComponentStatus | ListenerStatus;
+type InjectionStatus = ComponentStatus | ComponentEachStatus | ListenerStatus;
 
 const MAX_ERROR_LENGTH = 120;
 const MAX_NAME_LENGTH = 40;
 const COLUMN_GAP = 2;
 const ATTACHED_INDENT = '  ';
-const STATUS_ORDER: readonly InjectionStatus[] = ['mounted', 'bound', 'waiting', 'failed', 'idle'];
+const CHILD_INDENT = `${ATTACHED_INDENT}${ATTACHED_INDENT}`;
+const STATUS_ORDER: readonly InjectionStatus[] = [
+	'mounted',
+	'bound',
+	'waiting',
+	'collecting',
+	'failed',
+	'idle'
+];
 const STATUS_COLORS: Record<InjectionStatus, string> = {
 	mounted: ansi.green,
 	bound: ansi.green,
 	waiting: ansi.yellow,
+	collecting: ansi.yellow,
 	failed: ansi.red,
 	idle: ansi.dim
 };
@@ -54,28 +63,41 @@ function renderError(error: SerializedMakooError): string {
 }
 
 function kindLabel(injection: InjectionSnapshot): string {
-	return injection.kind === 'component' ? 'component' : 'standalone listener';
+	if (injection.kind === 'component') return 'component';
+	if (injection.kind === 'component-each') return 'component each';
+	return 'standalone listener';
 }
 
-type ColumnWidths = { status: number; name: number; attachedName: number };
+function childDisplayName(index: number): string {
+	return `└ child #${index + 1}`;
+}
+
+type ColumnWidths = { status: number; name: number; indentedName: number };
 
 function columnWidths(injections: InjectionSnapshot[]): ColumnWidths {
 	let status = visibleLength('STATUS');
 	let name = visibleLength('NAME');
-	let attachedName = 0;
+	let indentedName = 0;
 	for (const injection of injections) {
 		status = Math.max(status, visibleLength(renderStatus(injection.status)));
 		name = Math.max(name, visibleLength(truncateDisplayName(injection.name)));
-		if (injection.kind !== 'component') continue;
-		for (const listener of injection.attachedListeners) {
-			status = Math.max(status, visibleLength(renderStatus(listener.status)));
-			attachedName = Math.max(
-				attachedName,
-				visibleLength(attachedDisplayName(listener.name))
-			);
+		if (injection.kind === 'component') {
+			for (const listener of injection.attachedListeners) {
+				status = Math.max(status, visibleLength(renderStatus(listener.status)));
+				indentedName = Math.max(
+					indentedName,
+					visibleLength(attachedDisplayName(listener.name))
+				);
+			}
+		}
+		if (injection.kind === 'component-each') {
+			for (const [index, child] of injection.children.entries()) {
+				status = Math.max(status, visibleLength(renderStatus(child.status)));
+				indentedName = Math.max(indentedName, visibleLength(childDisplayName(index)));
+			}
 		}
 	}
-	return { status, name, attachedName };
+	return { status, name, indentedName };
 }
 
 function renderTopLevelRow(injection: InjectionSnapshot, widths: ColumnWidths): string {
@@ -89,13 +111,13 @@ function renderTopLevelRow(injection: InjectionSnapshot, widths: ColumnWidths): 
 	return `${status}${gap}${name}${gap}${kind}`;
 }
 
-function renderAttachedRow(
-	listener: { name: string; status: ListenerStatus },
+function renderIndentedRow(
+	row: { name: string; status: InjectionStatus; kind: string },
 	widths: ColumnWidths
 ): string {
-	const status = padEndVisible(renderStatus(listener.status), widths.status);
-	const name = padEndVisible(attachedDisplayName(listener.name), widths.attachedName);
-	const kind = colorize('attached listener', ansi.dim);
+	const status = padEndVisible(renderStatus(row.status), widths.status);
+	const name = padEndVisible(row.name, widths.indentedName);
+	const kind = colorize(row.kind, ansi.dim);
 	const gap = ' '.repeat(COLUMN_GAP);
 	return `${ATTACHED_INDENT}${status}${gap}${name}${gap}${kind}`;
 }
@@ -105,9 +127,32 @@ function renderInjectionBlock(injection: InjectionSnapshot, widths: ColumnWidths
 	if (injection.status === 'failed' && injection.lastError) {
 		lines.push(colorize(`${ATTACHED_INDENT}${renderError(injection.lastError)}`, ansi.red));
 	}
-	if (injection.kind !== 'component') return lines;
-	for (const listener of injection.attachedListeners) {
-		lines.push(renderAttachedRow(listener, widths));
+	if (injection.kind === 'component') {
+		for (const listener of injection.attachedListeners) {
+			lines.push(
+				renderIndentedRow(
+					{
+						name: attachedDisplayName(listener.name),
+						status: listener.status,
+						kind: 'attached listener'
+					},
+					widths
+				)
+			);
+		}
+	}
+	if (injection.kind === 'component-each') {
+		for (const [index, child] of injection.children.entries()) {
+			lines.push(
+				renderIndentedRow(
+					{ name: childDisplayName(index), status: child.status, kind: 'child' },
+					widths
+				)
+			);
+			if (child.status === 'failed' && child.lastError) {
+				lines.push(colorize(`${CHILD_INDENT}${renderError(child.lastError)}`, ansi.red));
+			}
+		}
 	}
 	return lines;
 }
@@ -128,9 +173,16 @@ function renderDiagnostic(diagnostic: SerializedDiagnostic): string {
 }
 
 function renderSummary(injections: InjectionSnapshot[]): string {
-	const total = injections.length === 1 ? '1 injection' : `${injections.length} injections`;
+	// Children count as injections in the tallies; attached listeners do not.
+	const statuses = injections.flatMap((injection) => [
+		injection.status,
+		...(injection.kind === 'component-each'
+			? injection.children.map((child) => child.status)
+			: [])
+	]);
+	const total = statuses.length === 1 ? '1 injection' : `${statuses.length} injections`;
 	const counts = STATUS_ORDER.flatMap((status) => {
-		const count = injections.filter((injection) => injection.status === status).length;
+		const count = statuses.filter((value) => value === status).length;
 		return count === 0 ? [] : [colorize(`${count} ${status}`, STATUS_COLORS[status])];
 	});
 	return [total, ...counts].join(' · ');

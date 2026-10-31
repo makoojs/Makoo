@@ -15,14 +15,14 @@ let copyResetTimer: number | undefined;
 
 const messages = {
 	en: {
-		eyebrow: 'Userscript framework', title: 'Their page.\nYour UI.',
+		eyebrow: 'Userscript framework', title: 'The modern userscript framework',
 		lead: 'Build it in Vue or React.\nMakoo mounts it, keeps it there, cleans up.',
 		getStarted: 'Get started', github: 'GitHub', copy: 'Copy', copying: 'Copying', copied: 'Copied', copyError: 'Copy failed',
 		copySuccessStatus: 'The create command was copied to your clipboard.', copyErrorStatus: 'Copy failed. Select the command manually.',
 		footer: 'Component-driven userscript framework', docs: 'Docs', api: 'API'
 	},
 	zh: {
-		eyebrow: 'Userscript 开发框架', title: '它 · 网页\n你 · UI',
+		eyebrow: 'Userscript 开发框架', title: '现代化的 userscript 开发框架',
 		lead: '用 Vue 或 React 写组件\nMakoo 负责挂载、恢复与清理',
 		getStarted: '开始使用', github: 'GitHub', copy: '复制', copying: '正在复制', copied: '已复制', copyError: '复制失败',
 		copySuccessStatus: '创建命令已复制到剪贴板。', copyErrorStatus: '复制失败，请手动选择命令。',

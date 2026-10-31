@@ -2,9 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export async function loadCliVersion(cliVersionCache: string | null): Promise<string> {
-	if (cliVersionCache) return cliVersionCache;
-
+export async function loadCliVersion(): Promise<string> {
 	let currentDir = dirname(fileURLToPath(import.meta.url));
 
 	while (true) {

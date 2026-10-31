@@ -4,9 +4,9 @@ import { promisify } from 'node:util';
 import type { CAC } from 'cac';
 import { mergeConfig } from 'vite';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { buildCommand } from '../../src/cli/commands/build';
-import { devCommand } from '../../src/cli/commands/dev/dev';
-import { previewCommand } from '../../src/cli/commands/preview';
+import { buildCommand } from '../../src/commands/build';
+import { devCommand } from '../../src/commands/dev';
+import { previewCommand } from '../../src/commands/preview';
 import { cleanupTempProjects, trackProject } from '../utils/tempProject';
 
 const state = vi.hoisted(() => ({ args: [] as string[], cli: undefined as CAC | undefined }));
@@ -24,14 +24,14 @@ vi.mock('cac', async (importOriginal) => {
 	};
 });
 
-vi.mock('../../src/cli/commands/build', () => ({ buildCommand: vi.fn() }));
-vi.mock('../../src/cli/commands/dev/dev', () => ({ devCommand: vi.fn() }));
-vi.mock('../../src/cli/commands/preview', () => ({ previewCommand: vi.fn() }));
-vi.mock('../../src/cli/version', () => ({ loadCliVersion: vi.fn().mockResolvedValue('0.4.1') }));
+vi.mock('../../src/commands/build', () => ({ buildCommand: vi.fn() }));
+vi.mock('../../src/commands/dev', () => ({ devCommand: vi.fn() }));
+vi.mock('../../src/commands/preview', () => ({ previewCommand: vi.fn() }));
+vi.mock('../../src/version', () => ({ loadCliVersion: vi.fn().mockResolvedValue('0.4.1') }));
 
 async function run(...args: string[]) {
 	state.args = args;
-	await import('../../src/cli/bin');
+	await import('../../src/commands/bin');
 	if (!state.cli) throw new Error('CLI was not created');
 	await state.cli.runMatchedCommand();
 }
@@ -223,7 +223,7 @@ describe('CLI process', () => {
 				process.execPath,
 				[
 					path.join(repoRoot, 'node_modules/tsup/dist/cli-default.js'),
-					'packages/cli/src/cli/bin.ts',
+					'packages/cli/src/commands/bin.ts',
 					'--no-config',
 					'--format',
 					'esm',

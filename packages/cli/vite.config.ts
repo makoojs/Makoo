@@ -1,4 +1,4 @@
-﻿import { resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
 import dts from 'vite-plugin-dts';
 
@@ -9,7 +9,8 @@ export default defineConfig({
 		lib: {
 			entry: {
 				index: resolve(import.meta.dirname, 'src/index.ts'),
-				'monkey/index': resolve(import.meta.dirname, 'src/monkey/index.ts')
+				'monkey/index': resolve(import.meta.dirname, 'src/monkey/index.ts'),
+				'bridge/runtime': resolve(import.meta.dirname, 'src/bridge/runtime.ts')
 			},
 			formats: ['es', 'cjs'],
 			fileName: (format, entryName) => `${entryName}.${format === 'es' ? 'js' : 'cjs'}`
@@ -21,9 +22,8 @@ export default defineConfig({
 				'vite',
 				'vite-plugin-monkey',
 				'vite-plugin-monkey/dist/client',
-				'node:fs',
-				'node:path',
-				'node:process'
+				/^devframe(\/.*)?$/,
+				/^node:/
 			]
 		}
 	},

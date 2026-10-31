@@ -1,12 +1,6 @@
 import { isAbsolute, normalize, resolve as resolvePath } from 'node:path';
 import process from 'node:process';
 import type { MonkeyOption } from 'vite-plugin-monkey';
-import {
-	DEFAULT_FILE_NAME_SUFFIX,
-	DEFAULT_MONKEY_BUILD_CONFIG,
-	DEFAULT_MONKEY_CONFIG,
-	DEFAULT_MONKEY_SERVER_CONFIG
-} from './defaults';
 import type {
 	AppConfig,
 	CliConfig,
@@ -18,7 +12,27 @@ import type {
 	ResolvedMonkeyConfig,
 	ResolvedMonkeyServerConfig
 } from './types';
-import { validateCliConfig } from './validation';
+
+const DEFAULT_MONKEY_SERVER_CONFIG: ResolvedMonkeyServerConfig = {
+	open: process.platform === 'win32' || process.platform === 'darwin',
+	prefix: (name) => `server:${name}`,
+	mountGmApi: false
+};
+
+const DEFAULT_MONKEY_BUILD_CONFIG: Pick<
+	Required<MonkeyBuildConfig>,
+	'metaFileName' | 'autoGrant'
+> = {
+	metaFileName: false,
+	autoGrant: true
+};
+
+const DEFAULT_MONKEY_CONFIG: Required<Pick<MonkeyConfig, 'align' | 'styleImport'>> = {
+	align: 2,
+	styleImport: true
+};
+
+const DEFAULT_FILE_NAME_SUFFIX = '.user.js';
 
 const resolveFileSystemPath = (root: string, value: string): string =>
 	isAbsolute(value) ? normalize(value) : normalize(resolvePath(root, value));
@@ -46,19 +60,13 @@ const resolveMetaFileName = (
 	return metaFileName;
 };
 
-export const resolveAppConfig = (config: AppConfig): AppConfig => ({
-	name: config.name,
-	version: config.version,
-	description: config.description
-});
-
-export const resolveMonkeyServerConfig = (config: MonkeyConfig): ResolvedMonkeyServerConfig => ({
+const resolveMonkeyServerConfig = (config: MonkeyConfig): ResolvedMonkeyServerConfig => ({
 	open: config.server?.open ?? DEFAULT_MONKEY_SERVER_CONFIG.open,
 	prefix: config.server?.prefix ?? DEFAULT_MONKEY_SERVER_CONFIG.prefix,
 	mountGmApi: DEFAULT_MONKEY_SERVER_CONFIG.mountGmApi
 });
 
-export const resolveMonkeyBuildConfig = (
+const resolveMonkeyBuildConfig = (
 	app: AppConfig,
 	config: MonkeyConfig
 ): ResolvedMonkeyBuildConfig => {
@@ -78,7 +86,7 @@ export const resolveMonkeyBuildConfig = (
 	};
 };
 
-export const resolveMonkeyConfig = (app: AppConfig, config: MonkeyConfig): ResolvedMonkeyConfig => {
+const resolveMonkeyConfig = (app: AppConfig, config: MonkeyConfig): ResolvedMonkeyConfig => {
 	const { userscript, align, styleImport, server: _server, build: _build, ...rest } = config;
 
 	return {
@@ -97,16 +105,13 @@ export const resolveMonkeyConfig = (app: AppConfig, config: MonkeyConfig): Resol
 };
 
 export const resolveConfig = (config: CliConfig, root?: string): ResolvedMakooConfig => {
-	validateCliConfig(config);
-
 	const projectRoot = resolveProjectRoot(root);
-	const app = resolveAppConfig(config.app);
 
 	return {
 		root: projectRoot,
 		entry: resolveFileSystemPath(projectRoot, config.entry),
-		app,
-		monkey: resolveMonkeyConfig(app, config.monkey)
+		app: config.app,
+		monkey: resolveMonkeyConfig(config.app, config.monkey)
 	};
 };
 

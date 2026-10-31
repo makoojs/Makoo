@@ -49,10 +49,29 @@ export default defineConfig({
 ## `makooDev()`
 
 ```ts
-function makooDev(): Plugin;
+function makooDev(options?: MakooDevOptions): Plugin;
+
+type MakooDevOptions = {
+	port?: number;
+	host?: string;
+};
 ```
 
-Shows, in the dev terminal, the connections of Core instances on the page and the status and errors of each injection; takes no arguments. Put it in `plugins` together with `makoo()` and start with `makoo dev`; it only takes effect in the dev server and doesn't affect build output.
+Shows, in the dev terminal, the connections of Core instances on the page and the status and errors of each injection. Put it in `plugins` together with `makoo()`; the terminal is taken over whether you start with `makoo dev` or `vite`. It only takes effect in the dev server and doesn't affect build output.
+
+The page reports status to the terminal through a separate bridge server, not through the Vite port:
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `port` | `9999` | Fixed bridge port, an integer from 1 to 65535; no fallback to another port |
+| `host` | `'127.0.0.1'` | Bridge listen address; an IPv4/IPv6 literal or `'localhost'` |
+
+An invalid `port` or `host` throws when `makooDev()` is called. The bridge address stays the same across restarts of the dev server.
+
+- When the bridge port is in use, the terminal prints a warning and the bridge isn't started; the Vite server keeps running, and the terminal shows no injections. Pass another port with `makooDev({ port })`.
+- When `host` isn't a loopback address, the bridge is reachable from other machines and is protected only by a token; the terminal prints a warning at startup.
+- Middleware mode (`server.middlewareMode`) isn't supported; the plugin prints a warning and starts neither the bridge nor the terminal.
+- When `makooDev()` is registered more than once, only the first one takes effect, and a warning is printed.
 
 `makooDev()` only reads status handles and instance observation and reports them; it doesn't start, stop, or remove injections, and doesn't handle hot updates.
 
@@ -187,7 +206,7 @@ type MonkeyBuildConfig = {
 
 The type of `monkey.userscript` doesn't include `name`, `version`, or `description`; if they are passed at runtime anyway, they are overridden by the same-named fields of `app` without an error.
 
-Fields such as `app` and `entry` are validated at startup; on failure, `MAKOO_CLI_CONFIG_INVALID` is thrown, with one `field path: reason` per line in the message. `entry`, `app.name`, and `app.version` must be non-empty strings, and unknown fields at the top level (other than `root`, `entry`, `app`, and `monkey`) and in `app` are rejected; other fields in `monkey` are passed to vite-plugin-monkey as-is.
+These fields are constrained only by the TypeScript types and aren't validated at runtime; with type checking enabled, `vite.config.ts` catches missing or misspelled fields. Fields in `monkey` not listed above are passed to vite-plugin-monkey as-is.
 
 ### Settings Determined by vite-plugin-monkey
 

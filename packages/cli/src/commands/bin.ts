@@ -2,9 +2,9 @@
 import { MakooError } from '@makoojs/core';
 import cac from 'cac';
 import type { BuildOptions, InlineConfig, ServerOptions } from 'vite';
-import { buildCommand } from './commands/build';
-import { devCommand } from './commands/dev/dev';
-import { previewCommand } from './commands/preview';
+import { buildCommand } from './build';
+import { devCommand } from './dev';
+import { previewCommand } from './preview';
 import { loadCliVersion } from './version';
 
 const cli = cac('makoo');
@@ -142,7 +142,7 @@ cli.command('preview [root]', 'Preview the built userscript')
 	);
 
 cli.help();
-cli.version(await loadCliVersion(null));
+cli.version(await loadCliVersion());
 
 process.on('unhandledRejection', (err) => {
 	if (err instanceof MakooError) {

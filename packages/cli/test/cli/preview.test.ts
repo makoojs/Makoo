@@ -2,7 +2,7 @@
 
 import { type PreviewServer, preview } from 'vite';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { previewCommand } from '../../src/cli/commands/preview';
+import { previewCommand } from '../../src/commands/preview';
 import { cleanupTempProjects, trackProject } from '../utils/tempProject';
 
 vi.mock('vite', async (importOriginal) => {

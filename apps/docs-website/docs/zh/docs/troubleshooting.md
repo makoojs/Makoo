@@ -17,7 +17,11 @@ status.subscribe(() => console.log('panel:', status.getSnapshot(), status.lastEr
 
 ## dev 启动失败
 
-查看终端的第一条错误。确认依赖已安装、入口文件存在、在项目目录中运行命令。配置字段错误的错误码是 `MAKOO_CLI_CONFIG_INVALID`，消息每行一个 `字段路径: 原因`，按提示修改；端口被占用时换一个端口，或关闭占用它的进程。
+查看终端的第一条错误。确认依赖已安装、入口文件存在、在项目目录中运行命令。配置字段在运行时不做校验，请检查 `vite.config.ts` 是否有类型错误。端口被占用时换一个端口，或关闭占用它的进程。
+
+## 终端提示 makooDev 桥接端口被占用
+
+`makooDev()` 使用独立于 Vite 的桥接端口，默认 `9999`。它被占用时（例如另一个项目的开发服务也在运行），Vite 服务照常运行，但终端不会显示注入。用 `makooDev({ port: 9998 })` 换一个端口，见 [`makooDev()`](../api/vite.md#makoodev)。
 
 ## 安装页打开了，网页上却什么都没有
 
