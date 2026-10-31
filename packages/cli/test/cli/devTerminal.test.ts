@@ -237,6 +237,8 @@ describe('DevTerminal', () => {
 			expect.stringContaining('1 browser runtime connected'),
 			undefined
 		);
+		// Line-mode output must carry no ANSI escapes.
+		expect(info.mock.calls.at(-1)?.[0]).not.toContain('\x1b');
 		info.mockClear();
 		store.replacePage(1, [row(1)]);
 		expect(info).not.toHaveBeenCalled();
