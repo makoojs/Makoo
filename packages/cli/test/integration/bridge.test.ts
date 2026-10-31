@@ -3,10 +3,10 @@ import net from 'node:net';
 import { connectDevframe, type DevframeRpcClient } from 'devframe/client';
 import { createServer, type ViteDevServer } from 'vite';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { InjectionSnapshot } from '../../src/bridge/protocol';
 import { startDevBridge } from '../../src/bridge/server';
 import { RuntimeStore } from '../../src/bridge/store';
 import { makooDev } from '../../src/vite/makooDev';
-import type { InjectionSnapshot } from '../../src/vite/session';
 
 (globalThis as Record<string, unknown>).location ??= new URL('http://127.0.0.1/');
 
@@ -106,14 +106,15 @@ describe('startDevBridge', () => {
 });
 
 describe('makooDev bridge lifecycle', () => {
-	it('starts a token-authed bridge during configureServer in middleware mode', async () => {
+	it('starts a token-authed bridge once the server is listening', async () => {
 		server = await createServer({
 			configFile: false,
 			root: process.cwd(),
 			logLevel: 'silent',
-			server: { middlewareMode: true },
+			server: { host: '127.0.0.1', port: 0 },
 			plugins: [makooDev({ port: 18113 })]
 		});
+		await server.listen();
 
 		await vi.waitFor(async () => expect(await bridgeReachable(18113)).toBe(true));
 
@@ -137,7 +138,7 @@ describe('makooDev bridge lifecycle', () => {
 				configFile: false,
 				root: process.cwd(),
 				logLevel: 'silent',
-				server: { middlewareMode: true },
+				server: { host: '127.0.0.1', port: 0 },
 				plugins: [
 					{
 						name: 'spy-logger',
@@ -149,6 +150,7 @@ describe('makooDev bridge lifecycle', () => {
 					makooDev({ port: 18114 })
 				]
 			});
+			await server.listen();
 			await vi.waitFor(() => expect(warn).toHaveBeenCalled());
 			expect(warn.mock.calls.flat().join(' ')).toContain('already in use');
 			expect(warn.mock.calls.flat().join(' ')).toContain('makooDev({ port })');
@@ -178,9 +180,10 @@ describe('makooDev bridge lifecycle', () => {
 			configFile: false,
 			root: process.cwd(),
 			logLevel: 'silent',
-			server: { middlewareMode: true },
+			server: { host: '127.0.0.1', port: 0 },
 			plugins: [makooDev({ port: 18115 })]
 		});
+		await server.listen();
 		await vi.waitFor(async () => expect(await bridgeReachable(18115)).toBe(true));
 		await server.close();
 		server = undefined;
@@ -189,9 +192,10 @@ describe('makooDev bridge lifecycle', () => {
 			configFile: false,
 			root: process.cwd(),
 			logLevel: 'silent',
-			server: { middlewareMode: true },
+			server: { host: '127.0.0.1', port: 0 },
 			plugins: [makooDev({ port: 18115 })]
 		});
+		await server.listen();
 		await vi.waitFor(async () => expect(await bridgeReachable(18115)).toBe(true));
 	});
 });

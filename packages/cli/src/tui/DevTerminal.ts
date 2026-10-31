@@ -1,9 +1,8 @@
 import { emitKeypressEvents, type Key } from 'node:readline';
 import { createLogUpdate } from 'log-update';
 import type { LogErrorOptions, Logger, LogOptions, ViteDevServer } from 'vite';
+import type { RuntimeSnapshot } from '../bridge/store';
 import { loadCliVersion } from '../commands/version';
-import { bindDevSession, type InlineConfigWithSession } from '../vite/makooDev';
-import type { RuntimeSnapshot } from '../vite/session';
 import { renderInjectionsTable } from './renderInjections';
 import { ansi, colorize } from './terminalColor';
 
@@ -16,7 +15,7 @@ type BufferedLog =
 	| { type: 'info' | 'warn' | 'warnOnce'; message: string; options?: LogOptions }
 	| { type: 'error'; message: string; options?: LogErrorOptions };
 
-/** The slice of a runtime store the terminal reads; DevSession and RuntimeStore both satisfy it. */
+/** The slice of a runtime store the terminal reads. */
 export type RuntimeSource = {
 	getRuntimeSnapshots(): RuntimeSnapshot[];
 	subscribe(onChange: () => void): () => void;
@@ -26,8 +25,7 @@ export class DevTerminal {
 	public readonly interactive = Boolean(
 		process.stdin.isTTY && process.stdout.isTTY && !process.env.CI
 	);
-	private store: RuntimeSource | undefined;
-	private unsubscribe: (() => void) | undefined;
+	private unsubscribe: () => void;
 	private currentView: DevView = 'logs';
 	private previousView: DevView = 'home';
 	private selectedRuntime = 0;
@@ -61,7 +59,7 @@ export class DevTerminal {
 
 	public constructor(
 		private readonly server: ViteDevServer,
-		store?: RuntimeSource
+		private readonly store: RuntimeSource
 	) {
 		this.logger = server.config.logger;
 		this.originalInfo = this.logger.info;
@@ -81,23 +79,13 @@ export class DevTerminal {
 		};
 
 		process.once('exit', this.close);
-		if (store) {
-			// Vite reuses inlineConfig when a restart creates the next server.
-			this.server.config.inlineConfig.customLogger = this.logger;
-			(this.server.config.inlineConfig as InlineConfigWithSession)[bindDevSession] =
-				this.attachSession;
-			this.attachSession(store);
-			process.once('SIGINT', this.shutdown);
-		}
+		process.once('SIGINT', this.shutdown);
+		this.unsubscribe = store.subscribe(this.refresh);
 	}
 
 	public async showHome(): Promise<void> {
 		await this.cliVersionReady;
 		this.ready = true;
-		if (!this.store) {
-			this.logger.info(this.renderBanner());
-			return;
-		}
 		if (this.interactive) {
 			this.show('home');
 		} else {
@@ -108,24 +96,12 @@ export class DevTerminal {
 	}
 
 	public activate(): void {
-		if (!this.store) {
-			this.server.bindCLIShortcuts({ print: true });
-			return;
-		}
 		if (this.interactive) this.bindShortcuts();
 	}
 
-	public attachSession = (store: RuntimeSource): void => {
-		this.unsubscribe?.();
-		this.store = store;
-		this.selectedRuntime = 0;
-		this.unsubscribe = store.subscribe(this.refresh);
-		this.refresh();
-	};
-
 	// Store events, navigation and new logs all redraw through this entry point.
 	public refresh = (): void => {
-		if (!this.ready || this.closed || !this.store) return;
+		if (!this.ready || this.closed) return;
 		const runtimes = this.store.getRuntimeSnapshots();
 		this.selectedRuntime = runtimes.length === 0 ? 0 : this.selectedRuntime % runtimes.length;
 		if (!this.interactive) {
@@ -375,7 +351,7 @@ export class DevTerminal {
 	public close = (): void => {
 		if (this.closed) return;
 		this.closed = true;
-		this.unsubscribe?.();
+		this.unsubscribe();
 		this.stopInput?.();
 		process.off('exit', this.close);
 		process.off('SIGINT', this.shutdown);

@@ -1,5 +1,7 @@
-import type { RuntimeSnapshot } from '../vite/session';
 import type { PageRuntimeRow } from './protocol';
+
+/** One row the terminal renders: a page row stamped with its connection id. */
+export type RuntimeSnapshot = PageRuntimeRow & { clientId: number };
 
 /**
  * Node-side table of per-page runtime state. The devframe bridge writes whole

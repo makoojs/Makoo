@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { PageRuntimeRow } from '../../src/bridge/protocol';
+import type { InjectionSnapshot, PageRuntimeRow } from '../../src/bridge/protocol';
 import { RuntimeStore } from '../../src/bridge/store';
-import type { InjectionSnapshot } from '../../src/vite/session';
 
 const panel: InjectionSnapshot = {
 	name: 'panel',

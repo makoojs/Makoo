@@ -1,9 +1,15 @@
 import { PassThrough } from 'node:stream';
-import type { Logger, NormalizedHotChannelClient, ViteDevServer } from 'vite';
+import type { Logger, ViteDevServer } from 'vite';
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
+import type { PageRuntimeRow } from '../../src/bridge/protocol';
+import { RuntimeStore } from '../../src/bridge/store';
 import { DevTerminal } from '../../src/tui/DevTerminal';
-import { bindDevSession, type InlineConfigWithSession } from '../../src/vite/makooDev';
-import { DevSession } from '../../src/vite/session';
+
+const row = (runtimeId: number): PageRuntimeRow => ({
+	runtimeId,
+	injections: [],
+	diagnostics: []
+});
 
 const { clear, render } = vi.hoisted(() => ({
 	clear: vi.fn(),
@@ -22,10 +28,9 @@ let info: Mock<Logger['info']>;
 let error: Mock<Logger['error']>;
 let warn: Mock<Logger['warn']>;
 let logger: Logger;
-let session: DevSession;
+let store: RuntimeStore;
 let server: ViteDevServer;
 let terminal: DevTerminal;
-const client = {} as NormalizedHotChannelClient;
 
 beforeEach(() => {
 	input = Object.assign(new PassThrough(), { isTTY: true, isRaw: false, setRawMode: vi.fn() });
@@ -45,14 +50,14 @@ beforeEach(() => {
 		hasWarned: false,
 		hasErrorLogged: vi.fn(() => false)
 	};
-	session = new DevSession();
+	store = new RuntimeStore();
 	server = {
 		config: {
 			logger,
 			base: '/app/',
 			server: { open: '/custom' },
 			inlineConfig: {},
-			plugins: [{ name: 'makoo:dev', api: { session } }, { name: 'monkey:virtualHtml' }]
+			plugins: [{ name: 'makoo:dev' }, { name: 'monkey:virtualHtml' }]
 		},
 		listen: vi.fn(),
 		close: vi.fn(),
@@ -61,7 +66,7 @@ beforeEach(() => {
 		bindCLIShortcuts: vi.fn(),
 		resolvedUrls: { local: ['http://localhost:5174/'], network: [] }
 	} as unknown as ViteDevServer;
-	terminal = new DevTerminal(server, session);
+	terminal = new DevTerminal(server, store);
 });
 
 async function start() {
@@ -125,10 +130,9 @@ describe('DevTerminal', () => {
 		await start();
 		expect(String(render.mock.calls.at(-1)?.[0])).toContain('Makoo v0.4.1');
 		expect(String(render.mock.calls.at(-1)?.[0])).toContain('Waiting for a browser runtime');
-		session.open(client, { runtimeId: 1 });
-		session.open(client, { runtimeId: 2 });
+		store.replacePage(1, [row(1), row(2)]);
 		expect(String(render.mock.calls.at(-1)?.[0])).toContain('2 browser runtimes connected');
-		session.disconnect(client);
+		store.disconnect(1);
 		expect(String(render.mock.calls.at(-1)?.[0])).toContain('Waiting for a browser runtime');
 		expect(info).not.toHaveBeenCalled();
 		expect(server.bindCLIShortcuts).not.toHaveBeenCalled();
@@ -150,17 +154,16 @@ describe('DevTerminal', () => {
 	});
 
 	it('selects runtimes with n and keeps the selection in range after disconnect', async () => {
-		const secondClient = {} as NormalizedHotChannelClient;
 		await start();
-		session.open(client, { runtimeId: 1 });
-		session.open(secondClient, { runtimeId: 1 });
+		store.replacePage(1, [row(1)]);
+		store.replacePage(2, [row(1)]);
 		input.write('t');
 		await Promise.resolve();
 		expect(String(render.mock.calls.at(-1)?.[0])).toContain('Runtime 1/2');
 		input.write('n');
 		await Promise.resolve();
 		expect(String(render.mock.calls.at(-1)?.[0])).toContain('Runtime 2/2');
-		session.disconnect(secondClient);
+		store.disconnect(2);
 		expect(String(render.mock.calls.at(-1)?.[0])).toContain('Runtime 1/1');
 		input.write('t');
 		expect(String(render.mock.calls.at(-1)?.[0])).toContain('Actions');
@@ -195,12 +198,10 @@ describe('DevTerminal', () => {
 		}
 	});
 
-	it('restarts on the home and listens only to the replacement session', async () => {
+	it('restarts on the home and keeps listening to its store', async () => {
 		await start();
-		const nextSession = new DevSession();
 		vi.mocked(server.restart).mockImplementation(async () => {
 			expect(String(render.mock.calls.at(-1)?.[0])).toContain('Restarting…');
-			(server.config.inlineConfig as InlineConfigWithSession)[bindDevSession]?.(nextSession);
 			server.resolvedUrls = { local: ['http://localhost:5175/'], network: [] };
 			logger.info('server restarted');
 		});
@@ -212,9 +213,7 @@ describe('DevTerminal', () => {
 		expect(String(render.mock.calls.at(-1)?.[0])).toContain('http://localhost:5175/');
 		expect(String(render.mock.calls.at(-1)?.[0])).toContain('Open installation page');
 		render.mockClear();
-		session.open(client, { runtimeId: 1 });
-		expect(render).not.toHaveBeenCalled();
-		nextSession.open(client, { runtimeId: 1 });
+		store.replacePage(1, [row(1)]);
 		expect(String(render.mock.calls.at(-1)?.[0])).toContain('1 browser runtime connected');
 	});
 
@@ -231,33 +230,20 @@ describe('DevTerminal', () => {
 	it('prints connection changes and streams logs when output is not interactive', async () => {
 		terminal.close();
 		output.isTTY = false;
-		terminal = new DevTerminal(server, session);
+		terminal = new DevTerminal(server, store);
 		await start();
-		session.open(client, { runtimeId: 1 });
+		store.replacePage(1, [row(1)]);
 		expect(info).toHaveBeenLastCalledWith(
 			expect.stringContaining('1 browser runtime connected'),
 			undefined
 		);
 		info.mockClear();
-		session.open(client, { runtimeId: 1 });
+		store.replacePage(1, [row(1)]);
 		expect(info).not.toHaveBeenCalled();
 		logger.info('build output');
 		expect(info).toHaveBeenLastCalledWith('build output', undefined);
 		expect(render).not.toHaveBeenCalled();
 		expect(input.setRawMode).not.toHaveBeenCalled();
-	});
-
-	it('keeps Vite shortcuts when no store is supplied', async () => {
-		terminal.close();
-		delete server.config.inlineConfig.customLogger;
-		delete (server.config.inlineConfig as InlineConfigWithSession)[bindDevSession];
-		terminal = new DevTerminal(server);
-		await start();
-		expect(server.bindCLIShortcuts).toHaveBeenCalledWith({ print: true });
-		expect(
-			(server.config.inlineConfig as InlineConfigWithSession)[bindDevSession]
-		).toBeUndefined();
-		expect(render).not.toHaveBeenCalled();
 	});
 
 	it('restores terminal input and logging and unsubscribes on close', async () => {
@@ -269,7 +255,7 @@ describe('DevTerminal', () => {
 		expect(info).toHaveBeenCalledWith('buffered log', undefined);
 		expect(input.listenerCount('keypress')).toBe(0);
 		render.mockClear();
-		session.open(client, { runtimeId: 1 });
+		store.replacePage(1, [row(1)]);
 		expect(render).not.toHaveBeenCalled();
 	});
 });

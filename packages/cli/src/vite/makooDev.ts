@@ -2,22 +2,11 @@ import { isIP } from 'node:net';
 import type { InlineConfig, Plugin, ViteDevServer } from 'vite';
 import { type BridgeAddress, type DevBridge, startDevBridge } from '../bridge/server';
 import { RuntimeStore } from '../bridge/store';
-import type { RuntimeInjection, RuntimeNotice, RuntimeOpen } from './session';
-import { DevSession } from './session';
+import type { DevTerminal, RuntimeSource } from '../tui/DevTerminal';
 
 const VIRTUAL_CORE_ID = '\0virtual:makoo-dev';
 const CORE_PACKAGE = '@makoojs/core';
-const RUNTIME_EVENT = {
-	open: 'makoo:runtime:open',
-	injection: 'makoo:runtime:injection',
-	notice: 'makoo:runtime:notice'
-} as const;
-
-export const bindDevSession = Symbol('makooDev.bindSession');
-
-export type InlineConfigWithSession = InlineConfig & {
-	[bindDevSession]?: (session: DevSession) => void;
-};
+const PLUGIN_NAME = 'makoo:dev';
 
 export type MakooDevOptions = {
 	/** Bridge listen port, fixed (no scanning). Default 9999. */
@@ -25,6 +14,17 @@ export type MakooDevOptions = {
 	/** Bridge listen host: an IPv4/IPv6 literal or 'localhost'. Default '127.0.0.1'. */
 	host?: string;
 };
+
+export type MakooDevDeps = {
+	address: BridgeAddress;
+	startBridge: (store: RuntimeStore, address: BridgeAddress) => Promise<DevBridge>;
+	createTerminal: (server: ViteDevServer, store: RuntimeSource) => Promise<DevTerminal>;
+};
+
+// CLI-driven state rides on inlineConfig: Vite keeps that object across a
+// restart, so the flag survives new plugin instances but stays scoped to this
+// server's config chain instead of leaking to unrelated servers in-process.
+const cliDrivenConfigs = new WeakSet<InlineConfig>();
 
 function resolveBridgeAddress(options: MakooDevOptions): BridgeAddress {
 	const port = options.port ?? 9999;
@@ -46,115 +46,22 @@ function isLoopbackHost(host: string): boolean {
 	return host === 'localhost' || host === '::1' || host.startsWith('127.');
 }
 
-// The wrapper only reads public Status Handles and Instance Observation; it never starts, stops, or removes injections.
-// HMR cleanup is left to Vite on purpose (ADR 0004).
+// A pure forward until the page runtime (ticket 04) wraps createMakoo.
 function buildVirtualModuleSource(resolvedCoreId: string): string {
-	const coreId = JSON.stringify(resolvedCoreId);
-
-	return `
-export * from ${coreId};
-import { createMakoo as __makooCreateMakoo } from ${coreId};
-
-function __makooSend(event, payload) {
-	try {
-		import.meta.hot?.send(event, payload);
-	} catch {
-		// Session transport failures must not affect the user runtime.
-	}
+	return `export * from ${JSON.stringify(resolvedCoreId)};`;
 }
 
-function __makooSerializeError(error) {
-	const serialized = { code: error.code, message: error.message };
-	if (error.cause !== undefined) {
-		serialized.cause = error.cause instanceof Error ? error.cause.message : String(error.cause);
-	}
-	return serialized;
-}
-
-function __makooSnapshotInjection(declaration, statusHandle) {
-	const isComponent = declaration.kind === 'component';
-	const snapshot = {
-		name: declaration.name,
-		kind: isComponent ? 'component' : 'standalone-listener',
-		status: statusHandle.getSnapshot()
-	};
-	if (statusHandle.lastError) snapshot.lastError = __makooSerializeError(statusHandle.lastError);
-	if (isComponent) {
-		snapshot.attachedListeners = statusHandle.attachedListenerNames.map((listenerName) => ({
-			name: listenerName,
-			status: statusHandle.attachedListener(listenerName).getSnapshot()
-		}));
-	}
-	return snapshot;
-}
-
-function __makooSerializeNotice(notice) {
-	if (notice.type !== 'diagnostic') return notice;
-	return { ...notice, error: __makooSerializeError(notice.error) };
-}
-
-function __makooWatchInjection(runtime, runtimeId, declaration) {
-	let statusHandle;
-	try {
-		statusHandle =
-			declaration.kind === 'component'
-				? runtime.injection(declaration.name).statusHandle
-				: runtime.listener(declaration.name).statusHandle;
-	} catch {
-		// An earlier mount in the same batch already removed this injection.
-		return;
-	}
-	const push = () => {
-		__makooSend('${RUNTIME_EVENT.injection}', {
-			runtimeId,
-			injection: __makooSnapshotInjection(declaration, statusHandle)
-		});
-	};
-	push();
-	statusHandle.subscribe(push);
-	if (declaration.kind === 'component') {
-		for (const listenerName of statusHandle.attachedListenerNames) {
-			statusHandle.attachedListener(listenerName).subscribe(push);
-		}
-	}
-}
-
-let __makooNextRuntimeId = 1;
-
-export function createMakoo() {
-	const runtime = __makooCreateMakoo();
-	const runtimeId = __makooNextRuntimeId++;
-	__makooSend('${RUNTIME_EVENT.open}', { runtimeId });
-	runtime.observe((notice) => {
-		__makooSend('${RUNTIME_EVENT.notice}', { runtimeId, notice: __makooSerializeNotice(notice) });
-	});
-	return {
-		...runtime,
-		apply(declarations) {
-			runtime.apply(declarations);
-			for (const declaration of declarations) {
-				__makooWatchInjection(runtime, runtimeId, declaration);
-			}
-		}
-	};
-}
-`;
-}
-
-/**
- * Reports the Core Instances on the page, and the status and errors of each injection, to the
- * `makoo dev` terminal. Only active in the dev server; it never controls injections.
- */
-export function makooDev(options: MakooDevOptions = {}): Plugin {
-	const address = resolveBridgeAddress(options);
-	let resolvedCoreId: string | null = null;
-	const session = new DevSession();
+export function createMakooDev(deps: MakooDevDeps): Plugin {
+	const { address, startBridge, createTerminal } = deps;
 	const store = new RuntimeStore();
+	const terminals = new Map<ViteDevServer, Promise<DevTerminal>>();
+	let resolvedCoreId: string | null = null;
 	let bridge: Promise<DevBridge> | undefined;
+	let disabled = false;
 
-	const startBridge = async (server: ViteDevServer) => {
+	const launchBridge = async (server: ViteDevServer) => {
 		try {
-			bridge = startDevBridge(store, address);
+			bridge = startBridge(store, address);
 			await bridge;
 		} catch (error) {
 			bridge = undefined;
@@ -172,6 +79,7 @@ export function makooDev(options: MakooDevOptions = {}): Plugin {
 			}
 			return;
 		}
+		// warining this IP is connect the external machine
 		if (!isLoopbackHost(address.host)) {
 			server.config.logger.warn(
 				`[makoo] the makooDev bridge is listening on ${address.host}:${address.port}, reachable beyond this machine; access is protected by token only.`
@@ -179,13 +87,38 @@ export function makooDev(options: MakooDevOptions = {}): Plugin {
 		}
 	};
 
-	return {
-		name: 'makoo:dev',
+	// One terminal per server instance: a restart hands the plugin object a new
+	// server, and closeBundle (which carries no server reference) drops the map.
+	const withTerminal = (server: ViteDevServer, run: (t: DevTerminal) => void | Promise<void>) => {
+		let pending = terminals.get(server);
+		if (pending === undefined) {
+			// Wrap so a synchronous throw from createTerminal becomes a rejection.
+			pending = Promise.resolve().then(() => createTerminal(server, store));
+			terminals.set(server, pending);
+		}
+		void pending.then(run).catch((error: unknown) => {
+			server.config.logger.warn(
+				`[makoo] the dev terminal failed (${error instanceof Error ? error.message : String(error)})`
+			);
+		});
+	};
+
+	const plugin: Plugin = {
+		name: PLUGIN_NAME,
 		apply: 'serve',
 		enforce: 'pre',
-		api: { session },
+		configResolved(config) {
+			const first = config.plugins.findIndex((p) => p.name === PLUGIN_NAME);
+			// Check if there are any extra makoodev plugins running.
+			if (config.plugins.indexOf(plugin) !== first) {
+				disabled = true;
+				config.logger.warn(
+					'[makoo] makooDev() is registered more than once; keeping the first instance active.'
+				);
+			}
+		},
 		async resolveId(source, importer, options) {
-			if (source !== CORE_PACKAGE) {
+			if (disabled || source !== CORE_PACKAGE) {
 				return null;
 			}
 
@@ -201,7 +134,7 @@ export function makooDev(options: MakooDevOptions = {}): Plugin {
 			return VIRTUAL_CORE_ID;
 		},
 		load(id) {
-			if (id !== VIRTUAL_CORE_ID) {
+			if (disabled || id !== VIRTUAL_CORE_ID) {
 				return null;
 			}
 			if (!resolvedCoreId) {
@@ -210,44 +143,98 @@ export function makooDev(options: MakooDevOptions = {}): Plugin {
 			return buildVirtualModuleSource(resolvedCoreId);
 		},
 		configureServer(server) {
-			const bind = (server.config.inlineConfig as InlineConfigWithSession)[bindDevSession];
-			bind?.(session);
-
-			for (const environment of Object.values(server.environments)) {
-				const { hot } = environment;
-				hot.on(RUNTIME_EVENT.open, (payload, client) => {
-					session.open(client, payload as RuntimeOpen);
-				});
-				hot.on(RUNTIME_EVENT.injection, (payload, client) => {
-					session.updateInjection(client, payload as RuntimeInjection);
-				});
-				hot.on(RUNTIME_EVENT.notice, (payload, client) => {
-					session.applyNotice(client, payload as RuntimeNotice);
-				});
-				hot.on('vite:client:disconnect', (_payload, client) => {
-					session.disconnect(client);
-				});
-			}
-
+			if (disabled) return;
 			const { httpServer } = server;
-			if (httpServer) {
-				// listening event is active when the old instance be killed
-				httpServer.once('listening', () => {
-					void startBridge(server);
-				});
-			} else {
-				// middleware mode
-				void startBridge(server);
+			if (!httpServer) {
+				server.config.logger.warn(
+					'[makoo] makooDev does not support middleware mode; the bridge and terminal stay off.'
+				);
+				return;
 			}
+
+			// Taking over means replacing the two CLI-facing methods.
+			if (
+				typeof server.printUrls !== 'function' ||
+				typeof server.bindCLIShortcuts !== 'function'
+			) {
+				httpServer.once('listening', () => void launchBridge(server));
+				return;
+			}
+			const originalPrintUrls = server.printUrls;
+			const originalBindCLIShortcuts = server.bindCLIShortcuts;
+
+			const printUrls = () => withTerminal(server, (t) => t.showHome());
+			const bindCLIShortcuts = () => {
+				cliDrivenConfigs.add(server.config.inlineConfig);
+				withTerminal(server, (t) => t.activate());
+			};
+			server.printUrls = printUrls;
+			server.bindCLIShortcuts = bindCLIShortcuts;
+
+			// The listening event fires after the old instance was killed.
+			httpServer.once('listening', () => {
+				void launchBridge(server);
+				if (
+					server.printUrls !== printUrls ||
+					server.bindCLIShortcuts !== bindCLIShortcuts
+				) {
+					// Someone else claimed the terminal: hand our half back before
+					// yielding, so neither override keeps firing.
+					if (server.printUrls === printUrls) server.printUrls = originalPrintUrls;
+					if (server.bindCLIShortcuts === bindCLIShortcuts) {
+						server.bindCLIShortcuts = originalBindCLIShortcuts;
+					}
+					server.config.logger.warn(
+						'[makoo] another plugin overrode printUrls/bindCLIShortcuts; the makooDev terminal stays inactive while the bridge keeps running.'
+					);
+					return;
+				}
+				// On a restart nobody calls bindCLIShortcuts again; an earlier CLI
+				// call on this config chain left the flag set, so take the terminal
+				// back over.
+				if (cliDrivenConfigs.has(server.config.inlineConfig)) {
+					withTerminal(server, async (t) => {
+						await t.showHome();
+						t.activate();
+					});
+				}
+			});
 		},
-		// Runs once per environment; nulling `bridge` before awaiting keeps it idempotent.
+		// Runs once per environment; dropping the references before awaiting keeps
+		// repeated calls idempotent.
 		async closeBundle() {
-			const pending = bridge;
+			const pendingTerminals = [...terminals.values()];
+			terminals.clear();
+			const pendingBridge = bridge;
 			bridge = undefined;
-			await pending?.then(
+			for (const pending of pendingTerminals) {
+				await pending.then(
+					(t) => t.close(),
+					() => {}
+				);
+			}
+			await pendingBridge?.then(
 				(started) => started.close(),
 				() => {}
 			);
 		}
 	};
+	return plugin;
+}
+
+/**
+ * Reports the Core Instances on the page, and the status and errors of each injection, to the
+ * `makoo dev` terminal. Only active in the dev server; it never controls injections.
+ */
+export function makooDev(options: MakooDevOptions = {}): Plugin {
+	return createMakooDev({
+		address: resolveBridgeAddress(options),
+		startBridge: startDevBridge,
+		// The TUI (and its log-update dependency) is imported lazily so
+		// build/preview and plugin-less paths never load it.
+		createTerminal: async (server, store) => {
+			const { DevTerminal } = await import('../tui/DevTerminal');
+			return new DevTerminal(server, store);
+		}
+	});
 }

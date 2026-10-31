@@ -2,10 +2,10 @@ import { stripVTControlCharacters } from 'node:util';
 import type { ComponentStatus, ListenerStatus } from '@makoojs/core';
 import type {
 	InjectionSnapshot,
-	RuntimeSnapshot,
 	SerializedDiagnostic,
 	SerializedMakooError
-} from '../vite/session';
+} from '../bridge/protocol';
+import type { RuntimeSnapshot } from '../bridge/store';
 import { ansi, colorize } from './terminalColor';
 
 type InjectionStatus = ComponentStatus | ListenerStatus;
