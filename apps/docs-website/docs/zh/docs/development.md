@@ -41,7 +41,9 @@ export default defineConfig({
 });
 ```
 
-脚手架生成的项目默认不包含 `makooDev()`，需要时手动加入。它只在开发服务中生效，不影响构建产物。没有它时，终端只打印 Makoo 的启动信息（版本和访问地址），之后是 Vite 自带的输出和快捷键。
+脚手架生成的项目默认不包含 `makooDev()`，需要时手动加入。它只在开发服务中生效，不影响构建产物。没有它时，终端只打印 Makoo 的启动信息（版本和访问地址），之后是 Vite 自带的输出和快捷键。加入后，直接用 `vite` 启动也会显示与 `makoo dev` 相同的终端。
+
+页面通过独立的桥接端口上报状态，默认 `9999`。另一个项目的开发服务已经占用它时，终端打印警告且不显示注入，Vite 照常运行；用 `makooDev({ port })` 换一个端口。全部选项见 [`makooDev()`](../api/vite.md#makoodev)。
 
 打开目标网页后，终端首页的 `Runtime` 一行会显示已连接的数量。每个 Core 实例算一个连接，同一个网页中可以有多个。按 `t` 进入注入页：
 
@@ -50,18 +52,24 @@ Runtime 1/1 · Client 1 · Makoo1
 
 Makoo Injections
 
-STATUS     NAME           KIND
-● mounted  panel          component
-  ● bound    └ site-button  attached listener
-● failed   shortcut       standalone listener
+STATUS        NAME      KIND
+● mounted     panel     component
+  ● bound       └ site-button  attached listener
+● collecting  cards     component each
+  ● mounted     └ child #1     child
+  ● failed      └ child #2     child
+    MAKOO_MOUNT_FAILED: Failed to mount "cards#2"
+● failed      shortcut  standalone listener
   MAKOO_TARGET_WAIT_TIMEOUT: Timed out waiting for listener "shortcut"
 
-2 injections · 1 mounted · 1 failed
+5 injections · 2 mounted · 1 collecting · 2 failed
 ```
 
 - 每个顶层注入一行，附属监听缩进显示在所属组件下方。
+- `injectEach()` 创建的注入先显示整组状态，下方按文档顺序为每个子注入缩进一行，标为 `child #1`、`child #2` 等。
 - 第一行是当前查看的实例序号和连接标识。
-- 顶层注入为 `failed` 时，下一行显示 `lastError` 的错误码和消息，过长时截断。
+- 顶层注入或子注入为 `failed` 时，下一行显示 `lastError` 的错误码和消息，过长时截断。
+- 最后一行把顶层注入和子注入一起计数，附属监听不计入。
 - 状态订阅者和 `observe()` 回调的异常显示在 `Diagnostics` 一节中，最多保留 5 条。事件处理函数的异常不在这里，请看浏览器控制台。
 - 有多个 Core 实例时，按 `n` 切换到下一个。
 

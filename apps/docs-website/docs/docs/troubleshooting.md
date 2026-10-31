@@ -17,7 +17,11 @@ The browser console also prints the error object for every execution failure and
 
 ## dev Fails to Start
 
-Look at the first error in the terminal. Confirm that dependencies are installed, the entry file exists, and you are running the command in the project directory. The error code for invalid configuration fields is `MAKOO_CLI_CONFIG_INVALID`, and the message has one `field path: reason` per line; fix them as indicated. When the port is in use, switch to another port or close the process using it.
+Look at the first error in the terminal. Confirm that dependencies are installed, the entry file exists, and you are running the command in the project directory. Configuration fields aren't validated at runtime; check `vite.config.ts` for type errors. When the port is in use, switch to another port or close the process using it.
+
+## The Terminal Warns That the makooDev Bridge Port Is in Use
+
+`makooDev()` uses its own bridge port, `9999` by default, separate from the Vite port. When it's taken, for example by another project's dev server, the Vite server keeps running, but the terminal shows no injections. Pass another port with `makooDev({ port: 9998 })`; see [`makooDev()`](../api/vite.md#makoodev).
 
 ## The Install Page Opened, but Nothing Shows on the Page
 

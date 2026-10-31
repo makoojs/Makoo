@@ -21,5 +21,5 @@ The repository history reached the same conclusion: `40490ab` (refactor: narrow 
 
 - Before any agent or contributor adds HMR cleanup, `hot.dispose`, or owner / generation tracking to Makoo, they must first present a reproducible problem on the default path and revise this ADR; it must not be added on intuition.
 - If a module where users wrote `import.meta.hot.accept` themselves (a self-built HMR boundary) creates a Core Instance, cleanup is the user's own responsibility by calling `dispose()` in `import.meta.hot.dispose`; Makoo does not do it for them.
-- From the CLI dev session's point of view, a full page reload is just the old client's `vite:client:disconnect` followed by the new page's `makoo:runtime:open` again; DevSession does not need a concept of "runtime generation change within the same client".
-- The dev bridge wrapper layer only reads Status Handle and Instance Observation and reports them; it does not start, stop, or remove Injections (see the comment referencing this ADR in `makooDev.ts`).
+- From the dev bridge's point of view, a full page reload is just the old page's devframe connection closing (its rows leave the `RuntimeStore`) followed by the new page connecting and submitting its whole table; the store does not need a concept of "runtime generation change within the same client".
+- The page-side instrument (`packages/cli/src/bridge/runtime.ts`) only reads Status Handle and Instance Observation and reports them; it does not start, stop, or remove Injections.

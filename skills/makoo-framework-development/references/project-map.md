@@ -10,7 +10,7 @@ Use this file when a change spans packages, adds files, or needs a check on wher
   - `dom/`: the shared DOM observer, `waitForElement`, and `watchElement`.
   - `adapter/`: the Component Adapter contract and registry.
   - `state/`: StateView. `error/`: `MakooError`, `MakooAggregateError`, and `MakooErrorCode`.
-- `packages/cli`: config parsing and resolution (`config/`), project commands (`cli/`), the Vite plugin (`vite/`), the dev session (`session/`), and `monkey/` aliases over userscript manager APIs.
+- `packages/cli`: config types and resolution (`config/`), project commands (`commands/`), the Vite plugins (`vite/`), the dev bridge (`bridge/`: devframe server, `RuntimeStore`, protocol, and the page-side instrument `runtime.ts`), the dev terminal (`tui/`), and `monkey/` aliases over userscript manager APIs.
   - Keep `entry`, application metadata, and monkey options separate in resolved config.
   - Resolve the configured application module relative to the project root before passing it to `vite-plugin-monkey`.
 - `packages/react`, `packages/vue`: framework-specific mount and unmount, hooks or composables, framework-facing errors and type guards. Vue also owns plugin registration.
@@ -20,7 +20,7 @@ Use this file when a change spans packages, adds files, or needs a check on wher
 
 - `index.ts`: re-exports the public package API only.
 - `types.ts`: type definitions next to their domain.
-- `declaration.ts` (core) or `resolve.ts` / `validation.ts` (cli): validate and normalize user input at the boundary.
+- `declaration.ts` (core) or `resolve.ts` (cli): validate or normalize user input at the boundary.
 - `defaults.ts`: shared default values, regexes, constants, and fixed identifiers.
 - `error.ts`, `errors.ts`, or `XError.ts`: domain failures with stable messages and codes.
 

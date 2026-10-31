@@ -32,7 +32,7 @@ Mutate only the changed source files:
 
 ```bash
 pnpm test:mutation --mutate packages/core/src/listener/execution.ts
-pnpm test:mutation --mutate packages/cli/src/session/DevSession.ts
+pnpm test:mutation --mutate packages/cli/src/bridge/store.ts
 ```
 
 Incremental mode reuses earlier results. Stryker writes its output under `.tmp/mutation/`: `report.json` (read mutants with `status: "Survived"`), `index.html` for browsing, `incremental.json`, and `sandbox/` for its temporary copy. Put extra analysis for that run in the same folder. A full core+cli run takes several minutes, so prefer `--mutate` on changed files.

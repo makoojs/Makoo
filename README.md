@@ -10,6 +10,7 @@
   <a href="https://github.com/makoojs/Makoo/"><img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/makoojs/Makoo?style=flat-square"></a>
   <img alt="Node.js" src="https://img.shields.io/badge/Node.js-20.19%2B%20%7C%2022.12%2B-3c873a?style=flat-square">
   <a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square"></a>
+  <a href="https://hub.xerj.org/contributors/FlowingInk"><img alt="XERJ Corpus Hub contributor" src="https://hub.xerj.org/contributors/FlowingInk/badge.svg"></a>
 </p>
 
 <p align="center">
