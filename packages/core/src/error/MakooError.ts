@@ -16,13 +16,13 @@ const makooErrorMark = Symbol.for('makoo.error');
 /** The error type Core throws and reports; match on `code`, not on `message`. */
 export class MakooError extends Error {
 	/** The delivery channel this error belongs to; set when created through an error table. */
-	readonly category?: ErrorCategory;
+	declare readonly category?: ErrorCategory;
 	/** Identifies the problem: a code from the owning package's error table. */
 	readonly code: string;
 	/** Structured, serializable context for the code; set when created through an error table. */
-	readonly details?: unknown;
+	declare readonly details?: unknown;
 	/** Collected failures for aggregate codes, in the order they happened. */
-	readonly errors?: readonly unknown[];
+	declare readonly errors?: readonly unknown[];
 
 	constructor(message: string, options: MakooErrorOptions) {
 		super(message);
@@ -32,7 +32,7 @@ export class MakooError extends Error {
 		if (options.cause !== undefined) this.cause = options.cause;
 		if (options.details !== undefined) this.details = options.details;
 		if (options.errors !== undefined) this.errors = options.errors;
-		(this as Record<symbol, unknown>)[makooErrorMark] = true;
+		Object.defineProperty(this, makooErrorMark, { value: true });
 	}
 }
 
