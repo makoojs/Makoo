@@ -1,4 +1,4 @@
-export { ReactErrorCode } from './error';
+export { type ReactError, ReactErrorCode, reactErrors } from './error';
 export {
 	useAttachedListenerStatus,
 	useComponentCommand,

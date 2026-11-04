@@ -1,10 +1,10 @@
 import type { MountAdapter } from '../adapter/types';
 import type { DOMObserver } from '../dom/observer';
-import { MakooErrorCode } from '../error/ErrorCode';
-import { injectionCleanupFailed, MakooError, stateSubscriberFailed } from '../error/MakooError';
+import { coreErrors } from '../error/coreErrors';
+import type { MakooError } from '../error/MakooError';
 import { type AttachListener, createAttachListener } from '../listener/attach';
 import type { ListenerInjection, ListenerStatus } from '../listener/types';
-import { createState } from '../state/createState';
+import { createState, emitSubscriberDiagnostic } from '../state/createState';
 import type { StateView } from '../state/types';
 import {
 	type ComponentExecutionControl,
@@ -109,11 +109,11 @@ export function createComponent(
 				adapter.unmount(mountHandle);
 			}
 		},
-		state: createState<ComponentStatus>('idle', (cause) => {
-			const error = stateSubscriberFailed(`"${config.name}"`, cause);
-			console.error(error);
-			onDiagnostic(config.name, error);
-		}),
+		state: createState<ComponentStatus>('idle', (cause) =>
+			emitSubscriberDiagnostic(`"${config.name}"`, cause, (error) =>
+				onDiagnostic(config.name, error)
+			)
+		),
 		attachListeners: new Map(),
 		intent: 'stopped',
 		executionSlot: { kind: 'empty', cleanupPromise: Promise.resolve() },
@@ -125,14 +125,12 @@ export function createComponent(
 			createAttachListener(
 				{ ...attachListenerConfig, reinject: config.reinject },
 				(error) => failComponent(component, attachListenerConfig.name, error),
-				(cause) => {
-					const error = stateSubscriberFailed(
+				(cause) =>
+					emitSubscriberDiagnostic(
 						`"${config.name}" listener "${attachListenerConfig.name}"`,
-						cause
-					);
-					console.error(error);
-					onDiagnostic(config.name, error);
-				}
+						cause,
+						(error) => onDiagnostic(config.name, error)
+					)
 			)
 		);
 	}
@@ -142,8 +140,9 @@ export function createComponent(
 function getAttachListenerStatus(component: Component, name: string): StateView<ListenerStatus> {
 	const attachListener = component.attachListeners.get(name);
 	if (!attachListener) {
-		throw new MakooError(`Unknown listener "${name}" in "${component.config.name}"`, {
-			code: MakooErrorCode.LISTENER_NOT_FOUND
+		throw coreErrors.createThrowable('MAKOO_LISTENER_NOT_FOUND', {
+			name,
+			injection: component.config.name
 		});
 	}
 	return attachListener.state.view;
@@ -154,9 +153,10 @@ function failComponent(component: Component, listenerName: string, error: MakooE
 	void endExecution(
 		component,
 		'failed',
-		new MakooError(
-			`"${component.config.name}" stopped because listener "${listenerName}" failed`,
-			{ code: MakooErrorCode.ATTACHED_LISTENER_FAILED, cause: error }
+		coreErrors.createRecorded(
+			'MAKOO_ATTACHED_LISTENER_FAILED',
+			{ name: component.config.name, listener: listenerName },
+			{ cause: error }
 		)
 	).catch(() => {});
 }
@@ -164,19 +164,13 @@ function failComponent(component: Component, listenerName: string, error: MakooE
 function startComponent(component: Component): void {
 	const { config, executionSlot } = component;
 	if (component.isDisposed()) {
-		throw new MakooError('Core instance is disposed', {
-			code: MakooErrorCode.INSTANCE_DISPOSED
-		});
+		throw coreErrors.createThrowable('MAKOO_INSTANCE_DISPOSED');
 	}
 	if (executionSlot.kind === 'cleanup-failed') {
-		throw new MakooError(`Injection "${config.name}" cannot restart after cleanup failed`, {
-			code: MakooErrorCode.INJECTION_CLOSED
-		});
+		throw coreErrors.createThrowable('MAKOO_INJECTION_CLOSED', { name: config.name });
 	}
 	if (component.intent === 'removed') {
-		throw new MakooError(`Injection "${config.name}" was removed`, {
-			code: MakooErrorCode.INJECTION_REMOVED
-		});
+		throw coreErrors.createThrowable('MAKOO_INJECTION_REMOVED', { name: config.name });
 	}
 	component.intent = 'running';
 	if (executionSlot.kind !== 'empty') return;
@@ -283,9 +277,10 @@ async function endExecution(
 	component.executionSlot = { ...executionSlot, kind: 'closing' };
 	const cleanupErrors = await execution.finish();
 	if (cleanupErrors.length > 0) {
-		const failure = injectionCleanupFailed(
-			component.config.name,
-			executionError ? [executionError, ...cleanupErrors] : cleanupErrors
+		const failure = coreErrors.createRecorded(
+			'MAKOO_INJECTION_CLEANUP_FAILED',
+			{ name: component.config.name },
+			{ errors: executionError ? [executionError, ...cleanupErrors] : cleanupErrors }
 		);
 		component.lastError = failure;
 		component.executionSlot = {

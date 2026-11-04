@@ -1,10 +1,18 @@
-import type { createMakoo, Injection, MakooError, MakooRuntime, StateView } from '@makoojs/core';
+import {
+	type createMakoo,
+	type Injection,
+	isMakooError,
+	type MakooError,
+	type MakooRuntime,
+	type StateView
+} from '@makoojs/core';
 import { connectDevframe } from 'devframe/client';
 import {
 	type DevEndpoint,
 	type InjectionSnapshot,
 	type PageRuntimeRow,
 	type SerializedDiagnostic,
+	type SerializedErrorNode,
 	type SerializedMakooError,
 	SUBMIT_PAGE_RPC
 } from './protocol';
@@ -180,11 +188,24 @@ function serializeError(error: MakooError): SerializedMakooError;
 function serializeError(error: MakooError | undefined): SerializedMakooError | undefined;
 function serializeError(error: MakooError | undefined): SerializedMakooError | undefined {
 	if (error === undefined) return undefined;
-	const serialized: SerializedMakooError = { code: error.code, message: error.message };
-	if (error.cause !== undefined) {
-		serialized.cause = error.cause instanceof Error ? error.cause.message : String(error.cause);
+	return { ...serializeErrorNode(error), code: error.code };
+}
+
+function serializeErrorNode(value: unknown): SerializedErrorNode {
+	if (value instanceof Error) {
+		const node: SerializedErrorNode = { name: value.name, message: value.message };
+		if (isMakooError(value)) {
+			node.code = value.code;
+			if (value.category !== undefined) node.category = value.category;
+			if (value.details !== undefined) node.details = value.details;
+			if (value.errors !== undefined) node.errors = value.errors.map(serializeErrorNode);
+		} else if (value instanceof AggregateError) {
+			node.errors = value.errors.map(serializeErrorNode);
+		}
+		if (value.cause !== undefined) node.cause = serializeErrorNode(value.cause);
+		return node;
 	}
-	return serialized;
+	return { message: String(value) };
 }
 
 type SnapshotOf = <T>(handle: StateView<T>) => Readonly<T>;

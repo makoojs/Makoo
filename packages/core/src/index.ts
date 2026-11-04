@@ -27,7 +27,11 @@ export type {
 	ObservationNotice
 } from './core/types';
 export { type CoreError, type CoreErrorCode, coreErrors } from './error/coreErrors';
-export { defineErrors, type MakooErrorFor } from './error/defineErrors';
+export {
+	defineMakooErrors,
+	type MakooErrorsFor,
+	type MakooErrorTable
+} from './error/defineMakooErrors';
 export { MakooErrorCode } from './error/ErrorCode';
 export {
 	type ErrorCategory,

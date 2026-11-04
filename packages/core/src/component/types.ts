@@ -14,7 +14,7 @@ export interface ChildCommand {
 	 * Idempotent for an already-ended child.
 	 *
 	 * @returns A promise that settles when cleanup finishes; it rejects with a
-	 * `MakooAggregateError` (`INJECTION_CLEANUP_FAILED`) when cleanup fails.
+	 * `MakooError` (`INJECTION_CLEANUP_FAILED`) whose `errors` list what failed.
 	 */
 	stop(): Promise<void>;
 }
@@ -52,8 +52,8 @@ export interface ComponentCommand {
 	 * success, or `failed` when cleanup fails.
 	 *
 	 * @returns A promise that settles when cleanup finishes; it rejects with a
-	 * `MakooAggregateError` (`INJECTION_CLEANUP_FAILED`) when cleanup fails, after which the
-	 * component cannot start again.
+	 * `MakooError` (`INJECTION_CLEANUP_FAILED`) whose `errors` list what failed, after which
+	 * the component cannot start again.
 	 */
 	stop(): Promise<void>;
 	/**

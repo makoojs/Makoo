@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AdapterMountParams, MountAdapter } from '../src';
-import { createMakoo, type InjectionCommand, inject, listen, MakooErrorCode } from '../src';
+import { createMakoo, type InjectionCommand, inject, listen } from '../src';
 
 describe('single component injection', () => {
 	const handles: InjectionCommand[] = [];
@@ -72,7 +72,11 @@ describe('single component injection', () => {
 			'lastError',
 			'subscribe'
 		]);
-		expect(params?.injection.statusHandle.attachedListenerNames).toEqual([]);
+		const statusHandle = params?.injection.statusHandle;
+		if (statusHandle && !('attachedListenerNames' in statusHandle)) {
+			throw new Error('Expected a component');
+		}
+		expect(statusHandle?.attachedListenerNames).toEqual([]);
 		expect(params?.container.parentElement).toBe(host);
 		expect(extra.querySelector('div')).toBeNull();
 		expect(host.firstChild?.textContent).toBe('keep');
@@ -107,10 +111,10 @@ describe('single component injection', () => {
 		]);
 		handles.push(core.injection('panel').command, core.listener('save').command);
 		expect(() => core.injection('save')).toThrow(
-			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
+			expect.objectContaining({ code: 'MAKOO_INJECTION_NOT_FOUND' })
 		);
 		expect(() => core.listener('panel')).toThrow(
-			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
+			expect.objectContaining({ code: 'MAKOO_INJECTION_NOT_FOUND' })
 		);
 		const found = params?.listener('save');
 		expect(found).toBe(core.listener('save'));
@@ -118,7 +122,7 @@ describe('single component injection', () => {
 		expect(found?.statusHandle).toBe(core.listener('save').statusHandle);
 		for (const name of ['panel', 'play', 'missing']) {
 			expect(() => params?.listener(name)).toThrow(
-				expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
+				expect.objectContaining({ code: 'MAKOO_INJECTION_NOT_FOUND' })
 			);
 		}
 
@@ -168,7 +172,7 @@ describe('single component injection', () => {
 		await panel.stop();
 		const removal = panel.remove();
 		expect(() => core.injection('panel').command).toThrow(
-			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
+			expect.objectContaining({ code: 'MAKOO_INJECTION_NOT_FOUND' })
 		);
 		expect(panel.stop()).toBe(removal);
 		expect(panel.remove()).toBe(removal);
@@ -214,10 +218,10 @@ describe('single component injection', () => {
 		await panel.remove();
 		expect(containers[1]?.isConnected).toBe(false);
 		expect(() => core.injection('panel').command).toThrow(
-			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
+			expect.objectContaining({ code: 'MAKOO_INJECTION_NOT_FOUND' })
 		);
 		expect(() => panel.start()).toThrow(
-			expect.objectContaining({ code: MakooErrorCode.INJECTION_REMOVED })
+			expect.objectContaining({ code: 'MAKOO_INJECTION_REMOVED' })
 		);
 	});
 
@@ -386,7 +390,7 @@ describe('single component injection', () => {
 			expect(core.listener('second').statusHandle.getSnapshot()).toBe('idle');
 		} else {
 			expect(() => core.listener('second').command).toThrow(
-				expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
+				expect.objectContaining({ code: 'MAKOO_INJECTION_NOT_FOUND' })
 			);
 		}
 		host.click();
@@ -410,7 +414,7 @@ describe('single component injection', () => {
 			])
 		).toThrow(
 			expect.objectContaining({
-				code: MakooErrorCode.ADAPTER_NOT_FOUND,
+				code: 'MAKOO_ADAPTER_NOT_FOUND',
 				message: expect.stringContaining('missing')
 			})
 		);
@@ -418,10 +422,10 @@ describe('single component injection', () => {
 		expect(callback).not.toHaveBeenCalled();
 		expect(mount).not.toHaveBeenCalled();
 		expect(() => core.listener('play').command).toThrow(
-			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
+			expect.objectContaining({ code: 'MAKOO_INJECTION_NOT_FOUND' })
 		);
 		expect(() => core.injection('panel').command).toThrow(
-			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
+			expect.objectContaining({ code: 'MAKOO_INJECTION_NOT_FOUND' })
 		);
 		expect(vi.getTimerCount()).toBe(0);
 	});
@@ -433,7 +437,7 @@ describe('single component injection', () => {
 		core.useAdapter(adapter(first));
 		expect(() => core.useAdapter(adapter(second))).toThrow(
 			expect.objectContaining({
-				code: MakooErrorCode.ADAPTER_NAME_CONFLICT,
+				code: 'MAKOO_ADAPTER_NAME_CONFLICT',
 				message: expect.stringContaining('plain')
 			})
 		);
@@ -473,14 +477,14 @@ describe('single component injection', () => {
 			}
 		);
 		expect(core.injection('panel').statusHandle.lastError).toMatchObject({
-			code: MakooErrorCode.MOUNT_FAILED,
+			code: 'MAKOO_MOUNT_FAILED',
 			cause: expect.objectContaining({ message: 'mount failed' })
 		});
 		expect(console.error).toHaveBeenCalledWith(core.injection('panel').statusHandle.lastError);
 		expect(host.querySelector('div')).toBeNull();
 		expect(() =>
 			core.apply([listen({ name: 'panel', listenAt: '.play', type: 'click', callback() {} })])
-		).toThrow(expect.objectContaining({ code: MakooErrorCode.INJECTION_NAME_CONFLICT }));
+		).toThrow(expect.objectContaining({ code: 'MAKOO_INJECTION_NAME_CONFLICT' }));
 		expect(core.injection('panel').statusHandle.getSnapshot()).toBe('failed');
 	});
 
@@ -511,11 +515,11 @@ describe('single component injection', () => {
 		});
 		host.replaceWith(host.cloneNode());
 		await vi.waitFor(() => expect(status.getSnapshot()).toBe('failed'), { interval: 1 });
-		expect(status.lastError?.code).toBe(MakooErrorCode.INJECTION_CLEANUP_FAILED);
+		expect(status.lastError?.code).toBe('MAKOO_INJECTION_CLEANUP_FAILED');
 		expect(seen).toContain('failed');
 		expect(console.error).toHaveBeenCalledWith(
 			expect.objectContaining({
-				code: MakooErrorCode.STATE_SUBSCRIBER_FAILED,
+				code: 'MAKOO_STATE_SUBSCRIBER_FAILED',
 				cause: subscriberError,
 				message: expect.stringContaining('"panel"')
 			})

@@ -4,8 +4,7 @@ import {
 	createMakoo,
 	inject,
 	type ListenerInjection,
-	MakooAggregateError,
-	MakooErrorCode
+	MakooError
 } from '@makoojs/core';
 import type { Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -118,9 +117,9 @@ describe('ReactAdapter', () => {
 		}
 
 		expect(reactDomClientMock.root.unmount).toHaveBeenCalledOnce();
-		expect(thrown).toBeInstanceOf(MakooAggregateError);
+		expect(thrown).toBeInstanceOf(MakooError);
 		expect(thrown).toMatchObject({
-			code: MakooErrorCode.MOUNT_CLEANUP_FAILED,
+			code: 'MAKOO_MOUNT_CLEANUP_FAILED',
 			cause,
 			errors: [releaseCause]
 		});
@@ -154,7 +153,7 @@ describe('ReactAdapter', () => {
 		);
 		expect(reactDomClientMock.root.unmount).toHaveBeenCalledOnce();
 		expect(core.injection('badge').statusHandle.lastError).toMatchObject({
-			code: MakooErrorCode.MOUNT_FAILED,
+			code: 'MAKOO_MOUNT_FAILED',
 			cause
 		});
 	});
@@ -173,12 +172,12 @@ describe('ReactAdapter', () => {
 		const command = core.injection('badge').command;
 
 		await expect(command.stop()).rejects.toMatchObject({
-			code: MakooErrorCode.INJECTION_CLEANUP_FAILED,
-			errors: [expect.objectContaining({ code: MakooErrorCode.UNMOUNT_FAILED, cause })]
+			code: 'MAKOO_INJECTION_CLEANUP_FAILED',
+			errors: [expect.objectContaining({ code: 'MAKOO_UNMOUNT_FAILED', cause })]
 		});
 		expect(core.injection('badge').statusHandle.getSnapshot()).toBe('failed');
 		expect(() => command.start()).toThrow(
-			expect.objectContaining({ code: MakooErrorCode.INJECTION_CLOSED })
+			expect.objectContaining({ code: 'MAKOO_INJECTION_CLOSED' })
 		);
 	});
 });

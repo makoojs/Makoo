@@ -163,8 +163,54 @@ describe('instrument', () => {
 		await vi.waitFor(() => {
 			expect(last()?.[0]?.diagnostics).toHaveLength(5);
 		});
-		const causes = last()?.[0]?.diagnostics.map((diagnostic) => diagnostic.error.cause);
+		const causes = last()?.[0]?.diagnostics.map(
+			(diagnostic) => diagnostic.error.cause?.message
+		);
 		expect(causes).toEqual(['boom1', 'boom2', 'boom3', 'boom4', 'boom5']);
+	});
+
+	it('serializes lastError details, aggregate children, and cause chains', async () => {
+		const { reporter, last } = fakeReporter();
+		const wrapped = instrument(createMakoo, endpoint, reporter);
+		const runtime = wrapped();
+		document.body.innerHTML = '<div id="app"></div>';
+		const unmountCause = new Error('unmount exploded');
+		runtime.useAdapter({
+			name: 'fake',
+			mount: () => ({}),
+			unmount: () => {
+				throw unmountCause;
+			}
+		});
+		runtime.apply([
+			inject({ name: 'panel', injectAt: '#app', adapter: 'fake', component: {} })
+		]);
+		await vi.waitFor(() => {
+			expect(last()?.[0]?.injections?.[0]?.status).toBe('mounted');
+		});
+
+		await runtime
+			.injection('panel')
+			.command.stop()
+			.catch(() => {});
+
+		expect(last()?.[0]?.injections?.[0]?.lastError).toEqual({
+			code: 'MAKOO_INJECTION_CLEANUP_FAILED',
+			category: 'cleanup',
+			name: 'MakooError',
+			message: 'Cleanup failed for "panel"\nFailed to unmount "panel"',
+			details: { name: 'panel' },
+			errors: [
+				{
+					code: 'MAKOO_UNMOUNT_FAILED',
+					category: 'cleanup',
+					name: 'MakooError',
+					message: 'Failed to unmount "panel"',
+					details: { name: 'panel' },
+					cause: { name: 'Error', message: 'unmount exploded' }
+				}
+			]
+		});
 	});
 
 	it('drops removed injections and disposed runtimes', async () => {

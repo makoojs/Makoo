@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MountAdapter, ObservationNotice } from '../src';
-import { createMakoo, inject, listen, MakooError, MakooErrorCode } from '../src';
+import { createMakoo, inject, listen, MakooError } from '../src';
 
 describe('instance observation', () => {
 	beforeEach(() => {
@@ -29,7 +29,7 @@ describe('instance observation', () => {
 		const notices: ObservationNotice[] = [];
 		core.observe((notice) => {
 			expect(() => core.injection('panel').command).toThrow(
-				expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
+				expect.objectContaining({ code: 'MAKOO_INJECTION_NOT_FOUND' })
 			);
 			notices.push(notice);
 		});
@@ -52,7 +52,7 @@ describe('instance observation', () => {
 			notices.push(notice);
 		});
 		await expect(core.injection('panel').command.remove()).rejects.toMatchObject({
-			code: MakooErrorCode.INJECTION_CLEANUP_FAILED
+			code: 'MAKOO_INJECTION_CLEANUP_FAILED'
 		});
 		expect(core.injection('panel').statusHandle.getSnapshot()).toBe('failed');
 		expect(notices).toEqual([]);
@@ -125,7 +125,7 @@ describe('instance observation', () => {
 			{ type: 'instance-disposed' }
 		]);
 		expect(() => core.observe(() => {})).toThrow(
-			expect.objectContaining({ code: MakooErrorCode.INSTANCE_DISPOSED })
+			expect.objectContaining({ code: 'MAKOO_INSTANCE_DISPOSED' })
 		);
 	});
 
@@ -175,7 +175,7 @@ describe('instance observation', () => {
 			type: 'diagnostic',
 			name: 'click',
 			error: expect.objectContaining({
-				code: MakooErrorCode.STATE_SUBSCRIBER_FAILED,
+				code: 'MAKOO_STATE_SUBSCRIBER_FAILED',
 				cause: expect.objectContaining({ message: 'subscriber boom' })
 			})
 		});
@@ -214,13 +214,13 @@ describe('instance observation', () => {
 		expect(diagnostics[0]).toMatchObject({
 			type: 'diagnostic',
 			error: expect.objectContaining({
-				code: MakooErrorCode.INSTANCE_OBSERVER_FAILED,
+				code: 'MAKOO_INSTANCE_OBSERVER_FAILED',
 				cause: expect.objectContaining({ message: 'observer boom' })
 			})
 		});
 		expect(console.error).toHaveBeenCalledWith(
 			expect.objectContaining({
-				code: MakooErrorCode.INSTANCE_OBSERVER_FAILED,
+				code: 'MAKOO_INSTANCE_OBSERVER_FAILED',
 				cause: expect.objectContaining({ message: 'observer boom' })
 			})
 		);

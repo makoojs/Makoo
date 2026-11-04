@@ -10,8 +10,8 @@ import type {
 	MakooComponentEachDeclaration
 } from '../component/types';
 import { createDOMObserver, type DOMObserver } from '../dom/observer';
-import { MakooErrorCode } from '../error/ErrorCode';
-import { instanceObserverFailed, MakooAggregateError, MakooError } from '../error/MakooError';
+import { coreErrors } from '../error/coreErrors';
+import type { MakooError } from '../error/MakooError';
 import { validateListener } from '../listener/declaration';
 import { createListener } from '../listener/listener';
 import type { ListenerInjection, MakooListenerDeclaration } from '../listener/types';
@@ -90,8 +90,8 @@ function prepareDeclarations(
 	adapters: MakooInstance['adapters']
 ): PreparedDeclaration[] {
 	if (!Array.isArray(declarations) || declarations.length === 0) {
-		throw new MakooError('Expected a non-empty array of declarations', {
-			code: MakooErrorCode.DECLARATION_INVALID
+		throw coreErrors.createThrowable('MAKOO_DECLARATION_INVALID', {
+			reason: 'Expected a non-empty array of declarations'
 		});
 	}
 	const injectionConfigs = declarations.map(validateInjection);
@@ -99,9 +99,7 @@ function prepareDeclarations(
 	for (const config of injectionConfigs) {
 		const name = config.name;
 		if (injectionNames.has(name)) {
-			throw new MakooError(`Injection name "${name}" is already occupied`, {
-				code: MakooErrorCode.INJECTION_NAME_CONFLICT
-			});
+			throw coreErrors.createThrowable('MAKOO_INJECTION_NAME_CONFLICT', { name });
 		}
 		injectionNames.add(name);
 	}
@@ -185,7 +183,7 @@ function notifyObservers(makooInstance: MakooInstance, notice: ObservationNotice
 		try {
 			handler(notice);
 		} catch (cause) {
-			const error = instanceObserverFailed(cause);
+			const error = coreErrors.create('MAKOO_INSTANCE_OBSERVER_FAILED', { cause });
 			console.error(error);
 			if (allowDiagnosticOnFailure) {
 				notifyObservers(makooInstance, { type: 'diagnostic', error });
@@ -196,7 +194,7 @@ function notifyObservers(makooInstance: MakooInstance, notice: ObservationNotice
 
 function assertOpen(makooInstance: MakooInstance): void {
 	if (!makooInstance.disposed) return;
-	throw new MakooError('Core instance is disposed', { code: MakooErrorCode.INSTANCE_DISPOSED });
+	throw coreErrors.createThrowable('MAKOO_INSTANCE_DISPOSED');
 }
 
 function disposeInstance(makooInstance: MakooInstance): Promise<void> {
@@ -226,9 +224,7 @@ function disposeInstance(makooInstance: MakooInstance): Promise<void> {
 			return;
 		}
 		rejectDisposal(
-			new MakooAggregateError(cleanupErrors, 'Failed to dispose core', {
-				code: MakooErrorCode.INSTANCE_CLEANUP_FAILED
-			})
+			coreErrors.createRecorded('MAKOO_INSTANCE_CLEANUP_FAILED', { errors: cleanupErrors })
 		);
 	})();
 	return disposal;
@@ -237,9 +233,7 @@ function disposeInstance(makooInstance: MakooInstance): Promise<void> {
 function getInjection(injections: ReadonlyMap<string, Injection>, name: string): Injection {
 	const injection = injections.get(name);
 	if (!injection) {
-		throw new MakooError(`Unknown injection "${name}"`, {
-			code: MakooErrorCode.INJECTION_NOT_FOUND
-		});
+		throw coreErrors.createThrowable('MAKOO_INJECTION_NOT_FOUND', { name });
 	}
 	return injection;
 }
@@ -250,9 +244,7 @@ function getComponentInjection(
 ): ComponentInjection | ComponentEachInjection {
 	const injection = getInjection(injections, name);
 	if (injection.kind !== 'component' && injection.kind !== 'component-each') {
-		throw new MakooError(`Unknown injection "${name}"`, {
-			code: MakooErrorCode.INJECTION_NOT_FOUND
-		});
+		throw coreErrors.createThrowable('MAKOO_INJECTION_NOT_FOUND', { name });
 	}
 	return injection;
 }
@@ -263,9 +255,7 @@ function getListenerInjection(
 ): ListenerInjection {
 	const injection = getInjection(injections, name);
 	if (injection.kind !== 'listener') {
-		throw new MakooError(`Unknown injection "${name}"`, {
-			code: MakooErrorCode.INJECTION_NOT_FOUND
-		});
+		throw coreErrors.createThrowable('MAKOO_INJECTION_NOT_FOUND', { name });
 	}
 	return injection;
 }
@@ -281,10 +271,7 @@ function validateInjection(input: unknown): MakooInjectionDeclaration {
 				return validateComponentEach(input);
 		}
 	}
-	throw new MakooError(
-		'Invalid declaration\nkind: Expected listener, component, or component-each',
-		{
-			code: MakooErrorCode.DECLARATION_INVALID
-		}
-	);
+	throw coreErrors.createThrowable('MAKOO_DECLARATION_INVALID', {
+		reason: 'Invalid declaration\nkind: Expected listener, component, or component-each'
+	});
 }

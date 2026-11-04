@@ -1,4 +1,6 @@
 import type {
+	ChildCommand,
+	ChildStatusHandle,
 	ComponentCommand,
 	ComponentStatus,
 	ComponentStatusHandle,
@@ -6,7 +8,7 @@ import type {
 	ListenerStatus,
 	StateView
 } from '@makoojs/core';
-import { MakooError, MakooErrorCode } from '@makoojs/core';
+import { coreErrors, type MakooError } from '@makoojs/core';
 import {
 	act,
 	type ComponentType,
@@ -21,7 +23,6 @@ import { createRoot } from 'react-dom/client';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	createReactAdapter,
-	ReactErrorCode,
 	type ReactMountRoot,
 	useAttachedListenerStatus,
 	useComponentCommand,
@@ -51,6 +52,18 @@ function stateSource<T>(initial: Readonly<T>) {
 			for (const notify of subscribers) notify();
 		}
 	};
+}
+
+function componentCommandOf(command: ComponentCommand | ChildCommand): ComponentCommand {
+	if (!('start' in command)) throw new Error('Expected a component');
+	return command;
+}
+
+function componentStatusHandleOf(
+	handle: ComponentStatusHandle | ChildStatusHandle
+): ComponentStatusHandle {
+	if (!('attachedListener' in handle)) throw new Error('Expected a component');
+	return handle;
 }
 
 describe('React hook subscriptions at the adapter boundary', () => {
@@ -124,7 +137,7 @@ describe('React hook subscriptions at the adapter boundary', () => {
 	it('keeps controls stable across local renders without subscribing to any state', async () => {
 		const received: ComponentCommand[] = [];
 		function Panel() {
-			const actions = useComponentCommand();
+			const actions = componentCommandOf(useComponentCommand());
 			const [count, setCount] = useState(0);
 			received.push(actions);
 			return createElement(
@@ -167,7 +180,7 @@ describe('React hook subscriptions at the adapter boundary', () => {
 		const received: ComponentStatusHandle[] = [];
 		const readErrors: Array<MakooError | undefined> = [];
 		function Panel() {
-			const handle = useComponentStatusHandle();
+			const handle = componentStatusHandleOf(useComponentStatusHandle());
 			const [count, setCount] = useState(0);
 			received.push(handle);
 			readErrors.push(handle.lastError);
@@ -180,7 +193,7 @@ describe('React hook subscriptions at the adapter boundary', () => {
 		await mount(Panel);
 		expect(componentState.subscriptions).toBe(0);
 		const initialRenders = received.length;
-		lastError = new MakooError('mount failed', { code: MakooErrorCode.MOUNT_FAILED });
+		lastError = coreErrors.createRecorded('MAKOO_MOUNT_FAILED', { name: 'panel' });
 		await act(async () => componentState.publish('failed'));
 		expect(received).toHaveLength(initialRenders);
 		await act(async () => container.querySelector('button')?.click());
@@ -429,7 +442,7 @@ describe('React hook subscriptions at the adapter boundary', () => {
 		const root = createRoot(container);
 		roots.push(root);
 		await expect(act(async () => root.render(createElement(Panel)))).rejects.toThrow(
-			expect.objectContaining({ code: ReactErrorCode.REACT_HOOK_OUTSIDE_COMPONENT })
+			expect.objectContaining({ code: 'MAKOO_REACT_HOOK_OUTSIDE_COMPONENT' })
 		);
 	});
 });

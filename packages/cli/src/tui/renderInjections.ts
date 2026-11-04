@@ -3,6 +3,7 @@ import type { ComponentEachStatus, ComponentStatus, ListenerStatus } from '@mako
 import type {
 	InjectionSnapshot,
 	SerializedDiagnostic,
+	SerializedErrorNode,
 	SerializedMakooError
 } from '../bridge/protocol';
 import type { RuntimeSnapshot } from '../bridge/store';
@@ -54,9 +55,19 @@ function renderStatus(status: InjectionStatus): string {
 	return colorize(`● ${status}`, STATUS_COLORS[status]);
 }
 
+function renderCauseChain(node: SerializedErrorNode): string {
+	const parts: string[] = [];
+	let current = node.cause;
+	while (current !== undefined) {
+		parts.push(current.code ? `${current.code}: ${current.message}` : current.message);
+		current = current.cause;
+	}
+	return parts.join(' <- ');
+}
+
 function renderError(error: SerializedMakooError): string {
 	let text = `${error.code}: ${error.message}`;
-	if (error.cause !== undefined) text += ` (cause: ${error.cause})`;
+	if (error.cause !== undefined) text += ` (cause: ${renderCauseChain(error)})`;
 	text = text.replaceAll('\n', ' · ');
 	if (text.length > MAX_ERROR_LENGTH) text = `${text.slice(0, MAX_ERROR_LENGTH - 1)}…`;
 	return text;

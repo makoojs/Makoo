@@ -9,11 +9,11 @@ import type {
 	ListenerCommand,
 	ListenerInjection,
 	ListenerStatus,
+	MakooError,
 	StateView
 } from '@makoojs/core';
-import { MakooError, MakooErrorCode } from '@makoojs/core';
 import { createContext, useContext, useMemo, useSyncExternalStore } from 'react';
-import { ReactErrorCode } from './error';
+import { reactErrors } from './error';
 
 type MakooComponentContextValue = {
 	injection: ComponentInjection | ChildInjection;
@@ -59,7 +59,7 @@ export function useComponentStatus<T>(select?: (status: ComponentStatus) => T) {
 /**
  * Subscribes only to the named attached listener; selector results use Object.is.
  *
- * @throws {@link MakooError} `LISTENER_NOT_FOUND` when the component has no listener with that name.
+ * @throws {@link MakooError} `MAKOO_REACT_LISTENER_NOT_FOUND` when the component has no listener with that name.
  */
 export function useAttachedListenerStatus(name: string): ListenerStatus;
 export function useAttachedListenerStatus<T>(
@@ -68,10 +68,14 @@ export function useAttachedListenerStatus<T>(
 ): T;
 export function useAttachedListenerStatus<T>(name: string, select?: (status: ListenerStatus) => T) {
 	const { command, statusHandle } = useComponentContext().injection;
-	const view = 'attachedListener' in statusHandle ? statusHandle.attachedListener(name) : null;
+	const view =
+		'attachedListener' in statusHandle && statusHandle.attachedListenerNames.includes(name)
+			? statusHandle.attachedListener(name)
+			: null;
 	if (!view) {
-		throw new MakooError(`Unknown listener "${name}" in "${command.name}"`, {
-			code: MakooErrorCode.LISTENER_NOT_FOUND
+		throw reactErrors.createThrowable('MAKOO_REACT_LISTENER_NOT_FOUND', {
+			name,
+			injection: command.name
 		});
 	}
 	return useSelectedSnapshot(view, select);
@@ -103,10 +107,7 @@ export function useListener(name: string): ReactStandaloneListener {
 function useComponentContext(): MakooComponentContextValue {
 	const context = useContext(MakooComponentContext);
 	if (!context) {
-		throw new MakooError(
-			'Makoo hooks must be called inside a component tree mounted by the Makoo React adapter',
-			{ code: ReactErrorCode.REACT_HOOK_OUTSIDE_COMPONENT }
-		);
+		throw reactErrors.createThrowable('MAKOO_REACT_HOOK_OUTSIDE_COMPONENT');
 	}
 	return context;
 }

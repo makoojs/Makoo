@@ -79,13 +79,21 @@ function fakeDeps() {
 
 describe('makooDev', () => {
 	it('rejects invalid bridge options at call time', () => {
-		expect(() => makooDev({ port: 0 })).toThrow();
-		expect(() => makooDev({ port: 65536 })).toThrow();
-		expect(() => makooDev({ port: 1.5 })).toThrow();
-		expect(() => makooDev({ port: Number.NaN })).toThrow();
-		expect(() => makooDev({ host: '' })).toThrow();
-		expect(() => makooDev({ host: 'example.com' })).toThrow();
-		expect(() => makooDev({ host: '*.example.com' })).toThrow();
+		const portInvalid = expect.objectContaining({
+			code: 'MAKOO_DEV_PORT_INVALID',
+			category: 'configuration'
+		});
+		const hostInvalid = expect.objectContaining({
+			code: 'MAKOO_DEV_HOST_INVALID',
+			category: 'configuration'
+		});
+		expect(() => makooDev({ port: 0 })).toThrow(portInvalid);
+		expect(() => makooDev({ port: 65536 })).toThrow(portInvalid);
+		expect(() => makooDev({ port: 1.5 })).toThrow(portInvalid);
+		expect(() => makooDev({ port: Number.NaN })).toThrow(portInvalid);
+		expect(() => makooDev({ host: '' })).toThrow(hostInvalid);
+		expect(() => makooDev({ host: 'example.com' })).toThrow(hostInvalid);
+		expect(() => makooDev({ host: '*.example.com' })).toThrow(hostInvalid);
 
 		expect(() => makooDev()).not.toThrow();
 		expect(() => makooDev({ port: 8080 })).not.toThrow();
@@ -394,7 +402,7 @@ describe('makooDev terminal takeover', () => {
 	});
 
 	it('degrades to passthrough and warns when devframe/client cannot be resolved', async () => {
-		const { deps, bridge } = fakeDeps();
+		const { deps } = fakeDeps();
 		deps.resolveDevframeClient.mockImplementation(() => {
 			throw new Error('not found');
 		});

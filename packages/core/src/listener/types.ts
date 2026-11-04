@@ -52,8 +52,8 @@ export interface ListenerCommand {
 	 * Unbinds the listener. The status becomes `idle` on success, or `failed` when unbinding fails.
 	 *
 	 * @returns A promise that settles when cleanup finishes; it rejects with a
-	 * `MakooAggregateError` (`INJECTION_CLEANUP_FAILED`) when unbinding fails, after which the
-	 * listener cannot start again.
+	 * `MakooError` (`INJECTION_CLEANUP_FAILED`) whose `errors` list what failed, after which
+	 * the listener cannot start again.
 	 */
 	stop(): Promise<void>;
 	/**

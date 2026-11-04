@@ -99,8 +99,8 @@ export interface MakooRuntime {
 	 * Closes the instance and removes every injection in registration order.
 	 * Repeated calls return the same promise.
 	 *
-	 * @returns A promise that rejects with a `MakooAggregateError`
-	 * (`INSTANCE_CLEANUP_FAILED`) listing each removal that failed.
+	 * @returns A promise that rejects with a `MakooError`
+	 * (`INSTANCE_CLEANUP_FAILED`) whose `errors` list each removal that failed.
 	 */
 	dispose(): Promise<void>;
 }

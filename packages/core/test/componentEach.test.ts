@@ -7,7 +7,6 @@ import {
 	inject,
 	injectEach,
 	listen,
-	MakooErrorCode,
 	type MakooRuntime
 } from '../src';
 
@@ -84,13 +83,13 @@ describe('injectEach', () => {
 			core.apply([
 				injectEach({ name: 'taken', injectAt: '.badge', adapter: 'plain', component: {} })
 			])
-		).toThrow(expect.objectContaining({ code: MakooErrorCode.INJECTION_NAME_CONFLICT }));
+		).toThrow(expect.objectContaining({ code: 'MAKOO_INJECTION_NAME_CONFLICT' }));
 		expect(() =>
 			core.apply([
 				injectEach({ name: 'also', injectAt: '.badge', adapter: 'plain', component: {} }),
 				listen({ name: 'also', listenAt: '#x', type: 'click', callback() {} })
 			])
-		).toThrow(expect.objectContaining({ code: MakooErrorCode.INJECTION_NAME_CONFLICT }));
+		).toThrow(expect.objectContaining({ code: 'MAKOO_INJECTION_NAME_CONFLICT' }));
 	});
 
 	it('auto-starts into collecting with zero matches and does not time out', async () => {
@@ -279,7 +278,7 @@ describe('injectEach', () => {
 		expect(badges.children[0]).toBe(childB);
 		expect(childA.statusHandle.getSnapshot()).toBe('failed');
 		expect(childA.statusHandle.lastError).toMatchObject({
-			code: MakooErrorCode.MOUNT_TARGET_DETACHED
+			code: 'MAKOO_MOUNT_TARGET_DETACHED'
 		});
 		expect(badges.statusHandle.getSnapshot()).toBe('collecting');
 		expect(badges.statusHandle.lastError).toBeUndefined();
@@ -295,7 +294,7 @@ describe('injectEach', () => {
 		handles.push(badges.command);
 		await Promise.resolve();
 		expect(badges.statusHandle.getSnapshot()).toBe('failed');
-		expect(badges.statusHandle.lastError).toMatchObject({ code: MakooErrorCode.MOUNT_FAILED });
+		expect(badges.statusHandle.lastError).toMatchObject({ code: 'MAKOO_MOUNT_FAILED' });
 		await badges.command.stop();
 		expect(badges.statusHandle.getSnapshot()).toBe('idle');
 	});
@@ -319,10 +318,10 @@ describe('injectEach', () => {
 		const removing = badges.command.remove();
 		expect(core.injection('badges')).toBe(badges);
 		await expect(stopping).rejects.toMatchObject({
-			code: MakooErrorCode.INJECTION_CLEANUP_FAILED
+			code: 'MAKOO_INJECTION_CLEANUP_FAILED'
 		});
 		await expect(removing).rejects.toMatchObject({
-			code: MakooErrorCode.INJECTION_CLEANUP_FAILED
+			code: 'MAKOO_INJECTION_CLEANUP_FAILED'
 		});
 		expect(core.injection('badges')).toBe(badges);
 		expect(badges.statusHandle.getSnapshot()).toBe('failed');
@@ -353,7 +352,7 @@ describe('injectEach', () => {
 		await stopping;
 		await Promise.resolve();
 		expect(badges.statusHandle.getSnapshot()).toBe('idle');
-		expect(badges.statusHandle.lastError).toMatchObject({ code: MakooErrorCode.MOUNT_FAILED });
+		expect(badges.statusHandle.lastError).toMatchObject({ code: 'MAKOO_MOUNT_FAILED' });
 	});
 
 	it('defers a start issued while a stop is cleaning up until cleanup finishes', async () => {
@@ -510,10 +509,10 @@ describe('injectEach', () => {
 		expect(badges.children).toHaveLength(2);
 		await command.remove();
 		expect(() => core.injection('badges')).toThrow(
-			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
+			expect.objectContaining({ code: 'MAKOO_INJECTION_NOT_FOUND' })
 		);
 		expect(() => command.start()).toThrow(
-			expect.objectContaining({ code: MakooErrorCode.INJECTION_REMOVED })
+			expect.objectContaining({ code: 'MAKOO_INJECTION_REMOVED' })
 		);
 	});
 });

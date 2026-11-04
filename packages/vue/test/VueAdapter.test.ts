@@ -4,13 +4,12 @@ import {
 	type ComponentStatusHandle,
 	type ListenerInjection,
 	type ListenerStatus,
-	MakooAggregateError,
-	MakooErrorCode,
+	MakooError,
 	type StateView
 } from '@makoojs/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { type App, defineComponent, h } from 'vue';
-import { useMakooComponent, VueErrorCode } from '../src';
+import { useMakooComponent } from '../src';
 import { createVueAdapter } from '../src/VueAdapter';
 import { VuePlugin } from '../src/VuePlugin';
 
@@ -91,7 +90,7 @@ describe('VueAdapter', () => {
 				injection: createInjection(createView(() => {})),
 				listener
 			})
-		).toThrow(expect.objectContaining({ code: VueErrorCode.VUE_HOOK_OUTSIDE_SCOPE }));
+		).toThrow(expect.objectContaining({ code: 'MAKOO_VUE_HOOK_OUTSIDE_SCOPE' }));
 	});
 
 	it('rethrows a mount failure when cleanup has nothing to report', () => {
@@ -128,11 +127,9 @@ describe('VueAdapter', () => {
 			})
 		).toThrow(
 			expect.objectContaining({
-				code: MakooErrorCode.MOUNT_CLEANUP_FAILED,
+				code: 'MAKOO_MOUNT_CLEANUP_FAILED',
 				cause: expect.objectContaining({ message: 'child setup failed' }),
-				errors: [
-					expect.objectContaining({ code: VueErrorCode.VUE_PARTIAL_MOUNT_UNCONFIRMED })
-				]
+				errors: [expect.objectContaining({ code: 'MAKOO_VUE_PARTIAL_MOUNT_UNCONFIRMED' })]
 			})
 		);
 		expect(view.subscribe).toHaveBeenCalledOnce();
@@ -160,17 +157,17 @@ describe('VueAdapter', () => {
 			thrown = error;
 		}
 
-		expect(thrown).toBeInstanceOf(MakooAggregateError);
-		const aggregate = thrown as MakooAggregateError;
+		expect(thrown).toBeInstanceOf(MakooError);
+		const aggregate = thrown as MakooError;
 		expect(aggregate).toMatchObject({
-			code: MakooErrorCode.MOUNT_CLEANUP_FAILED,
+			code: 'MAKOO_MOUNT_CLEANUP_FAILED',
 			cause: expect.objectContaining({ message: 'child setup failed' })
 		});
 		expect(aggregate.errors).toHaveLength(2);
 		expect(aggregate.errors).toEqual(
 			expect.arrayContaining([
 				releaseCause,
-				expect.objectContaining({ code: VueErrorCode.VUE_PARTIAL_MOUNT_UNCONFIRMED })
+				expect.objectContaining({ code: 'MAKOO_VUE_PARTIAL_MOUNT_UNCONFIRMED' })
 			])
 		);
 	});

@@ -7,7 +7,8 @@ type ErrorRow<Details> = {
 	readonly message: (details: Details) => string;
 };
 
-type ErrorTable = Record<string, ErrorRow<never>>;
+/** The constraint every package error table satisfies. */
+export type MakooErrorTable = Record<string, ErrorRow<never>>;
 
 type DetailsOf<Row> = Row extends { readonly message: infer M }
 	? M extends (...args: never[]) => string
@@ -29,10 +30,21 @@ type CreateArgs<Row> = [DetailsOf<Row>] extends [undefined]
 	: [details: DetailsOf<Row>, options?: OptionsOf<Row>];
 
 /** A `MakooError` narrowed to one code and its declared details. */
-export type MakooErrorFor<Code extends string, Details> = MakooError & {
+type MakooErrorFor<Code extends string, Details> = MakooError & {
 	readonly code: Code;
 	readonly details: Details;
 };
+
+/**
+ * The `MakooError` union over a table's codes, discriminated by `code`; `details` follows the
+ * code. Indexing with a single code gives that code's exact shape.
+ */
+export type MakooErrorsFor<
+	Table,
+	Code extends Extract<keyof Table, string> = Extract<keyof Table, string>
+> = {
+	[K in Extract<keyof Table, string>]: MakooErrorFor<K, DetailsOf<Table[K]>>;
+}[Code];
 
 /**
  * Defines one package's error table: each row pins a code's category and message once, so the
@@ -40,7 +52,7 @@ export type MakooErrorFor<Code extends string, Details> = MakooError & {
  * `configuration`/`control` codes and `createRecorded` to `execution`/`cleanup`, enforcing the
  * category boundaries of throw sites and status-write sites at compile time.
  */
-export function defineErrors<Table extends ErrorTable>(table: Table) {
+export function defineMakooErrors<Table extends MakooErrorTable>(table: Table) {
 	type Code = Extract<keyof Table, string>;
 	type Details<C extends Code> = DetailsOf<Table[C]>;
 	type Created<C extends Code> = MakooErrorFor<C, Details<C>>;

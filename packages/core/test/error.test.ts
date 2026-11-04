@@ -69,8 +69,7 @@ describe('coreErrors', () => {
 		const error = coreErrors.create('MAKOO_TARGET_WAIT_TIMEOUT', {
 			name: 'panel',
 			selector: '#host',
-			timeout: 15000,
-			lockedSkipped: 2
+			timeout: 15000
 		});
 
 		expect(error).toBeInstanceOf(MakooError);
@@ -79,8 +78,7 @@ describe('coreErrors', () => {
 		expect(error.details).toEqual({
 			name: 'panel',
 			selector: '#host',
-			timeout: 15000,
-			lockedSkipped: 2
+			timeout: 15000
 		});
 		expect(error.message).toContain('panel');
 	});

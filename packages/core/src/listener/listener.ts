@@ -1,7 +1,7 @@
 import type { DOMObserver } from '../dom/observer';
-import { MakooErrorCode } from '../error/ErrorCode';
-import { injectionCleanupFailed, MakooError, stateSubscriberFailed } from '../error/MakooError';
-import { createState } from '../state/createState';
+import { coreErrors } from '../error/coreErrors';
+import type { MakooError } from '../error/MakooError';
+import { createState, emitSubscriberDiagnostic } from '../state/createState';
 import type { AttachListener } from './attach';
 import {
 	awaitListenerTarget,
@@ -60,11 +60,11 @@ export function createListener(
 	const listener: Listener = {
 		kind: 'listener',
 		config,
-		state: createState<ListenerStatus>('idle', (cause) => {
-			const error = stateSubscriberFailed(`"${config.name}"`, cause);
-			console.error(error);
-			onDiagnostic(config.name, error);
-		}),
+		state: createState<ListenerStatus>('idle', (cause) =>
+			emitSubscriberDiagnostic(`"${config.name}"`, cause, (error) =>
+				onDiagnostic(config.name, error)
+			)
+		),
 		intent: 'stopped',
 		executionSlot: { kind: 'empty', cleanupPromise: Promise.resolve() },
 		lastError: undefined,
@@ -90,19 +90,13 @@ export function createListener(
 export function startListener(listener: Listener | AttachListener, dom: DOMObserver): void {
 	const { config, executionSlot } = listener;
 	if (listener.kind === 'listener' && listener.isDisposed()) {
-		throw new MakooError('Core instance is disposed', {
-			code: MakooErrorCode.INSTANCE_DISPOSED
-		});
+		throw coreErrors.createThrowable('MAKOO_INSTANCE_DISPOSED');
 	}
 	if (executionSlot.kind === 'cleanup-failed') {
-		throw new MakooError(`Injection "${config.name}" cannot restart after cleanup failed`, {
-			code: MakooErrorCode.INJECTION_CLOSED
-		});
+		throw coreErrors.createThrowable('MAKOO_INJECTION_CLOSED', { name: config.name });
 	}
 	if (listener.intent === 'removed') {
-		throw new MakooError(`Injection "${config.name}" was removed`, {
-			code: MakooErrorCode.INJECTION_REMOVED
-		});
+		throw coreErrors.createThrowable('MAKOO_INJECTION_REMOVED', { name: config.name });
 	}
 	listener.intent = 'running';
 	if (executionSlot.kind !== 'empty') return;
@@ -216,9 +210,10 @@ export function endExecution(
 		return cleanupCompletion.promise;
 	}
 	if (cleanupErrors.length > 0) {
-		const failure = injectionCleanupFailed(
-			listener.config.name,
-			executionError ? [executionError, ...cleanupErrors] : cleanupErrors
+		const failure = coreErrors.createRecorded(
+			'MAKOO_INJECTION_CLEANUP_FAILED',
+			{ name: listener.config.name },
+			{ errors: executionError ? [executionError, ...cleanupErrors] : cleanupErrors }
 		);
 		listener.lastError = failure;
 		listener.executionSlot = {

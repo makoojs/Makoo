@@ -6,12 +6,11 @@ import {
 	inject,
 	type ListenerStatus,
 	listen,
-	MakooErrorCode,
 	type MakooRuntime
 } from '@makoojs/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, nextTick, type Ref, reactive, watchEffect } from 'vue';
-import { createVueAdapter, useMakooComponent, VueErrorCode, type VueMakooComponent } from '../src';
+import { createVueAdapter, useMakooComponent, type VueMakooComponent } from '../src';
 
 function element(selector: string): HTMLElement {
 	const target = document.querySelector<HTMLElement>(selector);
@@ -61,7 +60,7 @@ describe('Vue components mounted by core', () => {
 
 	it('rejects component helpers outside a component mounted by the adapter', () => {
 		expect(() => useMakooComponent()).toThrow(
-			expect.objectContaining({ code: VueErrorCode.VUE_HOOK_OUTSIDE_COMPONENT })
+			expect.objectContaining({ code: 'MAKOO_VUE_HOOK_OUTSIDE_COMPONENT' })
 		);
 	});
 
@@ -180,7 +179,7 @@ describe('Vue components mounted by core', () => {
 		expect(element('#host').textContent).toBe('bound/bound');
 		expect(received?.attachedListener('play')).toBe(received?.attachedListener('play'));
 		expect(() => received?.attachedListener('external')).toThrow(
-			expect.objectContaining({ code: MakooErrorCode.LISTENER_NOT_FOUND })
+			expect.objectContaining({ code: 'MAKOO_VUE_LISTENER_NOT_FOUND' })
 		);
 	});
 
@@ -260,14 +259,14 @@ describe('Vue components mounted by core', () => {
 
 			const diagnostic = panelStatus().lastError;
 			expect(diagnostic).toMatchObject({
-				code: MakooErrorCode.INJECTION_CLEANUP_FAILED,
+				code: 'MAKOO_INJECTION_CLEANUP_FAILED',
 				errors: expect.arrayContaining([
-					expect.objectContaining({ code: MakooErrorCode.MOUNT_FAILED, cause }),
-					expect.objectContaining({ code: VueErrorCode.VUE_PARTIAL_MOUNT_UNCONFIRMED })
+					expect.objectContaining({ code: 'MAKOO_MOUNT_FAILED', cause }),
+					expect.objectContaining({ code: 'MAKOO_VUE_PARTIAL_MOUNT_UNCONFIRMED' })
 				])
 			});
 			expect(() => panel.start()).toThrow(
-				expect.objectContaining({ code: MakooErrorCode.INJECTION_CLOSED })
+				expect.objectContaining({ code: 'MAKOO_INJECTION_CLOSED' })
 			);
 			expect(panelStatus().lastError).toBe(diagnostic);
 			await expect(panel.stop()).rejects.toBe(diagnostic);
@@ -311,7 +310,7 @@ describe('Vue components mounted by core', () => {
 		expect(element('#host').textContent).toBe('waiting');
 		for (const name of ['panel', 'play', 'missing']) {
 			expect(() => received?.listener(name)).toThrow(
-				expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
+				expect.objectContaining({ code: 'MAKOO_INJECTION_NOT_FOUND' })
 			);
 		}
 
@@ -384,12 +383,12 @@ describe('Vue components mounted by core', () => {
 		const panel = panelCommand();
 
 		await expect(panel.stop()).rejects.toMatchObject({
-			code: MakooErrorCode.INJECTION_CLEANUP_FAILED,
-			errors: [expect.objectContaining({ code: MakooErrorCode.UNMOUNT_FAILED, cause })]
+			code: 'MAKOO_INJECTION_CLEANUP_FAILED',
+			errors: [expect.objectContaining({ code: 'MAKOO_UNMOUNT_FAILED', cause })]
 		});
 		expect(panelStatus().getSnapshot()).toBe('failed');
 		expect(() => panel.start()).toThrow(
-			expect.objectContaining({ code: MakooErrorCode.INJECTION_CLOSED })
+			expect.objectContaining({ code: 'MAKOO_INJECTION_CLOSED' })
 		);
 	});
 });

@@ -1,5 +1,4 @@
-import { defineErrors, type MakooErrorFor } from './defineErrors';
-import type { ErrorCategory } from './MakooError';
+import { defineMakooErrors, type MakooErrorsFor, type MakooErrorTable } from './defineMakooErrors';
 
 export const coreErrorTable = {
 	// configuration：声明、命名、adapter 配置错误，批处理开始前抛出
@@ -17,7 +16,8 @@ export const coreErrorTable = {
 	},
 	MAKOO_INJECTION_NAME_CONFLICT: {
 		category: 'configuration',
-		message: (d: { name: string }) => `Injection name "${d.name}" is already occupied`
+		message: (d: { name: string; at?: string }) =>
+			`Injection name "${d.name}" is already occupied${d.at === undefined ? '' : ` (${d.at})`}`
 	},
 
 	// control：当前状态下不允许的调用，抛出
@@ -68,7 +68,7 @@ export const coreErrorTable = {
 	},
 	MAKOO_TARGET_WAIT_TIMEOUT: {
 		category: 'execution',
-		message: (d: { name: string; selector: string; timeout: number; lockedSkipped?: number }) =>
+		message: (d: { name: string; selector: string; timeout: number }) =>
 			`Timed out waiting for target "${d.selector}" of "${d.name}"`
 	},
 
@@ -114,19 +114,15 @@ export const coreErrorTable = {
 		category: 'callback',
 		message: (d: { owner: string }) => `State subscriber of ${d.owner} failed`
 	}
-} satisfies Record<
-	string,
-	{ category: ErrorCategory; aggregate?: true; message: (d: never) => string }
->;
+} satisfies MakooErrorTable;
 
 /** The core error table: each code's category and message defined exactly once. */
-export const coreErrors = defineErrors(coreErrorTable);
+export const coreErrors = defineMakooErrors(coreErrorTable);
 
 export type CoreErrorCode = Extract<keyof typeof coreErrorTable, string>;
 
-type CoreDetails<C extends CoreErrorCode> = Parameters<(typeof coreErrorTable)[C]['message']>[0];
-
 /** A `MakooError` narrowed by core code; `details` follows the code. */
-export type CoreError<C extends CoreErrorCode = CoreErrorCode> = {
-	[K in CoreErrorCode]: MakooErrorFor<K, CoreDetails<K>>;
-}[C];
+export type CoreError<C extends CoreErrorCode = CoreErrorCode> = MakooErrorsFor<
+	typeof coreErrorTable,
+	C
+>;
