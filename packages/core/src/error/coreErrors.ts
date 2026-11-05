@@ -1,6 +1,6 @@
 import { defineMakooErrors, type MakooErrorsFor, type MakooErrorTable } from './defineMakooErrors';
 
-export const coreErrorTable = {
+const coreErrorTable = {
 	// configuration：声明、命名、adapter 配置错误，批处理开始前抛出
 	MAKOO_ADAPTER_NAME_CONFLICT: {
 		category: 'configuration',

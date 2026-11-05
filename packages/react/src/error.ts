@@ -26,8 +26,3 @@ export type ReactError<C extends ReactErrorCode = ReactErrorCode> = MakooErrorsF
 	typeof reactErrorTable,
 	C
 >;
-
-/** Legacy code constants kept during the expand phase; the table keys are the source of truth. */
-export const ReactErrorCode = {
-	REACT_HOOK_OUTSIDE_COMPONENT: 'MAKOO_REACT_HOOK_OUTSIDE_COMPONENT'
-} as const;

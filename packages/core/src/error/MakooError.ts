@@ -1,5 +1,3 @@
-import { MakooErrorCode } from './ErrorCode';
-
 /** How a Makoo error reaches the user: thrown, written to state, or reported as a diagnostic. */
 export type ErrorCategory = 'configuration' | 'control' | 'execution' | 'cleanup' | 'callback';
 
@@ -45,7 +43,7 @@ export function isMakooError(value: unknown): value is MakooError {
 	);
 }
 
-/** Appends one line per direct error to the headline; shared by aggregates and error tables. */
+/** Appends one line per direct error to the headline of an aggregate error. */
 export function aggregateMessage(message: string, errors: readonly unknown[]): string {
 	// A child may itself list further errors. The parent keeps one line per direct child.
 	const lines = errors.map((error) => {
@@ -54,39 +52,4 @@ export function aggregateMessage(message: string, errors: readonly unknown[]): s
 		return newline === -1 ? text : text.slice(0, newline);
 	});
 	return [message, ...lines].join('\n');
-}
-
-/** A {@link MakooError} that collects several failures; the message adds one line per error. */
-export class MakooAggregateError extends MakooError {
-	/** The collected failures, in the order they happened. */
-	readonly errors: readonly unknown[];
-
-	constructor(errors: readonly unknown[], message: string, options: MakooErrorOptions) {
-		super(aggregateMessage(message, errors), options);
-		this.name = 'MakooAggregateError';
-		this.errors = errors;
-	}
-}
-
-export function stateSubscriberFailed(owner: string, cause: unknown): MakooError {
-	return new MakooError(`State subscriber of ${owner} failed`, {
-		code: MakooErrorCode.STATE_SUBSCRIBER_FAILED,
-		cause
-	});
-}
-
-export function instanceObserverFailed(cause: unknown): MakooError {
-	return new MakooError('Instance observe handler failed', {
-		code: MakooErrorCode.INSTANCE_OBSERVER_FAILED,
-		cause
-	});
-}
-
-export function injectionCleanupFailed(
-	name: string,
-	errors: readonly unknown[]
-): MakooAggregateError {
-	return new MakooAggregateError(errors, `Cleanup failed for "${name}"`, {
-		code: MakooErrorCode.INJECTION_CLEANUP_FAILED
-	});
 }

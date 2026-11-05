@@ -32,13 +32,7 @@ export {
 	type MakooErrorsFor,
 	type MakooErrorTable
 } from './error/defineMakooErrors';
-export { MakooErrorCode } from './error/ErrorCode';
-export {
-	type ErrorCategory,
-	isMakooError,
-	MakooAggregateError,
-	MakooError
-} from './error/MakooError';
+export { type ErrorCategory, isMakooError, MakooError } from './error/MakooError';
 export { listen } from './listener/declaration';
 export type {
 	ListenerCommand,

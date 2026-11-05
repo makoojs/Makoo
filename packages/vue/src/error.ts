@@ -36,10 +36,3 @@ export type VueError<C extends VueErrorCode = VueErrorCode> = MakooErrorsFor<
 	typeof vueErrorTable,
 	C
 >;
-
-/** Legacy code constants kept during the expand phase; the table keys are the source of truth. */
-export const VueErrorCode = {
-	VUE_HOOK_OUTSIDE_COMPONENT: 'MAKOO_VUE_HOOK_OUTSIDE_COMPONENT',
-	VUE_HOOK_OUTSIDE_SCOPE: 'MAKOO_VUE_HOOK_OUTSIDE_SCOPE',
-	VUE_PARTIAL_MOUNT_UNCONFIRMED: 'MAKOO_VUE_PARTIAL_MOUNT_UNCONFIRMED'
-} as const;
