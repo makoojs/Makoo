@@ -11,6 +11,12 @@ const cliErrorTable = {
 		category: 'configuration',
 		message: (d: { port: unknown }) =>
 			`makooDev: invalid port ${String(d.port)}; expected an integer between 1 and 65535.`
+	},
+	// configuration：命令名无法匹配已注册命令，抛出
+	MAKOO_COMMAND_NOT_FOUND: {
+		category: 'configuration',
+		message: (d: { command: string; suggestion?: string }) =>
+			`Unknown command ${JSON.stringify(d.command)}.${d.suggestion ? ` Did you mean ${JSON.stringify(d.suggestion)}?` : ''}\nRun \`makoo --help\` for usage.`
 	}
 } satisfies MakooErrorTable;
 

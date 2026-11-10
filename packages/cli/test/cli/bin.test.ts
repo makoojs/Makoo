@@ -1,15 +1,14 @@
 import { execFile } from 'node:child_process';
 import path from 'node:path';
 import { promisify } from 'node:util';
-import type { CAC } from 'cac';
 import { mergeConfig } from 'vite';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildCommand } from '../../src/commands/build';
 import { devCommand } from '../../src/commands/dev';
 import { previewCommand } from '../../src/commands/preview';
 import { cleanupTempProjects, trackProject } from '../utils/tempProject';
 
-const state = vi.hoisted(() => ({ args: [] as string[], cli: undefined as CAC | undefined }));
+const state = vi.hoisted(() => ({ args: [] as string[] }));
 
 vi.mock('cac', async (importOriginal) => {
 	const { default: cac } = await importOriginal<typeof import('cac')>();
@@ -17,8 +16,7 @@ vi.mock('cac', async (importOriginal) => {
 		default: (name: string) => {
 			const cli = cac(name);
 			const parse = cli.parse.bind(cli);
-			cli.parse = () => parse(['node', 'makoo', ...state.args], { run: false });
-			state.cli = cli;
+			cli.parse = () => parse(['node', 'makoo', ...state.args]);
 			return cli;
 		}
 	};
@@ -27,19 +25,20 @@ vi.mock('cac', async (importOriginal) => {
 vi.mock('../../src/commands/build', () => ({ buildCommand: vi.fn() }));
 vi.mock('../../src/commands/dev', () => ({ devCommand: vi.fn() }));
 vi.mock('../../src/commands/preview', () => ({ previewCommand: vi.fn() }));
-vi.mock('../../src/version', () => ({ loadCliVersion: vi.fn().mockResolvedValue('0.4.1') }));
+vi.mock('../../src/commands/version', () => ({
+	loadCliVersion: vi.fn().mockResolvedValue('0.4.1')
+}));
 
 async function run(...args: string[]) {
 	state.args = args;
 	await import('../../src/commands/bin');
-	if (!state.cli) throw new Error('CLI was not created');
-	await state.cli.runMatchedCommand();
 }
 
 beforeEach(() => {
 	vi.resetModules();
 	vi.clearAllMocks();
 	vi.spyOn(process, 'on').mockImplementation(() => process);
+	process.exitCode = undefined;
 });
 
 afterEach(() => vi.restoreAllMocks());
@@ -66,10 +65,10 @@ describe('Vite CLI options', () => {
 			'5174',
 			'--open',
 			'/install',
-			'--cors',
 			'--strictPort',
 			'--force'
 		);
+		expect(devCommand).toHaveBeenCalledTimes(1);
 		expect(devCommand).toHaveBeenCalledWith({
 			root: 'app',
 			configFile: 'vite.custom.ts',
@@ -78,7 +77,7 @@ describe('Vite CLI options', () => {
 			logLevel: 'warn',
 			clearScreen: false,
 			configLoader: 'runner',
-			server: { host: '0', port: 5174, open: '/install', cors: true, strictPort: true },
+			server: { host: '0', port: 5174, open: '/install', strictPort: true },
 			forceOptimizeDeps: true
 		});
 	});
@@ -111,10 +110,10 @@ describe('Vite CLI options', () => {
 	});
 
 	it('handles bare host and explicitly disabled server flags', async () => {
-		await run('dev', '--host', '--no-open', '--no-cors', '--no-strictPort');
+		await run('dev', '--host', '--no-open', '--no-strictPort');
 		expect(devCommand).toHaveBeenCalledWith(
 			expect.objectContaining({
-				server: { host: true, port: undefined, open: false, cors: false, strictPort: false }
+				server: { host: true, port: undefined, open: false, strictPort: false }
 			})
 		);
 	});
@@ -127,12 +126,6 @@ describe('Vite CLI options', () => {
 			'es2022',
 			'--outDir',
 			'release',
-			'--assetsDir',
-			'static',
-			'--assetsInlineLimit',
-			'0',
-			'--sourcemap',
-			'hidden',
 			'--no-minify',
 			'--manifest',
 			'manifest.json',
@@ -145,28 +138,11 @@ describe('Vite CLI options', () => {
 				build: {
 					target: 'es2022',
 					outDir: 'release',
-					assetsDir: 'static',
-					assetsInlineLimit: 0,
-					sourcemap: 'hidden',
 					minify: false,
 					manifest: 'manifest.json',
 					emptyOutDir: false,
 					watch: {}
 				}
-			})
-		);
-	});
-
-	it.each([
-		[['--sourcemap'], true],
-		[['--sourcemap', 'true'], true],
-		[['--sourcemap', 'false'], false],
-		[['--no-sourcemap'], false]
-	])('normalizes source map option %j', async (args, expected) => {
-		await run('build', ...args);
-		expect(buildCommand).toHaveBeenCalledWith(
-			expect.objectContaining({
-				build: expect.objectContaining({ sourcemap: expected })
 			})
 		);
 	});
@@ -197,7 +173,10 @@ describe('Vite CLI options', () => {
 	});
 
 	it('rejects options that do not belong to the selected command', async () => {
-		await expect(run('preview', '--force')).rejects.toThrow('Unknown option');
+		const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+		await run('preview', '--force');
+		expect(error).toHaveBeenNthCalledWith(1, expect.stringContaining('Unknown option'));
+		expect(process.exitCode).toBe(1);
 		expect(previewCommand).not.toHaveBeenCalled();
 	});
 
@@ -212,42 +191,142 @@ describe('Vite CLI options', () => {
 	});
 });
 
+describe('Command handling', () => {
+	it('prints help and exits cleanly with no arguments', async () => {
+		const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+		await run();
+		expect(info).toHaveBeenCalledWith(expect.stringContaining('Commands'));
+		expect(process.exitCode).toBeUndefined();
+		expect(devCommand).not.toHaveBeenCalled();
+	});
+
+	it('prints help when only global flags are passed', async () => {
+		const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+		await run('--logLevel', 'warn');
+		expect(info).toHaveBeenCalledWith(expect.stringContaining('Commands'));
+		expect(process.exitCode).toBeUndefined();
+	});
+
+	it('reports an unknown command with a suggestion and exit code 1', async () => {
+		const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+		await run('buid');
+		expect(error).toHaveBeenCalledTimes(1);
+		const [message] = error.mock.calls[0];
+		expect(message).toContain('[makoo] Unknown command "buid". Did you mean "build"?');
+		expect(message).toContain('makoo --help');
+		expect(process.exitCode).toBe(1);
+		expect(buildCommand).not.toHaveBeenCalled();
+	});
+
+	it('reports an unknown command without a suggestion', async () => {
+		const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+		await run('foo');
+		expect(error).toHaveBeenCalledTimes(1);
+		const [message] = error.mock.calls[0];
+		expect(message).toContain('Unknown command "foo".');
+		expect(message).not.toContain('Did you mean');
+		expect(message).toContain('makoo --help');
+		expect(process.exitCode).toBe(1);
+	});
+
+	it.each([
+		['dev', '--bogus'],
+		['dev', '--cors'],
+		['dev', '--no-cors'],
+		['build', '--sourcemap'],
+		['build', '--no-sourcemap'],
+		['build', '--assetsDir', 'static'],
+		['build', '--assetsInlineLimit', '0']
+	])('rejects %s %j as an unknown option', async (command, ...args) => {
+		const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+		await run(command, ...args);
+		expect(error).toHaveBeenCalledTimes(1);
+		const [message] = error.mock.calls[0];
+		expect(message).toContain('Unknown option');
+		expect(message).not.toContain('\n');
+		expect(process.exitCode).toBe(1);
+	});
+
+	it('rejects an unknown option without a command', async () => {
+		const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+		await run('--bogus');
+		expect(error).toHaveBeenCalledTimes(1);
+		const [message] = error.mock.calls[0];
+		expect(message).toContain('Unknown option');
+		expect(message).not.toContain('\n');
+		expect(process.exitCode).toBe(1);
+	});
+
+	it('reports the unknown command before its options', async () => {
+		const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+		await run('foo', '--bogus');
+		const [message] = error.mock.calls[0];
+		expect(message).toContain('Unknown command "foo".');
+		expect(process.exitCode).toBe(1);
+	});
+});
+
 describe('CLI process', () => {
-	it('exits unsuccessfully with a useful error for unsupported options', async () => {
-		const execFileAsync = promisify(execFile);
-		const repoRoot = path.resolve(__dirname, '../../../..');
+	const execFileAsync = promisify(execFile);
+	const repoRoot = path.resolve(__dirname, '../../../..');
+	let binPath: string;
+
+	beforeAll(async () => {
 		const root = await trackProject({});
 		const outDir = path.join(root, 'cli');
-		try {
-			await execFileAsync(
-				process.execPath,
-				[
-					path.join(repoRoot, 'node_modules/tsup/dist/cli-default.js'),
-					'packages/cli/src/commands/bin.ts',
-					'--no-config',
-					'--format',
-					'esm',
-					'--no-splitting',
-					'--external',
-					'vite',
-					'--out-dir',
-					outDir,
-					'--silent'
-				],
-				{ cwd: repoRoot, timeout: 15_000 }
-			);
-			await expect(
-				execFileAsync(
-					process.execPath,
-					[path.join(outDir, 'bin.js'), 'preview', '--force'],
-					{
-						cwd: repoRoot,
-						timeout: 5_000
-					}
-				)
-			).rejects.toMatchObject({ code: 1, stderr: expect.stringContaining('Unknown option') });
-		} finally {
-			await cleanupTempProjects();
-		}
+		await execFileAsync(
+			process.execPath,
+			[
+				path.join(repoRoot, 'node_modules/tsup/dist/cli-default.js'),
+				'packages/cli/src/commands/bin.ts',
+				'--no-config',
+				'--format',
+				'esm',
+				'--no-splitting',
+				'--external',
+				'vite',
+				'--out-dir',
+				outDir,
+				'--silent'
+			],
+			{ cwd: repoRoot, timeout: 30_000 }
+		);
+		binPath = path.join(outDir, 'bin.js');
+	}, 45_000);
+
+	afterAll(async () => {
+		await cleanupTempProjects();
+	});
+
+	const runCli = (args: string[]) =>
+		execFileAsync(process.execPath, [binPath, ...args], { cwd: repoRoot, timeout: 10_000 });
+
+	it('prints help and exits 0 with no arguments', async () => {
+		const { stdout } = await runCli([]);
+		expect(stdout).toContain('Commands');
+	});
+
+	it.each([
+		[['foo'], 'Unknown command "foo"'],
+		[['buid'], 'Did you mean "build"'],
+		[['--bogus'], 'Unknown option'],
+		[['dev', '--cors'], 'Unknown option'],
+		[['build', '--sourcemap'], 'Unknown option'],
+		[['build', '--assetsDir', 'static'], 'Unknown option'],
+		[['preview', '--force'], 'Unknown option']
+	])('fails with exit 1 for %j', async (args, message) => {
+		await expect(runCli(args)).rejects.toMatchObject({
+			code: 1,
+			stderr: expect.stringContaining(message)
+		});
+	});
+
+	it('prints a single-line error for an unknown option', async () => {
+		const result = (await runCli(['dev', '--bogus']).catch((e: unknown) => e)) as {
+			code?: number;
+			stderr?: string;
+		};
+		expect(result.code).toBe(1);
+		expect(result.stderr?.trim().split('\n')).toHaveLength(1);
 	});
 });
