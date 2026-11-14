@@ -68,7 +68,7 @@ const coreErrorTable = {
 	},
 	MAKOO_TARGET_WAIT_TIMEOUT: {
 		category: 'execution',
-		message: (d: { name: string; selector: string; timeout: number }) =>
+		message: (d: { name: string; selector: string; timeout: number; lockedSkipped?: number }) =>
 			`Timed out waiting for target "${d.selector}" of "${d.name}"`
 	},
 
