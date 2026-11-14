@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MountAdapter } from '../src';
-import { createMakoo, inject, listen, MakooError, MakooErrorCode } from '../src';
+import { createMakoo, inject, listen, MakooError } from '../src';
 
 describe('core disposal', () => {
 	beforeEach(() => {
@@ -32,12 +32,12 @@ describe('core disposal', () => {
 				core.apply([
 					listen({ name: 'later', listenAt: '#play', type: 'click', callback: vi.fn() })
 				])
-			).toThrow(expect.objectContaining({ code: MakooErrorCode.INSTANCE_DISPOSED }));
+			).toThrow(expect.objectContaining({ code: 'MAKOO_INSTANCE_DISPOSED' }));
 			expect(() =>
 				core.useAdapter({ name: 'other', mount: () => {}, unmount: () => {} })
-			).toThrow(expect.objectContaining({ code: MakooErrorCode.INSTANCE_DISPOSED }));
+			).toThrow(expect.objectContaining({ code: 'MAKOO_INSTANCE_DISPOSED' }));
 			expect(() => panel.start()).toThrow(
-				expect.objectContaining({ code: MakooErrorCode.INSTANCE_DISPOSED })
+				expect.objectContaining({ code: 'MAKOO_INSTANCE_DISPOSED' })
 			);
 		});
 		const core = createMakoo();
@@ -46,20 +46,20 @@ describe('core disposal', () => {
 		const panel = core.injection('panel').command;
 		const disposal = core.dispose();
 		expect(() => panel.start()).toThrow(
-			expect.objectContaining({ code: MakooErrorCode.INSTANCE_DISPOSED })
+			expect.objectContaining({ code: 'MAKOO_INSTANCE_DISPOSED' })
 		);
 		expect(() =>
 			core.apply([
 				listen({ name: 'later', listenAt: '#play', type: 'click', callback: vi.fn() })
 			])
-		).toThrow(expect.objectContaining({ code: MakooErrorCode.INSTANCE_DISPOSED }));
+		).toThrow(expect.objectContaining({ code: 'MAKOO_INSTANCE_DISPOSED' }));
 		await disposal;
 		expect(unmount).toHaveBeenCalledOnce();
 		expect(() => core.injection('panel').command).toThrow(
-			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
+			expect.objectContaining({ code: 'MAKOO_INJECTION_NOT_FOUND' })
 		);
 		expect(() => core.injection('panel').statusHandle).toThrow(
-			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
+			expect.objectContaining({ code: 'MAKOO_INJECTION_NOT_FOUND' })
 		);
 	});
 
@@ -119,13 +119,13 @@ describe('core disposal', () => {
 		const repeated = core.dispose();
 		expect(repeated).toBe(disposal);
 		await expect(disposal).rejects.toMatchObject({
-			code: MakooErrorCode.INSTANCE_CLEANUP_FAILED,
+			code: 'MAKOO_INSTANCE_CLEANUP_FAILED',
 			errors: [
 				expect.objectContaining({
-					code: MakooErrorCode.INJECTION_CLEANUP_FAILED,
+					code: 'MAKOO_INJECTION_CLEANUP_FAILED',
 					errors: [
 						expect.objectContaining({
-							code: MakooErrorCode.UNMOUNT_FAILED,
+							code: 'MAKOO_UNMOUNT_FAILED',
 							cause: expect.objectContaining({ message: 'unmount failed' })
 						})
 					]
@@ -136,12 +136,12 @@ describe('core disposal', () => {
 		expect(unmount).toHaveBeenCalledOnce();
 		expect(core.injection('panel').command).toBe(panel);
 		const diagnostic = core.injection('panel').statusHandle.lastError;
-		expect(diagnostic?.code).toBe(MakooErrorCode.INJECTION_CLEANUP_FAILED);
+		expect(diagnostic?.code).toBe('MAKOO_INJECTION_CLEANUP_FAILED');
 		expect(() => panel.start()).toThrow(
-			expect.objectContaining({ code: MakooErrorCode.INSTANCE_DISPOSED })
+			expect.objectContaining({ code: 'MAKOO_INSTANCE_DISPOSED' })
 		);
 		await expect(core.dispose()).rejects.toMatchObject({
-			code: MakooErrorCode.INSTANCE_CLEANUP_FAILED
+			code: 'MAKOO_INSTANCE_CLEANUP_FAILED'
 		});
 		expect(unmount).toHaveBeenCalledOnce();
 		expect(core.injection('panel').statusHandle.lastError).toBe(diagnostic);
@@ -167,20 +167,20 @@ describe('core disposal', () => {
 		);
 		const diagnostic = core.injection('panel').statusHandle.lastError;
 		expect(diagnostic).toMatchObject({
-			code: MakooErrorCode.INJECTION_CLEANUP_FAILED,
+			code: 'MAKOO_INJECTION_CLEANUP_FAILED',
 			errors: [
 				expect.objectContaining({
-					code: MakooErrorCode.MOUNT_FAILED,
+					code: 'MAKOO_MOUNT_FAILED',
 					cause: expect.objectContaining({ message: 'mount failed' })
 				}),
 				expect.objectContaining({
-					code: MakooErrorCode.CONTAINER_REMOVE_FAILED,
+					code: 'MAKOO_CONTAINER_REMOVE_FAILED',
 					cause: expect.objectContaining({ message: 'remove failed' })
 				})
 			]
 		});
 		await expect(core.dispose()).rejects.toMatchObject({
-			code: MakooErrorCode.INSTANCE_CLEANUP_FAILED,
+			code: 'MAKOO_INSTANCE_CLEANUP_FAILED',
 			errors: [diagnostic]
 		});
 		expect(core.injection('panel').statusHandle.lastError).toBe(diagnostic);
@@ -213,7 +213,7 @@ describe('core disposal', () => {
 				expect.objectContaining({
 					errors: [
 						expect.objectContaining({
-							code: MakooErrorCode.UNMOUNT_FAILED,
+							code: 'MAKOO_UNMOUNT_FAILED',
 							cause: expect.objectContaining({ message: 'unmount failed' })
 						})
 					]
@@ -223,7 +223,7 @@ describe('core disposal', () => {
 		expect(unmountPanel).toHaveBeenCalledOnce();
 		expect(unmountOther).toHaveBeenCalledOnce();
 		expect(() => core.injection('other').command).toThrow(
-			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
+			expect.objectContaining({ code: 'MAKOO_INJECTION_NOT_FOUND' })
 		);
 		expect(core.injection('panel').statusHandle.getSnapshot()).toBe('failed');
 	});
@@ -247,7 +247,7 @@ describe('core disposal', () => {
 		expect(firstCallback).not.toHaveBeenCalled();
 		expect(secondCallback).toHaveBeenCalledOnce();
 		expect(() => first.listener('play').command).toThrow(
-			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
+			expect.objectContaining({ code: 'MAKOO_INJECTION_NOT_FOUND' })
 		);
 		expect(second.listener('play').statusHandle.getSnapshot()).toBe('bound');
 		await second.listener('play').command.remove();

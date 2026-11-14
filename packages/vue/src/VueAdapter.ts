@@ -1,7 +1,7 @@
-import { MakooAggregateError, MakooError, MakooErrorCode, type MountAdapter } from '@makoojs/core';
+import { coreErrors, type MountAdapter } from '@makoojs/core';
 import { type App, type Component, createApp } from 'vue';
 import { componentContextKey } from './composables';
-import { VueErrorCode } from './error';
+import { vueErrors } from './error';
 import { VuePlugin } from './VuePlugin';
 
 /** The Vue app created for one component mount. */
@@ -47,17 +47,14 @@ export function createVueAdapter(): VueMountAdapter {
 				if (hasMountStarted) {
 					// app.unmount() cannot clean a tree that failed during mount.
 					cleanupErrors.push(
-						new MakooError(
-							'Cannot confirm Vue component cleanup after mount failed; reload the page',
-							{ code: VueErrorCode.VUE_PARTIAL_MOUNT_UNCONFIRMED }
-						)
+						vueErrors.createRecorded('MAKOO_VUE_PARTIAL_MOUNT_UNCONFIRMED')
 					);
 				}
 				if (cleanupErrors.length === 0) throw cause;
-				throw new MakooAggregateError(
-					cleanupErrors,
-					'Failed to clean up after the Vue mount failed',
-					{ code: MakooErrorCode.MOUNT_CLEANUP_FAILED, cause }
+				throw coreErrors.createRecorded(
+					'MAKOO_MOUNT_CLEANUP_FAILED',
+					{ name: injection.command.name },
+					{ cause, errors: cleanupErrors }
 				);
 			}
 		},

@@ -1,6 +1,6 @@
 export type { VueMakooComponent } from './composables';
 export { useMakooComponent } from './composables';
-export { VueErrorCode } from './error';
+export { type VueError, type VueErrorCode, vueErrors } from './error';
 export type {
 	VueMountAdapter,
 	VueMountComponent,

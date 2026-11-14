@@ -26,8 +26,13 @@ export type {
 	ObservationHandler,
 	ObservationNotice
 } from './core/types';
-export { MakooErrorCode } from './error/ErrorCode';
-export { MakooAggregateError, MakooError } from './error/MakooError';
+export { type CoreError, type CoreErrorCode, coreErrors } from './error/coreErrors';
+export {
+	defineMakooErrors,
+	type MakooErrorsFor,
+	type MakooErrorTable
+} from './error/defineMakooErrors';
+export { type ErrorCategory, isMakooError, MakooError } from './error/MakooError';
 export { listen } from './listener/declaration';
 export type {
 	ListenerCommand,

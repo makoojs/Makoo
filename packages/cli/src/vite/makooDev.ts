@@ -5,6 +5,7 @@ import type { InlineConfig, Plugin, ViteDevServer } from 'vite';
 import type { DevEndpoint } from '../bridge/protocol';
 import { type BridgeAddress, type DevBridge, startDevBridge } from '../bridge/server';
 import { RuntimeStore } from '../bridge/store';
+import { cliErrors } from '../errors';
 import type { DevTerminal, RuntimeSource } from '../tui/DevTerminal';
 
 const VIRTUAL_CORE_ID = '\0virtual:makoo-dev';
@@ -42,14 +43,10 @@ function resolveBridgeAddress(options: MakooDevOptions): BridgeAddress {
 	const port = options.port ?? 9999;
 	const host = options.host ?? '127.0.0.1';
 	if (!Number.isInteger(port) || port < 1 || port > 65535) {
-		throw new Error(
-			`makooDev: invalid port ${String(options.port)}; expected an integer between 1 and 65535.`
-		);
+		throw cliErrors.createThrowable('MAKOO_DEV_PORT_INVALID', { port: options.port });
 	}
 	if (host !== 'localhost' && isIP(host) === 0) {
-		throw new Error(
-			`makooDev: invalid host ${JSON.stringify(options.host)}; expected an IPv4/IPv6 literal or 'localhost'.`
-		);
+		throw cliErrors.createThrowable('MAKOO_DEV_HOST_INVALID', { host: options.host });
 	}
 	return { host, port };
 }

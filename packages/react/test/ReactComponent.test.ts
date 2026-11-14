@@ -1,12 +1,14 @@
 import {
+	type AdapterMountParams,
+	type ChildCommand,
 	type ComponentCommand,
+	type ComponentInjection,
 	type ComponentStatusHandle,
 	createMakoo,
 	type InjectionCommand,
 	inject,
 	type ListenerStatus,
 	listen,
-	MakooErrorCode,
 	type MakooRuntime,
 	type StateView
 } from '@makoojs/core';
@@ -52,6 +54,17 @@ describe('React components mounted by core', () => {
 		return status;
 	}
 
+	function isComponentInjection(
+		injection: AdapterMountParams['injection']
+	): injection is ComponentInjection {
+		return 'attachedListener' in injection.statusHandle;
+	}
+
+	function componentCommandOf(command: ComponentCommand | ChildCommand): ComponentCommand {
+		if (!('start' in command)) throw new Error('Expected a component');
+		return command;
+	}
+
 	async function applyPanel(component: () => unknown, reinject = false): Promise<void> {
 		await act(async () => {
 			core.apply([
@@ -94,7 +107,7 @@ describe('React components mounted by core', () => {
 		let received: ComponentCommand | undefined;
 		let status: string | undefined;
 		function Panel({ title }: { title: string }) {
-			received = useComponentCommand();
+			received = componentCommandOf(useComponentCommand());
 			status = useComponentStatus();
 			return createElement('p', null, title);
 		}
@@ -119,7 +132,7 @@ describe('React components mounted by core', () => {
 	it('connects a same-name replacement to its own control and state only', async () => {
 		const received: ComponentCommand[] = [];
 		function Panel() {
-			const control = useComponentCommand();
+			const control = componentCommandOf(useComponentCommand());
 			const play = useAttachedListenerStatus('play');
 			received.push(control);
 			return createElement('p', null, play);
@@ -139,7 +152,7 @@ describe('React components mounted by core', () => {
 		expect(element('#host').textContent).toBe('bound');
 
 		expect(() => oldCommand.start()).toThrow(
-			expect.objectContaining({ code: MakooErrorCode.INJECTION_REMOVED })
+			expect.objectContaining({ code: 'MAKOO_INJECTION_REMOVED' })
 		);
 		await act(async () => oldCommand.stop());
 		expect(replacementStatus.getSnapshot()).toBe('mounted');
@@ -252,16 +265,16 @@ describe('React components mounted by core', () => {
 		core.useAdapter({
 			...adapter,
 			mount(params) {
+				const injection = params.injection;
+				if (!isComponentInjection(injection)) return adapter.mount(params);
 				return adapter.mount({
 					...params,
 					injection: {
-						...params.injection,
+						...injection,
 						statusHandle: {
-							...params.injection.statusHandle,
+							...injection.statusHandle,
 							attachedListener: (name) =>
-								countSubscriptions(
-									params.injection.statusHandle.attachedListener(name)
-								)
+								countSubscriptions(injection.statusHandle.attachedListener(name))
 						}
 					}
 				});
@@ -421,7 +434,7 @@ describe('React components mounted by core', () => {
 					})
 				]);
 			})
-		).rejects.toThrow(expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND }));
+		).rejects.toThrow(expect.objectContaining({ code: 'MAKOO_INJECTION_NOT_FOUND' }));
 		controls.push(core.listener('save').command, core.injection('panel').command);
 	});
 });

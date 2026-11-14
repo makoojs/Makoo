@@ -1,13 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+	type AdapterMountParams,
 	type ComponentCommand,
+	type ComponentInjection,
 	type ComponentStatusHandle,
 	createMakoo,
 	type InjectionCommand,
 	inject,
 	type ListenerStatus,
 	listen,
-	MakooErrorCode,
 	type MakooListenerDeclaration,
 	type StateView
 } from '../src';
@@ -23,20 +24,20 @@ describe('attached host listeners', () => {
 		if (!('attachedListener' in status)) throw new Error('Expected a component');
 		return status.attachedListener(name);
 	}
+	function isComponentInjection(
+		injection: AdapterMountParams['injection']
+	): injection is ComponentInjection {
+		return 'attachedListener' in injection.statusHandle;
+	}
 	function setup(listeners: readonly MakooListenerDeclaration[], reinject = false) {
 		const core = createMakoo();
 		let panel!: ComponentCommand;
 		let status!: ComponentStatusHandle;
-		const mount = vi.fn(
-			({
-				injection
-			}: {
-				injection: { command: ComponentCommand; statusHandle: ComponentStatusHandle };
-			}) => {
-				panel = injection.command;
-				status = injection.statusHandle;
-			}
-		);
+		const mount = vi.fn(({ injection }: AdapterMountParams) => {
+			if (!isComponentInjection(injection)) return;
+			panel = injection.command;
+			status = injection.statusHandle;
+		});
 		const unmount = vi.fn();
 		core.useAdapter({ name: 'plain', mount, unmount });
 		core.apply([
@@ -147,7 +148,7 @@ describe('attached host listeners', () => {
 		element('#play').click();
 		expect(callback).toHaveBeenCalledOnce();
 		expect(() => listenerOf(status, 'extra')).toThrow(
-			expect.objectContaining({ code: MakooErrorCode.LISTENER_NOT_FOUND })
+			expect.objectContaining({ code: 'MAKOO_LISTENER_NOT_FOUND' })
 		);
 	});
 	it('uses the default 15 second child search budget', async () => {
@@ -218,6 +219,7 @@ describe('attached host listeners', () => {
 		core.useAdapter({
 			name: 'plain',
 			mount({ injection }) {
+				if (!isComponentInjection(injection)) return;
 				panel = injection.command;
 				status = injection.statusHandle;
 				if (action === 'throw') throw new Error('mount failed');
@@ -301,6 +303,7 @@ describe('attached host listeners', () => {
 		core.useAdapter({
 			name: 'plain',
 			mount({ injection }) {
+				if (!isComponentInjection(injection)) return;
 				panel = injection.command;
 				status = injection.statusHandle;
 				const playStatus = injection.statusHandle.attachedListener('play');
@@ -334,6 +337,7 @@ describe('attached host listeners', () => {
 		core.useAdapter({
 			name: 'plain',
 			mount({ injection }) {
+				if (!isComponentInjection(injection)) return;
 				panel = injection.command;
 				status = injection.statusHandle;
 				const playStatus = injection.statusHandle.attachedListener('play');
@@ -377,10 +381,10 @@ describe('attached host listeners', () => {
 		expect(listenerOf(status, 'play').getSnapshot()).toBe('failed');
 		expect(unmount).toHaveBeenCalledOnce();
 		expect(status.lastError).toMatchObject({
-			code: MakooErrorCode.INJECTION_CLEANUP_FAILED,
+			code: 'MAKOO_INJECTION_CLEANUP_FAILED',
 			errors: expect.arrayContaining([
 				expect.objectContaining({
-					code: MakooErrorCode.ATTACHED_LISTENER_FAILED,
+					code: 'MAKOO_ATTACHED_LISTENER_FAILED',
 					message: expect.stringContaining('play')
 				}),
 				expect.objectContaining({ cause })
@@ -444,7 +448,7 @@ describe('attached host listeners', () => {
 		expect(callback).toHaveBeenCalledTimes(intent === 'restart' ? 2 : 0);
 		if (intent === 'remove')
 			expect(() => core.injection('panel').command).toThrow(
-				expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
+				expect.objectContaining({ code: 'MAKOO_INJECTION_NOT_FOUND' })
 			);
 	});
 	it('invalidates every child before cleanup notifications and still unmounts when one unbind fails', async () => {
@@ -461,7 +465,7 @@ describe('attached host listeners', () => {
 		});
 		const removePause = vi.spyOn(pause, 'removeEventListener');
 		await expect(panel.stop()).rejects.toMatchObject({
-			code: MakooErrorCode.INJECTION_CLEANUP_FAILED,
+			code: 'MAKOO_INJECTION_CLEANUP_FAILED',
 			errors: expect.arrayContaining([expect.objectContaining({ cause })])
 		});
 		expect(callback).not.toHaveBeenCalled();
@@ -490,11 +494,11 @@ describe('attached host listeners', () => {
 		expect(listener.getSnapshot()).toBe('failed');
 		expect(seen).toContain('failed');
 		expect(status.lastError).toMatchObject({
-			code: MakooErrorCode.ATTACHED_LISTENER_FAILED
+			code: 'MAKOO_ATTACHED_LISTENER_FAILED'
 		});
 		expect(console.error).toHaveBeenCalledWith(
 			expect.objectContaining({
-				code: MakooErrorCode.STATE_SUBSCRIBER_FAILED,
+				code: 'MAKOO_STATE_SUBSCRIBER_FAILED',
 				cause: subscriberError,
 				message: expect.stringContaining('"panel" listener "play"')
 			})
@@ -561,14 +565,14 @@ describe('attached host listeners', () => {
 			interval: 1
 		});
 		expect(status.lastError).toMatchObject({
-			code: MakooErrorCode.ATTACHED_LISTENER_FAILED,
+			code: 'MAKOO_ATTACHED_LISTENER_FAILED',
 			message: expect.stringContaining(name)
 		});
 		expect(status.lastError?.message).toContain('panel');
 		expect(listenerOf(status, name).getSnapshot()).toBe('failed');
 		if (failure === 'bind-failed') {
 			expect(status.lastError?.cause).toMatchObject({
-				code: MakooErrorCode.LISTENER_BIND_FAILED,
+				code: 'MAKOO_LISTENER_BIND_FAILED',
 				cause
 			});
 		}
@@ -578,8 +582,8 @@ describe('attached host listeners', () => {
 		expect(mount).toHaveBeenCalledOnce();
 	});
 	it.each([
-		['duplicate', MakooErrorCode.INJECTION_NAME_CONFLICT, 'listeners[1]'],
-		['override', MakooErrorCode.DECLARATION_INVALID, 'listeners[0].reinject']
+		['duplicate', 'MAKOO_INJECTION_NAME_CONFLICT', 'listeners[1]'],
+		['override', 'MAKOO_DECLARATION_INVALID', 'listeners[0].reinject']
 	])('rejects %s before starting any declaration', (invalid, code, path) => {
 		const core = createMakoo();
 		const mount = vi.fn();
@@ -610,7 +614,7 @@ describe('attached host listeners', () => {
 		);
 		expect(mount).not.toHaveBeenCalled();
 		expect(() => core.injection('first').command).toThrow(
-			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
+			expect.objectContaining({ code: 'MAKOO_INJECTION_NOT_FOUND' })
 		);
 	});
 	afterEach(async () => {
@@ -629,6 +633,7 @@ describe('attached host listeners', () => {
 		core.useAdapter({
 			name: 'plain',
 			mount({ injection }) {
+				if (!isComponentInjection(injection)) return;
 				panel = injection.command;
 				state = injection.statusHandle.attachedListener('play');
 				expect(state.getSnapshot()).toBe('idle');
@@ -655,10 +660,10 @@ describe('attached host listeners', () => {
 		expect(Object.keys(state).sort()).toEqual(['getSnapshot', 'subscribe']);
 		expect(status.attachedListener('play')).toBe(state);
 		expect(() => status.attachedListener('missing')).toThrow(
-			expect.objectContaining({ code: MakooErrorCode.LISTENER_NOT_FOUND })
+			expect.objectContaining({ code: 'MAKOO_LISTENER_NOT_FOUND' })
 		);
 		expect(() => core.listener('play').command).toThrow(
-			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
+			expect.objectContaining({ code: 'MAKOO_INJECTION_NOT_FOUND' })
 		);
 		button.click();
 		expect(callback).toHaveBeenCalledOnce();

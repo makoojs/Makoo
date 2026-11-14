@@ -8,9 +8,9 @@ import type {
 	ListenerInjection,
 	ListenerStatus,
 	ListenerStatusHandle,
+	MakooError,
 	StateView
 } from '@makoojs/core';
-import { MakooError, MakooErrorCode } from '@makoojs/core';
 import {
 	computed,
 	getCurrentScope,
@@ -21,7 +21,7 @@ import {
 	type Ref,
 	shallowRef
 } from 'vue';
-import { VueErrorCode } from './error';
+import { vueErrors } from './error';
 
 export type VueComponentContext = {
 	readonly injection: ComponentInjection | ChildInjection;
@@ -44,7 +44,7 @@ export type VueMakooComponent = (ComponentCommand | ChildCommand) & {
 	/**
 	 * Returns the status of an attached listener.
 	 *
-	 * @throws {@link MakooError} `LISTENER_NOT_FOUND` when the component has no listener with that name.
+	 * @throws {@link MakooError} `MAKOO_VUE_LISTENER_NOT_FOUND` when the component has no listener with that name.
 	 */
 	attachedListener(name: string): Readonly<Ref<ListenerStatus>>;
 	/**
@@ -83,16 +83,10 @@ type StandaloneSubscription = {
 export function useMakooComponent(): VueMakooComponent {
 	const context = hasInjectionContext() ? inject(componentContextKey, null) : null;
 	if (!context) {
-		throw new MakooError(
-			'useMakooComponent() must be called inside a component mounted by the Makoo Vue adapter',
-			{ code: VueErrorCode.VUE_HOOK_OUTSIDE_COMPONENT }
-		);
+		throw vueErrors.createThrowable('MAKOO_VUE_HOOK_OUTSIDE_COMPONENT');
 	}
 	if (!getCurrentScope()) {
-		throw new MakooError(
-			'useMakooComponent() must be called inside a component setup or effect scope',
-			{ code: VueErrorCode.VUE_HOOK_OUTSIDE_SCOPE }
-		);
+		throw vueErrors.createThrowable('MAKOO_VUE_HOOK_OUTSIDE_SCOPE');
 	}
 	const { command, statusHandle } = context.injection;
 	const componentStatus = subscribeState(statusHandle, context.subscriptions);
@@ -126,8 +120,9 @@ export function useMakooComponent(): VueMakooComponent {
 		attachedListener(name) {
 			const listener = listeners.get(name);
 			if (!listener)
-				throw new MakooError(`Unknown listener "${name}" in "${command.name}"`, {
-					code: MakooErrorCode.LISTENER_NOT_FOUND
+				throw vueErrors.createThrowable('MAKOO_VUE_LISTENER_NOT_FOUND', {
+					name,
+					injection: command.name
 				});
 			return listener;
 		},

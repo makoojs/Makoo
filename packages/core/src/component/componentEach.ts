@@ -1,9 +1,9 @@
 import type { MountAdapter } from '../adapter/types';
 import type { DOMObserver } from '../dom/observer';
-import { MakooErrorCode } from '../error/ErrorCode';
-import { injectionCleanupFailed, MakooError, stateSubscriberFailed } from '../error/MakooError';
+import { coreErrors } from '../error/coreErrors';
+import type { MakooError } from '../error/MakooError';
 import type { ListenerInjection } from '../listener/types';
-import { createState } from '../state/createState';
+import { createState, emitSubscriberDiagnostic } from '../state/createState';
 import { type ComponentExecutionControl, createChildExecution } from './execution';
 import type {
 	ChildInjection,
@@ -65,11 +65,11 @@ export function createComponentEach(
 		isDisposed,
 		listener,
 		onDiagnostic,
-		state: createState<ComponentEachStatus>('idle', (cause) => {
-			const error = stateSubscriberFailed(`"${config.name}"`, cause);
-			console.error(error);
-			onDiagnostic(config.name, error);
-		}),
+		state: createState<ComponentEachStatus>('idle', (cause) =>
+			emitSubscriberDiagnostic(`"${config.name}"`, cause, (error) =>
+				onDiagnostic(config.name, error)
+			)
+		),
 		children: [],
 		claimed: new Set(),
 		intent: 'stopped',
@@ -103,19 +103,13 @@ export function createComponentEach(
 function startEach(each: ComponentEach): void {
 	const { name } = each.config;
 	if (each.isDisposed()) {
-		throw new MakooError('Core instance is disposed', {
-			code: MakooErrorCode.INSTANCE_DISPOSED
-		});
+		throw coreErrors.createThrowable('MAKOO_INSTANCE_DISPOSED');
 	}
 	if (each.closed) {
-		throw new MakooError(`Injection "${name}" cannot restart after cleanup failed`, {
-			code: MakooErrorCode.INJECTION_CLOSED
-		});
+		throw coreErrors.createThrowable('MAKOO_INJECTION_CLOSED', { name });
 	}
 	if (each.intent === 'removed') {
-		throw new MakooError(`Injection "${name}" was removed`, {
-			code: MakooErrorCode.INJECTION_REMOVED
-		});
+		throw coreErrors.createThrowable('MAKOO_INJECTION_REMOVED', { name });
 	}
 	if (each.intent === 'running') return;
 	each.intent = 'running';
@@ -144,10 +138,7 @@ function collect(each: ComponentEach): void {
 	} catch (cause) {
 		failEach(
 			each,
-			new MakooError(`Failed to collect matches for "${each.config.name}"`, {
-				code: MakooErrorCode.MOUNT_FAILED,
-				cause
-			})
+			coreErrors.createRecorded('MAKOO_MOUNT_FAILED', { name: each.config.name }, { cause })
 		);
 		return;
 	}
@@ -211,7 +202,11 @@ async function stopChildren(
 		await stopChild(each, child).catch((error: unknown) => errors.push(error));
 	}
 	if (errors.length > 0) {
-		const failure = injectionCleanupFailed(each.config.name, errors);
+		const failure = coreErrors.createRecorded(
+			'MAKOO_INJECTION_CLEANUP_FAILED',
+			{ name: each.config.name },
+			{ errors }
+		);
 		each.lastError = failure;
 		each.closed = true;
 		each.state.set('failed');
@@ -223,11 +218,11 @@ async function stopChildren(
 
 function startChild(each: ComponentEach, element: Element): void {
 	const name = `${each.config.name}#${++each.childCount}`;
-	const state = createState<ComponentStatus>('idle', (cause) => {
-		const error = stateSubscriberFailed(`"${name}"`, cause);
-		console.error(error);
-		each.onDiagnostic(each.config.name, error);
-	});
+	const state = createState<ComponentStatus>('idle', (cause) =>
+		emitSubscriberDiagnostic(`"${name}"`, cause, (error) =>
+			each.onDiagnostic(each.config.name, error)
+		)
+	);
 	const injection: ChildInjection = {
 		kind: 'component',
 		command: Object.freeze({
@@ -314,9 +309,10 @@ async function endChild(
 	if (reason === 'detached') each.claimed.delete(child.element);
 	const cleanupErrors = await child.execution.finish();
 	if (cleanupErrors.length > 0) {
-		const failure = injectionCleanupFailed(
-			child.name,
-			error ? [error, ...cleanupErrors] : cleanupErrors
+		const failure = coreErrors.createRecorded(
+			'MAKOO_INJECTION_CLEANUP_FAILED',
+			{ name: child.name },
+			{ errors: error ? [error, ...cleanupErrors] : cleanupErrors }
 		);
 		child.lastError = failure;
 		child.cleanup.reject(failure);

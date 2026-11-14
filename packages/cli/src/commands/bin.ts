@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { MakooError } from '@makoojs/core';
+import { isMakooError } from '@makoojs/core';
 import cac from 'cac';
 import type { BuildOptions, InlineConfig, ServerOptions } from 'vite';
 import { buildCommand } from './build';
@@ -145,7 +145,7 @@ cli.help();
 cli.version(await loadCliVersion());
 
 process.on('unhandledRejection', (err) => {
-	if (err instanceof MakooError) {
+	if (isMakooError(err)) {
 		console.error(err);
 	} else {
 		console.error('[makoo]', err);

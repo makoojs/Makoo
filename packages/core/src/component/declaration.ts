@@ -1,5 +1,4 @@
-import { MakooErrorCode } from '../error/ErrorCode';
-import { MakooError } from '../error/MakooError';
+import { coreErrors } from '../error/coreErrors';
 import { validateListener } from '../listener/declaration';
 import type {
 	MakooComponentDeclaration,
@@ -14,18 +13,15 @@ export function validateComponent(input: unknown): MakooComponentDeclaration {
 	const listeners = value.listeners?.map((listenerInput, index) => {
 		const listener = validateListener(listenerInput);
 		if (names.has(listener.name)) {
-			throw new MakooError(
-				`Duplicate attached listener "${listener.name}" at listeners[${index}]`,
-				{
-					code: MakooErrorCode.INJECTION_NAME_CONFLICT
-				}
-			);
+			throw coreErrors.createThrowable('MAKOO_INJECTION_NAME_CONFLICT', {
+				name: listener.name,
+				at: `listeners[${index}]`
+			});
 		}
 		if (listener.reinject !== undefined) {
-			throw new MakooError(
-				`Attached listeners inherit the component recovery setting (listeners[${index}].reinject)`,
-				{ code: MakooErrorCode.DECLARATION_INVALID }
-			);
+			throw coreErrors.createThrowable('MAKOO_DECLARATION_INVALID', {
+				reason: `Attached listeners inherit the component recovery setting (listeners[${index}].reinject)`
+			});
 		}
 		names.add(listener.name);
 		return listener;

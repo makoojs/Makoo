@@ -1,4 +1,17 @@
+import { coreErrors } from '../error/coreErrors';
+import type { MakooError } from '../error/MakooError';
 import type { StateView } from './types';
+
+/** Emits a state-subscriber failure as a diagnostic of `report`. */
+export function emitSubscriberDiagnostic(
+	owner: string,
+	cause: unknown,
+	report: (error: MakooError) => void
+): void {
+	const error = coreErrors.create('MAKOO_STATE_SUBSCRIBER_FAILED', { owner }, { cause });
+	console.error(error);
+	report(error);
+}
 
 export function createState<T extends string>(
 	initial: T,

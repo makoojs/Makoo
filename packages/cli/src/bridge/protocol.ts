@@ -7,11 +7,18 @@ export type DevEndpoint = {
 	token: string;
 };
 
-export type SerializedMakooError = {
-	code: string;
+/** One node of a serialized error tree: an error, a cause link, or an aggregate child. */
+export type SerializedErrorNode = {
+	code?: string;
+	category?: string;
 	message: string;
-	cause?: string;
+	name?: string;
+	details?: unknown;
+	cause?: SerializedErrorNode;
+	errors?: SerializedErrorNode[];
 };
+
+export type SerializedMakooError = SerializedErrorNode & { code: string };
 
 export type AttachedListenerSnapshot = {
 	name: string;
