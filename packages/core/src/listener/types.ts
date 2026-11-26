@@ -32,34 +32,36 @@ export type MakooListenerDeclaration = Readonly<MakooListenerInput & { kind: 'li
  * - `waiting`: looking for the listener target.
  * - `bound`: the event listener is attached to the target.
  * - `failed`: the last execution ended in an execution failure or a cleanup failure; see
- *   `lastError`. After a cleanup failure the listener cannot start again.
+ *   `lastError`. A standalone listener may start again after a cleanup failure; the
+ *   affected element stays residue-locked.
  */
 export type ListenerStatus = 'idle' | 'waiting' | 'bound' | 'failed';
 
-/** Control entry bound to one standalone listener; it never controls a later listener with the same name. */
+/**
+ * Control entry bound to one standalone listener; it never controls a later listener with
+ * the same name. Framework adapters keep this legacy Promise surface until the adapter
+ * migration ticket; the wrapped commands settle immediately since core commands are void.
+ */
 export interface ListenerCommand {
 	/** The injection name. */
 	readonly name: string;
 	/**
 	 * Starts a new execution, or keeps the current one running. Clears `lastError` when a new
-	 * execution begins.
+	 * execution begins. A cleanup-failed listener may start again; its affected elements stay
+	 * residue-locked.
 	 *
-	 * @throws {@link MakooError} `INJECTION_REMOVED` after removal, `INJECTION_CLOSED` after a
-	 * cleanup failure, or `INSTANCE_DISPOSED` once the Core Instance is disposed.
+	 * @throws {@link MakooError} `INJECTION_REMOVED` after removal, or `INSTANCE_DISPOSED`
+	 * once the Core Instance is disposed.
 	 */
 	start(): void;
 	/**
-	 * Unbinds the listener. The status becomes `idle` on success, or `failed` when unbinding fails.
-	 *
-	 * @returns A promise that settles when cleanup finishes; it rejects with a
-	 * `MakooAggregateError` (`INJECTION_CLEANUP_FAILED`) when unbinding fails, after which the
-	 * listener cannot start again.
+	 * Unbinds the listener. The status becomes `idle` on success, or `failed` with
+	 * `MAKOO_INJECTION_CLEANUP_FAILED` in `lastError` when unbinding fails.
 	 */
 	stop(): Promise<void>;
 	/**
-	 * Stops the listener and unregisters it from the Core Instance once cleanup succeeds.
-	 *
-	 * @returns The same cleanup promise as {@link ListenerCommand.stop}.
+	 * Stops the listener and unregisters it from the Core Instance, freeing the name even when
+	 * unbinding fails; the affected element stays residue-locked for a same-name re-apply.
 	 */
 	remove(): Promise<void>;
 }
@@ -72,9 +74,3 @@ export interface ListenerStatusHandle extends StateView<ListenerStatus> {
 	 */
 	readonly lastError: MakooError | undefined;
 }
-
-export type ListenerInjection = {
-	readonly kind: 'listener';
-	readonly command: ListenerCommand;
-	readonly statusHandle: ListenerStatusHandle;
-};

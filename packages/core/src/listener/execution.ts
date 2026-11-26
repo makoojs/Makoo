@@ -1,8 +1,8 @@
 import type { DOMObserver } from '../dom/observer';
 import { DEFAULT_DOM_TIMEOUT, waitForElement } from '../dom/waitForElement';
 import { watchElement } from '../dom/watchElement';
-import { MakooErrorCode } from '../error/ErrorCode';
-import { MakooError } from '../error/MakooError';
+import { coreErrors } from '../error/coreErrors';
+import type { MakooError } from '../error/MakooError';
 import type { MakooListenerDeclaration } from './types';
 
 export type ListenerExecution = {
@@ -51,8 +51,10 @@ export function awaitListenerTarget(
 				if (execution.phase !== 'active') return;
 				callbacks.ended(
 					'failed',
-					new MakooError(`Timed out waiting for listener "${config.name}"`, {
-						code: MakooErrorCode.TARGET_WAIT_TIMEOUT
+					coreErrors.createRecorded('MAKOO_TARGET_WAIT_TIMEOUT', {
+						name: config.name,
+						selector: config.listenAt,
+						timeout: config.timeout ?? DEFAULT_DOM_TIMEOUT
 					})
 				);
 			},
@@ -138,28 +140,17 @@ function invokeEventHandler(
 }
 
 function callbackError(name: string, cause: unknown): MakooError {
-	return new MakooError(`Callback of listener "${name}" failed`, {
-		code: MakooErrorCode.LISTENER_CALLBACK_FAILED,
-		cause
-	});
+	return coreErrors.create('MAKOO_LISTENER_CALLBACK_FAILED', { name }, { cause });
 }
 
 function targetDetachedError(name: string): MakooError {
-	return new MakooError(`Listener target "${name}" disconnected`, {
-		code: MakooErrorCode.LISTENER_TARGET_DETACHED
-	});
+	return coreErrors.createRecorded('MAKOO_LISTENER_TARGET_DETACHED', { name });
 }
 
 function bindingError(name: string, cause: unknown): MakooError {
-	return new MakooError(`Failed to bind listener "${name}"`, {
-		code: MakooErrorCode.LISTENER_BIND_FAILED,
-		cause
-	});
+	return coreErrors.createRecorded('MAKOO_LISTENER_BIND_FAILED', { name }, { cause });
 }
 
 function unbindError(name: string, cause: unknown): MakooError {
-	return new MakooError(`Failed to unbind listener "${name}"`, {
-		code: MakooErrorCode.LISTENER_UNBIND_FAILED,
-		cause
-	});
+	return coreErrors.createRecorded('MAKOO_LISTENER_UNBIND_FAILED', { name }, { cause });
 }

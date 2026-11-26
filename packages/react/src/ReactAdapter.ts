@@ -1,4 +1,4 @@
-import { MakooAggregateError, MakooErrorCode, type MountAdapter } from '@makoojs/core';
+import { coreErrors, type MountAdapter } from '@makoojs/core';
 import { type ComponentType, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MakooComponentContext } from './hooks';
@@ -43,10 +43,10 @@ export function createReactAdapter(): ReactMountAdapter {
 				try {
 					root.unmount();
 				} catch (unmountCause) {
-					throw new MakooAggregateError(
-						[unmountCause],
-						'Failed to clean up after the React mount failed',
-						{ code: MakooErrorCode.MOUNT_CLEANUP_FAILED, cause }
+					throw coreErrors.createRecorded(
+						'MAKOO_MOUNT_CLEANUP_FAILED',
+						{ name: injection.command.name },
+						{ cause, errors: [unmountCause] }
 					);
 				}
 				throw cause;

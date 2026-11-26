@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createMakoo, type InjectionCommand, inject, MakooErrorCode } from '../src';
+import { createMakoo, type InjectionCommand, inject } from '../src';
 
 describe('injection target recovery', () => {
 	const controls: InjectionCommand[] = [];
@@ -149,7 +149,7 @@ describe('injection target recovery', () => {
 		expect(core.injection('panel').statusHandle.lastError).toMatchObject({
 			errors: expect.arrayContaining([
 				expect.objectContaining({
-					code: MakooErrorCode.UNMOUNT_FAILED,
+					code: 'MAKOO_UNMOUNT_FAILED',
 					cause: expect.objectContaining({ message: 'unmount failed' })
 				})
 			])

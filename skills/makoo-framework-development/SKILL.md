@@ -68,7 +68,7 @@ When unsolicited scope or a rejected design is removed, return the work to the o
 - Core terminology comes from `CONTEXT.md`. Elsewhere, reuse the names the package already uses.
 - Use explicit names for booleans, state transitions, structured types, and recursive traversals. Declare recursive traversal at module scope and pass context through parameters.
 - Keep shared or semantically important defaults centralized.
-- Use `MakooError` and `MakooAggregateError`. Each package defines its codes in one constants object. The message says what happened and to whom, `code` identifies the problem, and `cause` holds the underlying throw.
+- Create errors through the package's `defineMakooErrors` table: each code pins `category` and `message(details)` once, and call sites use `createThrowable` (thrown), `createRecorded` (status/diagnostic), or `create`. The message says what happened and to whom, `code` identifies the problem, `details` holds structured context, `cause` holds the underlying throw, and `errors` holds aggregate children.
 - Validate input at the boundary and return normalized values without mutating caller input.
 - Keep simple control flow continuous. Extract a function when it names a domain concept, is reused, isolates a testable algorithm, or removes real duplication or nesting.
 - Write a comment only for intent, an invariant, or subtle behavior the code cannot show.

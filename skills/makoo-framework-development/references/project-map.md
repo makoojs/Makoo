@@ -9,7 +9,7 @@ Use this file when a change spans packages, adds files, or needs a check on wher
   - `component/` and `listener/`: declarations, Commands, Status, and executions for Components and Host Listeners (`listener/attach.ts` holds Attached Listeners).
   - `dom/`: the shared DOM observer, `waitForElement`, and `watchElement`.
   - `adapter/`: the Component Adapter contract and registry.
-  - `state/`: StateView. `error/`: `MakooError`, `MakooAggregateError`, and `MakooErrorCode`.
+  - `state/`: StateView. `error/`: `MakooError`, `isMakooError`, `defineMakooErrors`, and `coreErrors`.
 - `packages/cli`: config types and resolution (`config/`), project commands (`commands/`), the Vite plugins (`vite/`), the dev bridge (`bridge/`: devframe server, `RuntimeStore`, protocol, and the page-side instrument `runtime.ts`), the dev terminal (`tui/`), and `monkey/` aliases over userscript manager APIs.
   - Keep `entry`, application metadata, and monkey options separate in resolved config.
   - Resolve the configured application module relative to the project root before passing it to `vite-plugin-monkey`.

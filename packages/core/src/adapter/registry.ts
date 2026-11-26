@@ -1,5 +1,4 @@
-import { MakooErrorCode } from '../error/ErrorCode';
-import { MakooError } from '../error/MakooError';
+import { coreErrors } from '../error/coreErrors';
 import type { MountAdapter } from './types';
 
 export function createAdapterRegistry() {
@@ -7,18 +6,16 @@ export function createAdapterRegistry() {
 	return {
 		use(adapter: MountAdapter) {
 			if (adapters.has(adapter.name)) {
-				throw new MakooError(`Adapter "${adapter.name}" is already registered`, {
-					code: MakooErrorCode.ADAPTER_NAME_CONFLICT
+				throw coreErrors.createThrowable('MAKOO_ADAPTER_NAME_CONFLICT', {
+					name: adapter.name
 				});
 			}
 			adapters.set(adapter.name, adapter);
 		},
-		require(name: string) {
+		get(name: string) {
 			const adapter = adapters.get(name);
 			if (!adapter) {
-				throw new MakooError(`Unknown adapter "${name}"`, {
-					code: MakooErrorCode.ADAPTER_NOT_FOUND
-				});
+				throw coreErrors.createThrowable('MAKOO_ADAPTER_NOT_FOUND', { name });
 			}
 			return adapter;
 		}

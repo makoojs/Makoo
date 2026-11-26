@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MountAdapter, ObservationNotice } from '../src';
-import { createMakoo, inject, listen, MakooError, MakooErrorCode } from '../src';
+import { createMakoo, inject, listen, MakooError } from '../src';
 
 describe('instance observation', () => {
 	beforeEach(() => {
@@ -29,7 +29,7 @@ describe('instance observation', () => {
 		const notices: ObservationNotice[] = [];
 		core.observe((notice) => {
 			expect(() => core.injection('panel').command).toThrow(
-				expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
+				expect.objectContaining({ code: 'MAKOO_INJECTION_NOT_FOUND' })
 			);
 			notices.push(notice);
 		});
@@ -52,7 +52,7 @@ describe('instance observation', () => {
 			notices.push(notice);
 		});
 		await expect(core.injection('panel').command.remove()).rejects.toMatchObject({
-			code: MakooErrorCode.INJECTION_CLEANUP_FAILED
+			code: 'MAKOO_INJECTION_CLEANUP_FAILED'
 		});
 		expect(core.injection('panel').statusHandle.getSnapshot()).toBe('failed');
 		expect(notices).toEqual([]);
@@ -71,7 +71,7 @@ describe('instance observation', () => {
 			notices.push(notice);
 		});
 		stop();
-		await core.listener('click').command.remove();
+		core.listener('click').remove();
 		expect(notices).toEqual([]);
 	});
 
@@ -95,10 +95,10 @@ describe('instance observation', () => {
 		core.observe(() => {
 			order.push('second');
 		});
-		await core.listener('one').command.remove();
+		core.listener('one').remove();
 		expect(order).toEqual(['first', 'second']);
 		expect(midFanOut).toEqual([]);
-		await core.listener('two').command.remove();
+		core.listener('two').remove();
 		expect(midFanOut).toEqual([{ type: 'injection-removed', name: 'two' }]);
 	});
 
@@ -125,7 +125,7 @@ describe('instance observation', () => {
 			{ type: 'instance-disposed' }
 		]);
 		expect(() => core.observe(() => {})).toThrow(
-			expect.objectContaining({ code: MakooErrorCode.INSTANCE_DISPOSED })
+			expect.objectContaining({ code: 'MAKOO_INSTANCE_DISPOSED' })
 		);
 	});
 
@@ -159,23 +159,23 @@ describe('instance observation', () => {
 		core.apply([
 			listen({ name: 'click', listenAt: '#play', type: 'click', callback: vi.fn() })
 		]);
-		const status = core.listener('click').statusHandle;
-		status.subscribe(() => {
+		const click = core.listener('click');
+		click.subscribe(() => {
 			throw new Error('subscriber boom');
 		});
 		const diagnostics: ObservationNotice[] = [];
 		core.observe((notice) => {
 			if (notice.type === 'diagnostic') diagnostics.push(notice);
 		});
-		await core.listener('click').command.stop();
-		expect(status.getSnapshot()).toBe('idle');
-		expect(status.lastError).toBeUndefined();
+		click.stop();
+		expect(click.status).toBe('idle');
+		expect(click.lastError).toBeUndefined();
 		expect(diagnostics).toHaveLength(1);
 		expect(diagnostics[0]).toMatchObject({
 			type: 'diagnostic',
 			name: 'click',
 			error: expect.objectContaining({
-				code: MakooErrorCode.STATE_SUBSCRIBER_FAILED,
+				code: 'MAKOO_STATE_SUBSCRIBER_FAILED',
 				cause: expect.objectContaining({ message: 'subscriber boom' })
 			})
 		});
@@ -208,19 +208,19 @@ describe('instance observation', () => {
 		core.observe((notice) => {
 			if (notice.type === 'injection-removed') seen.push('second');
 		});
-		await core.listener('click').command.remove();
+		core.listener('click').remove();
 		expect(seen).toEqual(['first', 'diagnostic', 'second']);
 		expect(diagnostics).toHaveLength(1);
 		expect(diagnostics[0]).toMatchObject({
 			type: 'diagnostic',
 			error: expect.objectContaining({
-				code: MakooErrorCode.INSTANCE_OBSERVER_FAILED,
+				code: 'MAKOO_INSTANCE_OBSERVER_FAILED',
 				cause: expect.objectContaining({ message: 'observer boom' })
 			})
 		});
 		expect(console.error).toHaveBeenCalledWith(
 			expect.objectContaining({
-				code: MakooErrorCode.INSTANCE_OBSERVER_FAILED,
+				code: 'MAKOO_INSTANCE_OBSERVER_FAILED',
 				cause: expect.objectContaining({ message: 'observer boom' })
 			})
 		);

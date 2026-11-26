@@ -6,25 +6,25 @@ import type {
 	ComponentInjection,
 	ComponentStatus,
 	ComponentStatusHandle,
-	ListenerCommand,
 	ListenerInjection,
 	ListenerStatus,
+	MakooError,
 	StateView
 } from '@makoojs/core';
-import { MakooError, MakooErrorCode } from '@makoojs/core';
 import { createContext, useContext, useMemo, useSyncExternalStore } from 'react';
-import { ReactErrorCode } from './error';
+import { reactErrors } from './error';
 
 type MakooComponentContextValue = {
 	injection: ComponentInjection | ChildInjection;
 	listener: (name: string) => ListenerInjection;
 };
 
-type ReactStandaloneListener = ListenerCommand & {
+type ReactStandaloneListener = Pick<
+	ListenerInjection,
+	'lastError' | 'name' | 'remove' | 'start' | 'stop'
+> & {
 	/** The listener status at the last render. */
 	readonly status: ListenerStatus;
-	/** The latest execution failure, cleanup failure, or event handler error; reading it does not subscribe. */
-	readonly lastError: MakooError | undefined;
 };
 
 export const MakooComponentContext = createContext<MakooComponentContextValue | null>(null);
@@ -59,7 +59,7 @@ export function useComponentStatus<T>(select?: (status: ComponentStatus) => T) {
 /**
  * Subscribes only to the named attached listener; selector results use Object.is.
  *
- * @throws {@link MakooError} `LISTENER_NOT_FOUND` when the component has no listener with that name.
+ * @throws {@link MakooError} `MAKOO_REACT_LISTENER_NOT_FOUND` when the component has no listener with that name.
  */
 export function useAttachedListenerStatus(name: string): ListenerStatus;
 export function useAttachedListenerStatus<T>(
@@ -68,10 +68,14 @@ export function useAttachedListenerStatus<T>(
 ): T;
 export function useAttachedListenerStatus<T>(name: string, select?: (status: ListenerStatus) => T) {
 	const { command, statusHandle } = useComponentContext().injection;
-	const view = 'attachedListener' in statusHandle ? statusHandle.attachedListener(name) : null;
+	const view =
+		'attachedListener' in statusHandle && statusHandle.attachedListenerNames.includes(name)
+			? statusHandle.attachedListener(name)
+			: null;
 	if (!view) {
-		throw new MakooError(`Unknown listener "${name}" in "${command.name}"`, {
-			code: MakooErrorCode.LISTENER_NOT_FOUND
+		throw reactErrors.createThrowable('MAKOO_REACT_LISTENER_NOT_FOUND', {
+			name,
+			injection: command.name
 		});
 	}
 	return useSelectedSnapshot(view, select);
@@ -80,22 +84,27 @@ export function useAttachedListenerStatus<T>(name: string, select?: (status: Lis
 /**
  * Looks up a standalone listener in this Core Instance and subscribes to its status.
  *
- * Flat command methods and `status` wrap the same bag as `core.listener(name)`.
+ * The commands are those of `core.listener(name)`; `lastError` (the latest execution or
+ * cleanup failure) is read live and does not subscribe.
  *
  * @throws {@link MakooError} `INJECTION_NOT_FOUND` when no standalone listener has that name.
  */
 export function useListener(name: string): ReactStandaloneListener {
 	const { listener } = useComponentContext();
 	const found = listener(name);
-	const status = useSelectedSnapshot(found.statusHandle);
+	const view = useMemo<StateView<ListenerStatus>>(
+		() => ({ getSnapshot: () => found.status, subscribe: found.subscribe }),
+		[found]
+	);
+	const status = useSelectedSnapshot(view);
 	return {
-		name: found.command.name,
-		start: found.command.start,
-		stop: found.command.stop,
-		remove: found.command.remove,
+		name: found.name,
+		start: found.start,
+		stop: found.stop,
+		remove: found.remove,
 		status,
 		get lastError() {
-			return found.statusHandle.lastError;
+			return found.lastError;
 		}
 	};
 }
@@ -103,10 +112,7 @@ export function useListener(name: string): ReactStandaloneListener {
 function useComponentContext(): MakooComponentContextValue {
 	const context = useContext(MakooComponentContext);
 	if (!context) {
-		throw new MakooError(
-			'Makoo hooks must be called inside a component tree mounted by the Makoo React adapter',
-			{ code: ReactErrorCode.REACT_HOOK_OUTSIDE_COMPONENT }
-		);
+		throw reactErrors.createThrowable('MAKOO_REACT_HOOK_OUTSIDE_COMPONENT');
 	}
 	return context;
 }

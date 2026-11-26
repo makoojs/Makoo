@@ -2,9 +2,8 @@ import {
 	type ComponentStatusHandle,
 	createMakoo,
 	inject,
-	type ListenerStatusHandle,
 	listen,
-	MakooErrorCode
+	type MakooError
 } from '@makoojs/core';
 import { createReactAdapter, useAttachedListenerStatus, useComponentStatus } from '@makoojs/react';
 import { act, createElement } from 'react';
@@ -24,11 +23,22 @@ function componentStatus(
 	core: ReturnType<typeof createMakoo>,
 	name: string
 ): ComponentStatusHandle {
-	return core.injection(name).statusHandle;
+	const injection = core.injection(name);
+	if (injection.kind !== 'component') throw new Error('Expected a component');
+	return injection.statusHandle;
 }
 
-function listenerStatus(core: ReturnType<typeof createMakoo>, name: string): ListenerStatusHandle {
-	return core.listener(name).statusHandle;
+function listenerStatus(
+	core: ReturnType<typeof createMakoo>,
+	name: string
+): { getSnapshot(): string; readonly lastError: MakooError | undefined } {
+	const listener = core.listener(name);
+	return {
+		getSnapshot: () => listener.status,
+		get lastError() {
+			return listener.lastError;
+		}
+	};
 }
 
 const VuePanel = defineComponent({
@@ -81,7 +91,7 @@ describe('mixed Vue, React, and listener runtime', () => {
 					callback: vi.fn()
 				})
 			])
-		).toThrow(expect.objectContaining({ code: MakooErrorCode.INJECTION_NAME_CONFLICT }));
+		).toThrow(expect.objectContaining({ code: 'MAKOO_INJECTION_NAME_CONFLICT' }));
 		expect(element('#vue-host').childElementCount).toBe(0);
 
 		expect(() =>
@@ -107,7 +117,7 @@ describe('mixed Vue, React, and listener runtime', () => {
 					]
 				})
 			])
-		).toThrow(expect.objectContaining({ code: MakooErrorCode.INJECTION_NAME_CONFLICT }));
+		).toThrow(expect.objectContaining({ code: 'MAKOO_INJECTION_NAME_CONFLICT' }));
 		expect(element('#vue-host').childElementCount).toBe(0);
 	});
 
@@ -217,11 +227,11 @@ describe('mixed Vue, React, and listener runtime', () => {
 		expect(document.body.querySelector('#vue-host p, #react-host p')).toBeNull();
 		element('#standalone').click();
 		expect(standalone).toHaveBeenCalledTimes(2);
-		expect(() => core.listener('standalone').command).toThrow(
-			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
+		expect(() => core.listener('standalone')).toThrow(
+			expect.objectContaining({ code: 'MAKOO_INSTANCE_DISPOSED' })
 		);
-		expect(() => core.injection('react-panel').statusHandle).toThrow(
-			expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND })
+		expect(() => core.injection('react-panel')).toThrow(
+			expect.objectContaining({ code: 'MAKOO_INSTANCE_DISPOSED' })
 		);
 	});
 });

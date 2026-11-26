@@ -118,7 +118,7 @@ describe('renderInjectionsTable', () => {
 							lastError: {
 								code: 'MAKOO_MOUNT_FAILED',
 								message: 'Failed to mount "broken"',
-								cause: 'adapter exploded'
+								cause: { message: 'adapter exploded' }
 							},
 							attachedListeners: []
 						},
@@ -163,7 +163,7 @@ describe('renderInjectionsTable', () => {
 							error: {
 								code: 'MAKOO_STATE_SUBSCRIBER_FAILED',
 								message: 'State subscriber of "play-click" failed',
-								cause: 'subscriber exploded'
+								cause: { message: 'subscriber exploded' }
 							}
 						},
 						{

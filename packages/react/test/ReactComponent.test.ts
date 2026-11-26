@@ -1,12 +1,15 @@
 import {
+	type AdapterMountParams,
+	type ChildCommand,
 	type ComponentCommand,
+	type ComponentInjection,
 	type ComponentStatusHandle,
 	createMakoo,
 	type InjectionCommand,
 	inject,
+	type ListenerInjection,
 	type ListenerStatus,
 	listen,
-	MakooErrorCode,
 	type MakooRuntime,
 	type StateView
 } from '@makoojs/core';
@@ -39,7 +42,7 @@ const playListener = () =>
 	listen({ name: 'play', listenAt: '#play', type: 'click', callback: vi.fn() });
 
 describe('React components mounted by core', () => {
-	const controls: InjectionCommand[] = [];
+	const controls: Array<InjectionCommand | ListenerInjection> = [];
 	let core: MakooRuntime;
 
 	function panelCommand(): ComponentCommand {
@@ -50,6 +53,17 @@ describe('React components mounted by core', () => {
 		const status = core.injection('panel').statusHandle;
 		if (!('attachedListener' in status)) throw new Error('Expected a component');
 		return status;
+	}
+
+	function isComponentInjection(
+		injection: AdapterMountParams['injection']
+	): injection is ComponentInjection {
+		return 'attachedListener' in injection.statusHandle;
+	}
+
+	function componentCommandOf(command: ComponentCommand | ChildCommand): ComponentCommand {
+		if (!('start' in command)) throw new Error('Expected a component');
+		return command;
 	}
 
 	async function applyPanel(component: () => unknown, reinject = false): Promise<void> {
@@ -84,7 +98,8 @@ describe('React components mounted by core', () => {
 
 	afterEach(async () => {
 		await act(async () => {
-			for (const control of controls.splice(0)) await control.remove().catch(() => {});
+			for (const control of controls.splice(0))
+				await Promise.resolve(control.remove()).catch(() => {});
 		});
 		vi.restoreAllMocks();
 		document.body.replaceChildren();
@@ -94,7 +109,7 @@ describe('React components mounted by core', () => {
 		let received: ComponentCommand | undefined;
 		let status: string | undefined;
 		function Panel({ title }: { title: string }) {
-			received = useComponentCommand();
+			received = componentCommandOf(useComponentCommand());
 			status = useComponentStatus();
 			return createElement('p', null, title);
 		}
@@ -119,7 +134,7 @@ describe('React components mounted by core', () => {
 	it('connects a same-name replacement to its own control and state only', async () => {
 		const received: ComponentCommand[] = [];
 		function Panel() {
-			const control = useComponentCommand();
+			const control = componentCommandOf(useComponentCommand());
 			const play = useAttachedListenerStatus('play');
 			received.push(control);
 			return createElement('p', null, play);
@@ -139,7 +154,7 @@ describe('React components mounted by core', () => {
 		expect(element('#host').textContent).toBe('bound');
 
 		expect(() => oldCommand.start()).toThrow(
-			expect.objectContaining({ code: MakooErrorCode.INJECTION_REMOVED })
+			expect.objectContaining({ code: 'MAKOO_INJECTION_REMOVED' })
 		);
 		await act(async () => oldCommand.stop());
 		expect(replacementStatus.getSnapshot()).toBe('mounted');
@@ -201,7 +216,7 @@ describe('React components mounted by core', () => {
 				})
 			]);
 		});
-		controls.push(core.injection('panel').command, core.listener('external').command);
+		controls.push(core.injection('panel').command, core.listener('external'));
 		expect(element('#host').textContent).toBe('play:waiting');
 		const playRenders = renders;
 		await act(async () => addButton('mute'));
@@ -217,7 +232,7 @@ describe('React components mounted by core', () => {
 		core.apply([
 			listen({ name: 'external', listenAt: '#host', type: 'click', callback: vi.fn() })
 		]);
-		controls.push(core.listener('external').command);
+		controls.push(core.listener('external'));
 		function Panel() {
 			const listener = useAttachedListenerStatus('external');
 			return createElement('p', null, listener);
@@ -252,16 +267,16 @@ describe('React components mounted by core', () => {
 		core.useAdapter({
 			...adapter,
 			mount(params) {
+				const injection = params.injection;
+				if (!isComponentInjection(injection)) return adapter.mount(params);
 				return adapter.mount({
 					...params,
 					injection: {
-						...params.injection,
+						...injection,
 						statusHandle: {
-							...params.injection.statusHandle,
+							...injection.statusHandle,
 							attachedListener: (name) =>
-								countSubscriptions(
-									params.injection.statusHandle.attachedListener(name)
-								)
+								countSubscriptions(injection.statusHandle.attachedListener(name))
 						}
 					}
 				});
@@ -311,7 +326,7 @@ describe('React components mounted by core', () => {
 	});
 
 	it('controls a standalone listener and leaves it running when the component stops', async () => {
-		let saveCommand: { stop: () => Promise<void>; start: () => void } | undefined;
+		let saveCommand: { stop: () => void; start: () => void } | undefined;
 		function Panel() {
 			const save = useListener('save');
 			saveCommand = save;
@@ -336,24 +351,22 @@ describe('React components mounted by core', () => {
 				})
 			]);
 		});
-		controls.push(core.injection('panel').command, core.listener('save').command);
-		expect(saveCommand?.stop).toBe(core.listener('save').command.stop);
+		controls.push(core.injection('panel').command, core.listener('save'));
+		expect(saveCommand?.stop).toBe(core.listener('save').stop);
 		expect(element('#host').textContent).toBe('waiting');
 
-		await act(async () => {
-			await saveCommand?.stop();
-		});
+		await act(async () => saveCommand?.stop());
 		expect(element('#host').textContent).toBe('idle');
-		expect(core.listener('save').statusHandle.getSnapshot()).toBe('idle');
+		expect(core.listener('save').status).toBe('idle');
 		await act(async () => saveCommand?.start());
-		expect(core.listener('save').statusHandle.getSnapshot()).toBe('waiting');
+		expect(core.listener('save').status).toBe('waiting');
 
 		await act(async () => panelCommand().stop());
-		expect(core.listener('save').statusHandle.getSnapshot()).toBe('waiting');
+		expect(core.listener('save').status).toBe('waiting');
 	});
 
 	it('reads the replacement standalone listener on the next render', async () => {
-		let saveStop: (() => Promise<void>) | undefined;
+		let saveStop: (() => void) | undefined;
 		function Panel() {
 			const [, render] = useState(0);
 			const save = useListener('save');
@@ -376,18 +389,17 @@ describe('React components mounted by core', () => {
 				inject({ name: 'panel', injectAt: '#host', adapter: 'react', component: Panel })
 			]);
 		});
-		controls.push(core.injection('panel').command, core.listener('save').command);
+		controls.push(core.injection('panel').command, core.listener('save'));
 		await act(async () => addButton('save'));
 		expect(element('#host').textContent).toBe('bound');
 		const previousStop = saveStop;
 		await act(async () => {
-			const removal = core.listener('save').command.remove();
+			core.listener('save').remove();
 			core.apply([declaration]);
-			controls.push(core.listener('save').command);
-			await removal;
+			controls.push(core.listener('save'));
 		});
 		await act(async () => element('#host button')?.click());
-		expect(saveStop).toBe(core.listener('save').command.stop);
+		expect(saveStop).toBe(core.listener('save').stop);
 		expect(saveStop).not.toBe(previousStop);
 		expect(element('#host').textContent).toBe('bound');
 	});
@@ -421,7 +433,7 @@ describe('React components mounted by core', () => {
 					})
 				]);
 			})
-		).rejects.toThrow(expect.objectContaining({ code: MakooErrorCode.INJECTION_NOT_FOUND }));
-		controls.push(core.listener('save').command, core.injection('panel').command);
+		).rejects.toThrow(expect.objectContaining({ code: 'MAKOO_INJECTION_NOT_FOUND' }));
+		controls.push(core.listener('save'), core.injection('panel').command);
 	});
 });

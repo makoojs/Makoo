@@ -1,8 +1,8 @@
 import type { DOMObserver } from '../dom/observer';
 import { DEFAULT_DOM_TIMEOUT, waitForElement } from '../dom/waitForElement';
 import { watchElement } from '../dom/watchElement';
-import { MakooErrorCode } from '../error/ErrorCode';
-import { MakooAggregateError, MakooError } from '../error/MakooError';
+import { coreErrors } from '../error/coreErrors';
+import { isMakooError, type MakooError } from '../error/MakooError';
 import { type AttachListener, stopAttachListeners } from '../listener/attach';
 import { startListener } from '../listener/listener';
 
@@ -117,7 +117,7 @@ function awaitMountTarget(
 			config.timeout ?? DEFAULT_DOM_TIMEOUT,
 			(mountTarget) => mountComponent(execution, mountTarget, dom, mounter, callbacks),
 			() => {
-				callbacks.ended('failed', waitTimedOut(config.name));
+				callbacks.ended('failed', waitTimedOut(config));
 			},
 			(cause) => callbacks.ended('failed', mountFailed(execution, cause))
 		);
@@ -226,10 +226,7 @@ function unmountComponent(execution: ComponentExecution, mounter: ComponentMount
 			mounter.unmount(mountedComponent.mountHandle);
 		} catch (cause) {
 			cleanupErrors.push(
-				new MakooError(`Failed to unmount "${name}"`, {
-					code: MakooErrorCode.UNMOUNT_FAILED,
-					cause
-				})
+				coreErrors.createRecorded('MAKOO_UNMOUNT_FAILED', { name }, { cause })
 			);
 		}
 	}
@@ -241,35 +238,31 @@ function unmountComponent(execution: ComponentExecution, mounter: ComponentMount
 			componentContainer.remove();
 		} catch (cause) {
 			cleanupErrors.push(
-				new MakooError(`Failed to remove container of "${name}"`, {
-					code: MakooErrorCode.CONTAINER_REMOVE_FAILED,
-					cause
-				})
+				coreErrors.createRecorded('MAKOO_CONTAINER_REMOVE_FAILED', { name }, { cause })
 			);
 		}
 	}
 	return cleanupErrors;
 }
-function waitTimedOut(name: string): MakooError {
-	return new MakooError(`Timed out waiting for the mount target of "${name}"`, {
-		code: MakooErrorCode.TARGET_WAIT_TIMEOUT
+function waitTimedOut(config: ComponentExecutionConfig): MakooError {
+	return coreErrors.createRecorded('MAKOO_TARGET_WAIT_TIMEOUT', {
+		name: config.name,
+		selector: config.injectAt,
+		timeout: config.timeout ?? DEFAULT_DOM_TIMEOUT
 	});
 }
 
 function targetDetachedError(name: string): MakooError {
-	return new MakooError(`Mount target "${name}" disconnected`, {
-		code: MakooErrorCode.MOUNT_TARGET_DETACHED
-	});
+	return coreErrors.createRecorded('MAKOO_MOUNT_TARGET_DETACHED', { name });
 }
 
 function mountFailed(execution: ComponentExecution, cause: unknown): MakooError {
 	const adapterCleanup =
-		cause instanceof MakooAggregateError && cause.code === MakooErrorCode.MOUNT_CLEANUP_FAILED
-			? cause
-			: undefined;
-	if (adapterCleanup) execution.cleanupErrors.push(...adapterCleanup.errors);
-	return new MakooError(`Failed to mount "${execution.name}"`, {
-		code: MakooErrorCode.MOUNT_FAILED,
-		cause: adapterCleanup ? adapterCleanup.cause : cause
-	});
+		isMakooError(cause) && cause.code === 'MAKOO_MOUNT_CLEANUP_FAILED' ? cause : undefined;
+	if (adapterCleanup?.errors) execution.cleanupErrors.push(...adapterCleanup.errors);
+	return coreErrors.createRecorded(
+		'MAKOO_MOUNT_FAILED',
+		{ name: execution.name },
+		{ cause: adapterCleanup ? adapterCleanup.cause : cause }
+	);
 }

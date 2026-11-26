@@ -4,13 +4,11 @@ import type {
 	ComponentCommand,
 	ComponentInjection,
 	ComponentStatus,
-	ListenerCommand,
 	ListenerInjection,
 	ListenerStatus,
-	ListenerStatusHandle,
+	MakooError,
 	StateView
 } from '@makoojs/core';
-import { MakooError, MakooErrorCode } from '@makoojs/core';
 import {
 	computed,
 	getCurrentScope,
@@ -21,7 +19,7 @@ import {
 	type Ref,
 	shallowRef
 } from 'vue';
-import { VueErrorCode } from './error';
+import { vueErrors } from './error';
 
 export type VueComponentContext = {
 	readonly injection: ComponentInjection | ChildInjection;
@@ -44,29 +42,31 @@ export type VueMakooComponent = (ComponentCommand | ChildCommand) & {
 	/**
 	 * Returns the status of an attached listener.
 	 *
-	 * @throws {@link MakooError} `LISTENER_NOT_FOUND` when the component has no listener with that name.
+	 * @throws {@link MakooError} `MAKOO_VUE_LISTENER_NOT_FOUND` when the component has no listener with that name.
 	 */
 	attachedListener(name: string): Readonly<Ref<ListenerStatus>>;
 	/**
 	 * Looks up a standalone listener in the same Core Instance and tracks its status until the
 	 * calling scope is disposed. Repeated calls for the same listener share one status ref.
 	 *
-	 * Flat command methods and a reactive `status` wrap the same bag as `core.listener(name)`.
+	 * The commands are those of `core.listener(name)`; `status` is reactive, `lastError` (the
+	 * latest execution or cleanup failure) is read live and is not reactive.
 	 *
 	 * @throws {@link MakooError} `INJECTION_NOT_FOUND` when no standalone listener has that name.
 	 */
 	listener(name: string): VueStandaloneListener;
 };
 
-type VueStandaloneListener = ListenerCommand & {
-	/** The latest execution failure, cleanup failure, or event handler error; not reactive. */
-	readonly lastError: MakooError | undefined;
+type VueStandaloneListener = Pick<
+	ListenerInjection,
+	'lastError' | 'name' | 'remove' | 'start' | 'stop'
+> & {
 	/** The listener status. */
 	readonly status: Readonly<Ref<ListenerStatus>>;
 };
 
 type StandaloneSubscription = {
-	statusHandle: ListenerStatusHandle;
+	injection: ListenerInjection;
 	snapshotRef: Ref<ListenerStatus>;
 	statusRef: Readonly<Ref<ListenerStatus>>;
 	release: () => void;
@@ -83,16 +83,10 @@ type StandaloneSubscription = {
 export function useMakooComponent(): VueMakooComponent {
 	const context = hasInjectionContext() ? inject(componentContextKey, null) : null;
 	if (!context) {
-		throw new MakooError(
-			'useMakooComponent() must be called inside a component mounted by the Makoo Vue adapter',
-			{ code: VueErrorCode.VUE_HOOK_OUTSIDE_COMPONENT }
-		);
+		throw vueErrors.createThrowable('MAKOO_VUE_HOOK_OUTSIDE_COMPONENT');
 	}
 	if (!getCurrentScope()) {
-		throw new MakooError(
-			'useMakooComponent() must be called inside a component setup or effect scope',
-			{ code: VueErrorCode.VUE_HOOK_OUTSIDE_SCOPE }
-		);
+		throw vueErrors.createThrowable('MAKOO_VUE_HOOK_OUTSIDE_SCOPE');
 	}
 	const { command, statusHandle } = context.injection;
 	const componentStatus = subscribeState(statusHandle, context.subscriptions);
@@ -126,26 +120,27 @@ export function useMakooComponent(): VueMakooComponent {
 		attachedListener(name) {
 			const listener = listeners.get(name);
 			if (!listener)
-				throw new MakooError(`Unknown listener "${name}" in "${command.name}"`, {
-					code: MakooErrorCode.LISTENER_NOT_FOUND
+				throw vueErrors.createThrowable('MAKOO_VUE_LISTENER_NOT_FOUND', {
+					name,
+					injection: command.name
 				});
 			return listener;
 		},
 		listener(name) {
 			const found = context.listener(name);
 			return {
-				name: found.command.name,
-				start: found.command.start,
-				stop: found.command.stop,
-				remove: found.command.remove,
+				name: found.name,
+				start: found.start,
+				stop: found.stop,
+				remove: found.remove,
 				status: subscribeStandalone(
 					name,
-					found.statusHandle,
+					found,
 					standaloneListeners,
 					context.subscriptions
 				),
 				get lastError() {
-					return found.statusHandle.lastError;
+					return found.lastError;
 				}
 			};
 		}
@@ -154,12 +149,12 @@ export function useMakooComponent(): VueMakooComponent {
 
 function subscribeStandalone(
 	name: string,
-	statusHandle: ListenerStatusHandle,
+	injection: ListenerInjection,
 	standaloneListeners: Map<string, StandaloneSubscription>,
 	subscriptions: Set<() => void>
 ): Readonly<Ref<ListenerStatus>> {
 	const current = standaloneListeners.get(name);
-	if (current && current.statusHandle === statusHandle) return current.statusRef;
+	if (current && current.injection === injection) return current.statusRef;
 
 	let snapshotRef: Ref<ListenerStatus>;
 	let statusRef: Readonly<Ref<ListenerStatus>>;
@@ -167,15 +162,15 @@ function subscribeStandalone(
 		current.release();
 		snapshotRef = current.snapshotRef;
 		statusRef = current.statusRef;
-		snapshotRef.value = statusHandle.getSnapshot();
+		snapshotRef.value = injection.status;
 	} else {
-		snapshotRef = shallowRef(statusHandle.getSnapshot());
+		snapshotRef = shallowRef(injection.status);
 		statusRef = computed(() => snapshotRef.value);
 	}
 
 	let released = false;
-	const unsubscribe = statusHandle.subscribe(() => {
-		if (!released) snapshotRef.value = statusHandle.getSnapshot();
+	const unsubscribe = injection.subscribe(() => {
+		if (!released) snapshotRef.value = injection.status;
 	});
 	const release = () => {
 		if (released) return;
@@ -187,7 +182,7 @@ function subscribeStandalone(
 		if (active && active.release === release) standaloneListeners.delete(name);
 	};
 	subscriptions.add(release);
-	standaloneListeners.set(name, { statusHandle, snapshotRef, statusRef, release });
+	standaloneListeners.set(name, { injection, snapshotRef, statusRef, release });
 	return statusRef;
 }
 

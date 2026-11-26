@@ -1,4 +1,5 @@
 import { emitKeypressEvents, type Key } from 'node:readline';
+import { isMakooError } from '@makoojs/core';
 import { createLogUpdate } from 'log-update';
 import type { LogErrorOptions, Logger, LogOptions, ViteDevServer } from 'vite';
 import type { RuntimeSnapshot } from '../bridge/store';
@@ -312,7 +313,12 @@ export class DevTerminal {
 					break;
 			}
 		} catch (error) {
-			this.logger.error(`[makoo] ${error instanceof Error ? error.message : String(error)}`);
+			const detail = isMakooError(error)
+				? `${error.code}: ${error.message}`
+				: error instanceof Error
+					? error.message
+					: String(error);
+			this.logger.error(`[makoo] ${detail}`);
 		} finally {
 			this.actionRunning = false;
 		}

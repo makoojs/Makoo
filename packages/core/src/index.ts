@@ -16,7 +16,15 @@ export type {
 	MakooComponentEachInput,
 	MakooComponentInput
 } from './component/types';
-export { createMakoo } from './core/createMakoo';
+export { type CoreError, type CoreErrorCode, coreErrors } from './error/coreErrors';
+export {
+	defineMakooErrors,
+	type MakooErrorsFor,
+	type MakooErrorTable
+} from './error/defineMakooErrors';
+export { type ErrorCategory, isMakooError, MakooError } from './error/MakooError';
+export type { ListenerInjection } from './injections/listen';
+export { createMakoo } from './instance/createMakoo';
 export type {
 	Injection,
 	InjectionCommand,
@@ -25,13 +33,10 @@ export type {
 	MakooRuntime,
 	ObservationHandler,
 	ObservationNotice
-} from './core/types';
-export { MakooErrorCode } from './error/ErrorCode';
-export { MakooAggregateError, MakooError } from './error/MakooError';
+} from './instance/types';
 export { listen } from './listener/declaration';
 export type {
 	ListenerCommand,
-	ListenerInjection,
 	ListenerStatus,
 	ListenerStatusHandle,
 	MakooListenerDeclaration,
