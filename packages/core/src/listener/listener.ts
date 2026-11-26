@@ -1,7 +1,7 @@
 import type { DOMObserver } from '../dom/observer';
 import { coreErrors } from '../error/coreErrors';
 import type { MakooError } from '../error/MakooError';
-import { createState, emitSubscriberDiagnostic } from '../state/createState';
+import type { createState } from '../state/createState';
 import type { AttachListener } from './attach';
 import {
 	awaitListenerTarget,
@@ -9,13 +9,7 @@ import {
 	createListenerExecution,
 	type ListenerExecution
 } from './execution';
-import type {
-	ListenerCommand,
-	ListenerInjection,
-	ListenerStatus,
-	ListenerStatusHandle,
-	MakooListenerDeclaration
-} from './types';
+import type { ListenerStatus, MakooListenerDeclaration } from './types';
 
 type CleanupCompletion = {
 	promise: Promise<void>;
@@ -42,61 +36,10 @@ export type HostListener = {
 	lastError: MakooError | undefined;
 };
 
-export type Listener = HostListener & {
-	readonly kind: 'listener';
-	intent: 'running' | 'stopped' | 'removed';
-	executionSlot: ExecutionSlot | { kind: 'removed'; cleanupPromise: Promise<void> };
-	readonly onRemoved: () => void;
-	readonly isDisposed: () => boolean;
-};
-
-export function createListener(
-	config: MakooListenerDeclaration,
-	dom: DOMObserver,
-	onRemoved: () => void,
-	isDisposed: () => boolean,
-	onDiagnostic: (name: string, error: MakooError) => void
-): ListenerInjection {
-	const listener: Listener = {
-		kind: 'listener',
-		config,
-		state: createState<ListenerStatus>('idle', (cause) =>
-			emitSubscriberDiagnostic(`"${config.name}"`, cause, (error) =>
-				onDiagnostic(config.name, error)
-			)
-		),
-		intent: 'stopped',
-		executionSlot: { kind: 'empty', cleanupPromise: Promise.resolve() },
-		lastError: undefined,
-		onRemoved,
-		isDisposed
-	};
-	const command: ListenerCommand = Object.freeze({
-		name: config.name,
-		start: () => startListener(listener, dom),
-		stop: () => stopListener(listener, dom),
-		remove: () => removeListener(listener, dom)
-	});
-	const statusHandle: ListenerStatusHandle = Object.freeze({
-		getSnapshot: () => listener.state.view.getSnapshot(),
-		subscribe: (notify: () => void) => listener.state.view.subscribe(notify),
-		get lastError() {
-			return listener.lastError;
-		}
-	});
-	return { kind: 'listener', command, statusHandle };
-}
-
-export function startListener(listener: Listener | AttachListener, dom: DOMObserver): void {
+export function startListener(listener: AttachListener, dom: DOMObserver): void {
 	const { config, executionSlot } = listener;
-	if (listener.kind === 'listener' && listener.isDisposed()) {
-		throw coreErrors.createThrowable('MAKOO_INSTANCE_DISPOSED');
-	}
 	if (executionSlot.kind === 'cleanup-failed') {
 		throw coreErrors.createThrowable('MAKOO_INJECTION_CLOSED', { name: config.name });
-	}
-	if (listener.intent === 'removed') {
-		throw coreErrors.createThrowable('MAKOO_INJECTION_REMOVED', { name: config.name });
 	}
 	listener.intent = 'running';
 	if (executionSlot.kind !== 'empty') return;
@@ -104,7 +47,7 @@ export function startListener(listener: Listener | AttachListener, dom: DOMObser
 	startExecution(listener, dom);
 }
 
-function startExecution(listener: Listener | AttachListener, dom: DOMObserver): void {
+function startExecution(listener: AttachListener, dom: DOMObserver): void {
 	let resolveCleanup!: () => void;
 	let rejectCleanup!: (error: MakooError) => void;
 	const cleanupPromise = new Promise<void>((resolve, reject) => {
@@ -146,38 +89,8 @@ function startExecution(listener: Listener | AttachListener, dom: DOMObserver): 
 	});
 }
 
-function stopListener(listener: Listener, dom: DOMObserver): Promise<void> {
-	const executionSlot = listener.executionSlot;
-	if (executionSlot.kind === 'cleanup-failed' || executionSlot.kind === 'removed')
-		return executionSlot.cleanupPromise;
-	if (listener.intent !== 'removed') listener.intent = 'stopped';
-	switch (executionSlot.kind) {
-		case 'empty':
-			listener.state.set('idle');
-			return executionSlot.cleanupPromise;
-		case 'closing':
-			return executionSlot.cleanupCompletion.promise;
-		case 'active':
-			return endExecution(listener, dom, 'stopped');
-	}
-}
-
-function removeListener(listener: Listener, dom: DOMObserver): Promise<void> {
-	const executionSlot = listener.executionSlot;
-	if (executionSlot.kind === 'cleanup-failed' || executionSlot.kind === 'removed')
-		return executionSlot.cleanupPromise;
-	listener.intent = 'removed';
-	const cleanupPromise = stopListener(listener, dom);
-	// Active executions unregister after cleanup; an empty listener can unregister now.
-	if (listener.executionSlot.kind === 'empty') {
-		listener.executionSlot = { kind: 'removed', cleanupPromise };
-		listener.onRemoved();
-	}
-	return cleanupPromise;
-}
-
 export function endExecution(
-	listener: Listener | AttachListener,
+	listener: AttachListener,
 	dom: DOMObserver,
 	endReason: 'stopped' | 'detached' | 'failed',
 	executionError?: MakooError
@@ -185,7 +98,6 @@ export function endExecution(
 	const executionSlot = listener.executionSlot;
 	switch (executionSlot.kind) {
 		case 'empty':
-		case 'removed':
 		case 'cleanup-failed':
 			return executionSlot.cleanupPromise;
 		case 'closing':
@@ -195,7 +107,7 @@ export function endExecution(
 	listener.executionSlot = { ...executionSlot, kind: 'closing' };
 	cleanupExecution(execution);
 	const cleanupErrors = execution.cleanupErrors;
-	if (cleanupErrors.length > 0 && listener.kind === 'attach') {
+	if (cleanupErrors.length > 0) {
 		if (executionError) listener.lastError = executionError;
 		listener.executionSlot = {
 			kind: 'cleanup-failed',
@@ -209,36 +121,10 @@ export function endExecution(
 			listener.onFailed(executionError);
 		return cleanupCompletion.promise;
 	}
-	if (cleanupErrors.length > 0) {
-		const failure = coreErrors.createRecorded(
-			'MAKOO_INJECTION_CLEANUP_FAILED',
-			{ name: listener.config.name },
-			{ errors: executionError ? [executionError, ...cleanupErrors] : cleanupErrors }
-		);
-		listener.lastError = failure;
-		listener.executionSlot = {
-			kind: 'cleanup-failed',
-			cleanupPromise: cleanupCompletion.promise,
-			cleanupErrors
-		};
-		cleanupCompletion.reject(failure);
-		console.error(failure);
-		const completedSlot = listener.executionSlot;
-		listener.state.set('failed');
-		if (listener.kind === 'attach' && listener.executionSlot === completedSlot)
-			listener.onFailed(executionError ?? failure);
-		return cleanupCompletion.promise;
-	}
 
 	// Commit the old result before subscribers or a new binding can reenter the controls.
 	listener.executionSlot = { kind: 'empty', cleanupPromise: cleanupCompletion.promise };
 	cleanupCompletion.resolve();
-	if (listener.kind === 'listener' && listener.intent === 'removed') {
-		listener.executionSlot = { kind: 'removed', cleanupPromise: cleanupCompletion.promise };
-		listener.state.set('idle');
-		listener.onRemoved();
-		return cleanupCompletion.promise;
-	}
 	if (
 		listener.intent === 'running' &&
 		(endReason === 'stopped' || (endReason === 'detached' && listener.config.reinject))
@@ -257,7 +143,7 @@ export function endExecution(
 	}
 	const completedSlot = listener.executionSlot;
 	listener.state.set(endReason === 'stopped' ? 'idle' : 'failed');
-	if (executionError && listener.kind === 'attach' && listener.executionSlot === completedSlot)
+	if (executionError && listener.executionSlot === completedSlot)
 		listener.onFailed(executionError);
 	return cleanupCompletion.promise;
 }

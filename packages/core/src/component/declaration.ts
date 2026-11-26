@@ -1,5 +1,4 @@
 import { coreErrors } from '../error/coreErrors';
-import { validateListener } from '../listener/declaration';
 import type {
 	MakooComponentDeclaration,
 	MakooComponentEachDeclaration,
@@ -7,47 +6,22 @@ import type {
 	MakooComponentInput
 } from './types';
 
-export function validateComponent(input: unknown): MakooComponentDeclaration {
-	const value = input as MakooComponentInput & { kind: 'component' };
+/** Rejects attached listeners with duplicate names or their own `reinject`. */
+export function checkListeners(declaration: MakooComponentDeclaration): void {
 	const names = new Set<string>();
-	const listeners = value.listeners?.map((listenerInput, index) => {
-		const listener = validateListener(listenerInput);
+	declaration.listeners?.forEach((listener, index) => {
 		if (names.has(listener.name)) {
 			throw coreErrors.createThrowable('MAKOO_INJECTION_NAME_CONFLICT', {
 				name: listener.name,
 				at: `listeners[${index}]`
 			});
 		}
-		if (listener.reinject !== undefined) {
+		if ('reinject' in listener && listener.reinject !== undefined) {
 			throw coreErrors.createThrowable('MAKOO_DECLARATION_INVALID', {
 				reason: `Attached listeners inherit the component recovery setting (listeners[${index}].reinject)`
 			});
 		}
 		names.add(listener.name);
-		return listener;
-	});
-	return Object.freeze({
-		kind: 'component',
-		name: value.name,
-		injectAt: value.injectAt,
-		adapter: value.adapter,
-		component: value.component,
-		...(value.props !== undefined ? { props: value.props } : {}),
-		...(value.timeout !== undefined ? { timeout: value.timeout } : {}),
-		...(value.reinject !== undefined ? { reinject: value.reinject } : {}),
-		...(listeners !== undefined ? { listeners: Object.freeze(listeners) } : {})
-	});
-}
-
-export function validateComponentEach(input: unknown): MakooComponentEachDeclaration {
-	const value = input as MakooComponentEachInput & { kind: 'component-each' };
-	return Object.freeze({
-		kind: 'component-each',
-		name: value.name,
-		injectAt: value.injectAt,
-		adapter: value.adapter,
-		component: value.component,
-		...(value.props !== undefined ? { props: value.props } : {})
 	});
 }
 

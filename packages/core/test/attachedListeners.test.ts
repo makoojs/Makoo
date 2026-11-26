@@ -7,6 +7,7 @@ import {
 	createMakoo,
 	type InjectionCommand,
 	inject,
+	type ListenerInjection,
 	type ListenerStatus,
 	listen,
 	type MakooListenerDeclaration,
@@ -14,7 +15,7 @@ import {
 } from '../src';
 
 describe('attached host listeners', () => {
-	const controls: InjectionCommand[] = [];
+	const controls: Array<InjectionCommand | ListenerInjection> = [];
 	function element(selector: string): HTMLElement {
 		const target = document.querySelector<HTMLElement>(selector);
 		if (!target) throw new Error(`Missing test element: ${selector}`);
@@ -255,8 +256,8 @@ describe('attached host listeners', () => {
 				listeners: [child('play', callback)]
 			})
 		]);
-		controls.push(core.listener('play').command, core.injection('other').command);
-		expect(listenerOf(status, 'play')).not.toBe(core.listener('play').statusHandle);
+		controls.push(core.listener('play'), core.injection('other').command);
+		expect(listenerOf(status, 'play')).not.toBe(core.listener('play'));
 		element('#play').click();
 		expect(callback).toHaveBeenCalledTimes(3);
 	});
@@ -618,7 +619,8 @@ describe('attached host listeners', () => {
 		);
 	});
 	afterEach(async () => {
-		for (const control of controls.splice(0)) await control.remove().catch(() => {});
+		for (const control of controls.splice(0))
+			await Promise.resolve(control.remove()).catch(() => {});
 		vi.restoreAllMocks();
 		vi.useRealTimers();
 		document.body.replaceChildren();
@@ -662,7 +664,7 @@ describe('attached host listeners', () => {
 		expect(() => status.attachedListener('missing')).toThrow(
 			expect.objectContaining({ code: 'MAKOO_LISTENER_NOT_FOUND' })
 		);
-		expect(() => core.listener('play').command).toThrow(
+		expect(() => core.listener('play')).toThrow(
 			expect.objectContaining({ code: 'MAKOO_INJECTION_NOT_FOUND' })
 		);
 		button.click();

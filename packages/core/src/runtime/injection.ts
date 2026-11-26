@@ -24,7 +24,7 @@ export type InjectionKind<D = unknown> = {
 	readonly kind: string;
 
 	// Lifecycle
-	prepare?(input: unknown, context: PrepareContext): D;
+	prepare(declaration: D, context: PrepareContext): D;
 	setup(scope: Scope, declaration: D, context: SetupContext): void;
 };
 
@@ -188,12 +188,17 @@ export function createInjectionShell<D>(
 				if (removed) return;
 				removed = true;
 				hasDeferredStart = false;
-				if (rootScope?.isEnded) rootScope = undefined;
+				// Settled: consume it like stop(). Live: end it now. Mid-teardown: stop() is a
+				// no-op and the in-flight end settles the outcome; removal never waits for it.
+				if (rootScope?.outcome !== undefined) rootScope = undefined;
 				else rootScope?.stop();
+				// Add to the pending cancellation queue
 				host.removed(shell);
 			});
 		},
 		start() {
+			// A disposed instance answers DISPOSED even for the injections it just removed.
+			host.assertOpen();
 			if (removed) throw coreErrors.createThrowable('MAKOO_INJECTION_REMOVED', { name });
 			if (isTransitioning()) {
 				// This injection is mid setup/teardown: only set the flag, the start runs at flush time
@@ -212,12 +217,14 @@ export function createInjectionShell<D>(
 		stop() {
 			host.operation(() => {
 				hasDeferredStart = false;
-				if (rootScope?.isEnded) {
-					// Consume the settled outcome: failed → idle, lastError is kept
+				if (rootScope?.outcome !== undefined) {
+					// Consume the settled outcome: failed → idle, lastError is kept.
 					rootScope = undefined;
 					host.dirty(shell);
 					return;
 				}
+				// Mid-teardown (isEnded without outcome): a no-op — the in-flight end
+				// delivers its outcome, including any cleanup failure, through ended.
 				rootScope?.stop();
 			});
 		},

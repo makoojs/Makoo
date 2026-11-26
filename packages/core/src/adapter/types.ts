@@ -1,5 +1,5 @@
 import type { ChildInjection, ComponentInjection } from '../component/types';
-import type { ListenerInjection } from '../listener/types';
+import type { ListenerInjection } from '../injections/listen';
 
 /** What Core passes to {@link MountAdapter.mount} for one component execution. */
 export interface AdapterMountParams<TComponent = unknown, TProps = unknown> {

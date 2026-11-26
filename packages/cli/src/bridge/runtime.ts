@@ -2,6 +2,8 @@ import {
 	type createMakoo,
 	type Injection,
 	isMakooError,
+	type ListenerInjection,
+	type ListenerStatus,
 	type MakooError,
 	type MakooRuntime,
 	type StateView
@@ -17,24 +19,15 @@ import {
 	SUBMIT_PAGE_RPC
 } from './protocol';
 
-const MAX_DIAGNOSTICS = 5;
-const DEFAULT_RECONNECT_DELAY_MS = 1000;
-
 export type CreateMakooFn = typeof createMakoo;
 
-/** The page-side half of the bridge: accepts whole-table submissions. */
-export type PageReporter = {
-	submit(rows: PageRuntimeRow[]): void;
-	close(): void;
-};
-
 type DevframeClientLike = {
-	readonly status: string;
+	call(method: string, ...args: unknown[]): Promise<unknown>;
+	close?(): void;
 	readonly events: {
 		on(event: 'connection:status', listener: (status: string) => void): unknown;
 	};
-	call(method: string, ...args: unknown[]): Promise<unknown>;
-	close?(): void;
+	readonly status: string;
 };
 
 export type DevframeReporterDeps = {
@@ -43,25 +36,49 @@ export type DevframeReporterDeps = {
 	reconnectDelayMs?: number;
 };
 
+/** The page-side half of the bridge: accepts whole-table submissions. */
+export type PageReporter = {
+	close(): void;
+	submit(rows: PageRuntimeRow[]): void;
+};
+
+type SnapshotOf = <T>(handle: StateView<T>) => Readonly<T>;
+
+type WatchedRuntime = {
+	diagnostics: SerializedDiagnostic[];
+	// Core cannot enumerate an instance's injections, so applied ones are tracked by name.
+	injections: Map<string, Injection>;
+};
+
+const DEFAULT_RECONNECT_DELAY_MS = 1000;
+// The flattened listener object is its own status view: one stable adapter per injection
+// keeps the subscription tracking on the same handle identity across submissions.
+const listenerViews = new WeakMap<ListenerInjection, StateView<ListenerStatus>>();
+const liveReporters = new Set<PageReporter>();
+const MAX_DIAGNOSTICS = 5;
+
+/** Closes every reporter created on this page. Test/teardown hook (e.g. SSR runners). */
+export function closePageReporters(): void {
+	for (const reporter of [...liveReporters]) reporter.close();
+}
+
 function connectToBridge(endpoint: DevEndpoint): Promise<DevframeClientLike> {
 	// The explicit descriptor skips the __connection.json fetch entirely.
 	return connectDevframe({
+		authToken: endpoint.token,
 		connection: {
+			authToken: endpoint.token,
 			connectionMeta: {
 				backend: 'websocket',
 				websocket: `ws://${endpoint.host}:${endpoint.port}/__ws`
 			},
-			metaBaseUrl: `http://${endpoint.host}:${endpoint.port}/`,
-			authToken: endpoint.token
+			metaBaseUrl: `http://${endpoint.host}:${endpoint.port}/`
 		},
-		authToken: endpoint.token,
 		// A static token either works or it does not; never block the page on a prompt.
 		otpParam: false,
 		simpleAuth: false
 	}) as Promise<DevframeClientLike>;
 }
-
-const liveReporters = new Set<PageReporter>();
 
 /**
  * Page-level reporter: one devframe client per page, whole-table submissions.
@@ -79,13 +96,23 @@ export function createDevframeReporter(
 	const reconnectDelayMs = deps.reconnectDelayMs ?? DEFAULT_RECONNECT_DELAY_MS;
 
 	let client: DevframeClientLike | undefined;
+	let closed = false;
 	let connected = false;
-	let inflight = false;
-	let latest: PageRuntimeRow[] | undefined;
 	// latest has not reached the current client yet.
 	let dirty = false;
-	let closed = false;
+	let inflight = false;
+	let latest: PageRuntimeRow[] | undefined;
 	let retryTimer: ReturnType<typeof setTimeout> | undefined;
+
+	const dropClient = (retry: boolean) => {
+		const stale = client;
+		client = undefined;
+		connected = false;
+		// The dead call may still settle; clearing now would only re-flush, which is fine.
+		inflight = false;
+		stale?.close?.();
+		if (retry) scheduleRetry();
+	};
 
 	const flush = () => {
 		if (closed || !connected || inflight || !dirty || !latest || client === undefined) {
@@ -107,24 +134,6 @@ export function createDevframeReporter(
 		} catch {
 			done();
 		}
-	};
-
-	const scheduleRetry = () => {
-		if (closed || retryTimer !== undefined) return;
-		retryTimer = setTimeout(() => {
-			retryTimer = undefined;
-			void open();
-		}, reconnectDelayMs);
-	};
-
-	const dropClient = (retry: boolean) => {
-		const stale = client;
-		client = undefined;
-		connected = false;
-		// The dead call may still settle; clearing now would only re-flush, which is fine.
-		inflight = false;
-		stale?.close?.();
-		if (retry) scheduleRetry();
 	};
 
 	const onStatus = (owner: DevframeClientLike, status: string) => {
@@ -157,14 +166,17 @@ export function createDevframeReporter(
 		onStatus(next, next.status);
 	};
 
+	const scheduleRetry = () => {
+		if (closed || retryTimer !== undefined) return;
+		retryTimer = setTimeout(() => {
+			retryTimer = undefined;
+			void open();
+		}, reconnectDelayMs);
+	};
+
 	void open();
 
 	const reporter: PageReporter = {
-		submit(rows) {
-			latest = rows;
-			dirty = true;
-			flush();
-		},
 		close() {
 			closed = true;
 			if (retryTimer !== undefined) {
@@ -173,90 +185,15 @@ export function createDevframeReporter(
 			}
 			dropClient(false);
 			liveReporters.delete(reporter);
+		},
+		submit(rows) {
+			latest = rows;
+			dirty = true;
+			flush();
 		}
 	};
 	liveReporters.add(reporter);
 	return reporter;
-}
-
-/** Closes every reporter created on this page. Test/teardown hook (e.g. SSR runners). */
-export function closePageReporters(): void {
-	for (const reporter of [...liveReporters]) reporter.close();
-}
-
-function serializeError(error: MakooError): SerializedMakooError;
-function serializeError(error: MakooError | undefined): SerializedMakooError | undefined;
-function serializeError(error: MakooError | undefined): SerializedMakooError | undefined {
-	if (error === undefined) return undefined;
-	return { ...serializeErrorNode(error), code: error.code };
-}
-
-function serializeErrorNode(value: unknown): SerializedErrorNode {
-	if (value instanceof Error) {
-		const node: SerializedErrorNode = { name: value.name, message: value.message };
-		if (isMakooError(value)) {
-			node.code = value.code;
-			if (value.category !== undefined) node.category = value.category;
-			if (value.details !== undefined) node.details = value.details;
-			if (value.errors !== undefined) node.errors = value.errors.map(serializeErrorNode);
-		} else if (value instanceof AggregateError) {
-			node.errors = value.errors.map(serializeErrorNode);
-		}
-		if (value.cause !== undefined) node.cause = serializeErrorNode(value.cause);
-		return node;
-	}
-	return { message: String(value) };
-}
-
-type SnapshotOf = <T>(handle: StateView<T>) => Readonly<T>;
-
-type WatchedRuntime = {
-	// Core cannot enumerate an instance's injections, so applied ones are tracked by name.
-	injections: Map<string, Injection>;
-	diagnostics: SerializedDiagnostic[];
-};
-
-function snapshotInjection(
-	name: string,
-	injection: Injection,
-	snapshotOf: SnapshotOf
-): InjectionSnapshot {
-	const lastError = serializeError(injection.statusHandle.lastError);
-	switch (injection.kind) {
-		case 'component': {
-			const handle = injection.statusHandle;
-			return {
-				name,
-				kind: 'component',
-				status: snapshotOf(handle),
-				lastError,
-				attachedListeners: handle.attachedListenerNames.map((listenerName) => ({
-					name: listenerName,
-					status: snapshotOf(handle.attachedListener(listenerName))
-				}))
-			};
-		}
-		case 'component-each':
-			return {
-				name,
-				kind: 'component-each',
-				status: snapshotOf(injection.statusHandle),
-				lastError,
-				// Core emits no child-added event: reading children on every submission is
-				// what discovers new ones, and reading subscribes them.
-				children: injection.children.map((child) => ({
-					status: snapshotOf(child.statusHandle),
-					lastError: serializeError(child.statusHandle.lastError)
-				}))
-			};
-		case 'listener':
-			return {
-				name,
-				kind: 'standalone-listener',
-				status: snapshotOf(injection.statusHandle),
-				lastError
-			};
-	}
 }
 
 /**
@@ -281,11 +218,11 @@ export function instrument(
 			return handle.getSnapshot();
 		};
 		const rows = [...runtimes].map(([runtimeId, row]) => ({
-			runtimeId,
+			diagnostics: row.diagnostics,
 			injections: [...row.injections].map(([name, injection]) =>
 				snapshotInjection(name, injection, snapshotOf)
 			),
-			diagnostics: row.diagnostics
+			runtimeId
 		}));
 		for (const handle of seen) {
 			if (!subscriptions.has(handle)) subscriptions.set(handle, handle.subscribe(submit));
@@ -301,7 +238,7 @@ export function instrument(
 	return function instrumentedCreateMakoo(): MakooRuntime {
 		const runtime = base();
 		const runtimeId = nextRuntimeId++;
-		const row: WatchedRuntime = { injections: new Map(), diagnostics: [] };
+		const row: WatchedRuntime = { diagnostics: [], injections: new Map() };
 		runtimes.set(runtimeId, row);
 		submit();
 
@@ -312,9 +249,9 @@ export function instrument(
 				runtimes.delete(runtimeId);
 			} else {
 				row.diagnostics.push({
-					type: 'diagnostic',
+					error: serializeError(notice.error),
 					name: notice.name,
-					error: serializeError(notice.error)
+					type: 'diagnostic'
 				});
 				if (row.diagnostics.length > MAX_DIAGNOSTICS) row.diagnostics.shift();
 			}
@@ -339,4 +276,82 @@ export function instrument(
 			}
 		};
 	};
+}
+
+function listenerView(injection: ListenerInjection): StateView<ListenerStatus> {
+	let view = listenerViews.get(injection);
+	if (!view) {
+		view = {
+			getSnapshot: () => injection.status,
+			subscribe: (notify: () => void) => injection.subscribe(notify)
+		};
+		listenerViews.set(injection, view);
+	}
+	return view;
+}
+
+function serializeError(error: MakooError): SerializedMakooError;
+function serializeError(error: MakooError | undefined): SerializedMakooError | undefined;
+function serializeError(error: MakooError | undefined): SerializedMakooError | undefined {
+	if (error === undefined) return undefined;
+	return { ...serializeErrorNode(error), code: error.code };
+}
+
+function serializeErrorNode(value: unknown): SerializedErrorNode {
+	if (value instanceof Error) {
+		const node: SerializedErrorNode = { message: value.message, name: value.name };
+		if (isMakooError(value)) {
+			if (value.category !== undefined) node.category = value.category;
+			node.code = value.code;
+			if (value.details !== undefined) node.details = value.details;
+			if (value.errors !== undefined) node.errors = value.errors.map(serializeErrorNode);
+		} else if (value instanceof AggregateError) {
+			node.errors = value.errors.map(serializeErrorNode);
+		}
+		if (value.cause !== undefined) node.cause = serializeErrorNode(value.cause);
+		return node;
+	}
+	return { message: String(value) };
+}
+
+function snapshotInjection(
+	name: string,
+	injection: Injection,
+	snapshotOf: SnapshotOf
+): InjectionSnapshot {
+	switch (injection.kind) {
+		case 'component': {
+			const handle = injection.statusHandle;
+			return {
+				attachedListeners: handle.attachedListenerNames.map((listenerName) => ({
+					name: listenerName,
+					status: snapshotOf(handle.attachedListener(listenerName))
+				})),
+				kind: 'component',
+				lastError: serializeError(handle.lastError),
+				name,
+				status: snapshotOf(handle)
+			};
+		}
+		case 'component-each':
+			return {
+				// Core emits no child-added event: reading children on every submission is
+				// what discovers new ones, and reading subscribes them.
+				children: injection.children.map((child) => ({
+					lastError: serializeError(child.statusHandle.lastError),
+					status: snapshotOf(child.statusHandle)
+				})),
+				kind: 'component-each',
+				lastError: serializeError(injection.statusHandle.lastError),
+				name,
+				status: snapshotOf(injection.statusHandle)
+			};
+		case 'listener':
+			return {
+				kind: 'standalone-listener',
+				lastError: serializeError(injection.lastError),
+				name,
+				status: snapshotOf(listenerView(injection))
+			};
+	}
 }

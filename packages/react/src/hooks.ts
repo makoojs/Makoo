@@ -6,7 +6,6 @@ import type {
 	ComponentInjection,
 	ComponentStatus,
 	ComponentStatusHandle,
-	ListenerCommand,
 	ListenerInjection,
 	ListenerStatus,
 	MakooError,
@@ -20,11 +19,12 @@ type MakooComponentContextValue = {
 	listener: (name: string) => ListenerInjection;
 };
 
-type ReactStandaloneListener = ListenerCommand & {
+type ReactStandaloneListener = Pick<
+	ListenerInjection,
+	'lastError' | 'name' | 'remove' | 'start' | 'stop'
+> & {
 	/** The listener status at the last render. */
 	readonly status: ListenerStatus;
-	/** The latest execution failure, cleanup failure, or event handler error; reading it does not subscribe. */
-	readonly lastError: MakooError | undefined;
 };
 
 export const MakooComponentContext = createContext<MakooComponentContextValue | null>(null);
@@ -84,22 +84,27 @@ export function useAttachedListenerStatus<T>(name: string, select?: (status: Lis
 /**
  * Looks up a standalone listener in this Core Instance and subscribes to its status.
  *
- * Flat command methods and `status` wrap the same bag as `core.listener(name)`.
+ * The commands are those of `core.listener(name)`; `lastError` (the latest execution or
+ * cleanup failure) is read live and does not subscribe.
  *
  * @throws {@link MakooError} `INJECTION_NOT_FOUND` when no standalone listener has that name.
  */
 export function useListener(name: string): ReactStandaloneListener {
 	const { listener } = useComponentContext();
 	const found = listener(name);
-	const status = useSelectedSnapshot(found.statusHandle);
+	const view = useMemo<StateView<ListenerStatus>>(
+		() => ({ getSnapshot: () => found.status, subscribe: found.subscribe }),
+		[found]
+	);
+	const status = useSelectedSnapshot(view);
 	return {
-		name: found.command.name,
-		start: found.command.start,
-		stop: found.command.stop,
-		remove: found.command.remove,
+		name: found.name,
+		start: found.start,
+		stop: found.stop,
+		remove: found.remove,
 		status,
 		get lastError() {
-			return found.statusHandle.lastError;
+			return found.lastError;
 		}
 	};
 }

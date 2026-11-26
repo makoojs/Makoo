@@ -52,7 +52,9 @@ export async function startDevBridge(
 		packageName: '@makoojs/cli',
 		homepage: 'https://github.com/makoojs/Makoo',
 		description: 'Makoo userscript development bridge',
-		importMetaUrl: import.meta.url,
+		// resolveFrom accepts a file path too; the cjs bundle has import.meta = {} but a real __filename
+		importMetaUrl:
+			import.meta.url ?? (typeof __filename !== 'undefined' ? __filename : undefined),
 		setup(ctx) {
 			context = ctx;
 			ctx.rpc.register(submitPage);

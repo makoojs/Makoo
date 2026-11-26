@@ -2,7 +2,7 @@ import type { MountAdapter } from '../adapter/types';
 import type { DOMObserver } from '../dom/observer';
 import { coreErrors } from '../error/coreErrors';
 import type { MakooError } from '../error/MakooError';
-import type { ListenerInjection } from '../listener/types';
+import type { ListenerInjection } from '../injections/listen';
 import { createState, emitSubscriberDiagnostic } from '../state/createState';
 import { type ComponentExecutionControl, createChildExecution } from './execution';
 import type {

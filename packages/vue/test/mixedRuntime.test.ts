@@ -2,8 +2,8 @@ import {
 	type ComponentStatusHandle,
 	createMakoo,
 	inject,
-	type ListenerStatusHandle,
-	listen
+	listen,
+	type MakooError
 } from '@makoojs/core';
 import { createReactAdapter, useAttachedListenerStatus, useComponentStatus } from '@makoojs/react';
 import { act, createElement } from 'react';
@@ -28,8 +28,17 @@ function componentStatus(
 	return injection.statusHandle;
 }
 
-function listenerStatus(core: ReturnType<typeof createMakoo>, name: string): ListenerStatusHandle {
-	return core.listener(name).statusHandle;
+function listenerStatus(
+	core: ReturnType<typeof createMakoo>,
+	name: string
+): { getSnapshot(): string; readonly lastError: MakooError | undefined } {
+	const listener = core.listener(name);
+	return {
+		getSnapshot: () => listener.status,
+		get lastError() {
+			return listener.lastError;
+		}
+	};
 }
 
 const VuePanel = defineComponent({
@@ -218,11 +227,11 @@ describe('mixed Vue, React, and listener runtime', () => {
 		expect(document.body.querySelector('#vue-host p, #react-host p')).toBeNull();
 		element('#standalone').click();
 		expect(standalone).toHaveBeenCalledTimes(2);
-		expect(() => core.listener('standalone').command).toThrow(
-			expect.objectContaining({ code: 'MAKOO_INJECTION_NOT_FOUND' })
+		expect(() => core.listener('standalone')).toThrow(
+			expect.objectContaining({ code: 'MAKOO_INSTANCE_DISPOSED' })
 		);
-		expect(() => core.injection('react-panel').statusHandle).toThrow(
-			expect.objectContaining({ code: 'MAKOO_INJECTION_NOT_FOUND' })
+		expect(() => core.injection('react-panel')).toThrow(
+			expect.objectContaining({ code: 'MAKOO_INSTANCE_DISPOSED' })
 		);
 	});
 });

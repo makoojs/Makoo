@@ -1,9 +1,11 @@
 import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 export async function loadCliVersion(): Promise<string> {
-	let currentDir = dirname(fileURLToPath(import.meta.url));
+	// import.meta.dirname covers ESM (Node >= 20.11); the cjs bundle has
+	// import.meta = {} but a real __dirname.
+	let currentDir =
+		import.meta.dirname ?? (typeof __dirname !== 'undefined' ? __dirname : process.cwd());
 
 	while (true) {
 		const packagePath = join(currentDir, 'package.json');

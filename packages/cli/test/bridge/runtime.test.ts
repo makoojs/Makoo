@@ -152,13 +152,13 @@ describe('instrument', () => {
 		runtime.apply([
 			listen({ name: 'l', listenAt: '#missing', type: 'click', callback: () => {} })
 		]);
-		const handle = runtime.listener('l').statusHandle;
+		const handle = runtime.listener('l');
 		for (let i = 0; i < 6; i++) {
 			handle.subscribe(() => {
 				throw new Error(`boom${i}`);
 			});
 		}
-		await runtime.listener('l').command.stop();
+		runtime.listener('l').stop();
 
 		await vi.waitFor(() => {
 			expect(last()?.[0]?.diagnostics).toHaveLength(5);
@@ -224,7 +224,7 @@ describe('instrument', () => {
 		]);
 		await vi.waitFor(() => expect(last()?.[0]?.injections).toHaveLength(1));
 
-		await runtime.listener('save-click').command.remove();
+		runtime.listener('save-click').remove();
 		expect(last()?.[0]?.injections).toEqual([]);
 
 		await runtime.dispose();

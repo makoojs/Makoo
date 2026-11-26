@@ -48,6 +48,7 @@ function fakeKind(active: 'mounted' | 'bound' | 'collecting' = 'mounted') {
 	const kind: InjectionKind = {
 		kind: 'test',
 		active,
+		prepare: (declaration) => declaration,
 		setup: (scope, _declaration, context) => {
 			context.expose({ live: () => state.live });
 			for (const fn of hooks.cleanups) scope.onCleanup(fn);
@@ -322,6 +323,87 @@ describe('injection shell', () => {
 
 			// Subscribers run at depth 0: their commands are new outermost operations that run immediately, with merged notifications following as usual
 			expect(order).toEqual(['a-notify', 'b-setup', 'b-notify']);
+		});
+	});
+
+	describe('teardown reentrancy', () => {
+		it('does not consume the in-flight outcome when stop() is reentered mid-teardown', () => {
+			consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+			const harness = createHarness();
+			const { kind, hooks } = fakeKind();
+			const shell = harness.spawn('d', kind, 'a');
+			hooks.cleanups = [
+				() => shell.stop(),
+				() => {
+					throw new Error('cleanup boom');
+				}
+			];
+
+			shell.start();
+			shell.stop();
+
+			// The reentered stop() is a no-op; the in-flight teardown settles to failed on its own
+			expect(shell.status).toBe('failed');
+			expect(shell.lastError?.code).toBe('MAKOO_INJECTION_CLEANUP_FAILED');
+		});
+
+		it('settles a mid-teardown remove() once the in-flight end completes', () => {
+			const harness = createHarness();
+			const { kind, hooks } = fakeKind();
+			const shell = harness.spawn('d', kind, 'a');
+			hooks.cleanups = [() => shell.remove()];
+
+			shell.start();
+			shell.stop();
+
+			expect(shell.removed).toBe(true);
+			expect(harness.removedShells).toEqual([shell]);
+			expect(shell.status).toBe('idle');
+		});
+
+		it('removes immediately mid-teardown and still settles the cleanup failure', () => {
+			consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+			const harness = createHarness();
+			const { kind, hooks } = fakeKind();
+			const shell = harness.spawn('d', kind, 'a');
+			hooks.cleanups = [
+				() => shell.remove(),
+				() => {
+					throw new Error('cleanup boom');
+				}
+			];
+
+			shell.start();
+			shell.stop();
+
+			// remove() is terminal at once and frees the name; the in-flight end still reports
+			expect(shell.removed).toBe(true);
+			expect(harness.removedShells).toEqual([shell]);
+			expect(shell.status).toBe('failed');
+			expect(shell.lastError?.code).toBe('MAKOO_INJECTION_CLEANUP_FAILED');
+		});
+
+		it('unregisters even when remove() teardown fails, reporting failed', () => {
+			consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+			const harness = createHarness();
+			const { kind, hooks } = fakeKind();
+			const shell = harness.spawn('d', kind, 'a');
+			hooks.cleanups = [
+				() => {
+					throw new Error('unbind boom');
+				}
+			];
+
+			shell.start();
+			shell.remove();
+
+			expect(shell.removed).toBe(true);
+			expect(harness.removedShells).toEqual([shell]);
+			expect(shell.status).toBe('failed');
+			expect(shell.lastError?.code).toBe('MAKOO_INJECTION_CLEANUP_FAILED');
+			expect(() => shell.start()).toThrow(
+				expect.objectContaining({ code: 'MAKOO_INJECTION_REMOVED' })
+			);
 		});
 	});
 

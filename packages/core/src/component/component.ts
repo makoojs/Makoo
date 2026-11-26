@@ -2,8 +2,9 @@ import type { MountAdapter } from '../adapter/types';
 import type { DOMObserver } from '../dom/observer';
 import { coreErrors } from '../error/coreErrors';
 import type { MakooError } from '../error/MakooError';
+import type { ListenerInjection } from '../injections/listen';
 import { type AttachListener, createAttachListener } from '../listener/attach';
-import type { ListenerInjection, ListenerStatus } from '../listener/types';
+import type { ListenerStatus } from '../listener/types';
 import { createState, emitSubscriberDiagnostic } from '../state/createState';
 import type { StateView } from '../state/types';
 import {

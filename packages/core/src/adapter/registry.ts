@@ -12,7 +12,7 @@ export function createAdapterRegistry() {
 			}
 			adapters.set(adapter.name, adapter);
 		},
-		require(name: string) {
+		get(name: string) {
 			const adapter = adapters.get(name);
 			if (!adapter) {
 				throw coreErrors.createThrowable('MAKOO_ADAPTER_NOT_FOUND', { name });

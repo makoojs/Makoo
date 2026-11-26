@@ -4,6 +4,7 @@ import {
 	createMakoo,
 	type InjectionCommand,
 	inject,
+	type ListenerInjection,
 	type ListenerStatus,
 	listen,
 	type MakooRuntime
@@ -31,7 +32,7 @@ async function flush(): Promise<void> {
 }
 
 describe('Vue components mounted by core', () => {
-	const controls: InjectionCommand[] = [];
+	const controls: Array<InjectionCommand | ListenerInjection> = [];
 	let core: MakooRuntime;
 
 	function panelCommand(): ComponentCommand {
@@ -53,7 +54,8 @@ describe('Vue components mounted by core', () => {
 	});
 
 	afterEach(async () => {
-		for (const control of controls.splice(0)) await control.remove().catch(() => {});
+		for (const control of controls.splice(0))
+			await Promise.resolve(control.remove()).catch(() => {});
 		vi.restoreAllMocks();
 		document.body.replaceChildren();
 	});
@@ -168,7 +170,7 @@ describe('Vue components mounted by core', () => {
 				)
 			})
 		]);
-		controls.push(core.injection('panel').command, core.listener('external').command);
+		controls.push(core.injection('panel').command, core.listener('external'));
 		await nextTick();
 		expect(element('#host').textContent).toBe('waiting/waiting');
 		addButton('mute');
@@ -302,10 +304,10 @@ describe('Vue components mounted by core', () => {
 				]
 			})
 		]);
-		controls.push(core.injection('panel').command, core.listener('save').command);
+		controls.push(core.injection('panel').command, core.listener('save'));
 		await nextTick();
 		const save = received?.listener('save');
-		expect(save?.stop).toBe(core.listener('save').command.stop);
+		expect(save?.stop).toBe(core.listener('save').stop);
 		expect(save?.status).toBe(received?.listener('save').status);
 		expect(element('#host').textContent).toBe('waiting');
 		for (const name of ['panel', 'play', 'missing']) {
@@ -314,16 +316,16 @@ describe('Vue components mounted by core', () => {
 			);
 		}
 
-		await save?.stop();
+		save?.stop();
 		await nextTick();
 		expect(save?.status.value).toBe('idle');
-		expect(core.listener('save').statusHandle.getSnapshot()).toBe('idle');
+		expect(core.listener('save').status).toBe('idle');
 		save?.start();
 		await flush();
-		expect(core.listener('save').statusHandle.getSnapshot()).toBe('waiting');
+		expect(core.listener('save').status).toBe('waiting');
 
 		await panelCommand().stop();
-		expect(core.listener('save').statusHandle.getSnapshot()).toBe('waiting');
+		expect(core.listener('save').status).toBe('waiting');
 	});
 
 	it('keeps one status ref when a standalone listener is replaced', async () => {
@@ -346,7 +348,7 @@ describe('Vue components mounted by core', () => {
 			declaration,
 			inject({ name: 'panel', injectAt: '#host', adapter: 'vue', component: Panel })
 		]);
-		controls.push(core.injection('panel').command, core.listener('save').command);
+		controls.push(core.injection('panel').command, core.listener('save'));
 		await nextTick();
 		const status = received?.listener('save').status;
 		const previous = received?.listener('save');
@@ -354,13 +356,13 @@ describe('Vue components mounted by core', () => {
 		await flush();
 		expect(status?.value).toBe('bound');
 
-		await previous?.remove();
+		previous?.remove();
 		await nextTick();
 		expect(status?.value).toBe('idle');
 		core.apply([declaration]);
-		controls.push(core.listener('save').command);
+		controls.push(core.listener('save'));
 		const replacement = received?.listener('save');
-		expect(replacement?.stop).toBe(core.listener('save').command.stop);
+		expect(replacement?.stop).toBe(core.listener('save').stop);
 		expect(replacement?.stop).not.toBe(previous?.stop);
 		expect(replacement?.status).toBe(status);
 		expect(status?.value).toBe('bound');

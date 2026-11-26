@@ -223,13 +223,6 @@ export function createMakooDev(deps: MakooDevDeps): Plugin {
 			}
 
 			// Taking over means replacing the two CLI-facing methods.
-			if (
-				typeof server.printUrls !== 'function' ||
-				typeof server.bindCLIShortcuts !== 'function'
-			) {
-				httpServer.once('listening', () => void launchBridge(server));
-				return;
-			}
 			const originalPrintUrls = server.printUrls;
 			const originalBindCLIShortcuts = server.bindCLIShortcuts;
 
